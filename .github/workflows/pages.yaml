@@ -24,12 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (latest)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: latest
 
       - name: Checkout (stable)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: book-stable
           path: stable

@@ -1,24 +1,67 @@
-# Generate types for Kotlin, uniffi bindgen in Java
-build: typegen
+mod lib '../../../lib.just'
+mod wlib '../weather-lib.just'
 
-# clean and build
-rebuild: clean build
+default: dev
 
-# build and run Android Studio (MacOS only)
-dev: build
-    open -b com.google.android.studio .
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
 
-# remove all the generated artefacts
-clean:
-    cargo clean
-    rm -rf build generated
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-android
+    @just wlib::check-env
 
-# build the shared library so that it can be inspected by uniffi
-lib:
+# copies API key from .env to local.properties
+[script('sh')]
+setup:
+    set -euo pipefail
+    echo '{{ style("command") }}setup:{{ NORMAL }}'
+    . ../.env
+    if [ -z "${OPENWEATHER_API_KEY:-}" ]; then
+        echo "  ERROR: OPENWEATHER_API_KEY not set in ../.env"
+        exit 1
+    fi
+    touch local.properties
+    if grep -q '^OPENWEATHER_API_KEY=' local.properties 2>/dev/null; then
+        tmp=$(mktemp)
+        sed "s/^OPENWEATHER_API_KEY=.*/OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}/" local.properties > "$tmp"
+        mv "$tmp" local.properties
+    else
+        echo "OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}" >> local.properties
+    fi
+    echo "  API key written to local.properties"
+
+# install Android Rust cross-compilation targets
+install-targets:
+    @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
+    TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(rustup show active-toolchain | awk '{print $1}')}" ; \
+    echo "  Toolchain: $TOOLCHAIN" ; \
+    rustup target add --toolchain "$TOOLCHAIN" \
+        aarch64-linux-android \
+        armv7-linux-androideabi \
+        i686-linux-android \
+        x86_64-linux-android
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    @echo "  No auto-fix configured for Android Gradle sources"
+
+# validate Android lint checks (requires generated types)
+check: typegen
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    ./gradlew --no-daemon :app:lintDebug
+
+# build the shared library so uniffi-bindgen can inspect it
+build-shared:
+    @echo '{{ style("command") }}build-shared:{{ NORMAL }}'
     cargo build --features uniffi
 
-# generate types for Kotlin, and uniffi bindgen as Java
-typegen: lib
+# generate Kotlin types and uniffi bindings
+typegen: build-shared
+    @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
         --package shared \
         --bin codegen \
@@ -26,3 +69,29 @@ typegen: lib
         -- \
             --language kotlin \
             --output-dir generated
+
+# build the Android debug APK (generates types first)
+build: typegen
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    ./gradlew --no-daemon :app:assembleDebug
+
+# run Android JVM unit tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    ./gradlew --no-daemon :app:testDebugUnitTest
+
+# remove build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    ./gradlew --no-daemon clean
+    rm -rf generated
+
+# local development workflow
+dev: setup fix check build test
+
+# CI workflow
+ci: check build test
+
+# open in Android Studio
+open:
+    @just lib::open-android-studio

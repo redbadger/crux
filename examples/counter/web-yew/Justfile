@@ -1,5 +1,50 @@
-dev:
-    trunk serve
+mod lib '../../../lib.just'
 
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-web-trunk
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    cargo fmt
+
+# validate formatting and lint
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    cargo fmt -- --check
+    cargo clippy --target wasm32-unknown-unknown -- -D warnings
+
+# build the project
+build:
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    trunk build
+
+# run tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    @echo "  No tests configured"
+
+# clean build artifacts
 clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    trunk clean
     cargo clean
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test
+
+# serve the app locally
+serve:
+    @echo '{{ style("command") }}serve:{{ NORMAL }}'
+    trunk serve

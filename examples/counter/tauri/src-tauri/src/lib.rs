@@ -1,94 +1,37 @@
-mod http;
-mod sse;
-
-use anyhow::anyhow;
-use futures::TryStreamExt;
 use shared::{Core, Counter, Effect, Event};
 use std::sync::{Arc, LazyLock};
 use tauri::Emitter;
 
 static CORE: LazyLock<Arc<Core<Counter>>> = LazyLock::new(|| Arc::new(Core::new()));
 
-fn handle_event(
-    event: Event,
-    core: &Arc<Core<Counter>>,
-    tauri_app: &tauri::AppHandle,
-) -> anyhow::Result<()> {
+fn handle_event(event: Event, core: &Arc<Core<Counter>>, app: &tauri::AppHandle) {
     for effect in core.process_event(event) {
-        process_effect(effect, core, tauri_app.clone())?;
+        process_effect(effect, core, app);
     }
-
-    Ok(())
 }
 
-fn process_effect(
-    effect: Effect,
-    core: &Arc<Core<Counter>>,
-    tauri_app: tauri::AppHandle,
-) -> anyhow::Result<()> {
+fn process_effect(effect: Effect, core: &Arc<Core<Counter>>, app: &tauri::AppHandle) {
     match effect {
         Effect::Render(_) => {
             let view = core.view();
-            tauri_app.emit("render", view).map_err(|e| anyhow!(e))
-        }
-        Effect::Http(mut request) => {
-            tauri::async_runtime::spawn({
-                let core = core.clone();
-
-                async move {
-                    let response = http::request(&request.operation).await;
-                    for effect in core
-                        .resolve(&mut request, response.into())
-                        .map_err(|e| anyhow!(e))?
-                    {
-                        process_effect(effect, &core, tauri_app.clone())?;
-                    }
-
-                    anyhow::Ok(())
-                }
-            });
-
-            Ok(())
-        }
-        Effect::ServerSentEvents(mut request) => {
-            tauri::async_runtime::spawn({
-                let core = core.clone();
-                let operation = request.operation.clone();
-
-                async move {
-                    let mut stream = sse::request(&operation).await?;
-
-                    while let Ok(Some(response)) = stream.try_next().await {
-                        for effect in core
-                            .resolve(&mut request, response)
-                            .map_err(|e| anyhow!(e))?
-                        {
-                            process_effect(effect, &core, tauri_app.clone())?;
-                        }
-                    }
-
-                    anyhow::Ok(())
-                }
-            });
-
-            Ok(())
+            let _ = app.emit("render", view);
         }
     }
 }
 
 #[tauri::command]
 async fn increment(app_handle: tauri::AppHandle) {
-    let _ = handle_event(Event::Increment, &CORE, &app_handle);
+    handle_event(Event::Increment, &CORE, &app_handle);
 }
 
 #[tauri::command]
 async fn decrement(app_handle: tauri::AppHandle) {
-    let _ = handle_event(Event::Decrement, &CORE, &app_handle);
+    handle_event(Event::Decrement, &CORE, &app_handle);
 }
 
 #[tauri::command]
-async fn watch(app_handle: tauri::AppHandle) {
-    let _ = handle_event(Event::StartWatch, &CORE, &app_handle);
+async fn reset(app_handle: tauri::AppHandle) {
+    handle_event(Event::Reset, &CORE, &app_handle);
 }
 
 /// The main entry point for Tauri
@@ -97,7 +40,7 @@ async fn watch(app_handle: tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![increment, decrement, watch])
+        .invoke_handler(tauri::generate_handler![increment, decrement, reset])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

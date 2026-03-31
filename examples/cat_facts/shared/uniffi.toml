@@ -1,7 +1,0 @@
-[bindings.kotlin]
-package_name = "com.crux.example.cat_facts"
-cdylib_name = "shared"
-
-[bindings.swift]
-cdylib_name = "shared_ffi"
-omit_argument_labels = true

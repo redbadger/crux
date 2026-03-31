@@ -1,10 +1,40 @@
-build:
-    just iOS/build
-    just Android/build
+mod lib '../../lib.just'
+mod wlib 'weather-lib.just'
 
-clean:
-    just iOS/clean
-    just Android/clean
+default: dev
 
-test:
-    cargo nextest run
+common := "shared Android web-leptos web-nextjs"
+shells := if os() == "macos" { common + " apple" } else { common }
+
+# checks required tools across all shells
+[script('sh')]
+doctor:
+    echo '{{ style("command") }}.env:{{ NORMAL }}'
+    just wlib::check-env
+    echo ''
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
+        just "$shell/doctor"
+        echo ''
+    done
+
+# sets up API key for Android (copies from .env to local.properties)
+setup:
+    @echo '{{ style("command") }}setup:{{ NORMAL }}'
+    just Android/setup
+
+# local development workflow
+[script('sh')]
+dev:
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
+        just "$shell/dev"
+    done
+
+# CI workflow
+[script('sh')]
+ci:
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
+        just "$shell/ci"
+    done

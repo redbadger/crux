@@ -8,11 +8,10 @@ license.workspace = true
 keywords.workspace = true
 rust-version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
-anyhow = { workspace = true }
-crossterm = "0.29.0"
-futures = "0.3"
-ratatui = "0.30.0"
-reqwest = { version = "0.13.2", features = ["stream"] }
 shared = { path = "../shared" }
-tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros"] }
+ratatui = "0.30.0"
+crossterm = "0.29.0"

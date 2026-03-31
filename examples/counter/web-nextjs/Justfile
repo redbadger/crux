@@ -1,11 +1,29 @@
-# generate types for typescript, build wasm package and install npm dependencies
-build: typegen wasm install
+mod lib '../../../lib.just'
 
-# clean and then build everything
-rebuild: clean build
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-web-wasm
+
+# auto-fix formatting issues
+fix: install
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    pnpm exec eslint --fix .
+
+# validate lint
+check: install
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    pnpm exec eslint .
 
 # generate types for typescript
 typegen:
+    @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
         --package shared \
         --bin codegen \
@@ -16,21 +34,41 @@ typegen:
 
 # build wasm package
 wasm:
+    @echo '{{ style("command") }}wasm:{{ NORMAL }}'
     wasm-pack build \
         --target web \
         --out-dir ../web-nextjs/generated/pkg \
         ../shared \
         --features wasm_bindgen
 
-# clean up generated files
+# install npm dependencies
+install:
+    @echo '{{ style("command") }}install:{{ NORMAL }}'
+    pnpm install
+
+# build the project
+build: typegen wasm install
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    pnpm build
+
+# run tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    @echo "  No tests configured"
+
+# clean build artifacts
 clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
     cargo clean
     rm -rf generated .next node_modules
 
-# install npm dependencies
-install:
-    pnpm install
+# local development workflow
+dev: typegen wasm fix check build test
 
-# build everything and run the dev server
-dev: build
+# CI workflow
+ci: typegen wasm check build test
+
+# serve the app locally
+serve: typegen wasm install
+    @echo '{{ style("command") }}serve:{{ NORMAL }}'
     pnpm dev

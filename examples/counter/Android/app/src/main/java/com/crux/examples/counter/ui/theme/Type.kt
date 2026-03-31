@@ -1,4 +1,4 @@
-package com.example.counter.ui.theme
+package com.crux.examples.counter.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

@@ -1,6 +1,6 @@
 # Structuring larger apps
 
-Now we have a better handle on what Crux apps are made of, lets have a think about how we might build our Weather app. It is certainly small enough to be built by just blindly following the simple counter example. There is only about 25 different events total, but you probably agree that some more structure would be good.
+Now we have a better handle on what Crux apps are made of, let's have a think about how we might build our Weather app. It is certainly small enough to be built by just blindly following the simple counter example. There are only about 20 different events total, but you probably agree that some more structure would be good.
 
 ## Composition
 
@@ -35,23 +35,23 @@ Model can compose in a similar way, but in our case it's more of a mix:
 {{#include ../../../examples/weather/shared/src/app.rs:model}}
 ```
 
-The `favorites` field is a type from the `favourites` module, but `weather_data` looks useful globally, so does `search_results` and the location related fields.
+The `favorites` field is a type from the `favorites` module, but `weather_data` looks useful globally, so does `search_results` and the location related fields.
 
 The most interesting of these is the `Workflow` type, which manages our navigation state - what page of the app are we currently on.
 
-The main takeaway is that Crux is design such that whole apps can be composed - an existing type implementing `App` can be used, unchanged from a "parent" app, by
+The main takeaway is that Crux is designed such that whole apps can be composed - an existing type implementing `App` can be used, unchanged from a "parent" app, by
 
 1. adding an event variant which carries the child's event
 2. storing the child's model in the model
 3. calling the child's `update` where appropriate
-4. mapping the commands returned to the parent's event, and effect types (using `.map_event` and `.map_effect`)
+4. mapping the commands returned to the parent's event type (using `.map_event`), and if necessary, effect type (using `.map_effect`)
 
-That doesn't mean you should always subdivide apps in the same way, it is often a lot more convenient to share a model, or even a event type across two or more modules. Just know that should you need to reuse a whole Crux app later on, you can.
+That doesn't mean you should always subdivide apps in the same way, it is often a lot more convenient to share a model, or even an event type across two or more modules. Just know that should you need to reuse a whole Crux app later on, you can.
 
 ## Navigation
 
 Typical apps involve some type of geography. The smaller the screen, the more moving between sections the user needs to do. But in principle, this is just more state, typically of the exclusive nature - the user can't be in two places at once. To
-avoid thinking too much about screens or windows (what if we need to build a CLI or a VR version?), lets generalise this idea
+avoid thinking too much about screens or windows (what if we need to build a CLI or a VR version?), let's generalise this idea
 in the concept of a `Workflow`. These are in no way a special type, we're simply modeling our domain in Rust.
 
 In our Weather app, the `Workflow` is an enum:
@@ -68,12 +68,12 @@ At this point, it might be helpful to look at how this is reflected in the view 
 {{#include ../../../examples/weather/shared/src/app.rs:view_model}}
 ```
 
-It is _also_ an enum, because we're currently thinking about the app as separate workflows. If we had a two-panel kind of UX
+The view model is built around a `WorkflowViewModel` enum, because we're currently thinking about the app as separate workflows. If we had a two-panel kind of UX
 with a list and detail, we might model this differently. It's worth spending some time thinking about this when building the app, and this is part of why we encourage building Crux apps from inside out.
 
-The ViewModel's variants are a fair bit richer than the `Workflow` - while the workflow in the model is only concerned with where the user is, the ViewModel also carries the information they see. It is entirely enough for us to draw a user interface from.
+The `WorkflowViewModel`'s variants are a fair bit richer than the `Workflow` - while the workflow in the model is only concerned with where the user is, the ViewModel also carries the information they see. It is entirely enough for us to draw a user interface from.
 
-To bring it home, lets look at the view function:
+To bring it home, let's look at the view function:
 
 ```rust
 {{#include ../../../examples/weather/shared/src/app.rs:view}}

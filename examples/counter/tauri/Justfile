@@ -1,7 +1,57 @@
-dev:
-    pnpm install
-    pnpm tauri dev
+mod lib '../../../lib.just'
 
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-tool node "https://nodejs.org"
+    @just lib::check-tool pnpm "npm install -g pnpm"
+    @just lib::check-tool tauri "pnpm add -g @tauri-apps/cli"
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    @echo "  No auto-fix configured"
+
+# validate formatting and lint
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    @echo "  No lint configured"
+
+# install npm dependencies
+install:
+    @echo '{{ style("command") }}install:{{ NORMAL }}'
+    pnpm install
+
+# build the project
+build: install
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    pnpm tauri build
+
+# run tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    @echo "  No tests configured"
+
+# clean build artifacts
 clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
     cargo clean
-    rm -rf node_modules
+    rm -rf node_modules dist
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test
+
+# serve the app locally
+serve: install
+    @echo '{{ style("command") }}serve:{{ NORMAL }}'
+    pnpm tauri dev

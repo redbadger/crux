@@ -45,48 +45,48 @@ Here's the corresponding code it's testing:
 Hopefully this illustrates that the managed effects let you test entire transactions
 involving effects, without ever executing any.
 
-The full suite of 18 tests of the Weather app runs in 49 milliseconds. In practice,
+The full suite of 18 tests of the Weather app runs in 36 milliseconds on a Mac Mini M4 Pro. In practice,
 it's rare for a test suite of a Crux app to take longer than compiling it (even incrementally).
 Even apps with thousands of tests usually run them in seconds, and sadly they do not yet compile
 in seconds.
 
 ```txt
 cargo nextest run
-   Compiling shared v0.1.0 (/Users/viktor/Projects/crux/examples/weather/shared)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.11s
+   Compiling shared v0.1.0
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.60s
 ────────────
- Nextest run ID 4f51de83-8f2e-4acf-b75f-03969767e886 with nextest profile: default
+ Nextest run ID 53981226-e01e-443a-a6a8-ded6fb5af6e8 with nextest profile: default
     Starting 18 tests across 1 binary
-        PASS [   0.020s] shared app::tests::test_navigation
-        PASS [   0.020s] shared favorites::events::tests::test_add_multiple_favorites
-        PASS [   0.019s] shared favorites::events::tests::test_delete_confirmed
-        PASS [   0.020s] shared favorites::events::tests::test_cancel_returns_to_favorites
-        PASS [   0.019s] shared favorites::events::tests::test_kv_set_and_load
-        PASS [   0.023s] shared favorites::events::tests::test_delete_cancelled
-        PASS [   0.023s] shared favorites::events::tests::test_delete_pressed
-        PASS [   0.022s] shared favorites::events::tests::test_delete_with_persistence
-        PASS [   0.022s] shared favorites::events::tests::test_kv_load_empty
-        PASS [   0.013s] shared favorites::events::tests::test_kv_load_error
-        PASS [   0.011s] shared favorites::events::tests::test_submit_duplicate_favorite
-        PASS [   0.012s] shared favorites::events::tests::test_submit_adds_favorite
-        PASS [   0.013s] shared favorites::events::tests::test_submit_persists_favorite
-        PASS [   0.011s] shared weather::events::tests::test_fetch_favorites_triggers_fetch_for_all_favorites
-        PASS [   0.011s] shared weather::events::tests::test_show_triggers_set_weather
-        PASS [   0.012s] shared weather::events::tests::test_fetch_triggers_favorites_fetch_when_favorites_exist
-        PASS [   0.027s] shared weather::events::tests::test_current_weather_fetch
-        PASS [   0.027s] shared favorites::events::tests::test_search_triggers_api_call
+        PASS [   0.014s] ( 1/18) shared favorites::events::tests::test_delete_cancelled
+        PASS [   0.014s] ( 2/18) shared favorites::events::tests::test_kv_load_empty
+        PASS [   0.014s] ( 3/18) shared favorites::events::tests::test_delete_confirmed
+        PASS [   0.014s] ( 4/18) shared favorites::events::tests::test_cancel_returns_to_favorites
+        PASS [   0.015s] ( 5/18) shared favorites::events::tests::test_add_multiple_favorites
+        PASS [   0.015s] ( 6/18) shared favorites::events::tests::test_kv_set_and_load
+        PASS [   0.015s] ( 7/18) shared favorites::events::tests::test_delete_with_persistence
+        PASS [   0.015s] ( 8/18) shared favorites::events::tests::test_kv_load_error
+        PASS [   0.015s] ( 9/18) shared app::tests::test_navigation
+        PASS [   0.015s] (10/18) shared favorites::events::tests::test_submit_adds_favorite
+        PASS [   0.016s] (11/18) shared favorites::events::tests::test_delete_pressed
+        PASS [   0.010s] (12/18) shared favorites::events::tests::test_submit_persists_favorite
+        PASS [   0.010s] (13/18) shared favorites::events::tests::test_submit_duplicate_favorite
+        PASS [   0.010s] (14/18) shared weather::events::tests::test_show_triggers_set_weather
+        PASS [   0.010s] (15/18) shared weather::events::tests::test_fetch_favorites_triggers_fetch_for_all_favorites
+        PASS [   0.010s] (16/18) shared weather::events::tests::test_fetch_triggers_favorites_fetch_when_favorites_exist
+        PASS [   0.029s] (17/18) shared favorites::events::tests::test_search_triggers_api_call
+        PASS [   0.021s] (18/18) shared weather::events::tests::test_current_weather_fetch
 ────────────
-     Summary [   0.049s] 18 tests run: 18 passed, 0 skipped
+     Summary [   0.036s] 18 tests run: 18 passed, 0 skipped
 ```
 
 ## The test steps
 
-Crux provides a test APIs to make the tests a bit more readable and nicer to write,
+Crux provides test APIs to make the tests a bit more readable and nicer to write,
 but it's still up to the test to execute the app loop.
 
 Let's have a look at a simpler test from the Weather app and go through it step by step:
 
-```Rust
+```rust
 {{#include ../../../examples/weather/shared/src/favorites/events.rs:test}}
 ```
 
@@ -112,9 +112,9 @@ to use in tests, using a `HashMap` as storage for example. Then we could simply 
 key-value effects to it and make sure the storage is managed correctly. Similarly, we could
 build a predictable replica of an API service we need to test against, etc.
 
-While that's all starting to sounds a lot like mocking, remember that we're not implementing
+While that's all starting to sound a lot like mocking, remember that we're not implementing
 Redis or building an actual HTTP server. It's all very simple code. And if we do that for all
-the different effects our app needs and provide a realistic _enough_ implementations to mimic
+the different effects our app needs and provide a realistic _enough_ implementation to mimic
 the real things, a very interesting thing happens - we get the entire app stack, with the
 nitty gritty technical details taken out, running in a unit test.
 

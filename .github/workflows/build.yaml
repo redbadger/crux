@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Remove rust-toolchain.toml
         shell: bash
@@ -51,75 +51,6 @@ jobs:
       - name: Build crux
         shell: bash
         run: cargo build --workspace
-
-      - name: Install nextest
-        shell: bash
-        run: |
-          set -euxo pipefail
-          curl -LsSf https://get.nexte.st/0.9/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
-
-      - name: Tests
-        shell: bash
-        run: |
-          cargo nextest run --all-features
-          cargo test --doc --all-features
-
-  find-examples:
-    runs-on: ubuntu-latest
-    outputs:
-      examples: ${{ steps.find.outputs.examples }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - id: find
-        run: |
-          EXAMPLES=$(ls -d examples/*/ | xargs -L 1 basename | jq --raw-input --slurp --compact-output 'split("\n")[:-1]')
-          echo "examples=$EXAMPLES" >> $GITHUB_OUTPUT
-
-  examples:
-    runs-on: ubuntu-latest
-    container: ivangabriele/tauri:debian-bookworm-22
-
-    needs: find-examples
-
-    strategy:
-      matrix:
-        example: ${{ fromJson(needs.find-examples.outputs.examples) }}
-
-    defaults:
-      run:
-        working-directory: examples/${{ matrix.example }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Remove rust-toolchain.toml
-        shell: bash
-        run: |
-          # so we don't add tooling for all targets
-          rm ../../rust-toolchain.toml
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Install .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "9.0.x"
-
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: Lints
-        shell: bash
-        run: |
-          cargo fmt --all --check
-          cargo clippy -- --no-deps -Dclippy::pedantic -Dwarnings
-
-      - name: Build ${{ matrix.example }}
-        shell: bash
-        run: cargo build
 
       - name: Install nextest
         shell: bash

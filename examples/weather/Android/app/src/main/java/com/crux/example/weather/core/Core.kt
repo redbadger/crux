@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
+// ANCHOR: core_base
 class Core(
     private val httpClient: HttpClient,
     private val locationManager: LocationManager,
@@ -43,6 +44,7 @@ class Core(
             handleEffects(effects)
         }
     }
+    // ANCHOR_END: core_base
 
     private suspend fun handleEffects(effects: ByteArray) {
         val requests = Requests.bincodeDeserialize(effects)
@@ -51,13 +53,16 @@ class Core(
         }
     }
 
+    // ANCHOR: process_request
     private suspend fun processRequest(request: Request) {
         Log.d(TAG, "processRequest: $request")
 
         when (val effect = request.effect) {
+            // ANCHOR: http
             is Effect.Http -> {
                 handleHttpEffect(effect, request.id)
             }
+            // ANCHOR_END: http
 
             is Effect.KeyValue -> {
                 handleKeyValueEffect(effect, request.id)
@@ -72,11 +77,14 @@ class Core(
             }
         }
     }
+    // ANCHOR_END: process_request
 
+    // ANCHOR: handle_http
     private suspend fun handleHttpEffect(effect: Effect.Http, requestId: UInt) {
         val result = httpClient.request(effect.value)
         resolveAndHandleEffects(requestId, result.bincodeSerialize())
     }
+    // ANCHOR_END: handle_http
 
     private suspend fun handleLocationEffect(effect: Effect.Location, requestId: UInt) {
         val result = when (effect.value) {
@@ -96,12 +104,14 @@ class Core(
         resolveAndHandleEffects(requestId, result.bincodeSerialize())
     }
 
+    // ANCHOR: resolve
     private suspend fun resolveAndHandleEffects(requestId: UInt, data: ByteArray) {
         Log.d(TAG, "resolveAndHandleEffects for request id: $requestId")
 
         val effects = coreFfi.resolve(requestId, data)
         handleEffects(effects)
     }
+    // ANCHOR_END: resolve
 
     private fun render() {
         _viewModel.value = getViewModel().also {

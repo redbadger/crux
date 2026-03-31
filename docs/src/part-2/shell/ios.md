@@ -1,21 +1,21 @@
-# iOS
+# iOS/macOS
 
-Lets start with the new part, and also typically the shorter part –
+Let's start with the new part, and also typically the shorter part –
 implementing the capabilities.
 
 ## Capability implementation
 
-This is what Weather's `core.swift` look like
+This is what Weather's `core.swift` looks like
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/Core.swift:core_base}}
+{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:core_base}}
         // ...
     }
 }
 ```
 
 It's slightly more complicated, but broadly the same as the Counter's core.
-We've have an extra logger which is not really important for us, and we
+We have an extra logger which is not really important for us, and we
 also hold on to a `KeyValueStore`, which is the storage for the key-value
 implementation.
 
@@ -41,19 +41,25 @@ structure is this:
     }
 ```
 
-We get a Request, and do an exhaustive match on what the requested effect is. In swift
+We get a Request, and do an exhaustive match on what the requested effect is. In Swift
 we have tagged unions, so we can also destructure the operation requested.
 
 We can have a look at what the HTTP branch does:
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/Core.swift:http}}
+{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:http}}
 ```
 
-We start a new `Task` to run this job off the main thread, then we use the `async requestHttp()`
-call to run the request.
+This delegates to `handleHttp`, which does the actual work:
 
-Then it takes the response, serializes it and passes it to `core.resolve`, which
+```swift
+{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:handle_http}}
+```
+
+We start a new `Task` to run this job off the main thread, then use the
+`async requestHttp()` call to run the request.
+
+Then it takes the response, serializes it and passes it to `core.resolve` via `resolveEffects`, which
 **returns more effect requests**. This is perhaps unexpected, but it's the direct
 consequence of the `Command`s async nature. There can easily be a command which
 does something along the lines of:
@@ -91,18 +97,18 @@ at once), go through them and recurse - call `processEffect` again to handle it.
 Just for completeness, this is what `requestHttp` looks like:
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/http.swift}}
+{{#include ../../../../examples/weather/apple/WeatherApp/http.swift}}
 ```
 
 Not that interesting, it's a wrapper around `URLRequest` and friends which takes and
-returns the generated `HttpRequest` and `HttpResponse`, originall defined in Rust by
+returns the generated `HttpRequest` and `HttpResponse`, originally defined in Rust by
 `crux_http`.
 
 The pattern repeats similarly for key-value store and the location capability.
 
 ## User interface and navigation
 
-It's worth looking at how Weather handles the Workflow navigation in Swift UI.
+It's worth looking at how Weather handles the Workflow navigation in SwiftUI.
 
 As in the Counter example, the Weather's core has a `@Published var view: ViewModel`
 which we can use in the Views.
@@ -110,7 +116,7 @@ which we can use in the Views.
 Here's the root content view:
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/ContentView.swift:content_view}}
+{{#include ../../../../examples/weather/apple/WeatherApp/ContentView.swift:content_view}}
 ```
 
 Thanks to the declarative nature of SwiftUI, we can show the view we need to,
@@ -123,7 +129,7 @@ view model to each view, it's up to you how you want to go about it.
 Let's look at the HomeView as well, just to complete the picture:
 
 ```swift
-{{#include ../../../../examples/weather/iOS/Weather/HomeView.swift:home_view}}
+{{#include ../../../../examples/weather/apple/WeatherApp/HomeView.swift:home_view}}
 ```
 
 It simply caters for the possible situations in the view model, draws the

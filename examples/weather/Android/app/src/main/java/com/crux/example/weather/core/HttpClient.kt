@@ -40,6 +40,7 @@ class HttpClient {
         }
     }
 
+    // ANCHOR: request
     suspend fun request(request: HttpRequest): HttpResult = withContext(Dispatchers.Default) {
         try {
             val response = requestResponse(request)
@@ -50,6 +51,7 @@ class HttpClient {
             HttpResult.Err(toHttpError(error))
         }
     }
+    // ANCHOR_END: request
 
     private suspend fun requestResponse(request: HttpRequest): HttpResponse {
         val response = ktorHttpClient.request(request.url) {

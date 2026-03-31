@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "bulma": "^1.0.4",
-    "eslint": "10.0.3",
+    "eslint": "^9.28.0",
     "eslint-config-next": "16.1.7",
     "next": "16.1.7",
     "react": "19.2.4",
@@ -23,5 +23,5 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3"
   },
-  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
+  "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e"
 }

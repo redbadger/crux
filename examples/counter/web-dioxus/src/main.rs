@@ -1,6 +1,4 @@
 mod core;
-mod http;
-mod sse;
 
 use dioxus::prelude::*;
 use tracing::Level;
@@ -18,10 +16,6 @@ fn App() -> Element {
         let svc = CoreService::new(view);
         async move { svc.run(&mut rx).await }
     });
-
-    // send initial event
-    use_resource(move || async move { core.send(Event::StartWatch) });
-
     rsx! {
         document::Link {
             rel: "stylesheet",
@@ -29,23 +23,25 @@ fn App() -> Element {
         }
         main {
             section { class: "section has-text-centered",
-                h1 { class: "title", "Crux Counter Example" }
-                p { class: "is-size-5", "Rust Core, Rust Shell (Dioxus)" }
-            }
-            section { class: "section has-text-centered",
-                p { class: "is-size-5", "{view().text}" }
+                p { class: "is-size-5", "{view().count}" }
                 div { class: "buttons section is-centered",
+                    button { class:"button is-primary is-danger",
+                        onclick: move |_| {
+                            core.send(Event::Reset);
+                        },
+                        "Reset"
+                    }
+                    button { class:"button is-primary is-success",
+                        onclick: move |_| {
+                            core.send(Event::Increment);
+                        },
+                        "Increment"
+                    }
                     button { class:"button is-primary is-warning",
                         onclick: move |_| {
                             core.send(Event::Decrement);
                         },
                         "Decrement"
-                    }
-                    button { class:"button is-primary is-danger",
-                        onclick: move |_| {
-                            core.send(Event::Increment);
-                        },
-                        "Increment"
                     }
                 }
             }

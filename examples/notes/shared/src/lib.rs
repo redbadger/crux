@@ -5,6 +5,7 @@ mod ffi;
 
 pub use app::*;
 pub use crux_core::Core;
+pub use crux_kv as kv;
 
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 pub use ffi::CoreFFI;

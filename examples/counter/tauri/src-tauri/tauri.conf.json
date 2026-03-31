@@ -7,7 +7,7 @@
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
-  "identifier": "com.tauri.dev",
+  "identifier": "com.crux.examples.counter.tauri",
   "app": {
     "withGlobalTauri": false,
     "windows": [

@@ -1,21 +1,18 @@
 # Documentation Guide
 
-This is built with [mdBook](https://github.com/rust-lang/mdBook). If you want to
-change the docs, follow the
-[installation](https://rust-lang.github.io/mdBook/guide/installation.html) and
-[getting started guide](https://rust-lang.github.io/mdBook/guide/creating.html).
+This is built with [mdBook](https://github.com/rust-lang/mdBook).
 
-## mdbook plugins
-
-To get the full styling, you need to install the following plugins:
+From `docs/`, the main entry points are:
 
 ```sh
-cargo install mdbook-admonish
+just doctor
+just dev
+just serve
 ```
 
-We also use the [linkcheck](https://github.com/Michael-F-Bryan/mdbook-linkcheck)
-plugin to check for broken links:
+`just doctor` checks that the required tooling is installed.
 
-```sh
-cargo install mdbook-linkcheck
-```
+`just dev` runs `mdbook build`, including the configured preprocessors and link
+checking.
+
+`just serve` starts the local docs server.

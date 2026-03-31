@@ -20,11 +20,11 @@ required-features = ["codegen"]
 uniffi = ["dep:uniffi"]
 wasm_bindgen = ["dep:wasm-bindgen", "dep:getrandom"]
 codegen = [
-    "crux_core/cli",
-    "dep:clap",
-    "dep:log",
-    "dep:pretty_env_logger",
-    "uniffi",
+  "crux_core/cli",
+  "dep:clap",
+  "dep:log",
+  "dep:pretty_env_logger",
+  "uniffi",
 ]
 facet_typegen = ["crux_core/facet_typegen"]
 
@@ -45,4 +45,7 @@ wasm-bindgen = { version = "0.2.114", optional = true }
 
 [dev-dependencies]
 insta = { version = "1.46.3", features = ["yaml"] }
-serde_json = "1.0"
+
+# wasm
+[target.'cfg(target_family = "wasm")'.dependencies]
+getrandom = { version = "=0.3.4", features = ["wasm_js"] }

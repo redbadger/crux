@@ -16,15 +16,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
-anyhow.workspace = true
-futures = "0.3.32"
-reqwest = { version = "0.13.2", features = ["stream"] }
 shared = { path = "../../shared" }
 tauri = { version = "2.10.3", features = [] }
 
 [features]
-# this feature is used for production builds or when `devPath` points to the filesystem
-# DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
 
 [lints.rust]

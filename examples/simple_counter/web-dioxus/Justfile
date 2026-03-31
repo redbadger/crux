@@ -1,5 +1,0 @@
-dev:
-    dx serve
-
-clean:
-    cargo clean

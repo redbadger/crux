@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
 
         observeLocationPermissionRequests()
 
+        // ANCHOR: content_view
         setContent {
             WeatherTheme {
                 val state by core.viewModel.collectAsState()
@@ -70,6 +71,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // ANCHOR_END: content_view
     }
 
     private fun handleBackClick(currentWorkflow: WorkflowViewModel) {

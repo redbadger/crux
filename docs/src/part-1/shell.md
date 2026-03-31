@@ -42,7 +42,7 @@ First, lets update our `Cargo.toml`:
 
 ```toml,ignore
 # shared/Cargo.toml
-{{#include ../../../examples/simple_counter/shared/Cargo.toml}}
+{{#include ../../../examples/counter/shared/Cargo.toml}}
 ```
 
 A lot has changed! The key things we added are:
@@ -55,7 +55,7 @@ And since we've declared the `codegen` target, we need to add the code for it.
 
 ```rust
 // shared/src/bin/codegen.rs
-{{#include ../../../examples/simple_counter/shared/src/bin/codegen.rs}}
+{{#include ../../../examples/counter/shared/src/bin/codegen.rs}}
 ```
 
 This is essentially boilerplate for a CLI we can use to run the binding generation and type generation.
@@ -84,7 +84,7 @@ Now we need to add the Rust side of the bindings into our code. Update your `lib
 
 ```rust,noplayground
 // shared/src/lib.rs
-{{#include ../../../examples/simple_counter/shared/src/lib.rs}}
+{{#include ../../../examples/counter/shared/src/lib.rs}}
 ```
 
 This code uses our feature flags to conditionally initialize the UniFFI bindings and check the version
@@ -94,7 +94,7 @@ More importantly, it introduced a new `ffi.rs` module. Let's look at it closer:
 
 ```rust
 // shared/src/ffi.rs
-{{#include ../../../examples/simple_counter/shared/src/ffi.rs}}
+{{#include ../../../examples/counter/shared/src/ffi.rs}}
 ```
 
 Broad strokes: we define a type for core with FFI, which holds a `Bridge` wrapping our `Counter`, and
@@ -123,7 +123,7 @@ set this up once, and most likely won't touch it again, but having the ability, 
 
 Now we can proceed to the actual shell for your platform of choice:
 
-- [iOS with Swift and SwiftUI](./shell/ios/index.md)
-- [Android with Kotlin and Jetpack Compose](./shell/android/index.md)
+- [iOS with Swift and SwiftUI](./shell/apple/index.md)
+- [Android with Kotlin and Jetpack Compose](./shell/android/android.md)
 - [Web with TypeScript, React and Next.js](./shell/web/react.md)
 - [Rust in WebAssembly with Leptos](./shell/web/leptos.md)

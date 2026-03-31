@@ -1,132 +1,100 @@
-# Weather App Example (Crux)
+# Weather example
 
-This project is a cross-platform weather application example built using [Crux](https://github.com/redbadger/crux/), demonstrating a clean separation of business logic (in Rust) and platform-specific UI (iOS/SwiftUI and Android/Jetpack Compose). The app fetches weather data from the [OpenWeatherMap API](https://openweathermap.org/api) and displays it in a modern, user-friendly interface.
+This example demonstrates a full, working Crux app with multiple screens, real
+API calls, persistent storage, and device capabilities like geolocation.
 
-## Features
+To keep things realistic, the app connects to a real weather API. We chose
+[OpenWeatherMap](https://openweathermap.org) because it has a generous free
+tier. You'll need to sign up for a free API key to run these examples.
 
-- Fetches current weather for a given location using OpenWeatherMap
-- Add and view favorite locations
-- Modern, responsive UI built with SwiftUI
-- Business logic and state management in Rust, shared across platforms
-- Persistent storage for favorites using Core Data (iOS)
-- Cross-platform ready: core logic can be reused for other platforms (Android, Web, etc.)
+## What you can do
 
-## Project Structure
+- **See current weather** — the app detects your location and fetches live
+  weather data (temperature, humidity, wind, clouds, visibility, sunrise/sunset)
+- **Add favorites** — search for any city and save it as a favorite
+- **Browse favorites** — swipe between your current location and saved cities
+  (on iOS) or use the tab bar (on macOS)
+- **Delete favorites** — remove saved cities with a confirmation dialog
+- **Persistent storage** — favorites are saved to local storage (web) or
+  key-value store (native) and restored on launch
 
-- `shared/` — Rust crate with domain-organized business logic: - `weather/` — Weather data fetching and processing - `location/` — Location services management - `favorites/` — Favorite locations management
-  - `config.rs` — Shared configuration (API keys, endpoints)
-  - `app.rs` — Core app logic and view state management
-- `iOS/` — iOS app using SwiftUI, integrates with Rust via FFI
-- `Android/` — Android app using Kotlin + Jetpack Compose, integrates with Rust via FFI
+## Architecture
 
-## Architecture Summary
+The `shared` crate contains all the business logic, organised into domain
+modules:
 
-- **Domain-Oriented**: Code organized by business domains (weather, location, favorites)
-- **Type-Safe View States**: Enum-based workflow system for view state management
-- **Crux Core**: All app logic, state, and effects are in Rust (`shared/`)
-- **FFI Bridge**: `shared_types/` generates Swift (and other) bindings using UniFFI and Crux typegen
-- **iOS App**: SwiftUI app (`iOS/Weather/`) calls into Rust for all business logic
-- **Android App**: Compose app (`Android/`) calls into Rust for all business logic
+- `weather` — fetches current weather from the OpenWeatherMap API
+- `location` — checks location permissions and gets the device's coordinates
+- `favorites` — manages saved locations with key-value persistence
+- `config` — API key configuration
+- `app` — ties it all together with workflow-based navigation (Home, Favorites,
+  Add Favorite)
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed breakdown.
 
-## Getting Started
+## Shells
 
-### Prerequisites
+- SwiftUI (iOS/macOS) — `apple/`
+- Android/Kotlin — `android/`
+- Leptos — `web-leptos/`
+- Next.js — `web-nextjs/`
 
-- Rust (1.66+)
-- [wasm-pack](https://rustwasm.github.io/wasm-pack/), if targeting web
-- OpenWeatherMap API key (get one at [OpenWeatherMap](https://openweathermap.org/api))
+## Setup
 
-#### For iOS:
+### 1. Get an API key
 
-- Xcode (14+)
-- Swift 5
+Sign up for a free API key at
+[openweathermap.org/appid](https://openweathermap.org/appid).
 
-#### For Android:
+### 2. Create `.env`
 
-- NDK v29.0.14206865 (for Android app)
+In this directory (`examples/weather/`), create a `.env` file:
 
-- Android Studio (for Android app)
+```sh
+export OPENWEATHER_API_KEY=your_key_here
+```
 
-### Setup iOS App
+### 3. Check prerequisites
 
-1. Clone the repo and navigate to this directory.
+```sh
+just doctor
+```
 
-2. Set up your OpenWeatherMap API key:
+This verifies that the required tools are installed and that `.env` is
+configured.
 
-   **Option 1: Environment Variable**
+## Running
 
-   ```sh
-   export OPENWEATHER_API_KEY=your_api_key_here
-   ```
+### Web (Leptos or Next.js)
 
-   **Option 2: Xcode Scheme**
-   1. Open `iOS/Weather.xcodeproj` in Xcode
-   2. Select the Weather scheme
-   3. Click Edit Scheme (⌘<)
-   4. Under Run → Arguments → Environment Variables
-   5. Add `OPENWEATHER_API_KEY` with your API key
+The `.env` file is sourced automatically by the `serve` recipe:
 
-3. Build the Rust shared library:
+```sh
+cd web-leptos  # or web-nextjs
+just serve
+```
 
-   ```sh
-   cd shared
-   cargo build --release
-   ```
+### Android
 
-4. Generate FFI bindings:
+Run setup to copy the API key to `local.properties`, then open Android Studio:
 
-   ```sh
-   cd ../shared_types
-   cargo run --release
-   ```
+```sh
+just android/setup
+just android/open
+```
 
-5. Open `iOS/Weather.xcodeproj` in Xcode and run the app.
+Build and run from Android Studio. (The `setup` step is also included in
+`just android/dev`.)
 
-6. Set location in a running simulator:
+### Apple (iOS/macOS)
 
-   ```bash
-   # set the location to Big Ben (Elizabeth Tower), London, UK
-   xcrun simctl location booted set 51.500510810750356,-0.12462580696146475
-   ```
+Generate the Xcode project (this injects the API key into the scheme) and open
+it:
 
-### Setup Android App
+```sh
+cd apple
+just generate
+just open
+```
 
-1. Add your API key to `Android/local.properties`:
-
-   ```properties
-   OPENWEATHER_API_KEY=your_api_key_here
-   ```
-
-2. Ensure Rust targets are installed:
-
-   ```sh
-   rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
-   ```
-
-3. Run `just build` to generate kotlin bindings to core.
-
-4. Open Android Studio, sync and run the app.
-
-### Running Tests
-
-- Rust logic: `cd shared && cargo test`
-- iOS app: Use Xcode's test runner
-
-## Decisions & Rationale
-
-- **Domain-Oriented Structure**: Clear separation of concerns by business domain
-- **Rust for business logic**: Ensures consistency and testability across platforms
-- **Crux pattern**: Clean separation of UI and logic, easy to port to new platforms
-- **UniFFI**: Automated, type-safe FFI bindings for Swift, Java, TypeScript
-- **Core Data for persistence**: Native iOS persistence for favorites
-
-## License
-
-Apache-2.0. See [LICENSE](../LICENSE).
-
-## Acknowledgements
-
-- [Crux](https://github.com/redbadger/crux/)
-- [OpenWeatherMap](https://openweathermap.org/)
+Build and run from Xcode.

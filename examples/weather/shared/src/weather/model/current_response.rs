@@ -14,8 +14,9 @@ pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
     Facet, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone,
 )]
 pub struct Sys {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default)]
     pub type_: usize,
+    #[serde(default)]
     pub id: usize,
     pub country: String,
     pub sunrise: usize,

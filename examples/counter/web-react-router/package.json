@@ -1,0 +1,31 @@
+{
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "build": "react-router build",
+    "dev": "react-router dev",
+    "start": "react-router-serve build/server/index.js"
+  },
+  "dependencies": {
+    "@react-router/node": "^7.7.0",
+    "@react-router/serve": "^7.7.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router": "^7.7.0",
+    "shared": "file:generated/pkg",
+    "shared_types": "file:generated/types"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^7.7.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.0",
+    "vite-plugin-wasm": "^3.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
+}

@@ -1,15 +1,10 @@
 # Web — Rust and Yew
 
-```admonish warning
-This was written for previous versions of Crux and needs updating. Proceed with caution.
-If you'd like to help update it, you'd be very welcome!
-```
-
 These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../../part-1/shell.md).
 ```
 
 ```admonish info
@@ -37,13 +32,13 @@ Now we can start fleshing out our project. Let's add some dependencies to
 `web-yew/Cargo.toml`.
 
 ```toml
-{{#include ../../../../examples/simple_counter/web-yew/Cargo.toml}}
+{{#include ../../../../examples/counter/web-yew/Cargo.toml}}
 ```
 
 We'll also need a file called `index.html`, to serve our app.
 
 ```html
-{{#include ../../../../examples/simple_counter/web-yew/index.html}}
+{{#include ../../../../examples/counter/web-yew/index.html}}
 ```
 
 ## Create some UI
@@ -54,7 +49,7 @@ There are several, more advanced,
 in the Crux repository.
 
 However, we will use the
-[simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter),
+[simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter),
 which has `shared` and `shared_types` libraries that will work with the
 following example code.
 ```
@@ -89,7 +84,7 @@ in the same memory space), we do not need to serialize and deserialize the data
 that we pass between them. We can just pass the data directly.
 
 ```rust,noplayground
-{{#include ../../../../examples/simple_counter/web-yew/src/core.rs}}
+{{#include ../../../../examples/counter/web-yew/src/core.rs}}
 ```
 
 ```admonish tip
@@ -110,7 +105,7 @@ this app, we can assume that any other message is a render `Effect` and so we
 return true indicating to Yew that we _do_ want to re-render.
 
 ```rust,noplayground
-{{#include ../../../../examples/simple_counter/web-yew/src/main.rs}}
+{{#include ../../../../examples/counter/web-yew/src/main.rs}}
 ```
 
 ## Build and serve our app
@@ -129,5 +124,5 @@ trunk serve --open
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/counter.webp"  width="300"></p>
 ```

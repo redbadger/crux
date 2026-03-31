@@ -71,7 +71,7 @@ pub struct Model {
     timer: Option<TimerHandle>,
 }
 
-#[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct ViewModel {
     pub text: String,
     pub cursor: TextCursor,

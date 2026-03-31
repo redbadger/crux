@@ -17,12 +17,14 @@ use super::executor::{JoinHandle, Task};
 
 /// Context enabling tasks to communicate with the parent Command,
 /// specifically submit effects, events and spawn further tasks
+// ANCHOR: command_context
 pub struct CommandContext<Effect, Event> {
     pub(crate) effects: Sender<Effect>,
     pub(crate) events: Sender<Event>,
     pub(crate) tasks: Sender<Task>,
     pub(crate) rc: Arc<()>,
 }
+// ANCHOR_END: command_context
 
 // derive(Clone) wants Effect and Event to be clone which is not actually necessary
 impl<Effect, Event> Clone for CommandContext<Effect, Event> {
@@ -61,6 +63,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// That is to say - any `.await` point on a `ShellRequest` is a potential abort point for the
     /// enclosing future.
     #[allow(clippy::missing_panics_doc)]
+    // ANCHOR: request_from_shell
     pub fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
     where
         Op: Operation,
@@ -85,6 +88,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
         ShellRequest::new(Box::new(send_request), output_receiver)
     }
+    // ANCHOR_END: request_from_shell
 
     /// Create a stream request for an operation. Returns a stream producing the
     /// with the output of the operation every time it is provided by the shell.
@@ -138,6 +142,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// Returns a `JoinHandle` which can be used as a future to await the completion of the task. It can also
     /// be used to abort the task.
     #[allow(clippy::missing_panics_doc)]
+    // ANCHOR: spawn
     pub fn spawn<F, Fut>(&self, make_future: F) -> JoinHandle
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
@@ -167,6 +172,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
         handle
     }
+    // ANCHOR_END: spawn
 }
 
 pub enum ShellStream<T: Unpin + Send> {

@@ -1,15 +1,10 @@
 # Web — Rust and Dioxus
 
-```admonish warning
-This was written for previous versions of Crux and needs updating. Proceed with caution.
-If you'd like to help update it, you'd be very welcome!
-```
-
 These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../core.md).
+This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../../part-1/shell.md).
 ```
 
 ```admonish info
@@ -55,7 +50,7 @@ Now we can start fleshing out our project. Let's add some dependencies to the
 project's `Cargo.toml`.
 
 ```toml
-{{#include ../../../../examples/simple_counter/web-dioxus/Cargo.toml}}
+{{#include ../../../../examples/counter/web-dioxus/Cargo.toml}}
 ```
 
 ## Create some UI
@@ -63,7 +58,7 @@ project's `Cargo.toml`.
 ```admonish example
 There is slightly more advanced [example](https://github.com/redbadger/crux/tree/master/examples/counter) of a Dioxus app in the Crux repository.
 
-However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/simple_counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter), which has `shared` and `shared_types` libraries that will work with the following example code.
 ```
 
 ### Simple counter example
@@ -87,12 +82,12 @@ for. In this simple example, we aren't calling any HTTP APIs or handling any
 side effects other than rendering the UI, so we just handle this render effect
 by updating the component's `view` hook with the core's ViewModel.
 
-Also note that because both our core and our shell are written in Rust (and run
+Because both our core and our shell are written in Rust (and run
 in the same memory space), we do not need to serialize and deserialize the data
 that we pass between them. We can just pass the data directly.
 
 ```rust,noplayground
-{{#include ../../../../examples/simple_counter/web-dioxus/src/core.rs}}
+{{#include ../../../../examples/counter/web-dioxus/src/core.rs}}
 ```
 
 ```admonish tip
@@ -104,20 +99,19 @@ the
 in the Crux repository.
 ```
 
-Edit `src/main.rs` to look like the following. This code sets up the Dioxus app,
-and connects the core to the UI. Not only do we create a hook for the view state
-but we also create a coroutine that plugs in the Dioxus "service" we defined
-above to constantly send any events from the UI to the core.
+Edit `src/main.rs` to look like the following. This code sets up the Dioxus app
+and connects the core to the UI. We create a signal for the view state
+and a coroutine that receives events from the UI and forwards them to the core.
 
 ```rust,noplayground
-{{#include ../../../../examples/simple_counter/web-dioxus/src/main.rs}}
+{{#include ../../../../examples/counter/web-dioxus/src/main.rs}}
 ```
 
-We can add a title and a stylesheet by editing
-`examples/simple_counter/web-dioxus/Dioxus.toml`.
+We also need a `Dioxus.toml` configuration file to set up the app title and
+asset directory.
 
 ```toml
-{{#include ../../../../examples/simple_counter/web-dioxus/Dioxus.toml}}
+{{#include ../../../../examples/counter/web-dioxus/Dioxus.toml}}
 ```
 
 ## Build and serve our app
@@ -131,5 +125,5 @@ dx serve
 ```admonish success
 Your app should look like this:
 
-<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/simple_counter.webp"  width="300"></p>
+<p align="center"><img alt="simple counter app" src="../../part-1/shell/web/counter.webp"  width="300"></p>
 ```

@@ -2,7 +2,7 @@
 
 <a href="https://red-badger.com/crux"><img src="./crux_core/crux_logo.svg" height="100" /></a>
 
-**[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g&t=5s) | [Read the book](https://redbadger.github.io/crux) | [Read API docs](https://docs.rs/crux_core/latest/crux_core/) | [Join Zulip community](https://crux-community.zulipchat.com)**
+**[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g) | [Read the book](https://redbadger.github.io/crux) | [Read API docs](https://docs.rs/crux_core/latest/crux_core/) | [Join Zulip community](https://crux-community.zulipchat.com)**
 
 ## Cross-platform app development in Rust
 
@@ -21,25 +21,23 @@
   across languages — types and serialization code are generated for Swift,
   Kotlin and TypeScript. Rust shells can import the core directly.
 - **Managed effects** - Side effects such as calling an API are captured as values
-  and executed by the Shell. The core stays side-effect free, making it portable
+  and executed by the Shell. The core stays side-effect-free, making it portable
   across platforms and allowing high-level user journey tests to run in milliseconds
   (rather than minutes or even hours)
 
 ## Getting Started
 
-[Learn how to use Crux in your project](https://redbadger.github.io/crux).
+Start with the [book](https://redbadger.github.io/crux), then work through the
+[examples](./examples) in order. If you prefer a talk first, watch the
+[introductory Rust Nation 2023 talk](https://www.youtube.com/watch?v=cWCZms92-1g).
 
-Read the [API documentation](https://docs.rs/crux_core/latest/crux_core/)
-
-[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g&t=5s)
-at the recent [Rust Nation 2023](https://www.rustnationuk.com/) conference in
-London.
+Read the [API documentation](https://docs.rs/crux_core/latest/crux_core/).
 
 You can also join the friendly conversation on our
 [Zulip channel](https://crux-community.zulipchat.com).
 
 > [!NOTE]
-> Crux is pre 1.0 and under active development. It is production-ready, but
+> Crux is pre-1.0 and under active development. It is production-ready, but
 > occasional breaking changes to the API can be expected. We do our best to
 > limit the extent of these and provide a smooth, gradual migration path
 
@@ -47,21 +45,22 @@ You can also join the friendly conversation on our
 
 ![Logical architecture](./crux_core/architecture.svg)
 
-Crux has managed side-effects, it strictly separates pure computational tasks from tasks that
-cause side effects. This is similar to the way [Elm](https://guide.elm-lang.org/architecture/) works.
+Crux has managed side-effects. It strictly separates pure computational tasks
+from tasks that cause side effects. This is similar to the way
+[Elm](https://guide.elm-lang.org/architecture/) works.
 
 ### Side-effect-free core
 
 In the above diagram, the inner "Core" is compiled and linked to the outer
 "Shell" on each platform as a library:
 
-- On iOS as a native static library
+- On iOS/macOS as a native static library (via UniFFI-generated Swift bindings)
 - On Android as a dynamic library using
-  [Java Native Access](https://github.com/java-native-access/jna)
+  [Java Native Access](https://github.com/java-native-access/jna) (via UniFFI-generated Kotlin bindings)
 - In a browser as a WebAssembly module
 
 In fact, because WebAssembly (Wasm) is one of the compilation targets, the core
-_must_ remain side-effect free, due to the sandboxed nature of the Wasm runtime
+_must_ remain side-effect-free, due to the sandboxed nature of the Wasm runtime
 environment.
 
 As such, the core is completely isolated and secure against software
@@ -97,7 +96,13 @@ accordingly, and potentially request some side-effects.
 > [!NOTE]
 > To learn more about the [`Command` API](https://docs.rs/crux_core/latest/crux_core/command/index.html),
 > see the page in the book that describes [Managed Effects](https://redbadger.github.io/crux/guide/effects.html),
-> or look at [examples/counter](https://github.com/redbadger/crux/tree/master/examples/counter).
+> or look at the [examples](./examples):
+>
+> 1. [Counter](./examples/counter) — get the basics
+> 1. [Counter (HTTP)](./examples/counter-http) — understand how to talk to your API
+> 1. [Weather](./examples/weather) — see how a real app works
+> 1. [Notes](./examples/notes) — real-time collaboration
+> 1. [Counter (Middleware)](./examples/counter-middleware) — use middleware for Rust-side effects
 
 ### Application Shell
 
@@ -126,35 +131,31 @@ The only built-in capability is `Render`. But this repository contains a few
 capabilities at various stages of maturity, and you can easily write your own if
 you want to:
 
-![crux](https://github.com/redbadger/crux/raw/master/docs/src/crux.png)
+![crux](./docs/src/crux.png)
 
 ### Published capabilities
 
 1. `Render` (ask UI to render the ViewModel) —
    [source](./crux_core/src/capabilities/render.rs), built-in to `crux_core`,
    request only
-1. `Http` (full HTTP implementation based on the
-   [Surf](https://crates.io/crates/surf) API) — [source](https://github.com/redbadger/crux/tree/master/crux_http),
+1. `Http` (full HTTP implementation) — [source](./crux_http),
    [crate](https://crates.io/crates/crux_http), request/response
-1. `KeyValue` (basic key-value store API) — [source](https://github.com/redbadger/crux/tree/master/crux_kv),
+1. `KeyValue` (basic key-value store API) — [source](./crux_kv),
    [crate](https://crates.io/crates/crux_kv), request/response
 1. `Time` (get current time, notify after duration, notify at instant) —
-   [source](https://github.com/redbadger/crux/tree/master/crux_time), [crate](https://crates.io/crates/crux_time),
+   [source](./crux_time), [crate](https://crates.io/crates/crux_time),
    request/response
-1. `Platform` (get the current platform) — [source](https://github.com/redbadger/crux/tree/master/crux_platform),
+1. `Platform` (get the current platform) — [source](./crux_platform),
    [crate](https://crates.io/crates/crux_platform), request/response
 
 ### Example custom capabilities
 
 1. `SSE` (basic Server-Sent Events) —
-   [source](https://github.com/redbadger/crux/tree/master/examples/counter/shared/src/capabilities/sse.rs),
+   [source](./examples/counter-http/shared/src/sse.rs),
    request/streaming
 1. `PubSub` (pub sub with streaming) —
-   [source](https://github.com/redbadger/crux/tree/master/examples/notes/shared/src/capabilities/pub_sub.rs),
+   [source](./examples/notes/shared/src/capabilities/pub_sub.rs),
    request/response/streaming
-1. `Delay` — part of
-   [tutorial](https://redbadger.github.io/crux/guide/capability_apis.html#basic-delay-capability)
-   in the [book](https://redbadger.github.io/crux)
 
 ### Foreign Function Interface with type generation
 
@@ -178,8 +179,9 @@ device, or in the browser, by
 In order to both send more complex data than UniFFI currently supports, and
 enforce the message passing semantics, all messages are serialized, sent across
 the boundary, then deserialized using
-[serde-generate](https://docs.rs/serde-generate/latest/serde_generate/) which
-also provides type generation for the foreign (non-Rust) languages.
+[Bincode](https://docs.rs/bincode). Type definitions and serialization code
+for the foreign (non-Rust) languages are generated by
+[facet-generate](https://github.com/redbadger/facet-generate).
 
 This means that changes to types in the core, especially the `Event` and
 `Request` types, propagate out into the shell implementations and cause type
@@ -201,7 +203,7 @@ Three types of message are exchanged between the application and the core.
   an earlier request.
 
 `Request` messages contain the inputs for the requested side-effect, along with
-a `id` used by the core to pair requests and their responses together. The
+an `id` used by the core to pair requests and their responses together. The
 exact mechanics are not important, but it is important for the request's `id`
 to be passed on to the corresponding response.
 
@@ -235,12 +237,24 @@ as:
 - Obtain an image from the camera, or
 - Whatever else you can think of...
 
-Many of these side-effecting-inducing tasks are asynchronous. The Shell is
+Many of these side-effect-inducing tasks are asynchronous. The Shell is
 responsible for passing responses back to the core (to the `handle_response`
 function), which may respond with further requests.
 
 This exchange continues until the core stops requesting further side-effects
 (typically the last side-effect requested would again be `Render`).
+
+## Talks & Articles
+
+- [iOS, Android and Web applications that share a single Rust core](https://www.youtube.com/watch?v=cWCZms92-1g) — Stuart Harris — Rust Nation, February 2023
+- [Retiring React Native for Rust](https://www.youtube.com/watch?v=CjbvmircpJ4&t=20s) — Viktor Charypar — React Native London, August 2023
+- [Scaling Large Organisations: Empowering Independent Teams with Crux Micro-Frontends](https://www.youtube.com/watch?v=B5gPuHygthQ) — Stuart Harris and Ludovico Rossi at Proton — with accompanying [blog post](https://proton.me/blog/next-generation-proton-mail-mobile-apps)
+- Building live collaboration in Rust for millions of users — PhotoRoom engineering blog series:
+  [Part 1: Cross-platform code](https://www.photoroom.com/inside-photoroom/building-live-collaboration-in-rust-for-millions-of-users-part-1),
+  [Part 2: Integrating Crux](https://www.photoroom.com/inside-photoroom/building-live-collaboration-in-rust-for-millions-of-users-part-2),
+  [Part 3: Fine-grained reactivity across the FFI boundary](https://www.photoroom.com/inside-photoroom/building-live-collaboration-in-rust-for-millions-of-users-part-3),
+  [Part 4: Realtime collaborative editing](https://www.photoroom.com/inside-photoroom/building-live-collaboration-in-rust-for-millions-of-users-part-4),
+  [Part 5: Automated testing and fuzz testing](https://www.photoroom.com/inside-photoroom/building-live-collaboration-in-rust-for-millions-of-users-part-5)
 
 ---
 
@@ -253,7 +267,7 @@ appreciated.
 
 ### Red Badger Consulting Limited
 
-<img src="https://github.com/redbadger/crux/raw/master/docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
+<img src="./docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
 
 [Red Badger](https://red-badger.com/) is the digital product consultancy trusted
 by blue chips and global brands. Our product design and technical pedigree allow
@@ -265,12 +279,12 @@ capabilities to power continuous innovation.
 
 ### Zulip
 
-<img src="https://github.com/redbadger/crux/raw/master/docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
+<img src="./docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
 
 [Zulip](https://zulip.com/) is an open-source modern team chat app designed to
 keep both live and asynchronous conversations organized.
 
-Zulip sponsor Crux by providing our
+Zulip sponsors Crux by providing our
 [Zulip server](https://crux-community.zulipchat.com) — thank you Zulip!
 
 ---
