@@ -184,7 +184,7 @@ fn single_with_facet_typegen() {
     #[cfg_attr(
         feature = "facet_typegen",
         derive(::facet::Facet),
-        facet(name = "Effect"),
+        facet(rename = "Effect"),
         repr(C)
     )]
     pub enum EffectFfi {
@@ -276,7 +276,7 @@ fn single_facet_typegen_with_new_name() {
     #[cfg_attr(
         feature = "facet_typegen",
         derive(::facet::Facet),
-        facet(name = "MyEffect"),
+        facet(rename = "MyEffect"),
         repr(C)
     )]
     pub enum MyEffectFfi {
@@ -522,7 +522,7 @@ fn multiple_with_facet_typegen() {
     #[cfg_attr(
         feature = "facet_typegen",
         derive(::facet::Facet),
-        facet(name = "Effect"),
+        facet(rename = "Effect"),
         repr(C)
     )]
     pub enum EffectFfi {
@@ -752,7 +752,7 @@ fn single_without_typegen_with_attributes() {
 fn facet_typegen_with_namespace_attribute() {
     let args = Some(format_ident!("facet_typegen"));
     let input = parse_quote! {
-        #[facet(namespace = "crux")]
+        #[facet(facet_generate_attrs::namespace = "crux")]
         pub enum Effect {
             Render(RenderOperation),
         }
@@ -769,8 +769,8 @@ fn facet_typegen_with_namespace_attribute() {
     #[cfg_attr(
         feature = "facet_typegen",
         derive(::facet::Facet),
-        facet(namespace = "crux"),
-        facet(name = "Effect"),
+        facet(facet_generate_attrs::namespace = "crux"),
+        facet(rename = "Effect"),
         repr(C)
     )]
     pub enum EffectFfi {

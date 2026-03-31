@@ -39,7 +39,6 @@ fn main() -> Result<()> {
     };
     let config = Config::builder(name, &args.output_dir)
         .add_extensions()
-        .add_runtimes()
         .build();
 
     match args.language {

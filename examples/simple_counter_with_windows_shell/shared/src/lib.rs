@@ -1,3 +1,4 @@
+#![allow(clippy::unsafe_derive_deserialize)]
 pub mod app;
 
 use std::sync::LazyLock;

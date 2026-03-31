@@ -572,6 +572,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-fnv1a-hash"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32b13ea120a812beba79e34316b3942a857c86ec1593cb34f27bb28272ce2cca"
+
+[[package]]
 name = "const-str"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1036,51 +1042,53 @@ dependencies = [
 
 [[package]]
 name = "facet"
-version = "0.31.8"
+version = "0.44.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d643309d7c46d073b6c51e29901ed9bc3d858dc09aa21f5b32b424491e1bbef"
+checksum = "659065287e9db5b17a863050ee1d71d9960f9e8d9f07822a08d5681a1e207f29"
 dependencies = [
+ "autocfg",
  "facet-core",
  "facet-macros",
- "static_assertions",
 ]
 
 [[package]]
 name = "facet-core"
-version = "0.31.8"
+version = "0.44.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac27076d75388bffb6c5e5118078dcbb46f2090b35256c45372ff1c1910b1aaf"
+checksum = "5f0b31fb63f7ce92cb97975e6d6189528f0f7af6decc2b5ba453bf579eba9dae"
 dependencies = [
- "bitflags",
+ "autocfg",
  "chrono",
+ "const-fnv1a-hash",
+ "iddqd",
  "impls",
 ]
 
 [[package]]
-name = "facet-macros"
-version = "0.31.8"
+name = "facet-generate-attrs"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "391fcf43b68a76ba4a494710629a7b6fb430345a5623a6a87f7c263bfadb1643"
+checksum = "3b59c82c2c40c64d157e102d4fa437394dc3768780903546129700fe5911884d"
 dependencies = [
- "facet-core",
- "facet-macros-emit",
+ "facet",
 ]
 
 [[package]]
-name = "facet-macros-emit"
-version = "0.31.8"
+name = "facet-macro-parse"
+version = "0.44.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e81e536ccafa7d5ef71822c9a67a28a0b29fe0170eaf2d134c36854a3d56ee9a"
+checksum = "ae5f87a75918b10d3b4eb80cfb86e0e4fd5cbaec413464f1426cd886677930a2"
 dependencies = [
- "facet-macros-parse",
+ "facet-macro-types",
+ "proc-macro2",
  "quote",
 ]
 
 [[package]]
-name = "facet-macros-parse"
-version = "0.31.8"
+name = "facet-macro-types"
+version = "0.44.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8da5d4ded1874033bdef5000712d80d28feefe2abb48bb6f31b6fe59b7e9792f"
+checksum = "2ea768aa65eee1cc19868080d2955cc19643a871e9b018f437ed3e4cf621bb3c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1088,13 +1096,37 @@ dependencies = [
 ]
 
 [[package]]
-name = "facet_generate"
-version = "0.15.0"
+name = "facet-macros"
+version = "0.44.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "365ecced7918c3debf5e1407d36e8420a04088f598380034ffcd8a506dce2fc0"
+checksum = "c1218c5c52f399036c64e113a975415ee4117a0403208e939911491715eb7da9"
+dependencies = [
+ "facet-macros-impl",
+]
+
+[[package]]
+name = "facet-macros-impl"
+version = "0.44.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63e93e34cf1c9c84985561dd243c4db9d58a0505828525c4f37268763995e309"
+dependencies = [
+ "facet-macro-parse",
+ "facet-macro-types",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "unsynn",
+]
+
+[[package]]
+name = "facet_generate"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74b7adb3e4cd72f80272b4db2ee6a6c7132e599e4b5982d6b112e41387bea2c1"
 dependencies = [
  "derive_builder",
  "facet",
+ "facet-generate-attrs",
  "heck 0.5.0",
  "include_dir 0.7.4",
  "indent",
@@ -1104,7 +1136,6 @@ dependencies = [
  "serde_json",
  "textwrap 0.16.2",
  "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]
@@ -1142,6 +1173,12 @@ name = "foldhash"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+
+[[package]]
+name = "foldhash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "form_urlencoded"
@@ -1405,7 +1442,7 @@ version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
- "foldhash",
+ "foldhash 0.1.5",
 ]
 
 [[package]]
@@ -1413,6 +1450,9 @@ name = "hashbrown"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+dependencies = [
+ "allocator-api2",
+]
 
 [[package]]
 name = "heck"
@@ -1584,6 +1624,19 @@ name = "id-arena"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d3067d79b975e8844ca9eb072e16b31c3c1c36928edf9c6789548c524d0d954"
+
+[[package]]
+name = "iddqd"
+version = "0.3.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b215e67ed1d1a4b1702acd787c487d16e4c977c5dcbcc4587bdb5ea26b6ce06"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash 0.2.0",
+ "hashbrown 0.16.1",
+ "rustc-hash",
+]
 
 [[package]]
 name = "ident_case"
