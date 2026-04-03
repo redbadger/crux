@@ -1,8 +1,10 @@
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    location::{Location, model::GeocodingResponse},
+use crate::effects::location::Location;
+
+use super::super::{
+    location::GeocodingResponse,
     weather::model::current_response::CurrentWeatherResponse,
 };
 

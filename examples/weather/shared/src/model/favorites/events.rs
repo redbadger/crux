@@ -4,12 +4,16 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-use crate::app::{Effect, Model, Workflow};
-use crate::favorites::model::{FAVORITES_KEY, Favorite, Favorites, FavoritesState};
-use crate::location::client::{LocationApi, LocationError};
-use crate::location::model::geocoding_response::GeocodingResponse;
-
-use crate::location::Location;
+use crate::effects::{
+    Effect,
+    location::{
+        Location,
+        client::{LocationApi, LocationError},
+    },
+};
+use crate::model::location::GeocodingResponse;
+use crate::model::{ActiveModel, Workflow};
+use super::model::{FAVORITES_KEY, Favorite, Favorites, FavoritesState};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
@@ -44,7 +48,7 @@ pub enum FavoritesEvent {
     Load(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
 }
 
-pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, FavoritesEvent> {
+pub fn update(event: FavoritesEvent, model: &mut ActiveModel) -> Command<Effect, FavoritesEvent> {
     match event {
         FavoritesEvent::DeletePressed(location) => {
             model.workflow = Workflow::Favorites(FavoritesState::ConfirmDelete(location));
@@ -73,7 +77,7 @@ pub fn update(event: FavoritesEvent, model: &mut Model) -> Command<Effect, Favor
         // ======================
         // TODO: use a Time Capability and debounce the search
         // TODO: Search should be a part of events/geocoding.rs
-        FavoritesEvent::Search(query) => LocationApi::fetch(&query)
+        FavoritesEvent::Search(query) => LocationApi::fetch(&query, model.api_key.clone())
             .then_send(|result| FavoritesEvent::SearchResult(Box::new(result))),
         FavoritesEvent::SearchResult(result) => {
             match *result {
@@ -157,13 +161,26 @@ mod tests {
 
     use super::*;
     use crate::{
-        app::{Event, Weather},
-        location::client::LocationApi,
-        weather::model::{
-            current_response::{CurrentWeatherResponse, Main, Sys},
-            response_elements::{Clouds, Coord, WeatherData, Wind},
+        app::Weather,
+        effects::{Effect, location::client::LocationApi},
+        model::{
+            ActiveEvent, ActiveModel, Event, Model, Workflow,
+            favorites::model::FavoritesState,
+            weather::model::{
+                current_response::{CurrentWeatherResponse, Main, Sys},
+                response_elements::{Clouds, Coord, WeatherData, Wind},
+            },
         },
     };
+
+    const TEST_API_KEY: &str = "test_api_key";
+
+    fn test_model() -> ActiveModel {
+        ActiveModel {
+            api_key: TEST_API_KEY.to_string(),
+            ..Default::default()
+        }
+    }
 
     // Helper to create a test favorite
     fn test_favorite() -> Favorite {
@@ -198,7 +215,7 @@ mod tests {
     #[test]
     fn test_kv_set_and_load() {
         // Model will have no favorites set
-        let mut model = Model::default();
+        let mut model = test_model();
 
         let favorites = Favorites::from_vec(vec![test_favorite()]);
 
@@ -212,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_kv_load_empty() {
-        let mut model = Model::default();
+        let mut model = test_model();
         let mut cmd = update(FavoritesEvent::Load(Ok(None)), &mut model);
         assert!(cmd.effects().next().is_none());
         assert!(model.favorites.is_empty());
@@ -220,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_kv_load_error() {
-        let mut model = Model::default();
+        let mut model = test_model();
         let mut cmd = update(
             FavoritesEvent::Load(Err(KeyValueError::CursorNotFound)),
             &mut model,
@@ -232,7 +249,7 @@ mod tests {
     // ANCHOR: test
     #[test]
     fn test_delete_with_persistence() {
-        let mut model = Model::default();
+        let mut model = test_model();
         let favorite = test_favorite();
         model.favorites.insert(favorite.clone());
 
@@ -261,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_delete_pressed() {
-        let mut model = Model::default();
+        let mut model = test_model();
         let favorite = Favorite {
             geo: GeocodingResponse {
                 name: "Phoenix".to_string(),
@@ -295,7 +312,7 @@ mod tests {
     #[test]
     fn test_delete_confirmed() {
         let app = Weather;
-        let mut model = Model::default();
+        let mut active = test_model();
         let favorite = Favorite {
             geo: GeocodingResponse {
                 name: "Phoenix".to_string(),
@@ -352,12 +369,13 @@ mod tests {
             lon: favorite.geo.lon,
         };
 
-        model.favorites.insert(favorite.clone());
-        model.workflow = Workflow::Favorites(FavoritesState::ConfirmDelete(latlon));
+        active.favorites.insert(favorite.clone());
+        active.workflow = Workflow::Favorites(FavoritesState::ConfirmDelete(latlon));
+        let mut model = Model::Active(active);
 
         // First command from DeleteConfirmed
         let mut cmd = app.update(
-            Event::Favorites(Box::new(FavoritesEvent::DeleteConfirmed)),
+            Event::Active(ActiveEvent::Favorites(Box::new(FavoritesEvent::DeleteConfirmed))),
             &mut model,
         );
 
@@ -365,16 +383,19 @@ mod tests {
         assert!(matches!(effect, Effect::KeyValue(_)));
 
         // Verify the favorite was removed and state was reset
-        assert!(model.favorites.is_empty());
+        let Model::Active(active) = &model else {
+            panic!("Expected Active");
+        };
+        assert!(active.favorites.is_empty());
         assert!(matches!(
-            model.workflow,
+            active.workflow,
             Workflow::Favorites(FavoritesState::Idle)
         ));
     }
 
     #[test]
     fn test_delete_cancelled() {
-        let mut model = Model {
+        let mut model = ActiveModel {
             workflow: Workflow::Favorites(FavoritesState::ConfirmDelete(Location {
                 lat: 33.456_789,
                 lon: 112.037_222,
@@ -405,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_submit_adds_favorite() {
-        let mut model = Model::default();
+        let mut model = test_model();
         let geo = test_geocoding();
 
         // Submit the favorite
@@ -426,7 +447,7 @@ mod tests {
 
     #[test]
     fn test_cancel_returns_to_favorites() {
-        let mut model = Model {
+        let mut model = ActiveModel {
             workflow: Workflow::AddFavorite,
             ..Default::default()
         };
@@ -445,7 +466,7 @@ mod tests {
 
     #[test]
     fn test_submit_persists_favorite() {
-        let mut model = Model::default();
+        let mut model = test_model();
         let geo1 = test_geocoding();
         let geo2 = GeocodingResponse {
             name: "New York".to_string(),
@@ -481,7 +502,7 @@ mod tests {
 
     #[test]
     fn test_add_multiple_favorites() {
-        let mut model = Model::default();
+        let mut model = test_model();
         let geo1 = test_geocoding();
         let geo2 = GeocodingResponse {
             name: "New York".to_string(),
@@ -518,16 +539,21 @@ mod tests {
     #[test]
     fn test_search_triggers_api_call() {
         let app = Weather;
-        let mut model = Model::default();
+        let mut model = Model::Active(test_model());
 
         let query = "Phoenix";
-        let event = Event::Favorites(Box::new(FavoritesEvent::Search(query.to_string())));
+        let event = Event::Active(ActiveEvent::Favorites(Box::new(
+            FavoritesEvent::Search(query.to_string()),
+        )));
 
         let mut cmd = app.update(event, &mut model);
 
         let mut request = cmd.effects().next().unwrap().expect_http();
 
-        assert_eq!(&request.operation, &LocationApi::build(query));
+        assert_eq!(
+            &request.operation,
+            &LocationApi::build(query, TEST_API_KEY)
+        );
 
         // Test response handling
         request
@@ -539,25 +565,28 @@ mod tests {
             .unwrap();
 
         let actual = cmd.events().next().unwrap();
-        if let Event::Favorites(event) = &actual {
+        if let Event::Active(ActiveEvent::Favorites(event)) = &actual {
             assert!(matches!(**event, FavoritesEvent::SearchResult(_)));
         } else {
-            panic!("Expected Favorites event")
+            panic!("Expected Active(Favorites) event")
         }
 
         // Send the SearchResult event back to the app
         let mut cmd = app.update(actual, &mut model);
         assert_effect!(cmd, Effect::Render(_));
+        let Model::Active(active) = &model else {
+            panic!("Expected Active");
+        };
         assert_eq!(
-            model.search_results,
+            active.search_results,
             Some(sample_geocoding_response().clone())
         );
-        insta::assert_yaml_snapshot!(model.search_results);
+        insta::assert_yaml_snapshot!(active.search_results);
     }
 
     #[test]
     fn test_submit_duplicate_favorite() {
-        let mut model = Model::default();
+        let mut model = test_model();
         let geo = test_geocoding();
 
         // First submit - should succeed

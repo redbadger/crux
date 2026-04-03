@@ -1,10 +1,9 @@
 pub mod app;
-mod config;
-pub mod favorites;
+pub mod effects;
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 mod ffi;
-pub mod location;
-pub mod weather;
+pub mod model;
+pub mod view;
 
 pub use app::*;
 pub use crux_core::Core;

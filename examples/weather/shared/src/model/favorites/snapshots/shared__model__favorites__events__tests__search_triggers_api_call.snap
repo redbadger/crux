@@ -1,6 +1,6 @@
 ---
-source: shared/src/favorites/events.rs
-expression: model.search_results
+source: shared/src/model/favorites/events.rs
+expression: active.search_results
 ---
 - name: Phoenix
   local_names: ~

@@ -2,9 +2,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 use std::{fmt, sync::LazyLock};
 
-use crate::location::Location;
-
-pub const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
+use crate::effects::location::Location;
 
 #[derive(
     Facet, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone,
@@ -118,6 +116,15 @@ impl GeocodingResponse {
     }
 }
 
+impl From<&GeocodingResponse> for Location {
+    fn from(value: &GeocodingResponse) -> Self {
+        Location {
+            lat: value.lat,
+            lon: value.lon,
+        }
+    }
+}
+
 impl fmt::Display for GeocodingResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -174,11 +181,4 @@ pub fn display_option<T: fmt::Display>(option_string: Option<&T>) -> String {
         Some(string) => string.to_string(),
         None => "None".to_string(),
     }
-}
-
-#[derive(Serialize)]
-pub struct GeocodingQueryString {
-    pub q: String,
-    pub limit: &'static str,
-    pub appid: String,
 }
