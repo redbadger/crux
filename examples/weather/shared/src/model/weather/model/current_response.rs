@@ -1,7 +1,7 @@
-use crate::weather::model::response_elements::Clouds;
-use crate::weather::model::response_elements::Coord;
-use crate::weather::model::response_elements::WeatherData;
-use crate::weather::model::response_elements::Wind;
+use super::response_elements::Clouds;
+use super::response_elements::Coord;
+use super::response_elements::WeatherData;
+use super::response_elements::Wind;
 use derive_builder::Builder;
 
 use facet::Facet;

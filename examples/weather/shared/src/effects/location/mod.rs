@@ -1,5 +1,4 @@
-// This module defines the effect for accessing location information in a cross-platform way using Crux.
-// The structure here is designed to be serializable, portable, and to fit into Crux's command/request architecture.
+pub mod client;
 
 use std::future::Future;
 
@@ -7,7 +6,11 @@ use crux_core::{Command, Request, capability::Operation, command::RequestBuilder
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use super::Location;
+#[derive(Facet, Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub struct Location {
+    pub lat: f64,
+    pub lon: f64,
+}
 
 // The operations that can be performed related to location.
 // Using an enum allows us to easily add more operations in the future and ensures type safety.
@@ -17,9 +20,6 @@ pub enum LocationOperation {
     IsLocationEnabled,
     GetLocation,
 }
-
-// The response structure for a location request.
-// This is serializable so it can be sent across the FFI boundary.
 
 // The possible results from performing a location operation.
 // This enum allows us to handle different response types in a type-safe way.

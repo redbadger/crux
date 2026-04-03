@@ -4,9 +4,8 @@ use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
-use crate::config::API_KEY;
-use crate::location::Location;
-use crate::weather::model::current_response::{CurrentWeatherResponse, WEATHER_URL};
+use crate::effects::location::Location;
+use crate::model::weather::model::current_response::{CurrentWeatherResponse, WEATHER_URL};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum WeatherError {
@@ -28,15 +27,15 @@ pub struct WeatherApi;
 impl WeatherApi {
     /// Build an `HttpRequest` for testing purposes
     #[cfg(test)]
-    pub fn build(location: Location) -> HttpRequest {
-        use crate::weather::model::current_response::WEATHER_URL;
+    pub fn build(location: Location, api_key: &str) -> HttpRequest {
+        use crate::model::weather::model::current_response::WEATHER_URL;
 
         HttpRequest::get(WEATHER_URL)
             .query(&CurrentWeatherQuery {
                 lat: location.lat.to_string(),
                 lon: location.lon.to_string(),
                 units: "metric",
-                appid: API_KEY.clone(),
+                appid: api_key.to_string(),
             })
             .expect("could not serialize query string")
             .build()
@@ -45,6 +44,7 @@ impl WeatherApi {
     /// Fetch current weather for a specific location
     pub fn fetch<Effect, Event>(
         location: Location,
+        api_key: String,
     ) -> RequestBuilder<
         Effect,
         Event,
@@ -60,7 +60,7 @@ impl WeatherApi {
                 lat: location.lat.to_string(),
                 lon: location.lon.to_string(),
                 units: "metric",
-                appid: API_KEY.clone(),
+                appid: api_key,
             })
             .expect("could not serialize query string")
             .build()
