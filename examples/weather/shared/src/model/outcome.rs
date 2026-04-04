@@ -11,6 +11,43 @@ pub(crate) enum Status<S, T> {
     Complete(T),
 }
 
+/// The result of `start()`: a new state paired with the command to execute.
+pub(crate) struct Started<S, Event> {
+    pub state: S,
+    pub command: Command<Effect, Event>,
+}
+
+impl<S, Event> Started<S, Event> {
+    pub fn new(state: S, command: Command<Effect, Event>) -> Self {
+        Started { state, command }
+    }
+
+    pub fn into_parts(self) -> (S, Command<Effect, Event>) {
+        (self.state, self.command)
+    }
+
+    pub fn map_event<NewEvent>(
+        self,
+        f: impl Fn(Event) -> NewEvent + Send + Sync + 'static,
+    ) -> Started<S, NewEvent>
+    where
+        Event: Send + Unpin + 'static,
+        NewEvent: Send + Unpin + 'static,
+    {
+        Started {
+            state: self.state,
+            command: self.command.map_event(f),
+        }
+    }
+}
+
+#[cfg(test)]
+impl<S, Event> Started<S, Event> {
+    pub fn into_state(self) -> S {
+        self.state
+    }
+}
+
 /// The result of `update()`: a status paired with the command to execute.
 pub(crate) struct Outcome<S, T, Event> {
     pub status: Status<S, T>,

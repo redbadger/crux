@@ -1,8 +1,89 @@
-use facet::Facet;
-use serde::{Deserialize, Serialize};
 use std::{fmt, sync::LazyLock};
 
+use crux_core::{Request, command::RequestBuilder};
+use crux_http::command::Http;
+use crux_http::protocol::HttpRequest;
+use facet::Facet;
+use serde::{Deserialize, Serialize};
+
 use crate::effects::location::Location;
+use crate::model::ApiKey;
+
+// -- URL --
+
+const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
+
+// -- Error --
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum LocationError {
+    NetworkError,
+    ParseError,
+    NoResults,
+}
+
+// -- Query --
+
+#[derive(Serialize)]
+struct GeocodingQueryString {
+    q: String,
+    limit: &'static str,
+    appid: String,
+}
+
+// -- Commands --
+
+/// Build an `HttpRequest` for testing purposes
+#[cfg(test)]
+pub fn build_request(query: &str, api_key: &ApiKey) -> HttpRequest {
+    HttpRequest::get(GEOCODING_URL)
+        .query(&GeocodingQueryString {
+            q: query.to_string(),
+            limit: "5",
+            appid: api_key.clone().into(),
+        })
+        .expect("could not serialize query string")
+        .build()
+}
+
+/// Fetch geocoding results for a location query
+pub fn fetch<Event, Effect>(
+    query: &str,
+    api_key: ApiKey,
+) -> RequestBuilder<
+    Effect,
+    Event,
+    impl std::future::Future<Output = Result<Vec<GeocodingResponse>, LocationError>> + use<Event, Effect>,
+>
+where
+    Event: Send + 'static,
+    Effect: From<Request<HttpRequest>> + Send + 'static,
+{
+    Http::get(GEOCODING_URL)
+        .expect_json::<Vec<GeocodingResponse>>()
+        .query(&GeocodingQueryString {
+            q: query.to_string(),
+            limit: "5",
+            appid: api_key.into(),
+        })
+        .expect("could not serialize query string")
+        .build()
+        .map(|result| match result {
+            Ok(mut response) => match response.take_body() {
+                Some(results) => {
+                    if results.is_empty() {
+                        Err(LocationError::NoResults)
+                    } else {
+                        Ok(results)
+                    }
+                }
+                None => Err(LocationError::ParseError),
+            },
+            Err(_) => Err(LocationError::NetworkError),
+        })
+}
+
+// -- Response Types --
 
 #[derive(
     Facet, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone,
@@ -140,7 +221,7 @@ impl fmt::Display for GeocodingResponse {
     }
 }
 
-#[allow(dead_code)] // TODO: why?
+#[allow(dead_code)]
 pub static SAMPLE_GEOCODING_RESPONSE: LazyLock<Vec<GeocodingResponse>> = LazyLock::new(|| {
     vec![GeocodingResponse {
         name: "Phoenix".to_string(),
@@ -152,12 +233,12 @@ pub static SAMPLE_GEOCODING_RESPONSE: LazyLock<Vec<GeocodingResponse>> = LazyLoc
     }]
 });
 
-#[allow(dead_code)] // TODO: why?
+#[allow(dead_code)]
 pub static SAMPLE_GEOCODING_RESPONSE_JSON: LazyLock<String> =
     LazyLock::new(|| serde_json::to_string(&*SAMPLE_GEOCODING_RESPONSE).unwrap());
 
 #[derive(Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone)]
-#[allow(dead_code)] // TODO: why?
+#[allow(dead_code)]
 pub struct ZipCodeResponse {
     pub zip: String,
     pub name: String,
@@ -176,7 +257,7 @@ impl fmt::Display for ZipCodeResponse {
     }
 }
 
-pub fn display_option<T: fmt::Display>(option_string: Option<&T>) -> String {
+fn display_option<T: fmt::Display>(option_string: Option<&T>) -> String {
     match option_string {
         Some(string) => string.to_string(),
         None => "None".to_string(),

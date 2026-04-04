@@ -12,15 +12,12 @@ use crux_kv::error::KeyValueError;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::effects::{
-    secret::{self, SecretFetchResponse},
-    Effect,
-};
+use crate::effects::secret::{self, SecretFetchResponse};
 
 use super::{
     ApiKey,
     active::favorites::model::{FAVORITES_KEY, Favorite, Favorites},
-    outcome::Outcome,
+    outcome::{Outcome, Started},
     Event,
 };
 
@@ -49,7 +46,7 @@ pub struct InitializingModel {
 }
 
 impl InitializingModel {
-    pub fn start() -> (Self, Command<Effect, Event>) {
+    pub(crate) fn start() -> Started<Self, Event> {
         tracing::debug!("starting initialization, fetching API key and favorites");
 
         let fetch_secret = secret::command::fetch(secret::API_KEY_NAME)
@@ -57,7 +54,7 @@ impl InitializingModel {
         let fetch_favorites = KeyValue::get(FAVORITES_KEY)
             .then_send(|r| Event::Initializing(InitializingEvent::FavoritesLoaded(r)));
 
-        (Self::default(), Command::all([fetch_secret, fetch_favorites]))
+        Started::new(Self::default(), Command::all([fetch_secret, fetch_favorites]))
     }
 
     pub(crate) fn update(

@@ -2,17 +2,19 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    effects::location::Location,
+    effects::{
+        location::Location,
+        http::{
+            location::GeocodingResponse,
+            weather::model::current_response::CurrentWeatherResponse,
+        },
+    },
     model::{
         Model, onboard,
         active::{
             Screen,
             favorites::{FavoritesWorkflow, model::Favorite},
-            location::GeocodingResponse,
-            home::{
-                FavoriteWeather, FavoriteWeatherState, LocalWeather,
-                weather::model::current_response::CurrentWeatherResponse,
-            },
+            home::{FavoriteWeather, FavoriteWeatherState, LocalWeather},
         },
     },
 };

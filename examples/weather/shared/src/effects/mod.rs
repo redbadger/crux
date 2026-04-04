@@ -1,3 +1,4 @@
+pub mod http;
 pub mod location;
 pub mod secret;
 

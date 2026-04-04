@@ -1,4 +1,3 @@
-pub mod client;
 pub mod events;
 pub mod model;
 
@@ -10,7 +9,7 @@ use crate::model::outcome::Outcome;
 
 use self::events::FavoritesEvent;
 use self::model::Favorites;
-use super::location::GeocodingResponse;
+use crate::effects::http::location::GeocodingResponse;
 
 #[derive(Debug)]
 pub struct FavoritesScreen {

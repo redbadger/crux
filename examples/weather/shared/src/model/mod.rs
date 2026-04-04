@@ -48,7 +48,7 @@ impl Model {
     pub fn update(&mut self, event: Event) -> Command<Effect, Event> {
         match event {
             Event::Start => {
-                let (initializing, cmd) = InitializingModel::start();
+                let (initializing, cmd) = InitializingModel::start().into_parts();
                 *self = Model::Initializing(initializing);
                 cmd
             }
@@ -79,12 +79,13 @@ impl Model {
                 command
             }
             outcome::Status::Complete(initializing::InitializingTransition::Active(api_key, favorites)) => {
-                let (home_screen, start_cmd) = active::home::HomeScreen::start(favorites, &api_key);
+                let (home_screen, start_cmd) = active::home::HomeScreen::start(favorites, &api_key)
+                    .map_event(|he| Event::Active(ActiveEvent::home(he)))
+                    .into_parts();
                 *self = Model::Active(ActiveModel {
                     api_key,
                     screen: active::Screen::Home(home_screen),
                 });
-                let start_cmd = start_cmd.map_event(|he| Event::Active(ActiveEvent::Home(Box::new(he))));
                 command.and(start_cmd)
             }
         }
@@ -103,12 +104,13 @@ impl Model {
                 command
             }
             outcome::Status::Complete(onboard::OnboardTransition::Active(api_key)) => {
-                let (home_screen, start_cmd) = active::home::HomeScreen::start(Favorites::default(), &api_key);
+                let (home_screen, start_cmd) = active::home::HomeScreen::start(Favorites::default(), &api_key)
+                    .map_event(|he| Event::Active(ActiveEvent::home(he)))
+                    .into_parts();
                 *self = Model::Active(ActiveModel {
                     api_key,
                     screen: active::Screen::Home(home_screen),
                 });
-                let start_cmd = start_cmd.map_event(|he| Event::Active(ActiveEvent::Home(Box::new(he))));
                 command.and(start_cmd)
             }
             outcome::Status::Complete(onboard::OnboardTransition::Failed(msg)) => {
