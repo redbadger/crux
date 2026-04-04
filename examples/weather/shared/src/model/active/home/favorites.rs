@@ -9,26 +9,20 @@ use crate::model::outcome::{Outcome, Started};
 use crate::effects::http::weather::{self as weather_api, WeatherError};
 use crate::effects::http::weather::model::current_response::CurrentWeatherResponse;
 
-// -- Events --
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum FavoriteWeatherEvent {
     WeatherFetched(Box<Result<CurrentWeatherResponse, WeatherError>>, Location),
 }
-
-// -- Transitions --
 
 #[derive(Debug)]
 pub(crate) enum FavoriteWeatherTransition {
     Unauthorized,
 }
 
-// -- State --
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum FavoriteWeatherState {
     Fetching,
-    Fetched(CurrentWeatherResponse),
+    Fetched(Box<CurrentWeatherResponse>),
     Failed,
 }
 
@@ -37,8 +31,6 @@ pub struct FavoriteWeather {
     pub favorite: Favorite,
     pub weather: FavoriteWeatherState,
 }
-
-// -- Logic --
 
 pub(crate) fn start(
     favorites: Favorites,
@@ -73,18 +65,32 @@ pub(crate) fn update(
                         .iter_mut()
                         .find(|fw| fw.favorite.location() == location)
                     {
-                        fw.weather = FavoriteWeatherState::Fetched(weather);
+                        fw.weather = FavoriteWeatherState::Fetched(Box::new(weather));
+                    } else {
+                        tracing::warn!(
+                            "ignoring weather for unknown favorite ({}, {})",
+                            location.lat,
+                            location.lon
+                        );
                     }
                 }
                 Err(WeatherError::Unauthorized) => {
+                    tracing::warn!("weather API returned unauthorized");
                     return Outcome::complete(FavoriteWeatherTransition::Unauthorized, render());
                 }
-                Err(_) => {
+                Err(ref e) => {
+                    tracing::warn!("fetching favorite weather failed: {e:?}");
                     if let Some(fw) = items
                         .iter_mut()
                         .find(|fw| fw.favorite.location() == location)
                     {
                         fw.weather = FavoriteWeatherState::Failed;
+                    } else {
+                        tracing::warn!(
+                            "ignoring error for unknown favorite ({}, {})",
+                            location.lat,
+                            location.lon
+                        );
                     }
                 }
             }
@@ -117,23 +123,23 @@ fn fetch_all(
 
 #[cfg(test)]
 mod tests {
-    use crate::model::ApiKey;
-    use crate::model::active::favorites::model::{Favorite, Favorites};
     use crate::effects::http::location::GeocodingResponse;
-
     use crate::effects::http::weather::model::{
         current_response::{CurrentWeatherResponse, CurrentWeatherResponseBuilder, Main, Sys},
         response_elements::{Clouds, Coord, WeatherData, Wind},
     };
+    use crate::model::ApiKey;
+    use crate::model::active::favorites::model::{Favorite, Favorites};
+
     use super::*;
 
     const TEST_API_KEY: &str = "test_api_key";
 
-    fn test_api_key() -> ApiKey {
+    fn api_key() -> ApiKey {
         TEST_API_KEY.to_string().into()
     }
 
-    fn test_favorite() -> Favorite {
+    fn phoenix_favorite() -> Favorite {
         Favorite(GeocodingResponse {
             name: "Phoenix".to_string(),
             local_names: None,
@@ -144,7 +150,8 @@ mod tests {
         })
     }
 
-    fn test_response() -> CurrentWeatherResponse {
+    fn phoenix_weather_response() -> CurrentWeatherResponse {
+        let fav = phoenix_favorite();
         CurrentWeatherResponseBuilder::default()
             .main(Main {
                 temp: 20.0,
@@ -155,8 +162,8 @@ mod tests {
                 humidity: 50,
             })
             .coord(Coord {
-                lat: 33.456_789,
-                lon: -112.037_222,
+                lat: fav.0.lat,
+                lon: fav.0.lon,
             })
             .weather(vec![WeatherData {
                 id: 800,
@@ -188,26 +195,78 @@ mod tests {
             .expect("Failed to build sample response")
     }
 
+    fn favorites_with_phoenix() -> (Favorites, Favorite) {
+        let mut favorites = Favorites::default();
+        let fav = phoenix_favorite();
+        favorites.insert(fav.clone());
+        (favorites, fav)
+    }
+
     #[test]
     fn weather_fetched_updates_state() {
-        let mut favorites = Favorites::default();
-        let test_fav = test_favorite();
-        favorites.insert(test_fav.clone());
+        let (favorites, fav) = favorites_with_phoenix();
+        let items = start(favorites, &api_key()).into_state();
 
-        let api_key = test_api_key();
-        let items = start(favorites, &api_key).into_state();
-
-        let location = test_fav.location();
+        let location = fav.location();
         let (items, _cmd) = update(
             items,
-            FavoriteWeatherEvent::WeatherFetched(Box::new(Ok(test_response())), location),
+            FavoriteWeatherEvent::WeatherFetched(
+                Box::new(Ok(phoenix_weather_response())),
+                location,
+            ),
         )
         .expect_continue()
         .into_parts();
 
         assert_eq!(
             items[0].weather,
-            FavoriteWeatherState::Fetched(test_response())
+            FavoriteWeatherState::Fetched(Box::new(phoenix_weather_response()))
         );
+    }
+
+    #[test]
+    fn unauthorized_completes_with_transition() {
+        let (favorites, fav) = favorites_with_phoenix();
+        let items = start(favorites, &api_key()).into_state();
+
+        let location = fav.location();
+        let (transition, _cmd) = update(
+            items,
+            FavoriteWeatherEvent::WeatherFetched(
+                Box::new(Err(WeatherError::Unauthorized)),
+                location,
+            ),
+        )
+        .expect_complete()
+        .into_parts();
+
+        assert!(matches!(transition, FavoriteWeatherTransition::Unauthorized));
+    }
+
+    #[test]
+    fn network_error_marks_failed() {
+        let (favorites, fav) = favorites_with_phoenix();
+        let items = start(favorites, &api_key()).into_state();
+
+        let location = fav.location();
+        let (items, _cmd) = update(
+            items,
+            FavoriteWeatherEvent::WeatherFetched(
+                Box::new(Err(WeatherError::NetworkError)),
+                location,
+            ),
+        )
+        .expect_continue()
+        .into_parts();
+
+        assert_eq!(items[0].weather, FavoriteWeatherState::Failed);
+    }
+
+    #[test]
+    fn empty_favorites_starts_with_no_effects() {
+        let favorites = Favorites::default();
+        let Started { state, .. } = start(favorites, &api_key());
+
+        assert!(state.is_empty());
     }
 }

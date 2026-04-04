@@ -1,6 +1,6 @@
 ---
-source: shared/src/model/active/home/mod.rs
-expression: data
+source: shared/src/model/active/home/local.rs
+expression: data.as_ref()
 ---
 coord:
   lat: 33.456789
