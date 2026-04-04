@@ -1,6 +1,5 @@
 pub mod favorites;
 pub mod home;
-pub mod location;
 
 use crux_core::{Command, render::render};
 use facet::Facet;
@@ -24,6 +23,16 @@ pub enum ActiveEvent {
     #[serde(skip)]
     #[facet(skip)]
     SecretDeleted(#[facet(opaque)] SecretDeleteResponse),
+}
+
+impl ActiveEvent {
+    pub fn home(event: HomeEvent) -> Self {
+        ActiveEvent::Home(Box::new(event))
+    }
+
+    pub fn favorites(event: FavoritesEvent) -> Self {
+        ActiveEvent::Favorites(Box::new(event))
+    }
 }
 
 #[derive(Debug)]
@@ -79,7 +88,7 @@ impl ActiveModel {
 
                 let (status, cmd) = home
                     .update(*home_event, &api_key)
-                    .map_event(|e| ActiveEvent::Home(Box::new(e)))
+                    .map_event(ActiveEvent::home)
                     .into_parts();
 
                 match status {
@@ -102,7 +111,7 @@ impl ActiveModel {
                             cmd,
                         )
                     }
-                    super::outcome::Status::Complete(HomeTransition::Unauthorized) => {
+                    super::outcome::Status::Complete(HomeTransition::ApiKeyRejected) => {
                         Outcome::complete(ActiveTransition::Unauthorized, cmd.and(render()))
                     }
                 }
@@ -114,7 +123,7 @@ impl ActiveModel {
 
                 let (status, cmd) = fav_screen
                     .update(*fav_event, &api_key)
-                    .map_event(|e| ActiveEvent::Favorites(Box::new(e)))
+                    .map_event(ActiveEvent::favorites)
                     .into_parts();
 
                 match status {
@@ -126,8 +135,9 @@ impl ActiveModel {
                         cmd,
                     ),
                     super::outcome::Status::Complete(FavoritesTransition::GoToHome(favorites)) => {
-                        let (home_screen, start_cmd) = HomeScreen::start(favorites, &api_key);
-                        let start_cmd = start_cmd.map_event(|e| ActiveEvent::Home(Box::new(e)));
+                        let (home_screen, start_cmd) = HomeScreen::start(favorites, &api_key)
+                            .map_event(ActiveEvent::home)
+                            .into_parts();
                         Outcome::continuing(
                             ActiveModel {
                                 api_key,
@@ -184,7 +194,7 @@ mod tests {
     #[test]
     fn home_go_to_favorites_transition() {
         let model = active_model();
-        let outcome = model.update(ActiveEvent::Home(Box::new(HomeEvent::GoToFavorites)));
+        let outcome = model.update(ActiveEvent::home(HomeEvent::GoToFavorites));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
         cmd.expect_one_effect().expect_render();
@@ -206,7 +216,7 @@ mod tests {
                 workflow: None,
             }),
         };
-        let outcome = model.update(ActiveEvent::Favorites(Box::new(FavoritesEvent::GoToHome)));
+        let outcome = model.update(ActiveEvent::favorites(FavoritesEvent::GoToHome));
 
         let (model, _cmd) = outcome.expect_continue().into_parts();
         assert!(matches!(model.screen, Screen::Home(_)));
@@ -222,7 +232,7 @@ mod tests {
             }),
         };
         let outcome =
-            model.update(ActiveEvent::Favorites(Box::new(FavoritesEvent::GoToAddFavorite)));
+            model.update(ActiveEvent::favorites(FavoritesEvent::GoToAddFavorite));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
         cmd.expect_one_effect().expect_render();

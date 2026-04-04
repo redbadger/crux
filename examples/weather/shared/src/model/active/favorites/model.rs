@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::effects::location::Location;
 
-use super::super::location::GeocodingResponse;
+use crate::effects::http::location::GeocodingResponse;
 
 pub const FAVORITES_KEY: &str = "favorites";
 

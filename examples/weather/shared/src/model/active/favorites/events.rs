@@ -9,8 +9,7 @@ use crate::effects::{
     location::Location,
 };
 use crate::model::ApiKey;
-use super::client::{LocationApi, LocationError};
-use super::super::location::GeocodingResponse;
+use crate::effects::http::location::{self as location_api, GeocodingResponse, LocationError};
 use super::{FavoritesScreen, FavoritesWorkflow};
 use super::model::{FAVORITES_KEY, Favorite, Favorites};
 
@@ -80,7 +79,7 @@ pub fn update(event: FavoritesEvent, screen: &mut FavoritesScreen, api_key: &Api
             render()
         }
 
-        FavoritesEvent::Search(query) => LocationApi::fetch(&query, api_key.clone())
+        FavoritesEvent::Search(query) => location_api::fetch(&query, api_key.clone())
             .then_send(|result| FavoritesEvent::SearchResult(Box::new(result))),
 
         FavoritesEvent::SearchResult(result) => {
@@ -162,7 +161,7 @@ mod tests {
         model::{ActiveEvent, ActiveModel, Event, Model},
     };
     use crate::model::active::Screen;
-    use crate::model::active::favorites::client::LocationApi;
+    use crate::effects::http::location;
 
     const TEST_API_KEY: &str = "test_api_key";
 
@@ -314,7 +313,7 @@ mod tests {
         });
 
         let mut cmd = app.update(
-            Event::Active(ActiveEvent::Favorites(Box::new(FavoritesEvent::DeleteConfirmed))),
+            Event::Active(ActiveEvent::favorites(FavoritesEvent::DeleteConfirmed)),
             &mut model,
         );
 
@@ -465,8 +464,8 @@ mod tests {
         });
 
         let query = "Phoenix";
-        let event = Event::Active(ActiveEvent::Favorites(Box::new(
-            FavoritesEvent::Search(query.to_string()),
+        let event = Event::Active(ActiveEvent::favorites(FavoritesEvent::Search(
+            query.to_string(),
         )));
 
         let mut cmd = app.update(event, &mut model);
@@ -475,7 +474,7 @@ mod tests {
 
         assert_eq!(
             &request.operation,
-            &LocationApi::build(query, &test_api_key())
+            &location::build_request(query, &test_api_key())
         );
 
         request
