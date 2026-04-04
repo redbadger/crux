@@ -4,11 +4,15 @@ use serde::{Deserialize, Serialize};
 use crate::{
     effects::location::Location,
     model::{
-        Model, Workflow, onboard,
+        Model, onboard,
         active::{
-            favorites::model::{Favorite, FavoritesState},
+            Screen,
+            favorites::{FavoritesWorkflow, model::Favorite},
             location::GeocodingResponse,
-            weather::model::current_response::CurrentWeatherResponse,
+            home::{
+                FavoriteWeather, FavoriteWeatherState, LocalWeather,
+                weather::model::current_response::CurrentWeatherResponse,
+            },
         },
     },
 };
@@ -24,12 +28,13 @@ pub struct ViewModel {
 pub enum WorkflowViewModel {
     Loading,
     Onboard {
+        reason: onboard::OnboardReason,
         api_key_input: String,
         can_submit: bool,
         saving: bool,
     },
     Home {
-        weather_data: Box<CurrentWeatherResponse>,
+        weather_data: Option<Box<CurrentWeatherResponse>>,
         favorites: Vec<FavoriteView>,
     },
     Favorites {
@@ -55,9 +60,23 @@ pub struct FavoriteView {
 impl From<&Favorite> for FavoriteView {
     fn from(value: &Favorite) -> Self {
         FavoriteView {
-            name: value.geo.name.clone(),
-            location: (&value.geo).into(),
-            current: Box::new(value.current.clone()),
+            name: value.name().to_string(),
+            location: value.location(),
+            current: Box::new(None),
+        }
+    }
+}
+
+impl From<&FavoriteWeather> for FavoriteView {
+    fn from(value: &FavoriteWeather) -> Self {
+        let current = match &value.weather {
+            FavoriteWeatherState::Fetched(data) => Some(data.clone()),
+            _ => None,
+        };
+        FavoriteView {
+            name: value.favorite.name().to_string(),
+            location: value.favorite.location(),
+            current: Box::new(current),
         }
     }
 }
@@ -68,35 +87,47 @@ impl From<&Model> for ViewModel {
         let workflow = match model {
             Model::Uninitialized | Model::Initializing(_) => WorkflowViewModel::Loading,
             Model::Onboard(onboard) => WorkflowViewModel::Onboard {
+                reason: onboard.reason,
                 can_submit: onboard.can_submit(),
-                api_key_input: match onboard {
-                    onboard::OnboardModel::Input { api_key } => api_key.clone(),
-                    onboard::OnboardModel::Saving { .. } => String::new(),
+                api_key_input: match &onboard.state {
+                    onboard::OnboardState::Input { api_key } => api_key.clone(),
+                    onboard::OnboardState::Saving { .. } => String::new(),
                 },
-                saving: matches!(onboard, onboard::OnboardModel::Saving { .. }),
+                saving: matches!(onboard.state, onboard::OnboardState::Saving { .. }),
             },
-            Model::Active(active) => {
-                let favorites = active.favorites.iter().map(From::from).collect();
-
-                match &active.workflow {
-                    Workflow::Home => WorkflowViewModel::Home {
-                        weather_data: Box::new(active.weather_data.clone()),
+            Model::Active(active) => match &active.screen {
+                Screen::Home(home) => {
+                    let weather_data = match &home.current_weather {
+                        LocalWeather::Fetched(_, data) => Some(Box::new(data.clone())),
+                        _ => None,
+                    };
+                    let favorites = home.favorites_weather.iter().map(From::from).collect();
+                    WorkflowViewModel::Home {
+                        weather_data,
                         favorites,
-                    },
-                    Workflow::Favorites(favorites_state) => match favorites_state {
-                        FavoritesState::Idle => WorkflowViewModel::Favorites {
+                    }
+                }
+                Screen::Favorites(fav) => match &fav.workflow {
+                    None => {
+                        let favorites = fav.favorites.iter().map(From::from).collect();
+                        WorkflowViewModel::Favorites {
                             favorites,
                             delete_confirmation: None,
-                        },
-                        FavoritesState::ConfirmDelete(location) => WorkflowViewModel::Favorites {
+                        }
+                    }
+                    Some(FavoritesWorkflow::ConfirmDelete(location)) => {
+                        let favorites = fav.favorites.iter().map(From::from).collect();
+                        WorkflowViewModel::Favorites {
                             favorites,
                             delete_confirmation: Some(*location),
-                        },
-                    },
-                    Workflow::AddFavorite => WorkflowViewModel::AddFavorite {
-                        search_results: active.search_results.clone(),
-                    },
-                }
+                        }
+                    }
+                    Some(FavoritesWorkflow::AddFavorite { search_results }) => {
+                        WorkflowViewModel::AddFavorite {
+                            search_results: search_results.clone(),
+                        }
+                    }
+                },
             }
             Model::Failed(message) => WorkflowViewModel::Failed {
                 message: message.clone(),

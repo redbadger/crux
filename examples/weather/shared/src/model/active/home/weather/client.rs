@@ -6,10 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::effects::location::Location;
 use crate::model::ApiKey;
-use crate::model::active::weather::model::current_response::{CurrentWeatherResponse, WEATHER_URL};
+use super::model::current_response::{CurrentWeatherResponse, WEATHER_URL};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum WeatherError {
+    Unauthorized,
     NetworkError,
     ParseError,
 }
@@ -29,7 +30,7 @@ impl WeatherApi {
     /// Build an `HttpRequest` for testing purposes
     #[cfg(test)]
     pub fn build(location: Location, api_key: &ApiKey) -> HttpRequest {
-        use crate::model::active::weather::model::current_response::WEATHER_URL;
+        use super::model::current_response::WEATHER_URL;
 
         HttpRequest::get(WEATHER_URL)
             .query(&CurrentWeatherQuery {
@@ -70,6 +71,12 @@ impl WeatherApi {
                     Some(weather_data) => Ok(weather_data),
                     None => Err(WeatherError::ParseError),
                 },
+                Err(crux_http::HttpError::Http { code, .. })
+                    if code == crux_http::http::StatusCode::Unauthorized
+                        || code == crux_http::http::StatusCode::Forbidden =>
+                {
+                    Err(WeatherError::Unauthorized)
+                }
                 Err(_) => Err(WeatherError::NetworkError),
             })
     }

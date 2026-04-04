@@ -11,13 +11,12 @@ use crate::effects::Effect;
 
 pub use self::active::ActiveEvent;
 pub use self::active::ActiveModel;
-pub use self::active::Workflow;
 pub use self::initializing::InitializingEvent;
 use self::initializing::InitializingModel;
 pub use self::onboard::OnboardEvent;
 
 use self::{
-    active::weather::events::WeatherEvent,
+    active::favorites::model::Favorites,
     onboard::OnboardModel,
 };
 
@@ -79,14 +78,14 @@ impl Model {
                 *self = Model::Onboard(OnboardModel::default());
                 command
             }
-            outcome::Status::Complete(initializing::InitializingTransition::Active(api_key)) => {
+            outcome::Status::Complete(initializing::InitializingTransition::Active(api_key, favorites)) => {
+                let (home_screen, start_cmd) = active::home::HomeScreen::start(favorites, &api_key);
                 *self = Model::Active(ActiveModel {
-                    api_key: api_key.into(),
-                    ..Default::default()
+                    api_key,
+                    screen: active::Screen::Home(home_screen),
                 });
-                command.and(Command::event(Event::Active(ActiveEvent::Home(Box::new(
-                    WeatherEvent::Show,
-                )))))
+                let start_cmd = start_cmd.map_event(|he| Event::Active(ActiveEvent::Home(Box::new(he))));
+                command.and(start_cmd)
             }
         }
     }
@@ -104,13 +103,13 @@ impl Model {
                 command
             }
             outcome::Status::Complete(onboard::OnboardTransition::Active(api_key)) => {
+                let (home_screen, start_cmd) = active::home::HomeScreen::start(Favorites::default(), &api_key);
                 *self = Model::Active(ActiveModel {
                     api_key,
-                    ..Default::default()
+                    screen: active::Screen::Home(home_screen),
                 });
-                command.and(Command::event(Event::Active(ActiveEvent::Home(Box::new(
-                    WeatherEvent::Show,
-                )))))
+                let start_cmd = start_cmd.map_event(|he| Event::Active(ActiveEvent::Home(Box::new(he))));
+                command.and(start_cmd)
             }
             outcome::Status::Complete(onboard::OnboardTransition::Failed(msg)) => {
                 *self = Model::Failed(msg);
@@ -135,7 +134,11 @@ impl Model {
                 command
             }
             outcome::Status::Complete(active::ActiveTransition::ResetApiKey) => {
-                *self = Model::Onboard(OnboardModel::default());
+                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::Reset));
+                command
+            }
+            outcome::Status::Complete(active::ActiveTransition::Unauthorized) => {
+                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::Unauthorized));
                 command
             }
         }

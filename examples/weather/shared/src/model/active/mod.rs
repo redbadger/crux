@@ -1,6 +1,6 @@
 pub mod favorites;
+pub mod home;
 pub mod location;
-pub mod weather;
 
 use crux_core::{Command, render::render};
 use facet::Facet;
@@ -9,18 +9,15 @@ use serde::{Deserialize, Serialize};
 use crate::effects::secret::{self, SecretDeleteResponse};
 
 use super::{ApiKey, outcome::Outcome};
-use crate::effects::location::Location;
 use self::{
-    favorites::{events::FavoritesEvent, model::{Favorites, FavoritesState}},
-    location::GeocodingResponse,
-    weather::{events::WeatherEvent, model::current_response::CurrentWeatherResponse},
+    favorites::{FavoritesScreen, FavoritesTransition, events::FavoritesEvent},
+    home::{HomeEvent, HomeScreen, HomeTransition},
 };
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum ActiveEvent {
-    Navigate(Box<Workflow>),
-    Home(Box<WeatherEvent>),
+    Home(Box<HomeEvent>),
     Favorites(Box<FavoritesEvent>),
     ResetApiKey,
 
@@ -29,75 +26,117 @@ pub enum ActiveEvent {
     SecretDeleted(#[facet(opaque)] SecretDeleteResponse),
 }
 
+#[derive(Debug)]
+pub enum Screen {
+    Home(HomeScreen),
+    Favorites(FavoritesScreen),
+}
+
+impl Default for Screen {
+    fn default() -> Self {
+        Screen::Home(HomeScreen::default())
+    }
+}
+
 /// Transition value when the active state completes.
 #[derive(Debug)]
 pub(crate) enum ActiveTransition {
     ResetApiKey,
+    Unauthorized,
 }
-
-// ANCHOR: workflow
-#[derive(Facet, Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[repr(C)]
-pub enum Workflow {
-    #[default]
-    Home,
-    Favorites(FavoritesState),
-    AddFavorite,
-}
-// ANCHOR_END: workflow
 
 #[derive(Default, Debug)]
 pub struct ActiveModel {
     pub api_key: ApiKey,
-    pub weather_data: CurrentWeatherResponse,
-    pub workflow: Workflow,
-    pub favorites: Favorites,
-    pub search_results: Option<Vec<GeocodingResponse>>,
-    pub location_enabled: bool,
-    pub last_location: Option<Location>,
+    pub screen: Screen,
 }
 
 impl ActiveModel {
     pub(crate) fn update(
-        mut self,
+        self,
         event: ActiveEvent,
     ) -> Outcome<Self, ActiveTransition, ActiveEvent> {
+        let ActiveModel { api_key, screen } = self;
+
         match event {
             ActiveEvent::ResetApiKey => {
                 let cmd = secret::command::delete(secret::API_KEY_NAME)
                     .then_send(ActiveEvent::SecretDeleted);
-                Outcome::continuing(self, cmd)
+                Outcome::continuing(ActiveModel { api_key, screen }, cmd)
             }
             ActiveEvent::SecretDeleted(response) => match response {
                 SecretDeleteResponse::Deleted(_) => {
                     Outcome::complete(ActiveTransition::ResetApiKey, render())
                 }
-                SecretDeleteResponse::DeleteError(_) => Outcome::continuing(self, Command::done()),
-            },
-            ActiveEvent::Navigate(next) => {
-                self.workflow = *next;
-                Outcome::continuing(self, render())
-            }
-            ActiveEvent::Home(home_event) => {
-                let mut commands = Vec::new();
-                if let WeatherEvent::Show = *home_event {
-                    commands.push(
-                        favorites::events::update(FavoritesEvent::Restore, &mut self)
-                            .map_event(|fe| ActiveEvent::Favorites(Box::new(fe))),
-                    );
+                SecretDeleteResponse::DeleteError(_) => {
+                    Outcome::continuing(ActiveModel { api_key, screen }, Command::done())
                 }
+            },
+            ActiveEvent::Home(home_event) => {
+                let Screen::Home(home) = screen else {
+                    return Outcome::continuing(ActiveModel { api_key, screen }, Command::done());
+                };
 
-                commands.push(
-                    weather::events::update(*home_event, &mut self)
-                        .map_event(|we| ActiveEvent::Home(Box::new(we))),
-                );
+                let (status, cmd) = home
+                    .update(*home_event, &api_key)
+                    .map_event(|e| ActiveEvent::Home(Box::new(e)))
+                    .into_parts();
 
-                Outcome::continuing(self, Command::all(commands))
+                match status {
+                    super::outcome::Status::Continue(home) => Outcome::continuing(
+                        ActiveModel {
+                            api_key,
+                            screen: Screen::Home(home),
+                        },
+                        cmd,
+                    ),
+                    super::outcome::Status::Complete(HomeTransition::GoToFavorites(favorites)) => {
+                        Outcome::continuing(
+                            ActiveModel {
+                                api_key,
+                                screen: Screen::Favorites(FavoritesScreen {
+                                    favorites,
+                                    workflow: None,
+                                }),
+                            },
+                            cmd,
+                        )
+                    }
+                    super::outcome::Status::Complete(HomeTransition::Unauthorized) => {
+                        Outcome::complete(ActiveTransition::Unauthorized, cmd.and(render()))
+                    }
+                }
             }
             ActiveEvent::Favorites(fav_event) => {
-                let cmd = favorites::events::update(*fav_event, &mut self)
-                    .map_event(|e| ActiveEvent::Favorites(Box::new(e)));
-                Outcome::continuing(self, cmd)
+                let Screen::Favorites(fav_screen) = screen else {
+                    return Outcome::continuing(ActiveModel { api_key, screen }, Command::done());
+                };
+
+                let (status, cmd) = fav_screen
+                    .update(*fav_event, &api_key)
+                    .map_event(|e| ActiveEvent::Favorites(Box::new(e)))
+                    .into_parts();
+
+                match status {
+                    super::outcome::Status::Continue(fav_screen) => Outcome::continuing(
+                        ActiveModel {
+                            api_key,
+                            screen: Screen::Favorites(fav_screen),
+                        },
+                        cmd,
+                    ),
+                    super::outcome::Status::Complete(FavoritesTransition::GoToHome(favorites)) => {
+                        let (home_screen, start_cmd) = HomeScreen::start(favorites, &api_key);
+                        let start_cmd = start_cmd.map_event(|e| ActiveEvent::Home(Box::new(e)));
+                        Outcome::continuing(
+                            ActiveModel {
+                                api_key,
+                                screen: Screen::Home(home_screen),
+                            },
+                            cmd.and(start_cmd),
+                        )
+                    }
+                }
             }
         }
     }
@@ -105,13 +144,10 @@ impl ActiveModel {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        effects::secret::{self, SecretRequest},
-        model::{ActiveModel, Workflow},
-    };
-    use super::favorites::model::FavoritesState;
+    use crate::effects::secret::{self, SecretRequest};
 
     use super::*;
+    use super::favorites::model::Favorites;
 
     fn active_model() -> ActiveModel {
         ActiveModel {
@@ -121,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn test_reset_api_key_deletes_secret() {
+    fn reset_api_key_deletes_secret() {
         let model = active_model();
         let outcome = model.update(ActiveEvent::ResetApiKey);
 
@@ -134,7 +170,7 @@ mod tests {
     }
 
     #[test]
-    fn test_secret_deleted_completes_with_reset() {
+    fn secret_deleted_completes_with_reset() {
         let model = active_model();
         let outcome = model.update(ActiveEvent::SecretDeleted(SecretDeleteResponse::Deleted(
             secret::API_KEY_NAME.to_string(),
@@ -146,17 +182,58 @@ mod tests {
     }
 
     #[test]
-    fn test_navigation() {
+    fn home_go_to_favorites_transition() {
         let model = active_model();
-        let outcome = model.update(ActiveEvent::Navigate(Box::new(Workflow::Favorites(
-            FavoritesState::Idle,
-        ))));
+        let outcome = model.update(ActiveEvent::Home(Box::new(HomeEvent::GoToFavorites)));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
-        assert!(matches!(
-            model.workflow,
-            Workflow::Favorites(FavoritesState::Idle)
-        ));
         cmd.expect_one_effect().expect_render();
+        assert!(matches!(
+            model.screen,
+            Screen::Favorites(FavoritesScreen {
+                workflow: None,
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn favorites_go_to_home_transition() {
+        let model = ActiveModel {
+            api_key: "test_api_key".to_string().into(),
+            screen: Screen::Favorites(FavoritesScreen {
+                favorites: Favorites::default(),
+                workflow: None,
+            }),
+        };
+        let outcome = model.update(ActiveEvent::Favorites(Box::new(FavoritesEvent::GoToHome)));
+
+        let (model, _cmd) = outcome.expect_continue().into_parts();
+        assert!(matches!(model.screen, Screen::Home(_)));
+    }
+
+    #[test]
+    fn favorites_go_to_add_favorite() {
+        let model = ActiveModel {
+            api_key: "test_api_key".to_string().into(),
+            screen: Screen::Favorites(FavoritesScreen {
+                favorites: Favorites::default(),
+                workflow: None,
+            }),
+        };
+        let outcome =
+            model.update(ActiveEvent::Favorites(Box::new(FavoritesEvent::GoToAddFavorite)));
+
+        let (model, mut cmd) = outcome.expect_continue().into_parts();
+        cmd.expect_one_effect().expect_render();
+        let Screen::Favorites(fav) = &model.screen else {
+            panic!("Expected Favorites screen");
+        };
+        assert!(matches!(
+            fav.workflow,
+            Some(favorites::FavoritesWorkflow::AddFavorite {
+                search_results: None
+            })
+        ));
     }
 }
