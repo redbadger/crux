@@ -34,6 +34,7 @@ mod tests {
 
     use crate::{
         effects::secret,
+        model::initializing::InitializingModel,
         view::WorkflowViewModel,
     };
 
@@ -46,7 +47,7 @@ mod tests {
 
         let mut cmd = app.update(Event::Start, &mut model);
 
-        assert!(matches!(model, Model::Initializing));
+        assert!(matches!(model, Model::Initializing(_)));
         let request = cmd.expect_one_effect().expect_secret();
         assert_eq!(
             request.operation,
@@ -61,7 +62,7 @@ mod tests {
         let vm = app.view(&Model::Uninitialized);
         assert!(matches!(vm.workflow, WorkflowViewModel::Loading));
 
-        let vm = app.view(&Model::Initializing);
+        let vm = app.view(&Model::Initializing(InitializingModel));
         assert!(matches!(vm.workflow, WorkflowViewModel::Loading));
     }
 }

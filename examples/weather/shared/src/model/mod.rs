@@ -1,5 +1,5 @@
 pub mod active;
-pub mod settings;
+pub mod onboard;
 pub mod initializing;
 pub(crate) mod outcome;
 
@@ -8,17 +8,18 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::effects::{
-    Effect, secret,
+    Effect,
     location::Location,
 };
 
 use self::active::location::GeocodingResponse;
 pub use self::active::ActiveEvent;
-pub use self::settings::SettingsEvent;
+pub use self::onboard::OnboardEvent;
 pub use self::initializing::InitializingEvent;
+use self::initializing::InitializingModel;
 
 use self::{
-    settings::SettingsModel,
+    onboard::OnboardModel,
     active::{
         favorites::{
             model::{Favorites, FavoritesState},
@@ -36,7 +37,7 @@ use self::{
 pub enum Event {
     Start,
     Initializing(InitializingEvent),
-    Settings(SettingsEvent),
+    Onboard(OnboardEvent),
     Active(ActiveEvent),
 }
 // ANCHOR_END: event
@@ -57,8 +58,8 @@ pub enum Workflow {
 pub enum Model {
     #[default]
     Uninitialized,
-    Initializing,
-    Settings(SettingsModel),
+    Initializing(InitializingModel),
+    Onboard(OnboardModel),
     Active(ActiveModel),
 }
 
@@ -79,27 +80,53 @@ impl Model {
     pub fn update(&mut self, event: Event) -> Command<Effect, Event> {
         match event {
             Event::Start => {
-                *self = Model::Initializing;
-                secret::command::fetch(secret::API_KEY_NAME).then_send(|r| {
-                    Event::Initializing(InitializingEvent::SecretFetched(r))
-                })
+                let (initializing, cmd) = InitializingModel::start();
+                *self = Model::Initializing(initializing);
+                cmd
             }
-            Event::Initializing(event) => initializing::update(event, self),
-            Event::Settings(event) => self.update_settings(event),
+            Event::Initializing(event) => self.update_initializing(event),
+            Event::Onboard(event) => self.update_onboard(event),
             Event::Active(event) => self.update_active(event),
         }
     }
     // ANCHOR_END: update
 
-    fn update_settings(&mut self, event: SettingsEvent) -> Command<Effect, Event> {
+    fn update_initializing(&mut self, event: InitializingEvent) -> Command<Effect, Event> {
         let owned = std::mem::take(self);
-        let Model::Settings(config) = owned else {
+        let Model::Initializing(initializing) = owned else {
             *self = owned;
             return Command::done();
         };
-        match config.update(event).map_event(Event::Settings) {
+        match initializing.update(event).map_event(Event::Initializing) {
+            outcome::Outcome::Continue(initializing, command) => {
+                *self = Model::Initializing(initializing);
+                command
+            }
+            outcome::Outcome::Complete(initializing::InitializingTransition::Onboard, command) => {
+                *self = Model::Onboard(OnboardModel::default());
+                command
+            }
+            outcome::Outcome::Complete(initializing::InitializingTransition::Active(api_key), command) => {
+                *self = Model::Active(ActiveModel {
+                    api_key,
+                    ..Default::default()
+                });
+                command.and(Command::event(Event::Active(ActiveEvent::Home(Box::new(
+                    WeatherEvent::Show,
+                )))))
+            }
+        }
+    }
+
+    fn update_onboard(&mut self, event: OnboardEvent) -> Command<Effect, Event> {
+        let owned = std::mem::take(self);
+        let Model::Onboard(config) = owned else {
+            *self = owned;
+            return Command::done();
+        };
+        match config.update(event).map_event(Event::Onboard) {
             outcome::Outcome::Continue(config, command) => {
-                *self = Model::Settings(config);
+                *self = Model::Onboard(config);
                 command
             }
             outcome::Outcome::Complete(api_key, command) => {
@@ -126,7 +153,7 @@ impl Model {
                 command
             }
             outcome::Outcome::Complete(active::ActiveTransition::ResetApiKey, command) => {
-                *self = Model::Settings(SettingsModel::default());
+                *self = Model::Onboard(OnboardModel::default());
                 command
             }
         }

@@ -2,12 +2,9 @@ use crux_core::{Command, render::render};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::effects::{Effect, secret::SecretFetchResponse};
+use crate::effects::{Effect, secret::{self, SecretFetchResponse}};
 
-use super::{
-    ActiveEvent, ActiveModel, Event, Model, WeatherEvent,
-    settings::SettingsModel,
-};
+use super::{Event, outcome::Outcome};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
@@ -17,79 +14,71 @@ pub enum InitializingEvent {
     SecretFetched(#[facet(opaque)] SecretFetchResponse),
 }
 
-pub fn update(event: InitializingEvent, model: &mut Model) -> Command<Effect, Event> {
-    match event {
-        InitializingEvent::SecretFetched(response) => match response {
-            SecretFetchResponse::Fetched(api_key) => {
-                *model = Model::Active(ActiveModel {
-                    api_key,
-                    ..Default::default()
-                });
-                Command::event(Event::Active(ActiveEvent::Home(Box::new(
-                    WeatherEvent::Show,
-                ))))
-            }
-            SecretFetchResponse::Missing(_) => {
-                *model = Model::Settings(SettingsModel::default());
-                render()
-            }
-        },
+pub(crate) enum InitializingTransition {
+    Onboard,
+    Active(String),
+}
+
+#[derive(Debug)]
+pub struct InitializingModel;
+
+impl InitializingModel {
+    pub fn start() -> (Self, Command<Effect, Event>) {
+        let cmd = secret::command::fetch(secret::API_KEY_NAME)
+            .then_send(|r| Event::Initializing(InitializingEvent::SecretFetched(r)));
+        (Self, cmd)
+    }
+
+    pub(crate) fn update(
+        self,
+        event: InitializingEvent,
+    ) -> Outcome<Self, InitializingTransition, InitializingEvent> {
+        match event {
+            InitializingEvent::SecretFetched(response) => match response {
+                SecretFetchResponse::Fetched(api_key) => {
+                    Outcome::Complete(InitializingTransition::Active(api_key), Command::done())
+                }
+                SecretFetchResponse::Missing(_) => {
+                    Outcome::Complete(InitializingTransition::Onboard, render())
+                }
+            },
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crux_core::App as _;
-
-    use crate::{
-        app::Weather,
-        effects::secret,
-        view::WorkflowViewModel,
-    };
+    use crate::effects::secret;
 
     use super::*;
 
     #[test]
-    fn test_secret_missing_shows_configuration() {
-        let app = Weather;
-        let mut model = Model::Initializing;
+    fn test_secret_missing_transitions_to_settings() {
+        let model = InitializingModel;
+        let outcome = model.update(InitializingEvent::SecretFetched(
+            SecretFetchResponse::Missing(secret::API_KEY_NAME.to_string()),
+        ));
 
-        let mut cmd = app.update(
-            Event::Initializing(InitializingEvent::SecretFetched(
-                SecretFetchResponse::Missing(secret::API_KEY_NAME.to_string()),
-            )),
-            &mut model,
-        );
-
-        assert!(matches!(model, Model::Settings(_)));
-        cmd.expect_one_effect().expect_render();
-
-        let vm = app.view(&model);
-        assert!(matches!(vm.workflow, WorkflowViewModel::Settings { .. }));
+        match outcome {
+            Outcome::Complete(InitializingTransition::Onboard, mut cmd) => {
+                cmd.expect_one_effect().expect_render();
+            }
+            _ => panic!("Expected Complete(Onboard)"),
+        }
     }
 
     #[test]
     fn test_secret_fetched_transitions_to_active() {
-        let app = Weather;
-        let mut model = Model::Initializing;
-
-        let mut cmd = app.update(
-            Event::Initializing(InitializingEvent::SecretFetched(
-                SecretFetchResponse::Fetched("my_key".to_string()),
-            )),
-            &mut model,
-        );
-
-        match &model {
-            Model::Active(active) => assert_eq!(active.api_key, "my_key"),
-            other => panic!("Expected Active, got {other:?}"),
-        }
-
-        // Should emit an event to show the home screen
-        let event = cmd.expect_one_event();
-        assert!(matches!(
-            event,
-            Event::Active(ActiveEvent::Home(ref we)) if matches!(**we, WeatherEvent::Show)
+        let model = InitializingModel;
+        let outcome = model.update(InitializingEvent::SecretFetched(
+            SecretFetchResponse::Fetched("my_key".to_string()),
         ));
+
+        match outcome {
+            Outcome::Complete(InitializingTransition::Active(api_key), _) => {
+                assert_eq!(api_key, "my_key");
+            }
+            _ => panic!("Expected Complete(Active)"),
+        }
     }
 }
