@@ -9,7 +9,7 @@ use crate::effects::secret::{self, SecretDeleteResponse};
 
 use super::{ApiKey, outcome::Outcome};
 use self::{
-    favorites::{FavoritesScreen, FavoritesTransition, events::FavoritesEvent},
+    favorites::{FavoritesScreen, FavoritesScreenEvent, FavoritesTransition},
     home::{HomeEvent, HomeScreen, HomeTransition},
 };
 
@@ -17,7 +17,7 @@ use self::{
 #[repr(C)]
 pub enum ActiveEvent {
     Home(Box<HomeEvent>),
-    Favorites(Box<FavoritesEvent>),
+    Favorites(Box<FavoritesScreenEvent>),
     ResetApiKey,
 
     #[serde(skip)]
@@ -30,7 +30,7 @@ impl ActiveEvent {
         ActiveEvent::Home(Box::new(event))
     }
 
-    pub fn favorites(event: FavoritesEvent) -> Self {
+    pub fn favorites(event: FavoritesScreenEvent) -> Self {
         ActiveEvent::Favorites(Box::new(event))
     }
 }
@@ -216,7 +216,7 @@ mod tests {
                 workflow: None,
             }),
         };
-        let outcome = model.update(ActiveEvent::favorites(FavoritesEvent::GoToHome));
+        let outcome = model.update(ActiveEvent::favorites(FavoritesScreenEvent::GoToHome));
 
         let (model, _cmd) = outcome.expect_continue().into_parts();
         assert!(matches!(model.screen, Screen::Home(_)));
@@ -232,7 +232,7 @@ mod tests {
             }),
         };
         let outcome =
-            model.update(ActiveEvent::favorites(FavoritesEvent::GoToAddFavorite));
+            model.update(ActiveEvent::favorites(FavoritesScreenEvent::RequestAddFavorite));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
         cmd.expect_one_effect().expect_render();
@@ -241,9 +241,7 @@ mod tests {
         };
         assert!(matches!(
             fav.workflow,
-            Some(favorites::FavoritesWorkflow::AddFavorite {
-                search_results: None
-            })
+            Some(favorites::FavoritesWorkflow::Add(_))
         ));
     }
 }

@@ -45,6 +45,7 @@ pub enum WorkflowViewModel {
     },
     AddFavorite {
         search_results: Option<Vec<GeocodingResponse>>,
+        searching: bool,
     },
     Failed {
         message: String,
@@ -117,16 +118,17 @@ impl From<&Model> for ViewModel {
                             delete_confirmation: None,
                         }
                     }
-                    Some(FavoritesWorkflow::ConfirmDelete(location)) => {
+                    Some(FavoritesWorkflow::ConfirmDelete(wf)) => {
                         let favorites = fav.favorites.iter().map(From::from).collect();
                         WorkflowViewModel::Favorites {
                             favorites,
-                            delete_confirmation: Some(*location),
+                            delete_confirmation: Some(wf.location),
                         }
                     }
-                    Some(FavoritesWorkflow::AddFavorite { search_results }) => {
+                    Some(FavoritesWorkflow::Add(wf)) => {
                         WorkflowViewModel::AddFavorite {
-                            search_results: search_results.clone(),
+                            search_results: wf.search_results.clone(),
+                            searching: wf.searching,
                         }
                     }
                 },

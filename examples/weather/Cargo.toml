@@ -22,6 +22,7 @@ anyhow = "1.0.102"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }
+crux_time = { path = "../../crux_time" }
 # crux_core = "0.17.0"
 # crux_http = "0.16.0"
 # crux_kv = "0.11.0"

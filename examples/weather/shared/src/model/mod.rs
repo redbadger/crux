@@ -2,6 +2,7 @@ pub mod active;
 pub mod initializing;
 pub mod onboard;
 pub(crate) mod outcome;
+pub(crate) mod versioned_input;
 
 use crux_core::Command;
 use facet::Facet;
