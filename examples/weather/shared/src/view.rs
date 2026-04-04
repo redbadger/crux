@@ -23,7 +23,7 @@ pub struct ViewModel {
 #[repr(C)]
 pub enum WorkflowViewModel {
     Loading,
-    Settings {
+    Onboard {
         api_key_input: String,
         error: Option<String>,
     },
@@ -62,8 +62,8 @@ impl From<&Favorite> for FavoriteView {
 impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
         let workflow = match model {
-            Model::Uninitialized | Model::Initializing => WorkflowViewModel::Loading,
-            Model::Settings(config) => WorkflowViewModel::Settings {
+            Model::Uninitialized | Model::Initializing(_) => WorkflowViewModel::Loading,
+            Model::Onboard(config) => WorkflowViewModel::Onboard {
                 api_key_input: config.api_key_input.clone(),
                 error: config.error.clone(),
             },

@@ -8,7 +8,7 @@ use super::outcome::Outcome;
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
-pub enum SettingsEvent {
+pub enum OnboardEvent {
     Set(String),
     Submit,
 
@@ -21,14 +21,14 @@ pub enum SettingsEvent {
     SecretFetched(#[facet(opaque)] SecretFetchResponse),
 }
 
-/// Model for the settings screen where the user enters their API key.
+/// Model for the onboarding screen where the user enters their API key.
 #[derive(Debug)]
-pub struct SettingsModel {
+pub struct OnboardModel {
     pub api_key_input: String,
     pub error: Option<String>,
 }
 
-impl Default for SettingsModel {
+impl Default for OnboardModel {
     fn default() -> Self {
         Self {
             api_key_input: String::new(),
@@ -37,32 +37,32 @@ impl Default for SettingsModel {
     }
 }
 
-impl SettingsModel {
-    /// Process a settings event. Returns `Complete(api_key)` when the key
+impl OnboardModel {
+    /// Process an onboard event. Returns `Complete(api_key)` when the key
     /// has been stored and confirmed, or `Continue(self)` to stay on this screen.
     pub(crate) fn update(
         mut self,
-        event: SettingsEvent,
-    ) -> Outcome<Self, String, SettingsEvent> {
+        event: OnboardEvent,
+    ) -> Outcome<Self, String, OnboardEvent> {
         match event {
-            SettingsEvent::Set(text) => {
+            OnboardEvent::Set(text) => {
                 self.api_key_input = text;
                 Outcome::Continue(self, render())
             }
-            SettingsEvent::Submit => {
+            OnboardEvent::Submit => {
                 let key = self.api_key_input.trim().to_string();
                 if key.is_empty() {
                     self.error = Some("API key cannot be empty".to_string());
                     return Outcome::Continue(self, render());
                 }
                 let cmd = secret::command::store(secret::API_KEY_NAME, key)
-                    .then_send(SettingsEvent::SecretStored);
+                    .then_send(OnboardEvent::SecretStored);
                 Outcome::Continue(self, cmd)
             }
-            SettingsEvent::SecretStored(response) => match response {
+            OnboardEvent::SecretStored(response) => match response {
                 SecretStoreResponse::Stored(_) => {
                     let cmd = secret::command::fetch(secret::API_KEY_NAME)
-                        .then_send(SettingsEvent::SecretFetched);
+                        .then_send(OnboardEvent::SecretFetched);
                     Outcome::Continue(self, cmd)
                 }
                 SecretStoreResponse::StoreError(msg) => {
@@ -70,7 +70,7 @@ impl SettingsModel {
                     Outcome::Continue(self, render())
                 }
             },
-            SettingsEvent::SecretFetched(response) => match response {
+            OnboardEvent::SecretFetched(response) => match response {
                 SecretFetchResponse::Fetched(api_key) => {
                     Outcome::Complete(api_key, Command::done())
                 }
@@ -91,8 +91,8 @@ mod tests {
 
     #[test]
     fn test_set_updates_input() {
-        let model = SettingsModel::default();
-        let outcome = model.update(SettingsEvent::Set("abc123".to_string()));
+        let model = OnboardModel::default();
+        let outcome = model.update(OnboardEvent::Set("abc123".to_string()));
 
         match outcome {
             Outcome::Continue(model, mut cmd) => {
@@ -105,11 +105,11 @@ mod tests {
 
     #[test]
     fn test_submit_stores_secret() {
-        let model = SettingsModel {
+        let model = OnboardModel {
             api_key_input: "my_new_key".to_string(),
             error: None,
         };
-        let outcome = model.update(SettingsEvent::Submit);
+        let outcome = model.update(OnboardEvent::Submit);
 
         match outcome {
             Outcome::Continue(_, mut cmd) => {
@@ -128,11 +128,11 @@ mod tests {
 
     #[test]
     fn test_submit_empty_shows_error() {
-        let model = SettingsModel {
+        let model = OnboardModel {
             api_key_input: "  ".to_string(),
             error: None,
         };
-        let outcome = model.update(SettingsEvent::Submit);
+        let outcome = model.update(OnboardEvent::Submit);
 
         match outcome {
             Outcome::Continue(model, mut cmd) => {
@@ -145,8 +145,8 @@ mod tests {
 
     #[test]
     fn test_store_error_shows_message() {
-        let model = SettingsModel::default();
-        let outcome = model.update(SettingsEvent::SecretStored(
+        let model = OnboardModel::default();
+        let outcome = model.update(OnboardEvent::SecretStored(
             SecretStoreResponse::StoreError("disk full".to_string()),
         ));
 
@@ -161,10 +161,10 @@ mod tests {
 
     #[test]
     fn test_stored_then_fetched_completes_with_api_key() {
-        let model = SettingsModel::default();
+        let model = OnboardModel::default();
 
         // First: SecretStored -> should re-fetch
-        let outcome = model.update(SettingsEvent::SecretStored(
+        let outcome = model.update(OnboardEvent::SecretStored(
             SecretStoreResponse::Stored(secret::API_KEY_NAME.to_string()),
         ));
         let model = match outcome {
@@ -180,7 +180,7 @@ mod tests {
         };
 
         // Then: SecretFetched -> should complete
-        let outcome = model.update(SettingsEvent::SecretFetched(
+        let outcome = model.update(OnboardEvent::SecretFetched(
             SecretFetchResponse::Fetched("the_key".to_string()),
         ));
         match outcome {
