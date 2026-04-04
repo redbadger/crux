@@ -44,6 +44,7 @@ uniffi = { version = "=0.29.4", optional = true }
 wasm-bindgen = { version = "0.2.114", optional = true }
 
 [dev-dependencies]
+assert_let_bind = "0.1"
 insta = { version = "1.46.3", features = ["yaml"] }
 
 # wasm
