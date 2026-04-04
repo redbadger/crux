@@ -141,9 +141,13 @@ mod tests {
 
     const TEST_API_KEY: &str = "test_api_key";
 
+    fn test_api_key() -> crate::model::ApiKey {
+        TEST_API_KEY.to_string().into()
+    }
+
     fn test_model() -> ActiveModel {
         ActiveModel {
-            api_key: TEST_API_KEY.to_string(),
+            api_key: test_api_key(),
             ..Default::default()
         }
     }
@@ -251,7 +255,7 @@ mod tests {
 
         assert_eq!(
             &request.operation,
-            &WeatherApi::build(test_location, TEST_API_KEY)
+            &WeatherApi::build(test_location, &test_api_key())
         );
 
         // 5. Resolve the HTTP request with a simulated response from the web API
@@ -291,7 +295,7 @@ mod tests {
 
         assert_eq!(
             &request.operation,
-            &WeatherApi::build(lat_lon, TEST_API_KEY)
+            &WeatherApi::build(lat_lon, &test_api_key())
         );
 
         // Test response handling

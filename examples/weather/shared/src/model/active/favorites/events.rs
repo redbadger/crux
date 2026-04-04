@@ -172,9 +172,13 @@ mod tests {
 
     const TEST_API_KEY: &str = "test_api_key";
 
+    fn test_api_key() -> crate::model::ApiKey {
+        TEST_API_KEY.to_string().into()
+    }
+
     fn test_model() -> ActiveModel {
         ActiveModel {
-            api_key: TEST_API_KEY.to_string(),
+            api_key: test_api_key(),
             ..Default::default()
         }
     }
@@ -549,7 +553,7 @@ mod tests {
 
         assert_eq!(
             &request.operation,
-            &LocationApi::build(query, TEST_API_KEY)
+            &LocationApi::build(query, &test_api_key())
         );
 
         // Test response handling

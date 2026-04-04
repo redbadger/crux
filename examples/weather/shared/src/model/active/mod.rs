@@ -8,10 +8,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::effects::secret::{self, SecretDeleteResponse};
 
-use super::{ActiveModel, Workflow, outcome::Outcome};
+use super::{ApiKey, outcome::Outcome};
+use crate::effects::location::Location;
 use self::{
-    favorites::events::FavoritesEvent,
-    weather::events::WeatherEvent,
+    favorites::{events::FavoritesEvent, model::{Favorites, FavoritesState}},
+    location::GeocodingResponse,
+    weather::{events::WeatherEvent, model::current_response::CurrentWeatherResponse},
 };
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -31,6 +33,28 @@ pub enum ActiveEvent {
 #[derive(Debug)]
 pub(crate) enum ActiveTransition {
     ResetApiKey,
+}
+
+// ANCHOR: workflow
+#[derive(Facet, Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
+pub enum Workflow {
+    #[default]
+    Home,
+    Favorites(FavoritesState),
+    AddFavorite,
+}
+// ANCHOR_END: workflow
+
+#[derive(Default, Debug)]
+pub struct ActiveModel {
+    pub api_key: ApiKey,
+    pub weather_data: CurrentWeatherResponse,
+    pub workflow: Workflow,
+    pub favorites: Favorites,
+    pub search_results: Option<Vec<GeocodingResponse>>,
+    pub location_enabled: bool,
+    pub last_location: Option<Location>,
 }
 
 impl ActiveModel {
@@ -91,7 +115,7 @@ mod tests {
 
     fn active_model() -> ActiveModel {
         ActiveModel {
-            api_key: "test_api_key".to_string(),
+            api_key: "test_api_key".to_string().into(),
             ..Default::default()
         }
     }
