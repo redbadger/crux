@@ -41,18 +41,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_start_fetches_secret() {
+    fn test_start_fetches_secret_and_favorites() {
         let app = Weather;
         let mut model = Model::default();
 
         let mut cmd = app.update(Event::Start, &mut model);
 
         assert!(matches!(model, Model::Initializing(_)));
-        let request = cmd.expect_one_effect().expect_secret();
+
+        let secret_request = cmd.expect_effect().expect_secret();
         assert_eq!(
-            request.operation,
+            secret_request.operation,
             secret::SecretRequest::Fetch(secret::API_KEY_NAME.to_string())
         );
+
+        let kv_request = cmd.expect_one_effect().expect_key_value();
+        assert!(matches!(
+            kv_request.operation,
+            crux_kv::KeyValueOperation::Get { .. }
+        ));
     }
 
     #[test]
@@ -62,7 +69,7 @@ mod tests {
         let vm = app.view(&Model::Uninitialized);
         assert!(matches!(vm.workflow, WorkflowViewModel::Loading));
 
-        let vm = app.view(&Model::Initializing(InitializingModel));
+        let vm = app.view(&Model::Initializing(InitializingModel::default()));
         assert!(matches!(vm.workflow, WorkflowViewModel::Loading));
     }
 }

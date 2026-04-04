@@ -11,6 +11,16 @@ use crate::effects::secret::{self, SecretStoreResponse};
 
 use super::{outcome::Outcome, ApiKey};
 
+/// Why the user is on the onboarding screen.
+#[derive(Facet, Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq)]
+#[repr(C)]
+pub enum OnboardReason {
+    #[default]
+    Welcome,
+    Unauthorized,
+    Reset,
+}
+
 /// The transition from onboarding when it completes.
 #[derive(Debug)]
 pub(crate) enum OnboardTransition {
@@ -36,7 +46,13 @@ pub enum OnboardEvent {
 
 /// Model for the onboarding screen where the user enters their API key.
 #[derive(Debug)]
-pub enum OnboardModel {
+pub struct OnboardModel {
+    pub reason: OnboardReason,
+    pub state: OnboardState,
+}
+
+#[derive(Debug)]
+pub enum OnboardState {
     /// The user is entering their API key.
     Input { api_key: String },
     /// The API key is being saved to the secret store.
@@ -45,8 +61,17 @@ pub enum OnboardModel {
 
 impl Default for OnboardModel {
     fn default() -> Self {
-        Self::Input {
-            api_key: String::new(),
+        Self::new(OnboardReason::default())
+    }
+}
+
+impl OnboardModel {
+    pub fn new(reason: OnboardReason) -> Self {
+        Self {
+            reason,
+            state: OnboardState::Input {
+                api_key: String::new(),
+            },
         }
     }
 }
@@ -54,7 +79,7 @@ impl Default for OnboardModel {
 impl OnboardModel {
     /// Whether the user can submit the API key (non-empty and in the input state).
     pub fn can_submit(&self) -> bool {
-        matches!(self, Self::Input { api_key } if !api_key.trim().is_empty())
+        matches!(self.state, OnboardState::Input { ref api_key } if !api_key.trim().is_empty())
     }
 
     /// Creates a failure completion of this model with the given message.
@@ -70,37 +95,44 @@ impl OnboardModel {
         self,
         event: OnboardEvent,
     ) -> Outcome<Self, OnboardTransition, OnboardEvent> {
-        match (self, event) {
-            (Self::Input { .. }, OnboardEvent::ApiKey(text)) => {
+        let Self { reason, state } = self;
+
+        match (state, event) {
+            (OnboardState::Input { .. }, OnboardEvent::ApiKey(text)) => {
                 tracing::debug!("updating api key input, waiting for submission");
-                Outcome::continuing(Self::Input { api_key: text }, render())
+                Outcome::continuing(
+                    Self { reason, state: OnboardState::Input { api_key: text } },
+                    render(),
+                )
             }
-            (model @ Self::Input { .. }, OnboardEvent::Submit) if !model.can_submit() => {
+            (OnboardState::Input { ref api_key }, OnboardEvent::Submit)
+                if api_key.trim().is_empty() =>
+            {
                 Self::fail("expecting a non-empty API key before submitting".to_string())
             }
-            (Self::Input { api_key }, OnboardEvent::Submit) => {
+            (OnboardState::Input { api_key }, OnboardEvent::Submit) => {
                 tracing::debug!("submitting api key, saving to secret store");
                 let key = api_key.trim().to_string();
                 let cmd = secret::command::store(secret::API_KEY_NAME, key.clone())
                     .then_send(OnboardEvent::SecretStored);
                 Outcome::continuing(
-                    Self::Saving {
-                        api_key: key.into(),
-                    },
+                    Self { reason, state: OnboardState::Saving { api_key: key.into() } },
                     cmd,
                 )
             }
-            (Self::Saving { api_key }, OnboardEvent::SecretStored(response)) => match response {
-                SecretStoreResponse::Stored(_) => {
-                    tracing::debug!("completing onboarding, api key stored successfully");
-                    Outcome::complete(OnboardTransition::Active(api_key), render())
+            (OnboardState::Saving { api_key }, OnboardEvent::SecretStored(response)) => {
+                match response {
+                    SecretStoreResponse::Stored(_) => {
+                        tracing::debug!("completing onboarding, api key stored successfully");
+                        Outcome::complete(OnboardTransition::Active(api_key), render())
+                    }
+                    SecretStoreResponse::StoreError(msg) => Self::fail(format!(
+                        "failed to store API key in the secret store due to error: {msg}"
+                    )),
                 }
-                SecretStoreResponse::StoreError(msg) => Self::fail(format!(
-                    "failed to store API key in the secret store due to error: {msg}"
-                )),
-            },
-            (model, event) => Self::fail(format!(
-                "cannot update with event given the current state of the model, got {event:?} in {model:?}"
+            }
+            (state, event) => Self::fail(format!(
+                "cannot update with event given the current state of the model, got {event:?} in {state:?}"
             )),
         }
     }
@@ -113,14 +145,30 @@ mod tests {
 
     use super::*;
 
+    fn input_model(api_key: &str) -> OnboardModel {
+        OnboardModel {
+            reason: OnboardReason::default(),
+            state: OnboardState::Input {
+                api_key: api_key.to_string(),
+            },
+        }
+    }
+
+    fn saving_model(api_key: &str) -> OnboardModel {
+        OnboardModel {
+            reason: OnboardReason::default(),
+            state: OnboardState::Saving {
+                api_key: api_key.to_string().into(),
+            },
+        }
+    }
+
     #[rstest]
     #[case::empty_cannot_submit("", false)]
     #[case::whitespace_cannot_submit("  ", false)]
     #[case::valid_key_can_submit("abc123", true)]
     fn can_submit(#[case] input: &str, #[case] expected: bool) {
-        let model = OnboardModel::Input {
-            api_key: input.to_string(),
-        };
+        let model = input_model(input);
         assert_eq!(model.can_submit(), expected);
     }
 
@@ -130,21 +178,20 @@ mod tests {
         let outcome = model.update(OnboardEvent::ApiKey("abc123".to_string()));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
-        assert_let_bind::assert_let!(OnboardModel::Input { api_key }, model);
-        assert_eq!(api_key, "abc123");
+        assert!(matches!(
+            model.state,
+            OnboardState::Input { ref api_key } if api_key == "abc123"
+        ));
         cmd.expect_one_effect().expect_render();
     }
 
     #[test]
     fn submit_stores_secret() {
-        let model = OnboardModel::Input {
-            api_key: "my_new_key".to_string(),
-        };
+        let model = input_model("my_new_key");
         let outcome = model.update(OnboardEvent::Submit);
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
-        assert_let_bind::assert_let!(OnboardModel::Saving { api_key }, model);
-        assert_eq!(api_key, "my_new_key");
+        assert!(matches!(model.state, OnboardState::Saving { ref api_key } if *api_key == "my_new_key"));
         let request = cmd.expect_one_effect().expect_secret();
         assert_eq!(
             request.operation,
@@ -154,9 +201,7 @@ mod tests {
 
     #[test]
     fn submit_empty_fails() {
-        let model = OnboardModel::Input {
-            api_key: "  ".to_string(),
-        };
+        let model = input_model("  ");
         assert!(!model.can_submit());
         let outcome = model.update(OnboardEvent::Submit);
 
@@ -168,9 +213,7 @@ mod tests {
 
     #[test]
     fn unexpected_event_fails() {
-        let model = OnboardModel::Saving {
-            api_key: "key".to_string().into(),
-        };
+        let model = saving_model("key");
         let outcome = model.update(OnboardEvent::ApiKey("oops".to_string()));
 
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
@@ -180,9 +223,7 @@ mod tests {
 
     #[test]
     fn store_error_fails_with_message() {
-        let model = OnboardModel::Saving {
-            api_key: "some_key".to_string().into(),
-        };
+        let model = saving_model("some_key");
         let outcome = model.update(OnboardEvent::SecretStored(SecretStoreResponse::StoreError(
             "disk full".to_string(),
         )));
@@ -195,9 +236,7 @@ mod tests {
 
     #[test]
     fn stored_completes_with_api_key() {
-        let model = OnboardModel::Saving {
-            api_key: "the_key".to_string().into(),
-        };
+        let model = saving_model("the_key");
         let outcome = model.update(OnboardEvent::SecretStored(SecretStoreResponse::Stored(
             secret::API_KEY_NAME.to_string(),
         )));

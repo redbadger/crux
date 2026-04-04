@@ -1,6 +1,6 @@
 ---
-source: shared/src/model/active/weather/events.rs
-expression: model.weather_data
+source: shared/src/model/active/home/mod.rs
+expression: data
 ---
 coord:
   lat: 33.456789

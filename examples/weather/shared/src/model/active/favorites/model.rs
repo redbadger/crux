@@ -1,38 +1,28 @@
-use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::effects::location::Location;
 
-use super::super::{
-    location::GeocodingResponse,
-    weather::model::current_response::CurrentWeatherResponse,
-};
+use super::super::location::GeocodingResponse;
 
 pub const FAVORITES_KEY: &str = "favorites";
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
-pub struct Favorite {
-    pub geo: GeocodingResponse,
-    pub current: Option<CurrentWeatherResponse>,
-}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(transparent)]
+pub struct Favorite(pub GeocodingResponse);
 
 impl From<GeocodingResponse> for Favorite {
     fn from(geo: GeocodingResponse) -> Self {
-        Favorite { geo, current: None }
+        Favorite(geo)
     }
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, Default, Debug, PartialEq)]
-#[repr(C)]
-pub enum FavoritesState {
-    #[default]
-    Idle,
-    ConfirmDelete(Location),
-}
-
 impl Favorite {
+    pub fn name(&self) -> &str {
+        &self.0.name
+    }
+
     pub(crate) fn location(&self) -> Location {
-        self.geo.location()
+        self.0.location()
     }
 }
 
@@ -46,20 +36,14 @@ impl Favorites {
 
     #[cfg(test)]
     pub(crate) fn get(&self, location: &Location) -> Option<&Favorite> {
-        self.0.iter().find(|fav| &fav.geo.location() == location)
+        self.0.iter().find(|fav| &fav.location() == location)
     }
 
-    pub(crate) fn update(&mut self, location: &Location, mutation: impl FnOnce(&mut Favorite)) {
-        if let Some(fav) = self.0.iter_mut().find(|f| &f.geo.location() == location) {
-            mutation(fav);
-        }
-    }
-
-    #[cfg(test)]
     pub(crate) fn len(&self) -> usize {
         self.0.len()
     }
 
+    #[cfg(test)]
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
