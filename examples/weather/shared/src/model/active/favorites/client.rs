@@ -3,6 +3,7 @@ use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
+use crate::model::ApiKey;
 use super::super::location::GeocodingResponse;
 
 const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
@@ -35,12 +36,12 @@ pub struct LocationApi;
 impl LocationApi {
     /// Build an `HttpRequest` for testing purposes
     #[cfg(test)]
-    pub fn build(query: &str, api_key: &str) -> HttpRequest {
+    pub fn build(query: &str, api_key: &ApiKey) -> HttpRequest {
         HttpRequest::get(GEOCODING_URL)
             .query(&GeocodingQueryString {
                 q: query.to_string(),
                 limit: "5",
-                appid: api_key.to_string(),
+                appid: api_key.clone().into(),
             })
             .expect("could not serialize query string")
             .build()
@@ -49,7 +50,7 @@ impl LocationApi {
     /// Fetch geocoding results for a location query
     pub fn fetch<Event, Effect>(
         query: &str,
-        api_key: String,
+        api_key: ApiKey,
     ) -> RequestBuilder<
         Effect,
         Event,
@@ -65,7 +66,7 @@ impl LocationApi {
             .query(&GeocodingQueryString {
                 q: query.to_string(),
                 limit: "5",
-                appid: api_key,
+                appid: api_key.into(),
             })
             .expect("could not serialize query string")
             .build()

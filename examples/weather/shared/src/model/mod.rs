@@ -7,19 +7,17 @@ use crux_core::Command;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::effects::{location::Location, Effect};
+use crate::effects::Effect;
 
-use self::active::location::GeocodingResponse;
 pub use self::active::ActiveEvent;
+pub use self::active::ActiveModel;
+pub use self::active::Workflow;
 pub use self::initializing::InitializingEvent;
 use self::initializing::InitializingModel;
 pub use self::onboard::OnboardEvent;
 
 use self::{
-    active::{
-        favorites::model::{Favorites, FavoritesState},
-        weather::{events::WeatherEvent, model::current_response::CurrentWeatherResponse},
-    },
+    active::weather::events::WeatherEvent,
     onboard::OnboardModel,
 };
 
@@ -34,17 +32,6 @@ pub enum Event {
 }
 // ANCHOR_END: event
 
-// ANCHOR: workflow
-#[derive(Facet, Default, Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[repr(C)]
-pub enum Workflow {
-    #[default]
-    Home,
-    Favorites(FavoritesState),
-    AddFavorite,
-}
-// ANCHOR_END: workflow
-
 // ANCHOR: model
 #[derive(Default, Debug)]
 pub enum Model {
@@ -54,18 +41,6 @@ pub enum Model {
     Onboard(OnboardModel),
     Active(ActiveModel),
     Failed(String),
-}
-
-
-#[derive(Default, Debug)]
-pub struct ActiveModel {
-    pub api_key: String,
-    pub weather_data: CurrentWeatherResponse,
-    pub workflow: Workflow,
-    pub favorites: Favorites,
-    pub search_results: Option<Vec<GeocodingResponse>>,
-    pub location_enabled: bool,
-    pub last_location: Option<Location>,
 }
 // ANCHOR_END: model
 
@@ -106,7 +81,7 @@ impl Model {
             }
             outcome::Status::Complete(initializing::InitializingTransition::Active(api_key)) => {
                 *self = Model::Active(ActiveModel {
-                    api_key,
+                    api_key: api_key.into(),
                     ..Default::default()
                 });
                 command.and(Command::event(Event::Active(ActiveEvent::Home(Box::new(
@@ -130,7 +105,7 @@ impl Model {
             }
             outcome::Status::Complete(onboard::OnboardTransition::Active(api_key)) => {
                 *self = Model::Active(ActiveModel {
-                    api_key: api_key.into(),
+                    api_key,
                     ..Default::default()
                 });
                 command.and(Command::event(Event::Active(ActiveEvent::Home(Box::new(
@@ -168,7 +143,7 @@ impl Model {
 }
 
 /// The API key used to authenticate to the weather service.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct ApiKey(String);
 
 impl From<String> for ApiKey {
