@@ -72,7 +72,7 @@ impl From<&Favorite> for FavoriteView {
 impl From<&FavoriteWeather> for FavoriteView {
     fn from(value: &FavoriteWeather) -> Self {
         let current = match &value.weather {
-            FavoriteWeatherState::Fetched(data) => Some(data.clone()),
+            FavoriteWeatherState::Fetched(data) => Some(data.as_ref().clone()),
             _ => None,
         };
         FavoriteView {
@@ -100,7 +100,7 @@ impl From<&Model> for ViewModel {
             Model::Active(active) => match &active.screen {
                 Screen::Home(home) => {
                     let weather_data = match &home.current_weather {
-                        LocalWeather::Fetched(_, data) => Some(Box::new(data.clone())),
+                        LocalWeather::Fetched(_, data) => Some(data.clone()),
                         _ => None,
                     };
                     let favorites = home.favorites_weather.iter().map(From::from).collect();

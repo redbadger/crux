@@ -7,38 +7,28 @@ use crate::effects::location::command::get_location;
 use crate::model::ApiKey;
 use crate::model::outcome::{Outcome, Started};
 
-// -- Events --
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum LocalWeatherEvent {
     LocationEnabled(bool),
     LocationFetched(Option<Location>),
     WeatherFetched(Box<Result<CurrentWeatherResponse, WeatherError>>),
+    Retry,
 }
-
-// -- Transitions --
 
 #[derive(Debug)]
 pub(crate) enum LocalWeatherTransition {
     Unauthorized,
 }
 
-// -- State --
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum LocalWeather {
+    #[default]
     CheckingPermission,
     LocationDisabled,
     FetchingLocation,
     FetchingWeather(Location),
-    Fetched(Location, CurrentWeatherResponse),
+    Fetched(Location, Box<CurrentWeatherResponse>),
     Failed(Location),
-}
-
-impl Default for LocalWeather {
-    fn default() -> Self {
-        Self::CheckingPermission
-    }
 }
 
 impl LocalWeather {
@@ -55,6 +45,10 @@ impl LocalWeather {
         api_key: &ApiKey,
     ) -> Outcome<Self, LocalWeatherTransition, LocalWeatherEvent> {
         match event {
+            LocalWeatherEvent::Retry => {
+                let Started { state, command } = Self::start();
+                Outcome::continuing(state, command)
+            }
             LocalWeatherEvent::LocationEnabled(enabled) => {
                 tracing::debug!("location enabled: {enabled}");
                 if enabled {
@@ -85,13 +79,17 @@ impl LocalWeather {
                 match *result {
                     Ok(weather_data) => {
                         tracing::debug!("received weather data for {}", weather_data.name);
-                        Outcome::continuing(Self::Fetched(location, weather_data), render())
+                        Outcome::continuing(
+                            Self::Fetched(location, Box::new(weather_data)),
+                            render(),
+                        )
                     }
                     Err(WeatherError::Unauthorized) => {
+                        tracing::warn!("weather API returned unauthorized");
                         Outcome::complete(LocalWeatherTransition::Unauthorized, render())
                     }
                     Err(ref e) => {
-                        tracing::debug!("fetching weather failed: {e:?}");
+                        tracing::warn!("fetching weather failed: {e:?}");
                         Outcome::continuing(Self::Failed(location), render())
                     }
                 }
@@ -106,7 +104,7 @@ mod tests {
 
     use crate::{
         effects::location::{Location, LocationOperation, LocationResult},
-        model::ApiKey,
+        model::{ApiKey, Effect},
     };
 
     use crate::effects::http::weather;
@@ -118,11 +116,19 @@ mod tests {
 
     const TEST_API_KEY: &str = "test_api_key";
 
-    fn test_api_key() -> ApiKey {
+    fn api_key() -> ApiKey {
         TEST_API_KEY.to_string().into()
     }
 
-    fn test_response() -> CurrentWeatherResponse {
+    fn phoenix_location() -> Location {
+        Location {
+            lat: 33.456_789,
+            lon: -112.037_222,
+        }
+    }
+
+    fn phoenix_weather_response() -> CurrentWeatherResponse {
+        let location = phoenix_location();
         CurrentWeatherResponseBuilder::default()
             .main(Main {
                 temp: 20.0,
@@ -133,8 +139,8 @@ mod tests {
                 humidity: 50,
             })
             .coord(Coord {
-                lat: 33.456_789,
-                lon: -112.037_222,
+                lat: location.lat,
+                lon: location.lon,
             })
             .weather(vec![WeatherData {
                 id: 800,
@@ -166,76 +172,51 @@ mod tests {
             .expect("Failed to build sample response")
     }
 
-    fn test_response_json() -> String {
-        serde_json::to_string(&test_response()).unwrap()
+    fn phoenix_weather_json() -> String {
+        serde_json::to_string(&phoenix_weather_response()).unwrap()
+    }
+
+    /// Drives the state machine from `FetchingLocation` through to `FetchingWeather`,
+    /// resolving location and returning the state + command ready for a weather response.
+    fn drive_to_fetching_weather() -> (LocalWeather, Command<Effect, LocalWeatherEvent>) {
+        let local = LocalWeather::default();
+        let key = api_key();
+
+        let (local, mut cmd) = local
+            .update(LocalWeatherEvent::LocationEnabled(true), &key)
+            .expect_continue()
+            .into_parts();
+
+        let mut location_effect = cmd.expect_one_effect().expect_location();
+        location_effect
+            .resolve(LocationResult::Location(Some(phoenix_location())))
+            .expect("to resolve");
+
+        let event = cmd.expect_one_event();
+        local.update(event, &key).expect_continue().into_parts()
     }
 
     #[test]
-    fn location_enabled_fetches_weather() {
+    fn location_enabled_fetches_location() {
         let local = LocalWeather::default();
-        let api_key = test_api_key();
 
         let (local, mut cmd) = local
-            .update(LocalWeatherEvent::LocationEnabled(true), &api_key)
+            .update(LocalWeatherEvent::LocationEnabled(true), &api_key())
             .expect_continue()
             .into_parts();
 
         assert!(matches!(local, LocalWeather::FetchingLocation));
 
-        let mut location = cmd.expect_one_effect().expect_location();
-        assert_eq!(location.operation, LocationOperation::GetLocation);
-
-        let test_location = Location {
-            lat: 33.456_789,
-            lon: -112.037_222,
-        };
-        location
-            .resolve(LocationResult::Location(Some(test_location)))
-            .expect("to resolve");
-
-        let event = cmd.expect_one_event();
-        let (local, mut cmd) = local
-            .update(event, &api_key)
-            .expect_continue()
-            .into_parts();
-
-        assert!(matches!(local, LocalWeather::FetchingWeather(_)));
-
-        let mut request = cmd.expect_one_effect().expect_http();
-        assert_eq!(
-            &request.operation,
-            &weather::build_request(test_location, &test_api_key())
-        );
-
-        request
-            .resolve(HttpResult::Ok(
-                HttpResponse::ok()
-                    .body(test_response_json().as_bytes())
-                    .build(),
-            ))
-            .unwrap();
-
-        let actual = cmd.expect_one_event();
-        assert!(matches!(actual, LocalWeatherEvent::WeatherFetched(_)));
-
-        let (local, _cmd) = local
-            .update(actual, &api_key)
-            .expect_continue()
-            .into_parts();
-
-        assert!(matches!(local, LocalWeather::Fetched(_, _)));
-        if let LocalWeather::Fetched(_, ref data) = local {
-            assert_eq!(data, &test_response());
-        }
+        let location_effect = cmd.expect_one_effect().expect_location();
+        assert_eq!(location_effect.operation, LocationOperation::GetLocation);
     }
 
     #[test]
     fn location_disabled() {
         let local = LocalWeather::default();
-        let api_key = test_api_key();
 
         let (local, _cmd) = local
-            .update(LocalWeatherEvent::LocationEnabled(false), &api_key)
+            .update(LocalWeatherEvent::LocationEnabled(false), &api_key())
             .expect_continue()
             .into_parts();
 
@@ -245,47 +226,120 @@ mod tests {
     #[test]
     fn location_fetched_triggers_weather_fetch() {
         let local = LocalWeather::default();
-        let api_key = test_api_key();
-
-        let lat_lon = Location {
-            lat: 33.456_789,
-            lon: 112.037_222,
-        };
+        let location = phoenix_location();
 
         let (local, mut cmd) = local
-            .update(LocalWeatherEvent::LocationFetched(Some(lat_lon)), &api_key)
+            .update(
+                LocalWeatherEvent::LocationFetched(Some(location)),
+                &api_key(),
+            )
             .expect_continue()
             .into_parts();
 
         assert!(matches!(local, LocalWeather::FetchingWeather(_)));
 
-        let mut request = cmd.effects().next().unwrap().expect_http();
+        let request = cmd.effects().next().unwrap().expect_http();
         assert_eq!(
             &request.operation,
-            &weather::build_request(lat_lon, &test_api_key())
+            &weather::build_request(location, &api_key())
         );
+    }
 
+    #[test]
+    fn location_fetched_none_disables() {
+        let local = LocalWeather::default();
+
+        let (local, _cmd) = local
+            .update(LocalWeatherEvent::LocationFetched(None), &api_key())
+            .expect_continue()
+            .into_parts();
+
+        assert!(matches!(local, LocalWeather::LocationDisabled));
+    }
+
+    #[test]
+    fn weather_fetched_stores_data() {
+        let (local, mut cmd) = drive_to_fetching_weather();
+        assert!(matches!(local, LocalWeather::FetchingWeather(_)));
+
+        let mut request = cmd.expect_one_effect().expect_http();
         request
             .resolve(HttpResult::Ok(
                 HttpResponse::ok()
-                    .body(test_response_json().as_bytes())
+                    .body(phoenix_weather_json().as_bytes())
                     .build(),
             ))
             .unwrap();
 
-        let actual = cmd.events().next().unwrap();
-        assert!(matches!(actual, LocalWeatherEvent::WeatherFetched(_)));
-
+        let event = cmd.expect_one_event();
         let (local, _cmd) = local
-            .update(actual, &api_key)
+            .update(event, &api_key())
             .expect_continue()
             .into_parts();
 
-        if let LocalWeather::Fetched(_, ref data) = local {
-            assert_eq!(data, &test_response());
-            insta::assert_yaml_snapshot!(data);
-        } else {
-            panic!("Expected Fetched state");
-        }
+        let LocalWeather::Fetched(loc, ref data) = local else {
+            panic!("Expected Fetched state, got {local:?}");
+        };
+        assert_eq!(loc, phoenix_location());
+        assert_eq!(data.as_ref(), &phoenix_weather_response());
+        insta::assert_yaml_snapshot!(data.as_ref());
+    }
+
+    #[test]
+    fn weather_unauthorized_completes_with_transition() {
+        let (local, mut cmd) = drive_to_fetching_weather();
+
+        let mut request = cmd.expect_one_effect().expect_http();
+        request
+            .resolve(HttpResult::Ok(
+                HttpResponse::status(401).body(b"Unauthorized").build(),
+            ))
+            .unwrap();
+
+        let event = cmd.expect_one_event();
+        let (transition, _cmd) = local
+            .update(event, &api_key())
+            .expect_complete()
+            .into_parts();
+
+        assert!(matches!(transition, LocalWeatherTransition::Unauthorized));
+    }
+
+    #[test]
+    fn weather_network_error_transitions_to_failed() {
+        let (local, mut cmd) = drive_to_fetching_weather();
+
+        let mut request = cmd.expect_one_effect().expect_http();
+        request
+            .resolve(HttpResult::Err(
+                crux_http::HttpError::Url("connection refused".into()),
+            ))
+            .unwrap();
+
+        let event = cmd.expect_one_event();
+        let (local, _cmd) = local
+            .update(event, &api_key())
+            .expect_continue()
+            .into_parts();
+
+        assert!(matches!(local, LocalWeather::Failed(_)));
+    }
+
+    #[test]
+    fn retry_restarts_from_checking_permission() {
+        let local = LocalWeather::LocationDisabled;
+
+        let (local, mut cmd) = local
+            .update(LocalWeatherEvent::Retry, &api_key())
+            .expect_continue()
+            .into_parts();
+
+        assert!(matches!(local, LocalWeather::CheckingPermission));
+
+        let location_effect = cmd.expect_one_effect().expect_location();
+        assert_eq!(
+            location_effect.operation,
+            LocationOperation::IsLocationEnabled
+        );
     }
 }
