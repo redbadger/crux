@@ -1,34 +1,26 @@
 pub mod active;
-pub mod onboard;
 pub mod initializing;
+pub mod onboard;
 pub(crate) mod outcome;
 
 use crux_core::Command;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::effects::{
-    Effect,
-    location::Location,
-};
+use crate::effects::{location::Location, Effect};
 
 use self::active::location::GeocodingResponse;
 pub use self::active::ActiveEvent;
-pub use self::onboard::OnboardEvent;
 pub use self::initializing::InitializingEvent;
 use self::initializing::InitializingModel;
+pub use self::onboard::OnboardEvent;
 
 use self::{
-    onboard::OnboardModel,
     active::{
-        favorites::{
-            model::{Favorites, FavoritesState},
-        },
-        weather::{
-            events::WeatherEvent,
-            model::current_response::CurrentWeatherResponse,
-        },
+        favorites::model::{Favorites, FavoritesState},
+        weather::{events::WeatherEvent, model::current_response::CurrentWeatherResponse},
     },
+    onboard::OnboardModel,
 };
 
 // ANCHOR: event
@@ -97,16 +89,20 @@ impl Model {
             *self = owned;
             return Command::done();
         };
-        match initializing.update(event).map_event(Event::Initializing) {
-            outcome::Outcome::Continue(initializing, command) => {
+        let (status, command) = initializing
+            .update(event)
+            .map_event(Event::Initializing)
+            .into_parts();
+        match status {
+            outcome::Status::Continue(initializing) => {
                 *self = Model::Initializing(initializing);
                 command
             }
-            outcome::Outcome::Complete(initializing::InitializingTransition::Onboard, command) => {
+            outcome::Status::Complete(initializing::InitializingTransition::Onboard) => {
                 *self = Model::Onboard(OnboardModel::default());
                 command
             }
-            outcome::Outcome::Complete(initializing::InitializingTransition::Active(api_key), command) => {
+            outcome::Status::Complete(initializing::InitializingTransition::Active(api_key)) => {
                 *self = Model::Active(ActiveModel {
                     api_key,
                     ..Default::default()
@@ -124,14 +120,15 @@ impl Model {
             *self = owned;
             return Command::done();
         };
-        match config.update(event).map_event(Event::Onboard) {
-            outcome::Outcome::Continue(config, command) => {
+        let (status, command) = config.update(event).map_event(Event::Onboard).into_parts();
+        match status {
+            outcome::Status::Continue(config) => {
                 *self = Model::Onboard(config);
                 command
             }
-            outcome::Outcome::Complete(api_key, command) => {
+            outcome::Status::Complete(api_key) => {
                 *self = Model::Active(ActiveModel {
-                    api_key,
+                    api_key: api_key.into(),
                     ..Default::default()
                 });
                 command.and(Command::event(Event::Active(ActiveEvent::Home(Box::new(
@@ -147,15 +144,41 @@ impl Model {
             *self = owned;
             return Command::done();
         };
-        match active_model.update(event).map_event(Event::Active) {
-            outcome::Outcome::Continue(active_model, command) => {
+        let (status, command) = active_model
+            .update(event)
+            .map_event(Event::Active)
+            .into_parts();
+        match status {
+            outcome::Status::Continue(active_model) => {
                 *self = Model::Active(active_model);
                 command
             }
-            outcome::Outcome::Complete(active::ActiveTransition::ResetApiKey, command) => {
+            outcome::Status::Complete(active::ActiveTransition::ResetApiKey) => {
                 *self = Model::Onboard(OnboardModel::default());
                 command
             }
         }
+    }
+}
+
+/// The API key used to authenticate to the weather service.
+#[derive(Debug, PartialEq)]
+pub struct ApiKey(String);
+
+impl From<String> for ApiKey {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl PartialEq<&str> for ApiKey {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
+impl From<ApiKey> for String {
+    fn from(key: ApiKey) -> Self {
+        key.0
     }
 }

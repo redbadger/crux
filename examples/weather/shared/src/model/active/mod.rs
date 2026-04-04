@@ -28,6 +28,7 @@ pub enum ActiveEvent {
 }
 
 /// Transition value when the active state completes.
+#[derive(Debug)]
 pub(crate) enum ActiveTransition {
     ResetApiKey,
 }
@@ -41,17 +42,17 @@ impl ActiveModel {
             ActiveEvent::ResetApiKey => {
                 let cmd = secret::command::delete(secret::API_KEY_NAME)
                     .then_send(ActiveEvent::SecretDeleted);
-                Outcome::Continue(self, cmd)
+                Outcome::continuing(self, cmd)
             }
             ActiveEvent::SecretDeleted(response) => match response {
                 SecretDeleteResponse::Deleted(_) => {
-                    Outcome::Complete(ActiveTransition::ResetApiKey, render())
+                    Outcome::complete(ActiveTransition::ResetApiKey, render())
                 }
-                SecretDeleteResponse::DeleteError(_) => Outcome::Continue(self, Command::done()),
+                SecretDeleteResponse::DeleteError(_) => Outcome::continuing(self, Command::done()),
             },
             ActiveEvent::Navigate(next) => {
                 self.workflow = *next;
-                Outcome::Continue(self, render())
+                Outcome::continuing(self, render())
             }
             ActiveEvent::Home(home_event) => {
                 let mut commands = Vec::new();
@@ -67,12 +68,12 @@ impl ActiveModel {
                         .map_event(|we| ActiveEvent::Home(Box::new(we))),
                 );
 
-                Outcome::Continue(self, Command::all(commands))
+                Outcome::continuing(self, Command::all(commands))
             }
             ActiveEvent::Favorites(fav_event) => {
                 let cmd = favorites::events::update(*fav_event, &mut self)
                     .map_event(|e| ActiveEvent::Favorites(Box::new(e)));
-                Outcome::Continue(self, cmd)
+                Outcome::continuing(self, cmd)
             }
         }
     }
@@ -100,16 +101,12 @@ mod tests {
         let model = active_model();
         let outcome = model.update(ActiveEvent::ResetApiKey);
 
-        match outcome {
-            Outcome::Continue(_, mut cmd) => {
-                let request = cmd.expect_one_effect().expect_secret();
-                assert_eq!(
-                    request.operation,
-                    SecretRequest::Delete(secret::API_KEY_NAME.to_string())
-                );
-            }
-            Outcome::Complete(..) => panic!("Expected Continue (delete is in-flight)"),
-        }
+        let mut cmd = outcome.expect_continue().into_command();
+        let request = cmd.expect_one_effect().expect_secret();
+        assert_eq!(
+            request.operation,
+            SecretRequest::Delete(secret::API_KEY_NAME.to_string())
+        );
     }
 
     #[test]
@@ -119,12 +116,9 @@ mod tests {
             secret::API_KEY_NAME.to_string(),
         )));
 
-        match outcome {
-            Outcome::Complete(ActiveTransition::ResetApiKey, mut cmd) => {
-                cmd.expect_one_effect().expect_render();
-            }
-            _ => panic!("Expected Complete(ResetApiKey)"),
-        }
+        let (transition, mut cmd) = outcome.expect_complete().into_parts();
+        assert!(matches!(transition, ActiveTransition::ResetApiKey));
+        cmd.expect_one_effect().expect_render();
     }
 
     #[test]
@@ -134,15 +128,11 @@ mod tests {
             FavoritesState::Idle,
         ))));
 
-        match outcome {
-            Outcome::Continue(model, mut cmd) => {
-                assert!(matches!(
-                    model.workflow,
-                    Workflow::Favorites(FavoritesState::Idle)
-                ));
-                cmd.expect_one_effect().expect_render();
-            }
-            Outcome::Complete(..) => panic!("Expected Continue"),
-        }
+        let (model, mut cmd) = outcome.expect_continue().into_parts();
+        assert!(matches!(
+            model.workflow,
+            Workflow::Favorites(FavoritesState::Idle)
+        ));
+        cmd.expect_one_effect().expect_render();
     }
 }
