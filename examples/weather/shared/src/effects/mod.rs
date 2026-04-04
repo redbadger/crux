@@ -5,6 +5,7 @@ pub mod secret;
 use crux_core::{macros::effect, render::RenderOperation};
 use crux_http::protocol::HttpRequest;
 use crux_kv::KeyValueOperation;
+use crux_time::TimeRequest;
 
 use crate::effects::location::LocationOperation;
 use crate::effects::secret::SecretRequest;
@@ -17,5 +18,6 @@ pub enum Effect {
     Http(HttpRequest),
     Location(LocationOperation),
     Secret(SecretRequest),
+    Time(TimeRequest),
 }
 // ANCHOR_END: effect

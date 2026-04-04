@@ -801,6 +801,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_time"
+version = "0.15.0"
+dependencies = [
+ "crux_core",
+ "facet",
+ "futures",
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3189,6 +3200,7 @@ dependencies = [
  "crux_core",
  "crux_http",
  "crux_kv",
+ "crux_time",
  "derive_builder",
  "facet 0.44.5",
  "getrandom 0.3.4",
