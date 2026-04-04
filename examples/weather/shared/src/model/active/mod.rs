@@ -1,12 +1,15 @@
+pub mod favorites;
+pub mod location;
+pub mod weather;
+
 use crux_core::{Command, render::render};
 
 use crate::effects::secret::{self, SecretDeleteResponse};
 
-use super::{
-    ActiveEvent, ActiveModel,
-    favorites::{self, events::FavoritesEvent},
-    outcome::Outcome,
-    weather::{self, events::WeatherEvent},
+use super::{ActiveEvent, ActiveModel, outcome::Outcome};
+use self::{
+    favorites::events::FavoritesEvent,
+    weather::events::WeatherEvent,
 };
 
 /// Transition value when the active state completes.
@@ -64,8 +67,9 @@ impl ActiveModel {
 mod tests {
     use crate::{
         effects::secret::{self, SecretRequest},
-        model::{ActiveModel, Workflow, favorites::model::FavoritesState},
+        model::{ActiveModel, Workflow},
     };
+    use super::favorites::model::FavoritesState;
 
     use super::*;
 

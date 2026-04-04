@@ -5,9 +5,11 @@ use crate::{
     effects::location::Location,
     model::{
         Model, Workflow,
-        favorites::model::{Favorite, FavoritesState},
-        location::GeocodingResponse,
-        weather::model::current_response::CurrentWeatherResponse,
+        active::{
+            favorites::model::{Favorite, FavoritesState},
+            location::GeocodingResponse,
+            weather::model::current_response::CurrentWeatherResponse,
+        },
     },
 };
 

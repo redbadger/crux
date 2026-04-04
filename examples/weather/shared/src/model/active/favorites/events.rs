@@ -6,12 +6,10 @@ use serde_json;
 
 use crate::effects::{
     Effect,
-    location::{
-        Location,
-        client::{LocationApi, LocationError},
-    },
+    location::Location,
 };
-use crate::model::location::GeocodingResponse;
+use super::client::{LocationApi, LocationError};
+use super::super::location::GeocodingResponse;
 use crate::model::{ActiveModel, Workflow};
 use super::model::{FAVORITES_KEY, Favorite, Favorites, FavoritesState};
 
@@ -160,18 +158,17 @@ mod tests {
     use crux_kv::KeyValueOperation;
 
     use super::*;
+    use super::super::weather::model::{
+        current_response::{CurrentWeatherResponse, Main, Sys},
+        response_elements::{Clouds, Coord, WeatherData, Wind},
+    };
     use crate::{
         app::Weather,
-        effects::{Effect, location::client::LocationApi},
-        model::{
-            ActiveEvent, ActiveModel, Event, Model, Workflow,
-            favorites::model::FavoritesState,
-            weather::model::{
-                current_response::{CurrentWeatherResponse, Main, Sys},
-                response_elements::{Clouds, Coord, WeatherData, Wind},
-            },
-        },
+        effects::Effect,
+        model::{ActiveEvent, ActiveModel, Event, Model, Workflow},
     };
+    use super::client::LocationApi;
+    use super::model::FavoritesState;
 
     const TEST_API_KEY: &str = "test_api_key";
 

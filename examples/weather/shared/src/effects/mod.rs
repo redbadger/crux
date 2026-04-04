@@ -1,6 +1,5 @@
 pub mod location;
 pub mod secret;
-pub mod weather;
 
 use crux_core::{macros::effect, render::RenderOperation};
 use crux_http::protocol::HttpRequest;
