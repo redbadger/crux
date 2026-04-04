@@ -53,7 +53,9 @@ pub enum Model {
     Initializing(InitializingModel),
     Onboard(OnboardModel),
     Active(ActiveModel),
+    Failed(String),
 }
+
 
 #[derive(Default, Debug)]
 pub struct ActiveModel {
@@ -126,7 +128,7 @@ impl Model {
                 *self = Model::Onboard(config);
                 command
             }
-            outcome::Status::Complete(api_key) => {
+            outcome::Status::Complete(onboard::OnboardTransition::Active(api_key)) => {
                 *self = Model::Active(ActiveModel {
                     api_key: api_key.into(),
                     ..Default::default()
@@ -134,6 +136,10 @@ impl Model {
                 command.and(Command::event(Event::Active(ActiveEvent::Home(Box::new(
                     WeatherEvent::Show,
                 )))))
+            }
+            outcome::Status::Complete(onboard::OnboardTransition::Failed(msg)) => {
+                *self = Model::Failed(msg);
+                command
             }
         }
     }

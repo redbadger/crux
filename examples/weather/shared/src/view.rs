@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     effects::location::Location,
     model::{
-        Model, Workflow,
+        Model, Workflow, onboard,
         active::{
             favorites::model::{Favorite, FavoritesState},
             location::GeocodingResponse,
@@ -25,7 +25,8 @@ pub enum WorkflowViewModel {
     Loading,
     Onboard {
         api_key_input: String,
-        error: Option<String>,
+        can_submit: bool,
+        saving: bool,
     },
     Home {
         weather_data: Box<CurrentWeatherResponse>,
@@ -37,6 +38,9 @@ pub enum WorkflowViewModel {
     },
     AddFavorite {
         search_results: Option<Vec<GeocodingResponse>>,
+    },
+    Failed {
+        message: String,
     },
 }
 
@@ -63,9 +67,13 @@ impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
         let workflow = match model {
             Model::Uninitialized | Model::Initializing(_) => WorkflowViewModel::Loading,
-            Model::Onboard(config) => WorkflowViewModel::Onboard {
-                api_key_input: config.api_key_input.clone(),
-                error: config.error.clone(),
+            Model::Onboard(onboard) => WorkflowViewModel::Onboard {
+                can_submit: onboard.can_submit(),
+                api_key_input: match onboard {
+                    onboard::OnboardModel::Input { api_key } => api_key.clone(),
+                    onboard::OnboardModel::Saving { .. } => String::new(),
+                },
+                saving: matches!(onboard, onboard::OnboardModel::Saving { .. }),
             },
             Model::Active(active) => {
                 let favorites = active.favorites.iter().map(From::from).collect();
@@ -90,6 +98,9 @@ impl From<&Model> for ViewModel {
                     },
                 }
             }
+            Model::Failed(message) => WorkflowViewModel::Failed {
+                message: message.clone(),
+            },
         };
 
         ViewModel { workflow }
