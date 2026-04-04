@@ -1,10 +1,7 @@
 pub mod active;
 pub mod configuration;
-pub mod favorites;
 pub mod initializing;
-pub mod location;
 pub(crate) mod outcome;
-pub mod weather;
 
 use crux_core::Command;
 use facet::Facet;
@@ -16,17 +13,19 @@ use crate::effects::{
     secret::{SecretDeleteResponse, SecretFetchResponse, SecretStoreResponse},
 };
 
-use self::location::GeocodingResponse;
+use self::active::location::GeocodingResponse;
 
 use self::{
     configuration::ConfigurationModel,
-    favorites::{
-        events::FavoritesEvent,
-        model::{Favorites, FavoritesState},
-    },
-    weather::{
-        events::WeatherEvent,
-        model::current_response::CurrentWeatherResponse,
+    active::{
+        favorites::{
+            events::FavoritesEvent,
+            model::{Favorites, FavoritesState},
+        },
+        weather::{
+            events::WeatherEvent,
+            model::current_response::CurrentWeatherResponse,
+        },
     },
 };
 

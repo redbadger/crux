@@ -8,12 +8,13 @@ use crate::{
         Effect,
         location::{
             Location,
-            get_location, is_location_enabled,
+            command::{get_location, is_location_enabled},
         },
-        weather::{WeatherApi, WeatherError},
     },
-    model::{ActiveModel, weather::model::current_response::CurrentWeatherResponse},
+    model::ActiveModel,
 };
+use super::client::{WeatherApi, WeatherError};
+use super::model::current_response::CurrentWeatherResponse;
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
@@ -124,21 +125,19 @@ mod tests {
             location::{
                 Location, LocationOperation, LocationResult,
             },
-            weather::WeatherApi,
         },
-        model::{
-            ActiveModel,
-            favorites::model::Favorite,
-            weather::model::{
-                current_response::{
-                    CurrentWeatherResponse, CurrentWeatherResponseBuilder, Main, Sys,
-                },
-                response_elements::{Clouds, Coord, WeatherData, Wind},
-            },
-        },
+        model::ActiveModel,
     };
 
-    use crate::model::location::GeocodingResponse;
+    use super::super::favorites::model::Favorite;
+    use super::super::location::GeocodingResponse;
+    use super::client::WeatherApi;
+    use super::model::{
+        current_response::{
+            CurrentWeatherResponse, CurrentWeatherResponseBuilder, Main, Sys,
+        },
+        response_elements::{Clouds, Coord, WeatherData, Wind},
+    };
 
     const TEST_API_KEY: &str = "test_api_key";
 

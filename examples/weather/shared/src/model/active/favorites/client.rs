@@ -3,7 +3,7 @@ use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
 
-use crate::model::location::GeocodingResponse;
+use super::super::location::GeocodingResponse;
 
 const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
 
