@@ -129,10 +129,10 @@ mod tests {
         model::ActiveModel,
     };
 
-    use super::super::favorites::model::Favorite;
-    use super::super::location::GeocodingResponse;
-    use super::client::WeatherApi;
-    use super::model::{
+    use crate::model::active::favorites::model::Favorite;
+    use crate::model::active::location::GeocodingResponse;
+    use crate::model::active::weather::client::WeatherApi;
+    use crate::model::active::weather::model::{
         current_response::{
             CurrentWeatherResponse, CurrentWeatherResponseBuilder, Main, Sys,
         },

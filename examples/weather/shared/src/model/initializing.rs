@@ -1,11 +1,21 @@
 use crux_core::{Command, render::render};
+use facet::Facet;
+use serde::{Deserialize, Serialize};
 
 use crate::effects::{Effect, secret::SecretFetchResponse};
 
 use super::{
-    ActiveEvent, ActiveModel, Event, InitializingEvent, Model, WeatherEvent,
+    ActiveEvent, ActiveModel, Event, Model, WeatherEvent,
     configuration::ConfigurationModel,
 };
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
+pub enum InitializingEvent {
+    #[serde(skip)]
+    #[facet(skip)]
+    SecretFetched(#[facet(opaque)] SecretFetchResponse),
+}
 
 pub fn update(event: InitializingEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {

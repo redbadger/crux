@@ -10,16 +10,17 @@ use serde::{Deserialize, Serialize};
 use crate::effects::{
     Effect, secret,
     location::Location,
-    secret::{SecretDeleteResponse, SecretFetchResponse, SecretStoreResponse},
 };
 
 use self::active::location::GeocodingResponse;
+pub use self::active::ActiveEvent;
+pub use self::configuration::ConfigurationEvent;
+pub use self::initializing::InitializingEvent;
 
 use self::{
     configuration::ConfigurationModel,
     active::{
         favorites::{
-            events::FavoritesEvent,
             model::{Favorites, FavoritesState},
         },
         weather::{
@@ -37,42 +38,6 @@ pub enum Event {
     Initializing(InitializingEvent),
     Configuration(ConfigurationEvent),
     Active(ActiveEvent),
-}
-
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[repr(C)]
-pub enum InitializingEvent {
-    #[serde(skip)]
-    #[facet(skip)]
-    SecretFetched(#[facet(opaque)] SecretFetchResponse),
-}
-
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[repr(C)]
-pub enum ConfigurationEvent {
-    Set(String),
-    Submit,
-
-    #[serde(skip)]
-    #[facet(skip)]
-    SecretStored(#[facet(opaque)] SecretStoreResponse),
-
-    #[serde(skip)]
-    #[facet(skip)]
-    SecretFetched(#[facet(opaque)] SecretFetchResponse),
-}
-
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[repr(C)]
-pub enum ActiveEvent {
-    Navigate(Box<Workflow>),
-    Home(Box<WeatherEvent>),
-    Favorites(Box<FavoritesEvent>),
-    ResetApiKey,
-
-    #[serde(skip)]
-    #[facet(skip)]
-    SecretDeleted(#[facet(opaque)] SecretDeleteResponse),
 }
 // ANCHOR_END: event
 
