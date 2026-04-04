@@ -23,7 +23,7 @@ pub struct ViewModel {
 #[repr(C)]
 pub enum WorkflowViewModel {
     Loading,
-    Configuration {
+    Settings {
         api_key_input: String,
         error: Option<String>,
     },
@@ -63,7 +63,7 @@ impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
         let workflow = match model {
             Model::Uninitialized | Model::Initializing => WorkflowViewModel::Loading,
-            Model::Configuration(config) => WorkflowViewModel::Configuration {
+            Model::Settings(config) => WorkflowViewModel::Settings {
                 api_key_input: config.api_key_input.clone(),
                 error: config.error.clone(),
             },
