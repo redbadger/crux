@@ -3,14 +3,29 @@ pub mod location;
 pub mod weather;
 
 use crux_core::{Command, render::render};
+use facet::Facet;
+use serde::{Deserialize, Serialize};
 
 use crate::effects::secret::{self, SecretDeleteResponse};
 
-use super::{ActiveEvent, ActiveModel, outcome::Outcome};
+use super::{ActiveModel, Workflow, outcome::Outcome};
 use self::{
     favorites::events::FavoritesEvent,
     weather::events::WeatherEvent,
 };
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
+pub enum ActiveEvent {
+    Navigate(Box<Workflow>),
+    Home(Box<WeatherEvent>),
+    Favorites(Box<FavoritesEvent>),
+    ResetApiKey,
+
+    #[serde(skip)]
+    #[facet(skip)]
+    SecretDeleted(#[facet(opaque)] SecretDeleteResponse),
+}
 
 /// Transition value when the active state completes.
 pub(crate) enum ActiveTransition {

@@ -158,7 +158,7 @@ mod tests {
     use crux_kv::KeyValueOperation;
 
     use super::*;
-    use super::super::weather::model::{
+    use crate::model::active::weather::model::{
         current_response::{CurrentWeatherResponse, Main, Sys},
         response_elements::{Clouds, Coord, WeatherData, Wind},
     };
@@ -167,8 +167,8 @@ mod tests {
         effects::Effect,
         model::{ActiveEvent, ActiveModel, Event, Model, Workflow},
     };
-    use super::client::LocationApi;
-    use super::model::FavoritesState;
+    use crate::model::active::favorites::client::LocationApi;
+    use crate::model::active::favorites::model::FavoritesState;
 
     const TEST_API_KEY: &str = "test_api_key";
 

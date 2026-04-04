@@ -1,8 +1,25 @@
 use crux_core::{Command, render::render};
+use facet::Facet;
+use serde::{Deserialize, Serialize};
 
 use crate::effects::secret::{self, SecretFetchResponse, SecretStoreResponse};
 
-use super::{ConfigurationEvent, outcome::Outcome};
+use super::outcome::Outcome;
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
+pub enum ConfigurationEvent {
+    Set(String),
+    Submit,
+
+    #[serde(skip)]
+    #[facet(skip)]
+    SecretStored(#[facet(opaque)] SecretStoreResponse),
+
+    #[serde(skip)]
+    #[facet(skip)]
+    SecretFetched(#[facet(opaque)] SecretFetchResponse),
+}
 
 /// Model for the configuration screen where the user enters their API key.
 #[derive(Debug)]
