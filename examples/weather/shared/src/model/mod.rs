@@ -1,5 +1,5 @@
 pub mod active;
-pub mod configuration;
+pub mod settings;
 pub mod initializing;
 pub(crate) mod outcome;
 
@@ -14,11 +14,11 @@ use crate::effects::{
 
 use self::active::location::GeocodingResponse;
 pub use self::active::ActiveEvent;
-pub use self::configuration::ConfigurationEvent;
+pub use self::settings::SettingsEvent;
 pub use self::initializing::InitializingEvent;
 
 use self::{
-    configuration::ConfigurationModel,
+    settings::SettingsModel,
     active::{
         favorites::{
             model::{Favorites, FavoritesState},
@@ -36,7 +36,7 @@ use self::{
 pub enum Event {
     Start,
     Initializing(InitializingEvent),
-    Configuration(ConfigurationEvent),
+    Settings(SettingsEvent),
     Active(ActiveEvent),
 }
 // ANCHOR_END: event
@@ -58,7 +58,7 @@ pub enum Model {
     #[default]
     Uninitialized,
     Initializing,
-    Configuration(ConfigurationModel),
+    Settings(SettingsModel),
     Active(ActiveModel),
 }
 
@@ -85,21 +85,21 @@ impl Model {
                 })
             }
             Event::Initializing(event) => initializing::update(event, self),
-            Event::Configuration(event) => self.update_configuration(event),
+            Event::Settings(event) => self.update_settings(event),
             Event::Active(event) => self.update_active(event),
         }
     }
     // ANCHOR_END: update
 
-    fn update_configuration(&mut self, event: ConfigurationEvent) -> Command<Effect, Event> {
+    fn update_settings(&mut self, event: SettingsEvent) -> Command<Effect, Event> {
         let owned = std::mem::take(self);
-        let Model::Configuration(config) = owned else {
+        let Model::Settings(config) = owned else {
             *self = owned;
             return Command::done();
         };
-        match config.update(event).map_event(Event::Configuration) {
+        match config.update(event).map_event(Event::Settings) {
             outcome::Outcome::Continue(config, command) => {
-                *self = Model::Configuration(config);
+                *self = Model::Settings(config);
                 command
             }
             outcome::Outcome::Complete(api_key, command) => {
@@ -126,7 +126,7 @@ impl Model {
                 command
             }
             outcome::Outcome::Complete(active::ActiveTransition::ResetApiKey, command) => {
-                *self = Model::Configuration(ConfigurationModel::default());
+                *self = Model::Settings(SettingsModel::default());
                 command
             }
         }

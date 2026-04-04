@@ -6,7 +6,7 @@ use crate::effects::{Effect, secret::SecretFetchResponse};
 
 use super::{
     ActiveEvent, ActiveModel, Event, Model, WeatherEvent,
-    configuration::ConfigurationModel,
+    settings::SettingsModel,
 };
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -30,7 +30,7 @@ pub fn update(event: InitializingEvent, model: &mut Model) -> Command<Effect, Ev
                 ))))
             }
             SecretFetchResponse::Missing(_) => {
-                *model = Model::Configuration(ConfigurationModel::default());
+                *model = Model::Settings(SettingsModel::default());
                 render()
             }
         },
@@ -61,11 +61,11 @@ mod tests {
             &mut model,
         );
 
-        assert!(matches!(model, Model::Configuration(_)));
+        assert!(matches!(model, Model::Settings(_)));
         cmd.expect_one_effect().expect_render();
 
         let vm = app.view(&model);
-        assert!(matches!(vm.workflow, WorkflowViewModel::Configuration { .. }));
+        assert!(matches!(vm.workflow, WorkflowViewModel::Settings { .. }));
     }
 
     #[test]
