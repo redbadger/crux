@@ -35,13 +35,13 @@ mod tests {
     use crate::{
         effects::secret,
         model::initializing::InitializingModel,
-        view::WorkflowViewModel,
+        view::ViewModel,
     };
 
     use super::*;
 
     #[test]
-    fn test_start_fetches_secret_and_favorites() {
+    fn start_fetches_secret_and_favorites() {
         let app = Weather;
         let mut model = Model::default();
 
@@ -63,13 +63,13 @@ mod tests {
     }
 
     #[test]
-    fn test_view_loading() {
+    fn view_loading() {
         let app = Weather;
 
         let vm = app.view(&Model::Uninitialized);
-        assert!(matches!(vm.workflow, WorkflowViewModel::Loading));
+        assert!(matches!(vm, ViewModel::Loading));
 
         let vm = app.view(&Model::Initializing(InitializingModel::default()));
-        assert!(matches!(vm.workflow, WorkflowViewModel::Loading));
+        assert!(matches!(vm, ViewModel::Loading));
     }
 }
