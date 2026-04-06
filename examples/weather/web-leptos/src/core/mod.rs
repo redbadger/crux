@@ -27,6 +27,18 @@ fn process_effects(core: &Core, effects: Vec<Effect>, render: WriteSignal<ViewMo
     }
 }
 
+fn resolve_effect<Output>(
+    core: &Core,
+    request: &mut impl crux_core::Resolvable<Output>,
+    output: Output,
+    render: WriteSignal<ViewModel>,
+) {
+    match core.resolve(request, output) {
+        Ok(new_effects) => process_effects(core, new_effects, render),
+        Err(e) => log::warn!("failed to resolve effect: {e:?}"),
+    }
+}
+
 fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
     match effect {
         Effect::Render(_) => render.set(core.view()),

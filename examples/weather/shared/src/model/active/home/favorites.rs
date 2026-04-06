@@ -16,7 +16,7 @@ pub enum FavoriteWeatherEvent {
 
 #[derive(Debug)]
 pub(crate) enum FavoriteWeatherTransition {
-    Unauthorized,
+    Unauthorized(Favorites),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,6 +30,12 @@ pub enum FavoriteWeatherState {
 pub struct FavoriteWeather {
     pub favorite: Favorite,
     pub weather: FavoriteWeatherState,
+}
+
+impl From<Vec<FavoriteWeather>> for Favorites {
+    fn from(weather: Vec<FavoriteWeather>) -> Self {
+        Self::from_vec(weather.into_iter().map(|fw| fw.favorite).collect())
+    }
 }
 
 pub(crate) fn start(
@@ -76,7 +82,10 @@ pub(crate) fn update(
                 }
                 Err(WeatherError::Unauthorized) => {
                     tracing::warn!("weather API returned unauthorized");
-                    return Outcome::complete(FavoriteWeatherTransition::Unauthorized, render());
+                    return Outcome::complete(
+                        FavoriteWeatherTransition::Unauthorized(items.into()),
+                        render(),
+                    );
                 }
                 Err(ref e) => {
                     tracing::warn!("fetching favorite weather failed: {e:?}");
@@ -240,7 +249,7 @@ mod tests {
         .expect_complete()
         .into_parts();
 
-        assert!(matches!(transition, FavoriteWeatherTransition::Unauthorized));
+        assert!(matches!(transition, FavoriteWeatherTransition::Unauthorized(_)));
     }
 
     #[test]

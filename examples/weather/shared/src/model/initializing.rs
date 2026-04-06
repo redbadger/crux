@@ -35,14 +35,21 @@ pub enum InitializingEvent {
 
 #[derive(Debug)]
 pub(crate) enum InitializingTransition {
-    Onboard,
+    Onboard(Favorites),
     Active(ApiKey, Favorites),
 }
 
 #[derive(Default, Debug)]
+enum InitializingValue<T> {
+    #[default]
+    Fetching,
+    Fetched(T),
+}
+
+#[derive(Default, Debug)]
 pub struct InitializingModel {
-    api_key: Option<ApiKey>,
-    favorites: Option<Favorites>,
+    api_key: InitializingValue<Option<ApiKey>>,
+    favorites: InitializingValue<Favorites>,
 }
 
 impl InitializingModel {
@@ -62,17 +69,20 @@ impl InitializingModel {
         event: InitializingEvent,
     ) -> Outcome<Self, InitializingTransition, InitializingEvent> {
         match event {
-            InitializingEvent::SecretFetched(response) => match response {
-                SecretFetchResponse::Missing(_) => {
-                    tracing::debug!("API key missing, transitioning to onboarding");
-                    Outcome::complete(InitializingTransition::Onboard, render())
-                }
-                SecretFetchResponse::Fetched(api_key) => {
-                    tracing::debug!("received API key");
-                    self.api_key = Some(api_key.into());
-                    self.resolve()
-                }
-            },
+            InitializingEvent::SecretFetched(response) => {
+                let api_key = match response {
+                    SecretFetchResponse::Missing(_) => {
+                        tracing::debug!("API key missing");
+                        None
+                    }
+                    SecretFetchResponse::Fetched(api_key) => {
+                        tracing::debug!("received API key");
+                        Some(api_key.into())
+                    }
+                };
+                self.api_key = InitializingValue::Fetched(api_key);
+                self.resolve()
+            }
             InitializingEvent::FavoritesLoaded(result) => {
                 let favorites = result
                     .ok()
@@ -82,7 +92,7 @@ impl InitializingModel {
                     .unwrap_or_default();
 
                 tracing::debug!("loaded {} favorites", favorites.len());
-                self.favorites = Some(favorites);
+                self.favorites = InitializingValue::Fetched(favorites);
                 self.resolve()
             }
         }
@@ -90,9 +100,13 @@ impl InitializingModel {
 
     fn resolve(self) -> Outcome<Self, InitializingTransition, InitializingEvent> {
         match (self.api_key, self.favorites) {
-            (Some(api_key), Some(favorites)) => {
+            (InitializingValue::Fetched(Some(api_key)), InitializingValue::Fetched(favorites)) => {
                 tracing::debug!("initialization complete, transitioning to active");
                 Outcome::complete(InitializingTransition::Active(api_key, favorites), Command::done())
+            }
+            (InitializingValue::Fetched(None), InitializingValue::Fetched(favorites)) => {
+                tracing::debug!("API key missing, transitioning to onboarding");
+                Outcome::complete(InitializingTransition::Onboard(favorites), render())
             }
             (api_key, favorites) => {
                 tracing::debug!("waiting for remaining initialization data");
@@ -110,14 +124,32 @@ mod tests {
     const API_KEY_VALUE: &str = "my_key";
 
     #[test]
-    fn secret_missing_transitions_to_onboard() {
+    fn secret_missing_continues_waiting_for_favorites() {
         let model = InitializingModel::default();
         let outcome = model.update(InitializingEvent::SecretFetched(
             SecretFetchResponse::Missing(secret::API_KEY_NAME.to_string()),
         ));
 
+        let (model, mut cmd) = outcome.expect_continue().into_parts();
+        assert!(matches!(model.api_key, InitializingValue::Fetched(None)));
+        assert!(matches!(model.favorites, InitializingValue::Fetching));
+        cmd.expect_one_effect().expect_render();
+    }
+
+    #[test]
+    fn secret_missing_then_favorites_transitions_to_onboard() {
+        let mut model = InitializingModel::default();
+
+        // First: secret is missing
+        let outcome = model.update(InitializingEvent::SecretFetched(
+            SecretFetchResponse::Missing(secret::API_KEY_NAME.to_string()),
+        ));
+        model = outcome.expect_continue().into_value();
+
+        // Second: favorites arrive
+        let outcome = model.update(InitializingEvent::FavoritesLoaded(Ok(None)));
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
-        assert!(matches!(transition, InitializingTransition::Onboard));
+        assert!(matches!(transition, InitializingTransition::Onboard(_)));
         cmd.expect_one_effect().expect_render();
     }
 
@@ -129,8 +161,8 @@ mod tests {
         ));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
-        assert!(model.api_key.is_some());
-        assert!(model.favorites.is_none());
+        assert!(matches!(model.api_key, InitializingValue::Fetched(Some(_))));
+        assert!(matches!(model.favorites, InitializingValue::Fetching));
         cmd.expect_one_effect().expect_render();
     }
 
@@ -140,8 +172,8 @@ mod tests {
         let outcome = model.update(InitializingEvent::FavoritesLoaded(Ok(None)));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
-        assert!(model.api_key.is_none());
-        assert!(model.favorites.is_some());
+        assert!(matches!(model.api_key, InitializingValue::Fetching));
+        assert!(matches!(model.favorites, InitializingValue::Fetched(_)));
         cmd.expect_one_effect().expect_render();
     }
 

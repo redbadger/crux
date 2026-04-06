@@ -14,11 +14,7 @@ pub(super) fn resolve(
         log::debug!("location: {:?}", request.operation);
 
         let response = handle(&request.operation).await;
-
-        match core.resolve(&mut request, response) {
-            Ok(new_effects) => super::process_effects(&core, new_effects, render),
-            Err(e) => log::warn!("failed to resolve location: {e:?}"),
-        }
+        super::resolve_effect(&core, &mut request, response, render);
     });
 }
 

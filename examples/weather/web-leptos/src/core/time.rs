@@ -16,10 +16,7 @@ pub(super) fn resolve(
             let response = TimeResponse::Now {
                 instant: now_instant(),
             };
-            match core.resolve(&mut request, response) {
-                Ok(new_effects) => super::process_effects(core, new_effects, render),
-                Err(e) => log::warn!("failed to resolve time now: {e:?}"),
-            }
+            super::resolve_effect(core, &mut request, response, render);
         }
         TimeRequest::NotifyAfter { id, duration } => {
             let millis =
@@ -32,10 +29,7 @@ pub(super) fn resolve(
                     .await;
                 log::debug!("time: duration elapsed (id={id:?})");
                 let response = TimeResponse::DurationElapsed { id };
-                match core.resolve(&mut request, response) {
-                    Ok(new_effects) => super::process_effects(&core, new_effects, render),
-                    Err(e) => log::warn!("failed to resolve time notify_after: {e:?}"),
-                }
+                super::resolve_effect(&core, &mut request, response, render);
             });
         }
         TimeRequest::NotifyAt { id, instant } => {
@@ -51,19 +45,13 @@ pub(super) fn resolve(
                 }
                 log::debug!("time: instant arrived (id={id:?})");
                 let response = TimeResponse::InstantArrived { id };
-                match core.resolve(&mut request, response) {
-                    Ok(new_effects) => super::process_effects(&core, new_effects, render),
-                    Err(e) => log::warn!("failed to resolve time notify_at: {e:?}"),
-                }
+                super::resolve_effect(&core, &mut request, response, render);
             });
         }
         TimeRequest::Clear { id } => {
             log::debug!("time: clear (id={id:?})");
             let response = TimeResponse::Cleared { id: *id };
-            match core.resolve(&mut request, response) {
-                Ok(new_effects) => super::process_effects(core, new_effects, render),
-                Err(e) => log::warn!("failed to resolve time clear: {e:?}"),
-            }
+            super::resolve_effect(core, &mut request, response, render);
         }
     }
 }

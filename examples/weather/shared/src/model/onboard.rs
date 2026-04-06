@@ -9,7 +9,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::effects::secret::{self, SecretStoreResponse};
 
-use super::{outcome::Outcome, ApiKey};
+use super::{
+    active::favorites::model::Favorites,
+    outcome::Outcome,
+    ApiKey,
+};
 
 /// Why the user is on the onboarding screen.
 #[derive(Facet, Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq)]
@@ -25,7 +29,7 @@ pub enum OnboardReason {
 #[derive(Debug)]
 pub(crate) enum OnboardTransition {
     /// The user successfully set up their API key.
-    Active(ApiKey),
+    Active(ApiKey, Favorites),
     /// A system error prevented onboarding from completing.
     Failed(String),
 }
@@ -49,6 +53,7 @@ pub enum OnboardEvent {
 pub struct OnboardModel {
     pub reason: OnboardReason,
     pub state: OnboardState,
+    favorites: Favorites,
 }
 
 #[derive(Debug)]
@@ -61,14 +66,15 @@ pub enum OnboardState {
 
 impl Default for OnboardModel {
     fn default() -> Self {
-        Self::new(OnboardReason::default())
+        Self::new(OnboardReason::default(), Favorites::default())
     }
 }
 
 impl OnboardModel {
-    pub fn new(reason: OnboardReason) -> Self {
+    pub fn new(reason: OnboardReason, favorites: Favorites) -> Self {
         Self {
             reason,
+            favorites,
             state: OnboardState::Input {
                 api_key: String::new(),
             },
@@ -95,13 +101,13 @@ impl OnboardModel {
         self,
         event: OnboardEvent,
     ) -> Outcome<Self, OnboardTransition, OnboardEvent> {
-        let Self { reason, state } = self;
+        let Self { reason, state, favorites } = self;
 
         match (state, event) {
             (OnboardState::Input { .. }, OnboardEvent::ApiKey(text)) => {
                 tracing::debug!("updating api key input, waiting for submission");
                 Outcome::continuing(
-                    Self { reason, state: OnboardState::Input { api_key: text } },
+                    Self { reason, favorites, state: OnboardState::Input { api_key: text } },
                     render(),
                 )
             }
@@ -116,7 +122,7 @@ impl OnboardModel {
                 let cmd = secret::command::store(secret::API_KEY_NAME, key.clone())
                     .then_send(OnboardEvent::SecretStored);
                 Outcome::continuing(
-                    Self { reason, state: OnboardState::Saving { api_key: key.into() } },
+                    Self { reason, favorites, state: OnboardState::Saving { api_key: key.into() } },
                     cmd,
                 )
             }
@@ -124,7 +130,7 @@ impl OnboardModel {
                 match response {
                     SecretStoreResponse::Stored(_) => {
                         tracing::debug!("completing onboarding, api key stored successfully");
-                        Outcome::complete(OnboardTransition::Active(api_key), render())
+                        Outcome::complete(OnboardTransition::Active(api_key, favorites), render())
                     }
                     SecretStoreResponse::StoreError(msg) => Self::fail(format!(
                         "failed to store API key in the secret store due to error: {msg}"
@@ -148,6 +154,7 @@ mod tests {
     fn input_model(api_key: &str) -> OnboardModel {
         OnboardModel {
             reason: OnboardReason::default(),
+            favorites: Favorites::default(),
             state: OnboardState::Input {
                 api_key: api_key.to_string(),
             },
@@ -157,6 +164,7 @@ mod tests {
     fn saving_model(api_key: &str) -> OnboardModel {
         OnboardModel {
             reason: OnboardReason::default(),
+            favorites: Favorites::default(),
             state: OnboardState::Saving {
                 api_key: api_key.to_string().into(),
             },
@@ -243,7 +251,7 @@ mod tests {
 
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
         cmd.expect_one_effect().expect_render();
-        assert_let_bind::assert_let!(OnboardTransition::Active(api_key), transition);
+        assert_let_bind::assert_let!(OnboardTransition::Active(api_key, _favorites), transition);
         assert_eq!(api_key, "the_key");
     }
 }

@@ -18,11 +18,7 @@ pub(super) fn resolve(
         log::debug!("http {} {}", op.method, op.url);
 
         let response = send_request(op).await;
-
-        match core.resolve(&mut request, response.into()) {
-            Ok(new_effects) => super::process_effects(&core, new_effects, render),
-            Err(e) => log::warn!("failed to resolve http: {e:?}"),
-        }
+        super::resolve_effect(&core, &mut request, response.into(), render);
     });
 }
 
@@ -37,7 +33,10 @@ async fn send_request(
     let mut request = match method.as_str() {
         "GET" => http::Request::get(url),
         "POST" => http::Request::post(url),
-        _ => panic!("unsupported HTTP method: {method}"),
+        "PUT" => http::Request::put(url),
+        "DELETE" => http::Request::delete(url),
+        "PATCH" => http::Request::patch(url),
+        _ => return Err(HttpError::Io(format!("unsupported HTTP method: {method}"))),
     };
 
     for header in headers {

@@ -16,10 +16,7 @@ pub use self::initializing::InitializingEvent;
 use self::initializing::InitializingModel;
 pub use self::onboard::OnboardEvent;
 
-use self::{
-    active::favorites::model::Favorites,
-    onboard::OnboardModel,
-};
+use self::onboard::OnboardModel;
 
 // ANCHOR: event
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -75,8 +72,8 @@ impl Model {
                 *self = Model::Initializing(initializing);
                 command
             }
-            outcome::Status::Complete(initializing::InitializingTransition::Onboard) => {
-                *self = Model::Onboard(OnboardModel::default());
+            outcome::Status::Complete(initializing::InitializingTransition::Onboard(favorites)) => {
+                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::default(), favorites));
                 command
             }
             outcome::Status::Complete(initializing::InitializingTransition::Active(api_key, favorites)) => {
@@ -104,8 +101,8 @@ impl Model {
                 *self = Model::Onboard(config);
                 command
             }
-            outcome::Status::Complete(onboard::OnboardTransition::Active(api_key)) => {
-                let (home_screen, start_cmd) = active::home::HomeScreen::start(Favorites::default(), &api_key)
+            outcome::Status::Complete(onboard::OnboardTransition::Active(api_key, favorites)) => {
+                let (home_screen, start_cmd) = active::home::HomeScreen::start(favorites, &api_key)
                     .map_event(|he| Event::Active(ActiveEvent::home(he)))
                     .into_parts();
                 *self = Model::Active(ActiveModel {
@@ -136,12 +133,12 @@ impl Model {
                 *self = Model::Active(active_model);
                 command
             }
-            outcome::Status::Complete(active::ActiveTransition::ResetApiKey) => {
-                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::Reset));
+            outcome::Status::Complete(active::ActiveTransition::ResetApiKey(favorites)) => {
+                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::Reset, favorites));
                 command
             }
-            outcome::Status::Complete(active::ActiveTransition::Unauthorized) => {
-                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::Unauthorized));
+            outcome::Status::Complete(active::ActiveTransition::Unauthorized(favorites)) => {
+                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::Unauthorized, favorites));
                 command
             }
         }

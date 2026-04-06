@@ -9,7 +9,7 @@ use crate::effects::secret::{self, SecretDeleteResponse};
 
 use super::{ApiKey, outcome::Outcome};
 use self::{
-    favorites::{FavoritesScreen, FavoritesScreenEvent, FavoritesTransition},
+    favorites::{FavoritesScreen, FavoritesScreenEvent, FavoritesTransition, model::Favorites},
     home::{HomeEvent, HomeScreen, HomeTransition},
 };
 
@@ -47,11 +47,20 @@ impl Default for Screen {
     }
 }
 
+impl Screen {
+    fn into_favorites(self) -> Favorites {
+        match self {
+            Screen::Home(home) => home.favorites_weather.into(),
+            Screen::Favorites(fav) => fav.favorites,
+        }
+    }
+}
+
 /// Transition value when the active state completes.
 #[derive(Debug)]
 pub(crate) enum ActiveTransition {
-    ResetApiKey,
-    Unauthorized,
+    ResetApiKey(Favorites),
+    Unauthorized(Favorites),
 }
 
 #[derive(Default, Debug)]
@@ -75,7 +84,7 @@ impl ActiveModel {
             }
             ActiveEvent::SecretDeleted(response) => match response {
                 SecretDeleteResponse::Deleted(_) => {
-                    Outcome::complete(ActiveTransition::ResetApiKey, render())
+                    Outcome::complete(ActiveTransition::ResetApiKey(screen.into_favorites()), render())
                 }
                 SecretDeleteResponse::DeleteError(_) => {
                     Outcome::continuing(ActiveModel { api_key, screen }, Command::done())
@@ -111,8 +120,8 @@ impl ActiveModel {
                             cmd,
                         )
                     }
-                    super::outcome::Status::Complete(HomeTransition::ApiKeyRejected) => {
-                        Outcome::complete(ActiveTransition::Unauthorized, cmd.and(render()))
+                    super::outcome::Status::Complete(HomeTransition::ApiKeyRejected(favorites)) => {
+                        Outcome::complete(ActiveTransition::Unauthorized(favorites), cmd.and(render()))
                     }
                 }
             }
@@ -187,7 +196,7 @@ mod tests {
         )));
 
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
-        assert!(matches!(transition, ActiveTransition::ResetApiKey));
+        assert!(matches!(transition, ActiveTransition::ResetApiKey(_)));
         cmd.expect_one_effect().expect_render();
     }
 

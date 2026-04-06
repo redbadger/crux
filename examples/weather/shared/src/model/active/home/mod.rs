@@ -32,7 +32,7 @@ pub enum HomeEvent {
 #[derive(Debug)]
 pub(crate) enum HomeTransition {
     GoToFavorites(Favorites),
-    ApiKeyRejected,
+    ApiKeyRejected(Favorites),
 }
 
 #[derive(Default, Debug)]
@@ -42,6 +42,7 @@ pub struct HomeScreen {
 }
 
 impl HomeScreen {
+
     pub(crate) fn start(
         favorites: Favorites,
         api_key: &ApiKey,
@@ -71,13 +72,7 @@ impl HomeScreen {
     ) -> Outcome<Self, HomeTransition, HomeEvent> {
         match event {
             HomeEvent::GoToFavorites => {
-                let favorites = Favorites::from_vec(
-                    self.favorites_weather
-                        .iter()
-                        .map(|fw| fw.favorite.clone())
-                        .collect(),
-                );
-                Outcome::complete(HomeTransition::GoToFavorites(favorites), render())
+                Outcome::complete(HomeTransition::GoToFavorites(self.favorites_weather.into()), render())
             }
 
             HomeEvent::Local(local_event) => {
@@ -100,7 +95,7 @@ impl HomeScreen {
                         cmd,
                     ),
                     Status::Complete(LocalWeatherTransition::Unauthorized) => {
-                        Outcome::complete(HomeTransition::ApiKeyRejected, cmd)
+                        Outcome::complete(HomeTransition::ApiKeyRejected(favorites_weather.into()), cmd)
                     }
                 }
             }
@@ -123,8 +118,8 @@ impl HomeScreen {
                         },
                         cmd,
                     ),
-                    Status::Complete(FavoriteWeatherTransition::Unauthorized) => {
-                        Outcome::complete(HomeTransition::ApiKeyRejected, cmd)
+                    Status::Complete(FavoriteWeatherTransition::Unauthorized(favorites)) => {
+                        Outcome::complete(HomeTransition::ApiKeyRejected(favorites), cmd)
                     }
                 }
             }
