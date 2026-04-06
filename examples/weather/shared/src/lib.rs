@@ -11,6 +11,9 @@ pub use app::*;
 pub use crux_core::Core;
 pub use crux_http as http;
 pub use crux_kv as kv;
+pub use effects::Effect;
+pub use model::Event;
+pub use view::ViewModel;
 
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 pub use ffi::CoreFFI;

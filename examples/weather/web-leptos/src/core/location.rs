@@ -1,22 +1,45 @@
+use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use shared::location::{
-    Location,
-    capability::{LocationOperation, LocationResult},
-};
+use shared::ViewModel;
+use shared::effects::location::{Location, LocationOperation, LocationResult};
 
-#[allow(clippy::future_not_send)] // WASM is single-threaded
-pub async fn handle(operation: &LocationOperation) -> LocationResult {
+pub(super) fn resolve(
+    core: &super::Core,
+    mut request: crux_core::Request<LocationOperation>,
+    render: WriteSignal<ViewModel>,
+) {
+    let core = core.clone();
+    wasm_bindgen_futures::spawn_local(async move {
+        log::debug!("location: {:?}", request.operation);
+
+        let response = handle(&request.operation).await;
+
+        match core.resolve(&mut request, response) {
+            Ok(new_effects) => super::process_effects(&core, new_effects, render),
+            Err(e) => log::warn!("failed to resolve location: {e:?}"),
+        }
+    });
+}
+
+async fn handle(operation: &LocationOperation) -> LocationResult {
     match operation {
         LocationOperation::IsLocationEnabled => {
             let enabled = web_sys::window()
                 .and_then(|w| w.navigator().geolocation().ok())
                 .is_some();
+            log::debug!("location enabled: {enabled}");
             LocationResult::Enabled(enabled)
         }
         LocationOperation::GetLocation => match get_current_position().await {
-            Ok((lat, lon)) => LocationResult::Location(Some(Location { lat, lon })),
-            Err(_) => LocationResult::Location(None),
+            Ok((lat, lon)) => {
+                log::debug!("location fetched: {lat}, {lon}");
+                LocationResult::Location(Some(Location { lat, lon }))
+            }
+            Err(e) => {
+                log::warn!("geolocation failed: {e:?}");
+                LocationResult::Location(None)
+            }
         },
     }
 }
@@ -53,14 +76,14 @@ async fn get_current_position() -> Result<(f64, f64), JsValue> {
         Some(error_callback.as_ref().unchecked_ref()),
     )?;
 
-    // Keep closures alive
+    // Keep closures alive until geolocation completes
     success_callback.forget();
     error_callback.forget();
 
     receiver.await
 }
 
-// Simple oneshot channel using Rc<RefCell<>>
+// Simple oneshot channel for bridging callback-based JS APIs to Rust futures.
 fn oneshot<T>() -> (Sender<T>, Receiver<T>) {
     let shared = std::rc::Rc::new(std::cell::RefCell::new(OneshotState {
         value: None,
