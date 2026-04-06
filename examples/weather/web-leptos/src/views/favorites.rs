@@ -6,9 +6,7 @@ use shared::{
     model::active::{
         ActiveEvent,
         favorites::{
-            FavoritesScreenEvent,
-            add::AddFavoriteEvent,
-            confirm_delete::ConfirmDeleteEvent,
+            FavoritesScreenEvent, add::AddFavoriteEvent, confirm_delete::ConfirmDeleteEvent,
         },
     },
     view::active::favorites::{FavoritesViewModel, FavoritesWorkflowViewModel},
@@ -17,11 +15,10 @@ use shared::{
 #[component]
 pub fn favorites_view(model: FavoritesViewModel, set_event: WriteSignal<Event>) -> impl IntoView {
     match model.workflow {
-        Some(FavoritesWorkflowViewModel::Add(add)) => {
-            view! {
-                <AddFavoriteView model=add set_event=set_event />
-            }.into_any()
+        Some(FavoritesWorkflowViewModel::Add(add)) => view! {
+            <AddFavoriteView model=add set_event=set_event />
         }
+        .into_any(),
         _ => {
             let delete_confirmation = match model.workflow {
                 Some(FavoritesWorkflowViewModel::ConfirmDelete { location }) => Some(location),

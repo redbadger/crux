@@ -73,8 +73,9 @@ pub(crate) enum FavoritesTransition {
     GoToHome(Favorites),
 }
 
-fn persist_favorites(favorites: &Favorites) -> Command<crate::effects::Effect, FavoritesScreenEvent>
-{
+fn persist_favorites(
+    favorites: &Favorites,
+) -> Command<crate::effects::Effect, FavoritesScreenEvent> {
     KeyValue::set(
         FAVORITES_KEY,
         serde_json::to_vec(favorites.as_slice()).unwrap(),
@@ -114,10 +115,7 @@ impl FavoritesScreen {
                 };
 
                 match (workflow, workflow_event) {
-                    (
-                        FavoritesWorkflow::Add(add_workflow),
-                        FavoritesWorkflowEvent::Add(event),
-                    ) => {
+                    (FavoritesWorkflow::Add(add_workflow), FavoritesWorkflowEvent::Add(event)) => {
                         let (status, cmd) = add_workflow
                             .update(event, api_key)
                             .map_event(|e| {
@@ -132,16 +130,19 @@ impl FavoritesScreen {
                             }
                             Status::Complete(AddFavoriteTransition::Selected(favorite)) => {
                                 if self.favorites.exists(&favorite.location()) {
-                                    tracing::debug!("ignoring duplicate favorite {:?}", favorite.location());
+                                    tracing::debug!(
+                                        "ignoring duplicate favorite {:?}",
+                                        favorite.location()
+                                    );
                                     Outcome::continuing(self, cmd.and(render()))
                                 } else {
-                                    tracing::debug!("adding favorite '{}' and persisting", favorite.name());
-                                    self.favorites.insert(favorite);
+                                    tracing::debug!(
+                                        "adding favorite '{}' and persisting",
+                                        favorite.name()
+                                    );
+                                    self.favorites.insert(*favorite);
                                     let persist = persist_favorites(&self.favorites);
-                                    Outcome::continuing(
-                                        self,
-                                        cmd.and(render()).and(persist),
-                                    )
+                                    Outcome::continuing(self, cmd.and(render()).and(persist))
                                 }
                             }
                             Status::Complete(AddFavoriteTransition::Cancelled) => {
@@ -166,16 +167,21 @@ impl FavoritesScreen {
 
                         match status {
                             Status::Continue(delete_workflow) => {
-                                self.workflow = Some(FavoritesWorkflow::ConfirmDelete(delete_workflow));
+                                self.workflow =
+                                    Some(FavoritesWorkflow::ConfirmDelete(delete_workflow));
                                 Outcome::continuing(self, cmd)
                             }
                             Status::Complete(ConfirmDeleteTransition::Confirmed(location)) => {
                                 if self.favorites.remove(&location).is_some() {
-                                    tracing::debug!("deleting favorite at {location:?} and persisting");
+                                    tracing::debug!(
+                                        "deleting favorite at {location:?} and persisting"
+                                    );
                                     let persist = persist_favorites(&self.favorites);
                                     Outcome::continuing(self, cmd.and(persist))
                                 } else {
-                                    tracing::debug!("favorite at {location:?} not found, nothing to delete");
+                                    tracing::debug!(
+                                        "favorite at {location:?} not found, nothing to delete"
+                                    );
                                     Outcome::continuing(self, cmd)
                                 }
                             }
@@ -275,7 +281,10 @@ mod tests {
         let screen = test_screen();
         let location = test_favorite().location();
         let (screen, mut cmd) = screen
-            .update(FavoritesScreenEvent::RequestDelete(location), &test_api_key())
+            .update(
+                FavoritesScreenEvent::RequestDelete(location),
+                &test_api_key(),
+            )
             .expect_continue()
             .into_parts();
 

@@ -12,6 +12,7 @@ export async function handle(
   switch (operation.constructor) {
     case LocationOperationVariantIsLocationEnabled: {
       const enabled = "geolocation" in navigator;
+      console.debug("location enabled:", enabled);
       return new LocationResultVariantEnabled(enabled);
     }
     default: {
@@ -22,13 +23,19 @@ export async function handle(
             navigator.geolocation.getCurrentPosition(resolve, reject);
           },
         );
+        console.debug(
+          "location fetched:",
+          position.coords.latitude,
+          position.coords.longitude,
+        );
         return new LocationResultVariantLocation(
           new Location(
             position.coords.latitude,
             position.coords.longitude,
           ),
         );
-      } catch {
+      } catch (e) {
+        console.warn("geolocation failed:", e);
         return new LocationResultVariantLocation(null);
       }
     }

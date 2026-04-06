@@ -2,10 +2,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    effects::{
-        http::weather::model::current_response::CurrentWeatherResponse,
-        location::Location,
-    },
+    effects::{http::weather::model::current_response::CurrentWeatherResponse, location::Location},
     model::active::home::{FavoriteWeather, FavoriteWeatherState, HomeScreen, LocalWeather},
 };
 

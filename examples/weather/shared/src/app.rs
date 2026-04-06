@@ -32,11 +32,7 @@ impl App for Weather {
 mod tests {
     use crux_core::App as _;
 
-    use crate::{
-        effects::secret,
-        model::initializing::InitializingModel,
-        view::ViewModel,
-    };
+    use crate::{effects::secret, model::initializing::InitializingModel, view::ViewModel};
 
     use super::*;
 

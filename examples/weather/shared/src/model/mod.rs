@@ -73,10 +73,16 @@ impl Model {
                 command
             }
             outcome::Status::Complete(initializing::InitializingTransition::Onboard(favorites)) => {
-                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::default(), favorites));
+                *self = Model::Onboard(OnboardModel::new(
+                    onboard::OnboardReason::default(),
+                    favorites,
+                ));
                 command
             }
-            outcome::Status::Complete(initializing::InitializingTransition::Active(api_key, favorites)) => {
+            outcome::Status::Complete(initializing::InitializingTransition::Active(
+                api_key,
+                favorites,
+            )) => {
                 let (home_screen, start_cmd) = active::home::HomeScreen::start(favorites, &api_key)
                     .map_event(|he| Event::Active(ActiveEvent::home(he)))
                     .into_parts();
@@ -138,7 +144,10 @@ impl Model {
                 command
             }
             outcome::Status::Complete(active::ActiveTransition::Unauthorized(favorites)) => {
-                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::Unauthorized, favorites));
+                *self = Model::Onboard(OnboardModel::new(
+                    onboard::OnboardReason::Unauthorized,
+                    favorites,
+                ));
                 command
             }
         }

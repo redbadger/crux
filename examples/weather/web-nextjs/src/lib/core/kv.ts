@@ -20,6 +20,7 @@ export async function handle(
   switch (operation.constructor) {
     case KeyValueOperationVariantGet: {
       const key = (operation as KeyValueOperationVariantGet).key;
+      console.debug("kv get:", key);
       const stored = localStorage.getItem(key);
       const bytes = stored
         ? Array.from(new TextEncoder().encode(stored))
@@ -30,6 +31,7 @@ export async function handle(
     }
     case KeyValueOperationVariantSet: {
       const { key, value } = operation as KeyValueOperationVariantSet;
+      console.debug("kv set:", key);
       const previous = localStorage.getItem(key);
       const prevBytes = previous
         ? Array.from(new TextEncoder().encode(previous))
@@ -42,6 +44,7 @@ export async function handle(
     }
     case KeyValueOperationVariantDelete: {
       const key = (operation as KeyValueOperationVariantDelete).key;
+      console.debug("kv delete:", key);
       const previous = localStorage.getItem(key);
       const prevBytes = previous
         ? Array.from(new TextEncoder().encode(previous))
@@ -54,12 +57,14 @@ export async function handle(
     case KeyValueOperationVariantExists: {
       const key = (operation as KeyValueOperationVariantExists).key;
       const exists = localStorage.getItem(key) !== null;
+      console.debug("kv exists:", key, exists);
       return new KeyValueResultVariantOk(
         new KeyValueResponseVariantExists(exists),
       );
     }
     case KeyValueOperationVariantListKeys: {
       const { prefix } = operation as KeyValueOperationVariantListKeys;
+      console.debug("kv list_keys: prefix=", prefix);
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);

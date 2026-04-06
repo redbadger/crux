@@ -113,11 +113,17 @@ impl<V, Event> Asserted<V, Event> {
 impl<S: std::fmt::Debug, T: std::fmt::Debug, Event> Outcome<S, T, Event> {
     pub fn expect_continue(self) -> Asserted<S, Event> {
         assert_let_bind::assert_let!(Status::Continue(state), self.status);
-        Asserted { value: state, command: self.command }
+        Asserted {
+            value: state,
+            command: self.command,
+        }
     }
 
     pub fn expect_complete(self) -> Asserted<T, Event> {
         assert_let_bind::assert_let!(Status::Complete(value), self.status);
-        Asserted { value, command: self.command }
+        Asserted {
+            value,
+            command: self.command,
+        }
     }
 }

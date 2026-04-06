@@ -10,6 +10,7 @@ export async function request({
   method,
   headers,
 }: HttpRequest): Promise<HttpResult> {
+  console.debug(`http ${method} ${url}`);
   const request = new Request(url, {
     method,
     headers: headers.map((header) => [header.name, header.value]),

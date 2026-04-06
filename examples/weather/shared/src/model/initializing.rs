@@ -6,7 +6,7 @@
 //! - `InitializingTransition::Onboard` - no API key, transitions to onboarding.
 //! - `InitializingTransition::Active(api_key, favorites)` - fully initialized.
 
-use crux_core::{render::render, Command};
+use crux_core::{Command, render::render};
 use crux_kv::command::KeyValue;
 use crux_kv::error::KeyValueError;
 use facet::Facet;
@@ -15,10 +15,9 @@ use serde::{Deserialize, Serialize};
 use crate::effects::secret::{self, SecretFetchResponse};
 
 use super::{
-    ApiKey,
+    ApiKey, Event,
     active::favorites::model::{FAVORITES_KEY, Favorite, Favorites},
     outcome::{Outcome, Started},
-    Event,
 };
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -61,7 +60,10 @@ impl InitializingModel {
         let fetch_favorites = KeyValue::get(FAVORITES_KEY)
             .then_send(|r| Event::Initializing(InitializingEvent::FavoritesLoaded(r)));
 
-        Started::new(Self::default(), Command::all([fetch_secret, fetch_favorites]))
+        Started::new(
+            Self::default(),
+            Command::all([fetch_secret, fetch_favorites]),
+        )
     }
 
     pub(crate) fn update(
@@ -102,7 +104,10 @@ impl InitializingModel {
         match (self.api_key, self.favorites) {
             (InitializingValue::Fetched(Some(api_key)), InitializingValue::Fetched(favorites)) => {
                 tracing::debug!("initialization complete, transitioning to active");
-                Outcome::complete(InitializingTransition::Active(api_key, favorites), Command::done())
+                Outcome::complete(
+                    InitializingTransition::Active(api_key, favorites),
+                    Command::done(),
+                )
             }
             (InitializingValue::Fetched(None), InitializingValue::Fetched(favorites)) => {
                 tracing::debug!("API key missing, transitioning to onboarding");

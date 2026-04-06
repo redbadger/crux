@@ -7,6 +7,8 @@ import {
   EffectVariantKeyValue,
   EffectVariantLocation,
   EffectVariantRender,
+  EffectVariantSecret,
+  EffectVariantTime,
   Request,
   ViewModel,
 } from "shared_types/app";
@@ -14,6 +16,8 @@ import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
 import * as http from "./http";
 import * as kv from "./kv";
 import * as location from "./location";
+import * as secret from "./secret";
+import * as time from "./time";
 
 // union of all Operation types, only render is needed here
 type Response = RenderOperation;
@@ -64,6 +68,18 @@ export class Core {
       case EffectVariantLocation: {
         const request = (effect as EffectVariantLocation).value;
         const response = await location.handle(request);
+        this.respond(id, response);
+        break;
+      }
+      case EffectVariantSecret: {
+        const request = (effect as EffectVariantSecret).value;
+        const response = secret.handle(request);
+        this.respond(id, response);
+        break;
+      }
+      case EffectVariantTime: {
+        const request = (effect as EffectVariantTime).value;
+        const response = await time.handle(request);
         this.respond(id, response);
         break;
       }

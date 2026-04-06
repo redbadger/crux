@@ -42,11 +42,7 @@ pub struct HomeScreen {
 }
 
 impl HomeScreen {
-
-    pub(crate) fn start(
-        favorites: Favorites,
-        api_key: &ApiKey,
-    ) -> Started<Self, HomeEvent> {
+    pub(crate) fn start(favorites: Favorites, api_key: &ApiKey) -> Started<Self, HomeEvent> {
         tracing::debug!("starting home screen");
 
         let (current_weather, local_cmd) = LocalWeather::start()
@@ -71,9 +67,10 @@ impl HomeScreen {
         api_key: &ApiKey,
     ) -> Outcome<Self, HomeTransition, HomeEvent> {
         match event {
-            HomeEvent::GoToFavorites => {
-                Outcome::complete(HomeTransition::GoToFavorites(self.favorites_weather.into()), render())
-            }
+            HomeEvent::GoToFavorites => Outcome::complete(
+                HomeTransition::GoToFavorites(self.favorites_weather.into()),
+                render(),
+            ),
 
             HomeEvent::Local(local_event) => {
                 let Self {
@@ -94,9 +91,10 @@ impl HomeScreen {
                         },
                         cmd,
                     ),
-                    Status::Complete(LocalWeatherTransition::Unauthorized) => {
-                        Outcome::complete(HomeTransition::ApiKeyRejected(favorites_weather.into()), cmd)
-                    }
+                    Status::Complete(LocalWeatherTransition::Unauthorized) => Outcome::complete(
+                        HomeTransition::ApiKeyRejected(favorites_weather.into()),
+                        cmd,
+                    ),
                 }
             }
 
@@ -129,9 +127,9 @@ impl HomeScreen {
 
 #[cfg(test)]
 mod tests {
+    use crate::effects::http::location::GeocodingResponse;
     use crate::model::ApiKey;
     use crate::model::active::favorites::model::{Favorite, Favorites};
-    use crate::effects::http::location::GeocodingResponse;
 
     use super::*;
 

@@ -35,13 +35,22 @@ pub enum AddFavoriteEvent {
 
     #[serde(skip)]
     #[facet(skip)]
-    SearchResult(usize, #[facet(opaque)] Box<Result<Vec<GeocodingResponse>, LocationError>>),
+    SearchResult(
+        usize,
+        #[facet(opaque)] Box<Result<Vec<GeocodingResponse>, LocationError>>,
+    ),
 }
 
 #[derive(Debug)]
 pub(crate) enum AddFavoriteTransition {
-    Selected(Favorite),
+    Selected(Box<Favorite>),
     Cancelled,
+}
+
+impl Default for AddFavoriteWorkflow {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AddFavoriteWorkflow {
@@ -69,8 +78,7 @@ impl AddFavoriteWorkflow {
                     handle.clear();
                 }
 
-                let (notify, handle) =
-                    Time::notify_after(Duration::from_millis(DEBOUNCE_MILLIS));
+                let (notify, handle) = Time::notify_after(Duration::from_millis(DEBOUNCE_MILLIS));
                 self.timer_handle = Some(handle);
 
                 let cmd = notify.then_send(AddFavoriteEvent::DebounceComplete);
@@ -82,10 +90,9 @@ impl AddFavoriteWorkflow {
                 let version = self.input.version();
                 tracing::debug!("debounce complete, searching for '{query}' (version {version})");
 
-                let cmd = location_api::fetch(&query, api_key.clone())
-                    .then_send(move |result| {
-                        AddFavoriteEvent::SearchResult(version, Box::new(result))
-                    });
+                let cmd = location_api::fetch(&query, api_key.clone()).then_send(move |result| {
+                    AddFavoriteEvent::SearchResult(version, Box::new(result))
+                });
                 Outcome::continuing(self, cmd)
             }
 
@@ -121,7 +128,10 @@ impl AddFavoriteWorkflow {
             AddFavoriteEvent::Submit(geo) => {
                 tracing::debug!("selecting favorite '{}'", geo.name);
                 let favorite = Favorite::from(*geo);
-                Outcome::complete(AddFavoriteTransition::Selected(favorite), Command::done())
+                Outcome::complete(
+                    AddFavoriteTransition::Selected(Box::new(favorite)),
+                    Command::done(),
+                )
             }
 
             AddFavoriteEvent::Cancel => {
@@ -324,7 +334,10 @@ mod tests {
         let api_key = test_api_key();
 
         let (workflow, mut cmd) = workflow
-            .update(AddFavoriteEvent::DebounceComplete(TimerOutcome::Cleared), &api_key)
+            .update(
+                AddFavoriteEvent::DebounceComplete(TimerOutcome::Cleared),
+                &api_key,
+            )
             .expect_continue()
             .into_parts();
 

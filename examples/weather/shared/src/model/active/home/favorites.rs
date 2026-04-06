@@ -6,8 +6,8 @@ use crate::model::ApiKey;
 use crate::model::active::favorites::model::{Favorite, Favorites};
 use crate::model::outcome::{Outcome, Started};
 
-use crate::effects::http::weather::{self as weather_api, WeatherError};
 use crate::effects::http::weather::model::current_response::CurrentWeatherResponse;
+use crate::effects::http::weather::{self as weather_api, WeatherError};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FavoriteWeatherEvent {
@@ -108,10 +108,7 @@ pub(crate) fn update(
     }
 }
 
-fn fetch_all(
-    items: &[FavoriteWeather],
-    api_key: &ApiKey,
-) -> Command<Effect, FavoriteWeatherEvent> {
+fn fetch_all(items: &[FavoriteWeather], api_key: &ApiKey) -> Command<Effect, FavoriteWeatherEvent> {
     if items.is_empty() {
         return Command::done();
     }
@@ -249,7 +246,10 @@ mod tests {
         .expect_complete()
         .into_parts();
 
-        assert!(matches!(transition, FavoriteWeatherTransition::Unauthorized(_)));
+        assert!(matches!(
+            transition,
+            FavoriteWeatherTransition::Unauthorized(_)
+        ));
     }
 
     #[test]

@@ -9,11 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::effects::secret::{self, SecretStoreResponse};
 
-use super::{
-    active::favorites::model::Favorites,
-    outcome::Outcome,
-    ApiKey,
-};
+use super::{ApiKey, active::favorites::model::Favorites, outcome::Outcome};
 
 /// Why the user is on the onboarding screen.
 #[derive(Facet, Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq)]
@@ -101,13 +97,21 @@ impl OnboardModel {
         self,
         event: OnboardEvent,
     ) -> Outcome<Self, OnboardTransition, OnboardEvent> {
-        let Self { reason, state, favorites } = self;
+        let Self {
+            reason,
+            state,
+            favorites,
+        } = self;
 
         match (state, event) {
             (OnboardState::Input { .. }, OnboardEvent::ApiKey(text)) => {
                 tracing::debug!("updating api key input, waiting for submission");
                 Outcome::continuing(
-                    Self { reason, favorites, state: OnboardState::Input { api_key: text } },
+                    Self {
+                        reason,
+                        favorites,
+                        state: OnboardState::Input { api_key: text },
+                    },
                     render(),
                 )
             }
@@ -122,7 +126,13 @@ impl OnboardModel {
                 let cmd = secret::command::store(secret::API_KEY_NAME, key.clone())
                     .then_send(OnboardEvent::SecretStored);
                 Outcome::continuing(
-                    Self { reason, favorites, state: OnboardState::Saving { api_key: key.into() } },
+                    Self {
+                        reason,
+                        favorites,
+                        state: OnboardState::Saving {
+                            api_key: key.into(),
+                        },
+                    },
                     cmd,
                 )
             }
@@ -199,7 +209,9 @@ mod tests {
         let outcome = model.update(OnboardEvent::Submit);
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
-        assert!(matches!(model.state, OnboardState::Saving { ref api_key } if *api_key == "my_new_key"));
+        assert!(
+            matches!(model.state, OnboardState::Saving { ref api_key } if *api_key == "my_new_key")
+        );
         let request = cmd.expect_one_effect().expect_secret();
         assert_eq!(
             request.operation,

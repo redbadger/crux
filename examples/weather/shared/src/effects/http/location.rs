@@ -53,7 +53,8 @@ pub fn fetch<Event, Effect>(
 ) -> RequestBuilder<
     Effect,
     Event,
-    impl std::future::Future<Output = Result<Vec<GeocodingResponse>, LocationError>> + use<Event, Effect>,
+    impl std::future::Future<Output = Result<Vec<GeocodingResponse>, LocationError>>
+    + use<Event, Effect>,
 >
 where
     Event: Send + 'static,

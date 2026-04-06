@@ -1,8 +1,10 @@
 import "bulma/css/bulma.min.css";
+import "./globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { DM_Sans } from "next/font/google";
+import Script from "next/script";
 
-const inter = Inter({ subsets: ["latin"] });
+const dmSans = DM_Sans({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Crux Weather Example - NextJS",
@@ -15,8 +17,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" data-theme="light">
+      <head>
+        <Script
+          src="https://unpkg.com/@phosphor-icons/web"
+          strategy="beforeInteractive"
+        />
+      </head>
+      <body className={dmSans.className}>{children}</body>
     </html>
   );
 }

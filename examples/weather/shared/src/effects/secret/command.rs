@@ -1,7 +1,7 @@
 use std::future::Future;
 
-use crux_core::command::RequestBuilder;
 use crux_core::Request;
+use crux_core::command::RequestBuilder;
 
 use super::{
     SecretDeleteResponse, SecretFetchResponse, SecretRequest, SecretResponse, SecretStoreResponse,
@@ -16,13 +16,12 @@ where
     Ev: Send + 'static,
 {
     let key = key.into();
-    crux_core::Command::request_from_shell(SecretRequest::Fetch(key)).map(
-        |response| match response {
-            SecretResponse::Missing(key) => SecretFetchResponse::Missing(key),
-            SecretResponse::Fetched(_, value) => SecretFetchResponse::Fetched(value),
-            _ => unreachable!("fetch only produces Missing or Fetched"),
-        },
-    )
+    crux_core::Command::request_from_shell(SecretRequest::Fetch(key)).map(|response| match response
+    {
+        SecretResponse::Missing(key) => SecretFetchResponse::Missing(key),
+        SecretResponse::Fetched(_, value) => SecretFetchResponse::Fetched(value),
+        _ => unreachable!("fetch only produces Missing or Fetched"),
+    })
 }
 
 #[must_use]
@@ -36,13 +35,13 @@ where
 {
     let key = key.into();
     let value = value.into();
-    crux_core::Command::request_from_shell(SecretRequest::Store(key, value)).map(
-        |response| match response {
+    crux_core::Command::request_from_shell(SecretRequest::Store(key, value)).map(|response| {
+        match response {
             SecretResponse::Stored(key) => SecretStoreResponse::Stored(key),
             SecretResponse::StoreError(msg) => SecretStoreResponse::StoreError(msg),
             _ => unreachable!("store only produces Stored or StoreError"),
-        },
-    )
+        }
+    })
 }
 
 #[must_use]

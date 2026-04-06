@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::effects::secret::{self, SecretDeleteResponse};
 
-use super::{ApiKey, outcome::Outcome};
 use self::{
     favorites::{FavoritesScreen, FavoritesScreenEvent, FavoritesTransition, model::Favorites},
     home::{HomeEvent, HomeScreen, HomeTransition},
 };
+use super::{ApiKey, outcome::Outcome};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
@@ -70,10 +70,7 @@ pub struct ActiveModel {
 }
 
 impl ActiveModel {
-    pub(crate) fn update(
-        self,
-        event: ActiveEvent,
-    ) -> Outcome<Self, ActiveTransition, ActiveEvent> {
+    pub(crate) fn update(self, event: ActiveEvent) -> Outcome<Self, ActiveTransition, ActiveEvent> {
         let ActiveModel { api_key, screen } = self;
 
         match event {
@@ -83,9 +80,10 @@ impl ActiveModel {
                 Outcome::continuing(ActiveModel { api_key, screen }, cmd)
             }
             ActiveEvent::SecretDeleted(response) => match response {
-                SecretDeleteResponse::Deleted(_) => {
-                    Outcome::complete(ActiveTransition::ResetApiKey(screen.into_favorites()), render())
-                }
+                SecretDeleteResponse::Deleted(_) => Outcome::complete(
+                    ActiveTransition::ResetApiKey(screen.into_favorites()),
+                    render(),
+                ),
                 SecretDeleteResponse::DeleteError(_) => {
                     Outcome::continuing(ActiveModel { api_key, screen }, Command::done())
                 }
@@ -121,7 +119,10 @@ impl ActiveModel {
                         )
                     }
                     super::outcome::Status::Complete(HomeTransition::ApiKeyRejected(favorites)) => {
-                        Outcome::complete(ActiveTransition::Unauthorized(favorites), cmd.and(render()))
+                        Outcome::complete(
+                            ActiveTransition::Unauthorized(favorites),
+                            cmd.and(render()),
+                        )
                     }
                 }
             }
@@ -165,8 +166,8 @@ impl ActiveModel {
 mod tests {
     use crate::effects::secret::{self, SecretRequest};
 
-    use super::*;
     use super::favorites::model::Favorites;
+    use super::*;
 
     fn active_model() -> ActiveModel {
         ActiveModel {
@@ -209,10 +210,7 @@ mod tests {
         cmd.expect_one_effect().expect_render();
         assert!(matches!(
             model.screen,
-            Screen::Favorites(FavoritesScreen {
-                workflow: None,
-                ..
-            })
+            Screen::Favorites(FavoritesScreen { workflow: None, .. })
         ));
     }
 
@@ -240,8 +238,9 @@ mod tests {
                 workflow: None,
             }),
         };
-        let outcome =
-            model.update(ActiveEvent::favorites(FavoritesScreenEvent::RequestAddFavorite));
+        let outcome = model.update(ActiveEvent::favorites(
+            FavoritesScreenEvent::RequestAddFavorite,
+        ));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
         cmd.expect_one_effect().expect_render();

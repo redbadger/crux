@@ -1,7 +1,7 @@
 use crux_core::{Command, render::render};
 
-use crate::effects::http::weather::{self as weather_api, WeatherError};
 use crate::effects::http::weather::model::current_response::CurrentWeatherResponse;
+use crate::effects::http::weather::{self as weather_api, WeatherError};
 use crate::effects::location::Location;
 use crate::effects::location::command::get_location;
 use crate::model::ApiKey;
@@ -107,12 +107,12 @@ mod tests {
         model::{ApiKey, Effect},
     };
 
+    use super::*;
     use crate::effects::http::weather;
     use crate::effects::http::weather::model::{
         current_response::{CurrentWeatherResponse, CurrentWeatherResponseBuilder, Main, Sys},
         response_elements::{Clouds, Coord, WeatherData, Wind},
     };
-    use super::*;
 
     const TEST_API_KEY: &str = "test_api_key";
 
@@ -311,9 +311,9 @@ mod tests {
 
         let mut request = cmd.expect_one_effect().expect_http();
         request
-            .resolve(HttpResult::Err(
-                crux_http::HttpError::Url("connection refused".into()),
-            ))
+            .resolve(HttpResult::Err(crux_http::HttpError::Url(
+                "connection refused".into(),
+            )))
             .unwrap();
 
         let event = cmd.expect_one_event();
