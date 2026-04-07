@@ -106,12 +106,6 @@ jobs:
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@trunk
 
-      - name: Create .env for weather
-        if: matrix.example == 'weather'
-        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
-        env:
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
-
       - name: CI
         run: just ${{ matrix.shell }}/ci
 
@@ -185,12 +179,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: latest
-
-      - name: Create .env for weather
-        if: matrix.example == 'weather'
-        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
-        env:
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
 
       - name: CI
         run: just ${{ matrix.shell }}/ci
@@ -270,12 +258,6 @@ jobs:
 
       - name: Install cargo-swift
         run: cargo install cargo-swift --version '=0.9'
-
-      - name: Create .env for weather
-        if: matrix.example == 'weather'
-        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
-        env:
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
 
       - name: CI
         run: just apple/ci

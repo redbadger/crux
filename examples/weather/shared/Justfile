@@ -1,5 +1,4 @@
 mod lib '../../../lib.just'
-mod wlib '../weather-lib.just'
 
 default: dev
 
@@ -11,7 +10,6 @@ default: dev
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-shared
-    @just wlib::check-env
 
 # auto-fix formatting issues
 fix:

@@ -1,5 +1,4 @@
 mod lib '../../../lib.just'
-mod wlib '../weather-lib.just'
 
 default: dev
 
@@ -11,7 +10,6 @@ default: dev
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-apple
-    @just wlib::check-env
 
 # installs Rust targets required for Apple packaging with cargo-swift
 install-targets:
@@ -69,7 +67,7 @@ package: install-targets
 # rebuilds the Xcode project from project.yml
 generate-project:
     @echo '{{ style("command") }}generate-project:{{ NORMAL }}'
-    . ../.env && xcodegen
+    xcodegen
 
 # generates types, builds shared package, and regenerates Xcode project
 generate: typegen package generate-project
