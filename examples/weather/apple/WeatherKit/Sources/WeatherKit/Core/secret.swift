@@ -55,23 +55,31 @@ private func keychainSave(key: String, value: String) throws {
         throw KeychainError.encodingFailed
     }
 
-    let query: [CFString: Any] = [
+    // NOTE: On macOS we omit kSecUseDataProtectionKeychain because it
+    // requires code signing with a development team. A production app
+    // should use the Data Protection Keychain on all platforms for
+    // stronger security. See Apple's documentation for details.
+    var query: [CFString: Any] = [
         kSecClass: kSecClassGenericPassword,
         kSecAttrAccount: key,
         kSecAttrService: keychainService,
-        kSecUseDataProtectionKeychain: true as CFBoolean,
         kSecValueData: data
     ]
+    #if os(iOS)
+        query[kSecUseDataProtectionKeychain] = true as CFBoolean
+    #endif
 
     let status = SecItemAdd(query as CFDictionary, nil)
 
     if status == errSecDuplicateItem {
-        let updateQuery: [CFString: Any] = [
+        var updateQuery: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrAccount: key,
             kSecAttrService: keychainService,
-            kSecUseDataProtectionKeychain: true as CFBoolean
         ]
+        #if os(iOS)
+            updateQuery[kSecUseDataProtectionKeychain] = true as CFBoolean
+        #endif
         let updateStatus = SecItemUpdate(
             updateQuery as CFDictionary,
             [kSecValueData: data] as CFDictionary
@@ -85,14 +93,16 @@ private func keychainSave(key: String, value: String) throws {
 }
 
 private func keychainGet(key: String) -> String? {
-    let query: [CFString: Any] = [
+    var query: [CFString: Any] = [
         kSecClass: kSecClassGenericPassword,
         kSecAttrAccount: key,
         kSecAttrService: keychainService,
-        kSecUseDataProtectionKeychain: true as CFBoolean,
         kSecReturnData: true,
         kSecMatchLimit: kSecMatchLimitOne
     ]
+    #if os(iOS)
+        query[kSecUseDataProtectionKeychain] = true as CFBoolean
+    #endif
 
     var result: AnyObject?
     let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -111,12 +121,14 @@ private func keychainGet(key: String) -> String? {
 }
 
 private func keychainDelete(key: String) throws {
-    let query: [CFString: Any] = [
+    var query: [CFString: Any] = [
         kSecClass: kSecClassGenericPassword,
         kSecAttrAccount: key,
         kSecAttrService: keychainService,
-        kSecUseDataProtectionKeychain: true as CFBoolean
     ]
+    #if os(iOS)
+        query[kSecUseDataProtectionKeychain] = true as CFBoolean
+    #endif
 
     let status = SecItemDelete(query as CFDictionary)
     guard status == errSecSuccess || status == errSecItemNotFound else {

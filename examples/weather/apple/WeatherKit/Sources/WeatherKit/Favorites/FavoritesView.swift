@@ -14,28 +14,36 @@ struct FavoritesView: View {
         Group {
             if case let .add(addModel) = model.workflow {
                 AddFavoriteView(model: addModel)
+                    .navigationTitle("Add Favorite")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") {
+                                update(.active(.favorites(.workflow(.add(.cancel)))))
+                            }
+                        }
+                    }
             } else {
                 favoritesList
+                    .navigationTitle("Favorites")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") {
+                                update(.active(.favorites(.goToHome)))
+                            }
+                        }
+                        ToolbarItem(placement: .primaryAction) {
+                            Button {
+                                update(.active(.favorites(.requestAddFavorite)))
+                            } label: {
+                                Image(systemName: "plus")
+                            }
+                        }
+                    }
             }
         }
-        .navigationTitle("Favorites")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
         #endif
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Done") {
-                    update(.active(.favorites(.goToHome)))
-                }
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    update(.active(.favorites(.requestAddFavorite)))
-                } label: {
-                    Image(systemName: "plus")
-                }
-            }
-        }
         .alert("Delete Favorite?", isPresented: Binding(
             get: { isConfirmingDelete },
             set: { if !$0 { update(.active(.favorites(.workflow(.confirmDelete(.cancelled))))) } }

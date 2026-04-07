@@ -23,9 +23,11 @@ use self::onboard::OnboardModel;
 #[repr(C)]
 pub enum Event {
     Start,
-    Initializing(InitializingEvent),
     Onboard(OnboardEvent),
     Active(ActiveEvent),
+    #[serde(skip)]
+    #[facet(skip)]
+    Initializing(InitializingEvent),
 }
 // ANCHOR_END: event
 

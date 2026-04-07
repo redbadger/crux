@@ -28,7 +28,7 @@ struct HomeView: View {
                     .tag(LocationSelection.favorite(favorite.location))
                 }
             }
-            .navigationTitle("Weather")
+            .navigationTitle("Crux Weather")
             .toolbar {
                 ToolbarItem(placement: .automatic) {
                     Button {
@@ -87,6 +87,7 @@ struct HomeView: View {
             ScrollView {
                 WeatherCard(weatherData: weatherData)
             }
+            .navigationTitle(weatherData.name)
         case .failed:
             StatusCard(message: "Failed to load weather", icon: "exclamationmark.triangle")
         }
@@ -97,13 +98,16 @@ struct HomeView: View {
         switch favorite.weather {
         case .fetching:
             LoadingCard()
-        case let .fetched(weatherData):
+                .navigationTitle(favorite.name)
+            case let .fetched(weatherData):
             ScrollView {
                 WeatherCard(weatherData: weatherData)
             }
+            .navigationTitle(favorite.name)
         case .failed:
-            StatusCard(message: "Failed to load weather for \(favorite.name)", icon: "exclamationmark.triangle")
-        }
+            StatusCard(message: "Failed to load weather", icon: "exclamationmark.triangle")
+                .navigationTitle(favorite.name)
+            }
     }
 }
 // ANCHOR_END: home_view

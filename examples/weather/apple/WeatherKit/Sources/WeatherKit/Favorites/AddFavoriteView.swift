@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AddFavoriteView: View {
     @Environment(CoreUpdater.self) var update
+    @State private var selection: GeocodingResponse?
     let model: AddFavoriteViewModel
 
     var body: some View {
@@ -38,23 +39,25 @@ struct AddFavoriteView: View {
                         .foregroundColor(.secondary)
                         .padding()
                 } else {
-                    List(results, id: \.lat) { result in
-                        Button {
-                            update(.active(.favorites(.workflow(.add(.submit(result))))))
-                        } label: {
-                            VStack(alignment: .leading) {
-                                Text(result.name)
-                                    .font(.headline)
-                                if let state = result.state {
-                                    Text("\(state), \(result.country)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    Text(result.country)
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
+                    List(results, id: \.self, selection: $selection) { result in
+                        VStack(alignment: .leading) {
+                            Text(result.name)
+                                .font(.headline)
+                            if let state = result.state {
+                                Text("\(state), \(result.country)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text(result.country)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
                             }
+                        }
+                    }
+                    .onChange(of: selection) { _, newValue in
+                        if let result = newValue {
+                            update(.active(.favorites(.workflow(.add(.submit(result))))))
+                            selection = nil
                         }
                     }
                 }
@@ -65,14 +68,6 @@ struct AddFavoriteView: View {
             }
 
             Spacer()
-        }
-        .navigationTitle("Add Favorite")
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button("Cancel") {
-                    update(.active(.favorites(.workflow(.add(.cancel)))))
-                }
-            }
         }
     }
 }
