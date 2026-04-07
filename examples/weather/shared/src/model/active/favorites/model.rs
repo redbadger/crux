@@ -34,11 +34,6 @@ impl Favorites {
         self.0.iter()
     }
 
-    #[cfg(test)]
-    pub(crate) fn get(&self, location: &Location) -> Option<&Favorite> {
-        self.0.iter().find(|fav| &fav.location() == location)
-    }
-
     pub(crate) fn len(&self) -> usize {
         self.0.len()
     }
