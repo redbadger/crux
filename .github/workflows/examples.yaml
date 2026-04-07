@@ -225,7 +225,7 @@ jobs:
   # cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
   # so the matrix is just the example name — the shell is always "apple".
   apple:
-    runs-on: macos-latest
+    runs-on: macos-26
 
     strategy:
       fail-fast: false
