@@ -1,0 +1,16 @@
+default: build
+
+# builds the package
+build:
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    swift build
+
+# runs tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    swift test
+
+# cleans build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    swift package clean

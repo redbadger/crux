@@ -27,12 +27,12 @@ install-targets:
 # auto-fix formatting and lint issues
 fix:
     @echo '{{ style("command") }}fix:{{ NORMAL }}'
-    swiftlint --fix WeatherApp/
+    swiftlint --fix WeatherApp/ WeatherKit/
 
 # validate formatting and lint
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
-    swiftlint lint WeatherApp/
+    swiftlint lint WeatherApp/ WeatherKit/
 
 # generates Swift types via codegen binary
 typegen:

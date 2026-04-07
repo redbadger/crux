@@ -4,6 +4,8 @@ packages:
     path: ./generated/Shared
   App:
     path: ./generated/App
+  WeatherKit:
+    path: WeatherKit
 options:
   bundleIdPrefix: com.crux.examples.weather
 attributes:
@@ -26,6 +28,7 @@ targetTemplates:
     dependencies:
       - package: Shared
       - package: App
+      - package: WeatherKit
 
 targets:
   WeatherApp-iOS:

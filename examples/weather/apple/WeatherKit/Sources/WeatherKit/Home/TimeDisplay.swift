@@ -11,6 +11,11 @@ struct TimeDisplay: View {
     }
 }
 
+#Preview {
+    TimeDisplay(timestamp: Int(Date().timeIntervalSince1970))
+        .padding()
+}
+
 private extension Int {
     var formattedTime: String {
         let date = Date(timeIntervalSince1970: TimeInterval(self))

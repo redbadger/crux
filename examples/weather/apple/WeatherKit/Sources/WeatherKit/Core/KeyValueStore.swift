@@ -2,20 +2,35 @@ import CoreData
 import Foundation
 import os.log
 
+// SPM doesn't auto-generate NSManagedObject subclasses, so we define it manually.
+@objc(KeyValueEntity)
+class KeyValueEntity: NSManagedObject {
+    @NSManaged var key: String?
+    @NSManaged var value: String?
+}
+
+extension KeyValueEntity {
+    @nonobjc class func fetchRequest() -> NSFetchRequest<KeyValueEntity> {
+        NSFetchRequest<KeyValueEntity>(entityName: "KeyValueEntity")
+    }
+}
+
 class KeyValueStore {
-    private let logger = Logger(subsystem: "com.example.weather", category: "KeyValueStore")
+    private let logger = Logger(subsystem: "com.crux.examples.weather", category: "KeyValueStore")
     private let container: NSPersistentContainer
     private let context: NSManagedObjectContext
     private var isInitialized = false
 
     init() throws {
         logger.info("Initializing KeyValueStore")
-        container = NSPersistentContainer(name: "KeyValueModel")
+
+        let modelURL = Bundle.module.url(forResource: "KeyValueModel", withExtension: "momd")!
+        let model = NSManagedObjectModel(contentsOf: modelURL)!
+        container = NSPersistentContainer(name: "KeyValueModel", managedObjectModel: model)
 
         let localLogger = logger
         var loadError: Error?
 
-        // Use a semaphore to wait for Core Data initialization
         let semaphore = DispatchSemaphore(value: 0)
 
         container.loadPersistentStores { _, error in
@@ -36,9 +51,7 @@ class KeyValueStore {
 
         context = container.viewContext
         context.automaticallyMergesChangesFromParent = true
-
-        // Configure for better performance and safety
-        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        context.mergePolicy = NSMergePolicy.mergeByPropertyObjectTrump
 
         isInitialized = true
         logger.info("KeyValueStore initialized successfully")
@@ -93,7 +106,6 @@ class KeyValueStore {
             }
         } catch {
             logger.error("Failed to set value for key \(key): \(error.localizedDescription)")
-            // Rollback changes on error
             context.rollback()
         }
     }
@@ -117,7 +129,6 @@ class KeyValueStore {
             }
         } catch {
             logger.error("Failed to delete key \(key): \(error.localizedDescription)")
-            // Rollback changes on error
             context.rollback()
         }
     }
@@ -129,8 +140,7 @@ class KeyValueStore {
         fetchRequest.predicate = NSPredicate(format: "key == %@", key)
 
         do {
-            let count = try context.count(for: fetchRequest)
-            let exists = count > 0
+            let exists = try context.count(for: fetchRequest) > 0
             logger.debug("Key '\(key)' exists: \(exists)")
             return exists
         } catch {
