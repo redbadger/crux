@@ -19,9 +19,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.crux.example.weather.core.Core
 import com.crux.example.weather.core.LocationManager
 import com.crux.example.weather.core.LocationManager.PermissionRequestListener
-import com.crux.example.weather.ui.addfavorite.AddFavoriteScreen
+import com.crux.example.weather.ui.failed.FailedScreen
 import com.crux.example.weather.ui.favorites.FavoritesScreen
 import com.crux.example.weather.ui.home.HomeScreen
+import com.crux.example.weather.ui.loading.LoadingScreen
+import com.crux.example.weather.ui.onboard.OnboardScreen
 import com.crux.example.weather.ui.theme.WeatherTheme
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -50,23 +52,32 @@ class MainActivity : ComponentActivity() {
             WeatherTheme {
                 val state by core.viewModel.collectAsState()
 
-                BackHandler(enabled = state.workflow !is WorkflowViewModel.Home) {
-                    handleBackClick(state.workflow)
+                BackHandler(enabled = state is ViewModel.Active) {
+                    handleBackNavigation(state)
                 }
 
                 AnimatedContent(
-                    targetState = state.workflow,
+                    targetState = state,
                     contentKey = { it::class },
                     transitionSpec = {
                         fadeIn(animationSpec = tween(200)).togetherWith(
                             fadeOut(animationSpec = tween(200))
                         )
                     },
-                ) { workflow ->
-                    when (workflow) {
-                        is WorkflowViewModel.AddFavorite -> AddFavoriteScreen()
-                        is WorkflowViewModel.Favorites -> FavoritesScreen()
-                        is WorkflowViewModel.Home -> HomeScreen()
+                ) { viewModel ->
+                    when (viewModel) {
+                        is ViewModel.Loading -> LoadingScreen()
+
+                        is ViewModel.Onboard -> OnboardScreen()
+
+                        is ViewModel.Active -> {
+                            when (viewModel.value) {
+                                is ActiveViewModel.Home -> HomeScreen()
+                                is ActiveViewModel.Favorites -> FavoritesScreen()
+                            }
+                        }
+
+                        is ViewModel.Failed -> FailedScreen(message = viewModel.message)
                     }
                 }
             }
@@ -74,17 +85,20 @@ class MainActivity : ComponentActivity() {
         // ANCHOR_END: content_view
     }
 
-    private fun handleBackClick(currentWorkflow: WorkflowViewModel) {
-        when (currentWorkflow) {
-            is WorkflowViewModel.AddFavorite -> core.update(
-                Event.Navigate(Workflow.Home)
-            )
+    private fun handleBackNavigation(currentState: ViewModel) {
+        val active = (currentState as? ViewModel.Active)?.value ?: return
+        when (active) {
+            is ActiveViewModel.Favorites -> {
+                core.update(
+                    Event.Active(
+                        ActiveEvent.Favorites(FavoritesScreenEvent.GoToHome)
+                    )
+                )
+            }
 
-            is WorkflowViewModel.Favorites -> core.update(
-                Event.Navigate(Workflow.Home)
-            )
-
-            is WorkflowViewModel.Home -> {}
+            is ActiveViewModel.Home -> {
+                // On home screen, let the system handle back
+            }
         }
     }
 

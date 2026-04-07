@@ -28,6 +28,8 @@ import androidx.compose.material.icons.outlined.DeviceThermostat
 import androidx.compose.material.icons.outlined.Grain
 import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.LocationOff
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Thunderstorm
 import androidx.compose.material.icons.outlined.Umbrella
@@ -46,7 +48,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
@@ -72,13 +73,10 @@ import java.time.format.DateTimeFormatter
 fun HomeScreen() {
     val viewModel = koinViewModel<HomeViewModel>()
 
-    LaunchedEffect(Unit) {
-        viewModel.showHome()
-    }
-
     HomeScreen(
         homeUiState = viewModel.state.collectAsState().value,
         onShowFavorites = viewModel::onShowFavorites,
+        onResetApiKey = viewModel::onResetApiKey,
     )
 }
 // ANCHOR_END: home_screen
@@ -88,6 +86,7 @@ fun HomeScreen() {
 private fun HomeScreen(
     homeUiState: HomeUiState,
     onShowFavorites: () -> Unit,
+    onResetApiKey: () -> Unit = {},
 ) {
     val pagerState = rememberPagerState(initialPage = 0) {
         homeUiState.pages.size
@@ -99,6 +98,19 @@ private fun HomeScreen(
                 title = { },
                 actions = {
                     IconButton(
+                        onClick = onResetApiKey,
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Key,
+                            contentDescription = stringResource(R.string.action_reset_api_key),
+                        )
+                    }
+                    IconButton(
                         onClick = onShowFavorites,
                         shape = CircleShape,
                         modifier = Modifier.size(48.dp),
@@ -108,7 +120,7 @@ private fun HomeScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Star,
-                            contentDescription = "Favorites",
+                            contentDescription = stringResource(R.string.favorites_title),
                         )
                     }
                 }
@@ -131,6 +143,16 @@ private fun HomeScreen(
             ) { page ->
                 when (val pageUi = homeUiState.pages.getOrNull(page)) {
                     is HomePageUi.Weather -> WeatherCard(pageUi.card, weatherCardModifier)
+                    is HomePageUi.LocationDisabled -> StatusCard(
+                        icon = Icons.Outlined.LocationOff,
+                        message = stringResource(R.string.weather_location_disabled),
+                        modifier = weatherCardModifier,
+                    )
+                    is HomePageUi.Error -> StatusCard(
+                        icon = Icons.Outlined.Cloud,
+                        message = stringResource(R.string.weather_error),
+                        modifier = weatherCardModifier,
+                    )
                     HomePageUi.Loading, null -> LoadingCard(weatherCardModifier)
                 }
             }
@@ -225,6 +247,39 @@ private fun LoadingCard(modifier: Modifier = Modifier) {
                 text = stringResource(R.string.weather_loading),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusCard(
+    icon: ImageVector,
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -523,7 +578,8 @@ private fun HomeScreenPreview() {
     WeatherTheme(darkTheme = false, dynamicColor = false) {
         HomeScreen(
             homeUiState = sampleHomeUiState(),
-            onShowFavorites = {}
+            onShowFavorites = {},
+            onResetApiKey = {},
         )
     }
 }
@@ -534,7 +590,8 @@ private fun HomeScreenLoadingPreview() {
     WeatherTheme(darkTheme = false, dynamicColor = false) {
         HomeScreen(
             homeUiState = HomeUiState(pages = listOf(HomePageUi.Loading)),
-            onShowFavorites = {}
+            onShowFavorites = {},
+            onResetApiKey = {},
         )
     }
 }

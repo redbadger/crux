@@ -1,46 +1,68 @@
 package com.crux.example.weather.ui.home
 
 import com.crux.example.weather.CurrentWeatherResponse
-import com.crux.example.weather.WorkflowViewModel
+import com.crux.example.weather.FavoriteWeatherStateViewModel
+import com.crux.example.weather.FavoriteWeatherViewModel
+import com.crux.example.weather.HomeViewModel
+import com.crux.example.weather.LocalWeatherViewModel
 import java.time.Instant
 import java.util.Locale
 
-class HomeUiStateMapper() {
+class HomeUiStateMapper {
 
-    fun map(home: WorkflowViewModel.Home): HomeUiState {
-        return HomeUiState(
-            pages = mapPages(home)
-        )
+    fun map(home: HomeViewModel): HomeUiState {
+        return HomeUiState(pages = mapPages(home))
     }
 
-    private fun mapPages(home: WorkflowViewModel.Home): List<HomePageUi> {
+    private fun mapPages(home: HomeViewModel): List<HomePageUi> {
         val pages = ArrayList<HomePageUi>(1 + home.favorites.size)
-        pages.add(toPage(home.weatherData))
+        pages.add(mapLocalWeather(home.localWeather))
 
         for (favorite in home.favorites) {
-            val current = favorite.current
-            if (current == null) {
-                pages.add(HomePageUi.Loading)
-            } else {
-                pages.add(toPage(current))
-            }
+            pages.add(mapFavoriteWeather(favorite))
         }
 
         return pages
     }
 
-    private fun toPage(weatherData: CurrentWeatherResponse): HomePageUi {
+    private fun mapLocalWeather(local: LocalWeatherViewModel): HomePageUi {
+        return when (local) {
+            is LocalWeatherViewModel.CheckingPermission,
+            is LocalWeatherViewModel.FetchingLocation,
+            is LocalWeatherViewModel.FetchingWeather -> HomePageUi.Loading
+
+            is LocalWeatherViewModel.LocationDisabled -> HomePageUi.LocationDisabled
+            is LocalWeatherViewModel.Fetched -> toPage(local.value)
+            is LocalWeatherViewModel.Failed -> HomePageUi.Error
+        }
+    }
+
+    private fun mapFavoriteWeather(favorite: FavoriteWeatherViewModel): HomePageUi {
+        return when (val weather = favorite.weather) {
+            is FavoriteWeatherStateViewModel.Fetching -> HomePageUi.Loading
+            is FavoriteWeatherStateViewModel.Fetched -> toPage(weather.value, favorite.name)
+            is FavoriteWeatherStateViewModel.Failed -> HomePageUi.Error
+        }
+    }
+
+    private fun toPage(
+        weatherData: CurrentWeatherResponse,
+        nameOverride: String? = null,
+    ): HomePageUi {
         if (!isValidWeather(weatherData)) {
             return HomePageUi.Loading
         }
-        return HomePageUi.Weather(toCardUi(weatherData))
+        return HomePageUi.Weather(toCardUi(weatherData, nameOverride))
     }
 
     private fun isValidWeather(weatherData: CurrentWeatherResponse): Boolean {
         return weatherData.cod == 200UL && weatherData.main.temp.isFinite()
     }
 
-    private fun toCardUi(weatherData: CurrentWeatherResponse): WeatherCardUi {
+    private fun toCardUi(
+        weatherData: CurrentWeatherResponse,
+        nameOverride: String? = null,
+    ): WeatherCardUi {
         val isDay = isDaytime(weatherData)
         val weather = weatherData.weather.firstOrNull()
         val condition = weather?.main
@@ -48,7 +70,7 @@ class HomeUiStateMapper() {
             if (ch.isLowerCase()) ch.titlecase(Locale.US) else ch.toString()
         }
         return WeatherCardUi(
-            title = weatherData.name,
+            title = nameOverride ?: weatherData.name,
             temperature = weatherData.main.temp,
             condition = condition,
             description = description,
@@ -87,28 +109,28 @@ class HomeUiStateMapper() {
         return listOf(
             WeatherDetailUi(
                 type = WeatherDetailType.FeelsLike,
-                value = weatherData.main.feelsLike
+                value = weatherData.main.feelsLike,
             ),
             WeatherDetailUi(
                 type = WeatherDetailType.Humidity,
-                value = weatherData.main.humidity.toDouble()
+                value = weatherData.main.humidity.toDouble(),
             ),
             WeatherDetailUi(
                 type = WeatherDetailType.Wind,
-                value = weatherData.wind.speed
+                value = weatherData.wind.speed,
             ),
             WeatherDetailUi(
                 type = WeatherDetailType.Pressure,
-                value = weatherData.main.pressure.toDouble()
+                value = weatherData.main.pressure.toDouble(),
             ),
             WeatherDetailUi(
                 type = WeatherDetailType.Clouds,
-                value = weatherData.clouds.all.toDouble()
+                value = weatherData.clouds.all.toDouble(),
             ),
             WeatherDetailUi(
                 type = WeatherDetailType.Visibility,
-                value = weatherData.visibility.toDouble()
-            )
+                value = weatherData.visibility.toDouble(),
+            ),
         )
     }
 }

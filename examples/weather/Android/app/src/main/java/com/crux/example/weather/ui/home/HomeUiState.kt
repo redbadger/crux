@@ -9,7 +9,9 @@ data class HomeUiState(
 
 sealed interface HomePageUi {
     data class Weather(val card: WeatherCardUi) : HomePageUi
-    object Loading : HomePageUi
+    data object Loading : HomePageUi
+    data object LocationDisabled : HomePageUi
+    data object Error : HomePageUi
 }
 
 @Immutable

@@ -5,12 +5,16 @@ import com.crux.example.weather.core.HttpClient
 import com.crux.example.weather.core.KeyValueDataStoreDelegate
 import com.crux.example.weather.core.KeyValueStore
 import com.crux.example.weather.core.LocationManager
-import com.crux.example.weather.ui.addfavorite.AddFavoriteUiStateMapper
-import com.crux.example.weather.ui.addfavorite.AddFavoriteViewModel
+import com.crux.example.weather.core.SecretStore
+import com.crux.example.weather.core.TimeHandler
 import com.crux.example.weather.ui.favorites.FavoritesUiStateMapper
 import com.crux.example.weather.ui.favorites.FavoritesViewModel
 import com.crux.example.weather.ui.home.HomeUiStateMapper
 import com.crux.example.weather.ui.home.HomeViewModel
+import com.crux.example.weather.ui.onboard.OnboardViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -21,6 +25,8 @@ val appModule = module {
     singleOf(::LocationManager)
     singleOf(::KeyValueDataStoreDelegate)
     singleOf(::KeyValueStore)
+    singleOf(::SecretStore)
+    single { TimeHandler(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)) }
     singleOf(::Core)
 
     factoryOf(::HomeUiStateMapper)
@@ -29,6 +35,5 @@ val appModule = module {
     factoryOf(::FavoritesUiStateMapper)
     viewModelOf(::FavoritesViewModel)
 
-    factoryOf(::AddFavoriteUiStateMapper)
-    viewModelOf(::AddFavoriteViewModel)
+    viewModelOf(::OnboardViewModel)
 }

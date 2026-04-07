@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -21,8 +20,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField("String", "OPENWEATHER_API_KEY", "\"${getOpenWeatherApiKey().orEmpty()}\"")
     }
 
     buildTypes {
@@ -47,17 +44,7 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
-}
-
-private fun Project.getOpenWeatherApiKey(): String? {
-    val localProperties = Properties()
-    val localPropertiesFile = rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) {
-        localPropertiesFile.inputStream().use { localProperties.load(it) }
-    }
-    return localProperties.getProperty("OPENWEATHER_API_KEY")
 }
 
 dependencies {
@@ -67,6 +54,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.security.crypto)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

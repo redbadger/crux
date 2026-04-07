@@ -1,15 +1,18 @@
 package com.crux.example.weather.core
 
 import android.util.Log
+import com.crux.example.weather.ActiveViewModel
 import com.crux.example.weather.CoreFfi
 import com.crux.example.weather.Effect
 import com.crux.example.weather.Event
+import com.crux.example.weather.FavoritesViewModel
+import com.crux.example.weather.HomeViewModel
 import com.crux.example.weather.LocationOperation
 import com.crux.example.weather.LocationResult
+import com.crux.example.weather.OnboardViewModel
 import com.crux.example.weather.Request
 import com.crux.example.weather.Requests
 import com.crux.example.weather.ViewModel
-import com.crux.example.weather.WorkflowViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +28,8 @@ class Core(
     private val httpClient: HttpClient,
     private val locationManager: LocationManager,
     private val keyValueStore: KeyValueStore,
+    private val secretStore: SecretStore,
+    private val timeHandler: TimeHandler,
 ) {
     private val coreFfi = CoreFfi()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -32,8 +37,24 @@ class Core(
     private val _viewModel: MutableStateFlow<ViewModel> = MutableStateFlow(getViewModel())
     val viewModel: StateFlow<ViewModel> = _viewModel.asStateFlow()
 
-    inline fun <reified T : WorkflowViewModel> workflowViewModel(): Flow<T> {
-        return viewModel.mapNotNull { it.workflow as? T }
+    init {
+        update(Event.Start)
+    }
+
+    fun homeViewModel(): Flow<HomeViewModel> {
+        return viewModel.mapNotNull { vm ->
+            (vm as? ViewModel.Active)?.let { (it.value as? ActiveViewModel.Home)?.value }
+        }
+    }
+
+    fun favoritesViewModel(): Flow<FavoritesViewModel> {
+        return viewModel.mapNotNull { vm ->
+            (vm as? ViewModel.Active)?.let { (it.value as? ActiveViewModel.Favorites)?.value }
+        }
+    }
+
+    fun onboardViewModel(): Flow<OnboardViewModel> {
+        return viewModel.mapNotNull { (it as? ViewModel.Onboard)?.value }
     }
 
     fun update(event: Event) {
@@ -72,6 +93,16 @@ class Core(
                 handleLocationEffect(effect, request.id)
             }
 
+            is Effect.Secret -> {
+                handleSecretEffect(effect, request.id)
+            }
+
+            is Effect.Time -> {
+                // Fire-and-forget: the time handler launches its own coroutines
+                // and resolves asynchronously when timers fire.
+                timeHandler.handle(effect.value, request.id, ::resolveAndHandleEffects)
+            }
+
             is Effect.Render -> {
                 render()
             }
@@ -101,6 +132,11 @@ class Core(
 
     private suspend fun handleKeyValueEffect(effect: Effect.KeyValue, requestId: UInt) {
         val result = keyValueStore.handleEffect(effect)
+        resolveAndHandleEffects(requestId, result.bincodeSerialize())
+    }
+
+    private suspend fun handleSecretEffect(effect: Effect.Secret, requestId: UInt) {
+        val result = secretStore.handle(effect.value)
         resolveAndHandleEffects(requestId, result.bincodeSerialize())
     }
 
