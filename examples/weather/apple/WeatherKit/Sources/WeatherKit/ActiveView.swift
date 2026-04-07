@@ -9,25 +9,13 @@ public struct ActiveView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.systemGroupedBackground
-                    .ignoresSafeArea()
-
-                switch model {
-                case let .home(home):
-                    HomeView(model: home)
-                        .transition(
-                            .opacity.combined(with: .offset(x: 0, y: 10))
-                        )
-                case let .favorites(favorites):
-                    FavoritesView(model: favorites)
-                        .transition(
-                            .opacity.combined(with: .offset(x: 0, y: 10))
-                        )
-                }
+        switch model {
+        case let .home(home):
+            HomeView(model: home)
+        case let .favorites(favorites):
+            NavigationStack {
+                FavoritesView(model: favorites)
             }
-            .animation(.easeOut(duration: 0.2), value: model)
         }
     }
 }

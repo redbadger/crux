@@ -10,38 +10,48 @@ public struct OnboardView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 32) {
+            Spacer()
+
+            // Branding - since this is the first screen
+            Image(systemName: "cloud.sun.fill")
+                .font(.system(size: 72))
+                .symbolRenderingMode(.multicolor)
+
+            Text("Crux Weather")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+
             Text(reasonMessage)
-                .font(.headline)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
+            // Ask for the API key
             switch model.state {
             case let .input(apiKey, canSubmit):
                 VStack(spacing: 16) {
-                    HStack {
-                        Image(systemName: "key")
-                            .foregroundColor(.secondary)
-                        TextField("API Key", text: Binding(
-                            get: { apiKey },
-                            set: { update(.onboard(.apiKey($0))) }
-                        ))
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
+                    TextField("Paste your API key here", text: Binding(
+                        get: { apiKey },
+                        set: { update(.onboard(.apiKey($0))) }
+                    ))
+                    .textFieldStyle(.roundedBorder)
 
-                    HStack {
-                        Spacer()
-                        Button("Submit") {
-                            update(.onboard(.submit))
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.extraLarge)
-                        .disabled(!canSubmit)
+                    Button("Get Started") {
+                        update(.onboard(.submit))
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.extraLarge)
+                    .disabled(!canSubmit)
                 }
+                .padding(.horizontal, 32)
 
             case .saving:
                 ProgressView("Saving...")
             }
+
+            Spacer()
+            Spacer()
         }
         .padding()
     }
@@ -49,11 +59,11 @@ public struct OnboardView: View {
     private var reasonMessage: String {
         switch model.reason {
         case .welcome:
-            "Enter your OpenWeather API key"
+            "Enter your OpenWeather API key to get started."
         case .unauthorized:
-            "API key was rejected. Please try again."
+            "That API key was rejected. Please try again."
         case .reset:
-            "Enter a new API key"
+            "Enter a new API key."
         }
     }
 }

@@ -5,11 +5,6 @@ import SwiftUI
 struct WeatherCard: View {
     let weatherData: CurrentWeatherResponse
 
-    private var isDay: Bool {
-        let now = Date().timeIntervalSince1970
-        return now >= Double(weatherData.sys.sunrise) && now <= Double(weatherData.sys.sunset)
-    }
-
     private var detailItems: [WeatherDetailItem] {
         [
             WeatherDetailItem(
@@ -50,7 +45,7 @@ struct WeatherCard: View {
             VStack(spacing: 16) {
                 // Weather Icon
                 if let weather = weatherData.weather.first {
-                    WeatherIcon(weatherCode: weather.id, isDay: isDay, font: .largeTitle)
+                    WeatherIcon(weatherCode: weather.id, isDay: weatherData.isDay, font: .largeTitle)
                 }
 
                 // Location

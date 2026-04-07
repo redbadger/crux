@@ -21,10 +21,16 @@ struct WeatherIcon: View {
         }
     }
 
+    var skyColor: Color {
+        isDay ? .blue : .indigo
+    }
+
     var body: some View {
         Image(systemName: iconName)
             .font(font)
             .symbolRenderingMode(.multicolor)
+            .padding(8)
+            .background(skyColor.gradient, in: .circle)
     }
 }
 

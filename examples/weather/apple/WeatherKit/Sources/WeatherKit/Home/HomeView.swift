@@ -1,52 +1,79 @@
 import App
 import SwiftUI
 
+enum LocationSelection: Hashable {
+    case current
+    case favorite(Location)
+}
+
 // ANCHOR: home_view
 struct HomeView: View {
     @Environment(CoreUpdater.self) var update
     let model: HomeViewModel
-    @State private var selectedPage = 0
+    @State private var selection: LocationSelection? = .current
+    @State private var showResetConfirmation = false
 
     var body: some View {
-        VStack {
-            TabView(selection: $selectedPage) {
-                // Local weather card
-                localWeatherCard
-                    .tag(0)
-                    .tabItem { Label("Current", systemImage: "location") }
+        NavigationSplitView {
+            List(selection: $selection) {
+                CurrentLocationRow(localWeather: model.localWeather)
+                    .tag(LocationSelection.current)
 
-                // Favorite weather cards
-                ForEach(Array(model.favorites.enumerated()), id: \.element.name) { idx, favorite in
-                    favoriteWeatherCard(favorite)
-                        .tag(idx + 1)
-                        .tabItem { Label(favorite.name, systemImage: "star") }
+                ForEach(model.favorites, id: \.location) { favorite in
+                    LocationRow(
+                        name: favorite.name,
+                        weather: favorite.weather,
+                        isCurrentLocation: false
+                    )
+                    .tag(LocationSelection.favorite(favorite.location))
                 }
             }
-            #if os(iOS)
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-            #endif
-        }
-        .padding(.vertical)
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    update(.active(.home(.goToFavorites)))
-                } label: {
-                    Image(systemName: "star")
+            .navigationTitle("Weather")
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        update(.active(.home(.goToFavorites)))
+                    } label: {
+                        Image(systemName: "list.bullet")
+                    }
+                }
+                ToolbarItem(placement: .automatic) {
+                    Button {
+                        showResetConfirmation = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
                 }
             }
-            ToolbarItem(placement: .automatic) {
-                Button {
+            .confirmationDialog("Settings", isPresented: $showResetConfirmation) {
+                Button("Reset API Key", role: .destructive) {
                     update(.active(.resetApiKey))
-                } label: {
-                    Image(systemName: "key")
                 }
             }
+        } detail: {
+            detailView
+        }
+        .navigationSplitViewStyle(.prominentDetail)
+    }
+
+    @ViewBuilder
+    private var detailView: some View {
+        switch selection {
+        case .current:
+            currentLocationDetail
+        case let .favorite(location):
+            if let favorite = model.favorites.first(where: { $0.location == location }) {
+                favoriteDetail(favorite)
+            } else {
+                ContentUnavailableView("Select a location", systemImage: "mappin.and.ellipse")
+            }
+        case nil:
+            ContentUnavailableView("Select a location", systemImage: "mappin.and.ellipse")
         }
     }
 
     @ViewBuilder
-    private var localWeatherCard: some View {
+    private var currentLocationDetail: some View {
         switch model.localWeather {
         case .checkingPermission:
             StatusCard(message: "Checking location permission...")
@@ -57,21 +84,23 @@ struct HomeView: View {
         case .fetchingWeather:
             LoadingCard()
         case let .fetched(weatherData):
-            WeatherCard(weatherData: weatherData)
-                .transition(.opacity)
+            ScrollView {
+                WeatherCard(weatherData: weatherData)
+            }
         case .failed:
             StatusCard(message: "Failed to load weather", icon: "exclamationmark.triangle")
         }
     }
 
     @ViewBuilder
-    private func favoriteWeatherCard(_ favorite: FavoriteWeatherViewModel) -> some View {
+    private func favoriteDetail(_ favorite: FavoriteWeatherViewModel) -> some View {
         switch favorite.weather {
         case .fetching:
             LoadingCard()
         case let .fetched(weatherData):
-            WeatherCard(weatherData: weatherData)
-                .transition(.opacity)
+            ScrollView {
+                WeatherCard(weatherData: weatherData)
+            }
         case .failed:
             StatusCard(message: "Failed to load weather for \(favorite.name)", icon: "exclamationmark.triangle")
         }
@@ -82,7 +111,13 @@ struct HomeView: View {
 #Preview {
     HomeView(model: HomeViewModel(
         localWeather: .fetched(previewWeatherResponse),
-        favorites: []
+        favorites: [
+            FavoriteWeatherViewModel(
+                name: "Paris",
+                location: Location(lat: 48.8566, lon: 2.3522),
+                weather: .fetched(previewWeatherResponse)
+            )
+        ]
     ))
     .previewEnvironment()
 }
