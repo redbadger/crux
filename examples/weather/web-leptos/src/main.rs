@@ -131,7 +131,9 @@ fn home_view(
                 }.into_any()
             }}
         </div>
-        {if !favorites.is_empty() {
+        {if favorites.is_empty() {
+            view! { <div></div> }.into_any()
+        } else {
             view! {
                 <div class="box">
                     <h3 class="title is-5">{"Favorites"}</h3>
@@ -164,8 +166,6 @@ fn home_view(
                     }).collect::<Vec<_>>()}
                 </div>
             }.into_any()
-        } else {
-            view! { <div></div> }.into_any()
         }}
         <div class="buttons is-centered mt-4">
             <button class="button is-info"

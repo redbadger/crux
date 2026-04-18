@@ -17,7 +17,7 @@ impl fmt::Display for Wind {
                 "Wind: (speed: {}, degree: {}, gust: {})",
                 self.speed, self.deg, gust
             ),
-            None => write!(f, "Wind: (speed: {}, degree: {})", self.speed, self.deg,),
+            None => write!(f, "Wind: (speed: {}, degree: {})", self.speed, self.deg),
         }
     }
 }

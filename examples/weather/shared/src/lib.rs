@@ -1,3 +1,5 @@
+#![allow(clippy::unsafe_derive_deserialize)]
+#![allow(clippy::missing_panics_doc)]
 pub mod app;
 mod config;
 pub mod favorites;

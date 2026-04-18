@@ -33,7 +33,7 @@ automerge = { version = "=0.4.1", features = ["wasm"] }
 crux_core.workspace = true
 crux_kv.workspace = true
 crux_time.workspace = true
-facet = "=0.31"
+facet = "0.44"
 futures = "0.3"
 serde = { workspace = true, features = ["derive"] }
 

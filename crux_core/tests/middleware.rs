@@ -189,7 +189,7 @@ mod middleware {
                     // Send a random number n times - this simulates subscriptions
                     let count = input.0.len();
                     for (i, n) in (input.0).iter().enumerate() {
-                        eprintln!("- Resolving random number #{i} of {count}",);
+                        eprintln!("- Resolving random number #{i} of {count}");
                         resolver.resolve(RandomNumber(*n));
                     }
                 }

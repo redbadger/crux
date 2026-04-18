@@ -283,7 +283,7 @@ impl FormatHolder for VariantFormat {
             }
 
             (Self::Tuple(formats1), Self::Tuple(formats2)) if formats1.len() == formats2.len() => {
-                for (format1, format2) in formats1.iter_mut().zip(formats2.into_iter()) {
+                for (format1, format2) in formats1.iter_mut().zip(formats2) {
                     format1.unify(format2)?;
                 }
             }
@@ -291,8 +291,7 @@ impl FormatHolder for VariantFormat {
             (Self::Struct(named_formats1), Self::Struct(named_formats2))
                 if named_formats1.len() == named_formats2.len() =>
             {
-                for (format1, format2) in named_formats1.iter_mut().zip(named_formats2.into_iter())
-                {
+                for (format1, format2) in named_formats1.iter_mut().zip(named_formats2) {
                     format1.unify(format2)?;
                 }
             }
@@ -469,7 +468,7 @@ impl FormatHolder for ContainerFormat {
             (Self::TupleStruct(formats1), Self::TupleStruct(formats2))
                 if formats1.len() == formats2.len() =>
             {
-                for (format1, format2) in formats1.iter_mut().zip(formats2.into_iter()) {
+                for (format1, format2) in formats1.iter_mut().zip(formats2) {
                     format1.unify(format2)?;
                 }
             }
@@ -477,8 +476,7 @@ impl FormatHolder for ContainerFormat {
             (Self::Struct(named_formats1), Self::Struct(named_formats2))
                 if named_formats1.len() == named_formats2.len() =>
             {
-                for (format1, format2) in named_formats1.iter_mut().zip(named_formats2.into_iter())
-                {
+                for (format1, format2) in named_formats1.iter_mut().zip(named_formats2) {
                     format1.unify(format2)?;
                 }
             }
@@ -661,7 +659,7 @@ impl FormatHolder for Format {
             }
 
             (Self::Tuple(formats1), Self::Tuple(formats2)) if formats1.len() == formats2.len() => {
-                for (format1, format2) in formats1.iter_mut().zip(formats2.into_iter()) {
+                for (format1, format2) in formats1.iter_mut().zip(formats2) {
                     format1.unify(format2)?;
                 }
             }

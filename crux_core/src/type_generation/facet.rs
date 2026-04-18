@@ -61,21 +61,18 @@
 //!  typegen.swift(
 //!      &Config::builder("SharedTypes", &output_root.join("swift"))
 //!      .add_extensions()
-//!      .add_runtimes()
 //!      .build()
 //!  )?;
 //!
 //!  typegen.java(
 //!      &Config::builder("com.crux.example.counter.shared", output_root.join("java"))
 //!      .add_extensions()
-//!      .add_runtimes()
 //!      .build()
 //!  )?;
 //!
 //!  typegen.typescript(
 //!      &Config::builder("shared_types", output_root.join("typescript"))
 //!      .add_extensions()
-//!      .add_runtimes()
 //!      .build()
 //!  )?;
 //! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -93,7 +90,7 @@ pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
     Registry,
     generation::{
-        Encoding, SourceInstaller, java, kotlin, module, swift,
+        Encoding, java, kotlin, swift,
         typescript::{self, InstallTarget},
     },
     reflection::RegistryBuilder,
@@ -114,6 +111,12 @@ pub enum TypeGenError {
         "`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation"
     )]
     PnpmNotFound(#[source] std::io::Error),
+}
+
+impl From<facet_generate::generation::Error> for TypeGenError {
+    fn from(e: facet_generate::generation::Error) -> Self {
+        TypeGenError::Generation(e.to_string())
+    }
 }
 
 pub trait Export {
@@ -237,7 +240,6 @@ impl CodeGenerator {
     /// typegen.swift(
     ///     &Config::builder("SharedTypes", output_root.join("swift"))
     ///     .add_extensions()
-    ///     .add_runtimes()
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -252,25 +254,10 @@ impl CodeGenerator {
 
         fs::create_dir_all(&path)?;
 
-        let mut installer =
-            swift::Installer::new(&config.package_name, &path, &config.external_packages);
-
-        if config.add_runtimes {
-            installer
-                .install_serde_runtime()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-            installer
-                .install_bincode_runtime()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        }
-
-        for (module, registry) in module::split(&config.package_name, &self.0) {
-            let config = module.config().clone().with_encoding(Encoding::Bincode);
-
-            installer
-                .install_module(&config, &registry)
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        }
+        swift::Installer::new(&config.package_name, &path)
+            .encoding(Encoding::Bincode)
+            .external_packages(&config.external_packages)
+            .generate(&self.0)?;
 
         if config.add_extensions {
             // add bincode deserialization for Vec<Request>
@@ -282,10 +269,6 @@ impl CodeGenerator {
             let requests_data = fs::read_to_string(requests_path)?;
             write!(output, "{requests_data}")?;
         }
-
-        installer
-            .install_manifest(&config.package_name)
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         Ok(())
     }
@@ -300,7 +283,6 @@ impl CodeGenerator {
     /// typegen.java(
     ///     &Config::builder("com.crux.example", output_root.join("java"))
     ///     .add_extensions()
-    ///     .add_runtimes()
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -308,6 +290,10 @@ impl CodeGenerator {
     ///
     /// # Errors
     /// Errors that can occur during type generation.
+    #[deprecated(
+        since = "0.17.0",
+        note = "The Java typegen is deprecated. Use Kotlin typegen instead."
+    )]
     pub fn java(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Java types");
         fs::create_dir_all(&config.out_dir)?;
@@ -317,31 +303,11 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        let mut installer = java::Installer::new(
-            &config.package_name,
-            &config.out_dir,
-            &config.external_packages,
-        );
-        if config.add_runtimes {
-            installer
-                .install_serde_runtime()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-            installer
-                .install_bincode_runtime()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        }
-
-        for (module, registry) in module::split(&config.package_name, &self.0) {
-            let module_config = module
-                .config()
-                .clone()
-                .with_parent(&config.package_name)
-                .with_encoding(Encoding::Bincode);
-
-            installer
-                .install_module(&module_config, &registry)
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        }
+        #[allow(deprecated)]
+        java::Installer::new(&config.package_name, &config.out_dir)
+            .encoding(Encoding::Bincode)
+            .external_packages(&config.external_packages)
+            .generate(&self.0)?;
 
         if config.add_extensions {
             let requests_path = Self::extensions_path("java/Requests.java");
@@ -368,7 +334,6 @@ impl CodeGenerator {
     /// typegen.kotlin(
     ///     &Config::builder("com.crux.example", output_root.join("kotlin"))
     ///     .add_extensions()
-    ///     .add_runtimes()
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -385,31 +350,10 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        let mut installer = kotlin::Installer::new(
-            &config.package_name,
-            &config.out_dir,
-            &config.external_packages,
-        );
-        if config.add_runtimes {
-            installer
-                .install_serde_runtime()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-            installer
-                .install_bincode_runtime()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        }
-
-        for (module, registry) in module::split(&config.package_name, &self.0) {
-            let module_config = module
-                .config()
-                .clone()
-                .with_parent(&config.package_name)
-                .with_encoding(Encoding::Bincode);
-
-            installer
-                .install_module(&module_config, &registry)
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        }
+        kotlin::Installer::new(&config.package_name, &config.out_dir)
+            .encoding(Encoding::Bincode)
+            .external_packages(&config.external_packages)
+            .generate(&self.0)?;
 
         if config.add_extensions {
             let requests_path = Self::extensions_path("kotlin/Requests.kt");
@@ -436,7 +380,6 @@ impl CodeGenerator {
     /// typegen.typescript(
     ///     &Config::builder("shared_types", output_root.join("typescript"))
     ///     .add_extensions()
-    ///     .add_runtimes()
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -448,24 +391,10 @@ impl CodeGenerator {
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
-        let mut installer =
-            typescript::Installer::new(output_dir, &config.external_packages, InstallTarget::Node);
-        if config.add_runtimes {
-            installer
-                .install_serde_runtime()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-            installer
-                .install_bincode_runtime()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        }
-
-        for (module, registry) in module::split(&config.package_name, &self.0) {
-            let config = module.config().clone().with_encoding(Encoding::Bincode);
-
-            installer
-                .install_module(&config, &registry)
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?;
-        }
+        typescript::Installer::new(&config.package_name, output_dir, InstallTarget::Node)
+            .encoding(Encoding::Bincode)
+            .external_packages(&config.external_packages)
+            .generate(&self.0)?;
 
         let ts_config_str = serde_json::to_string_pretty(&json!({
             "compilerOptions": {
@@ -482,10 +411,6 @@ impl CodeGenerator {
         .map_err(|e| TypeGenError::Generation(e.to_string()))?;
         let mut output = File::create(output_dir.join("tsconfig.json"))?;
         write!(output, "{ts_config_str}")?;
-
-        installer
-            .install_manifest(&config.package_name)
-            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
         info!("Installing dependencies");
         Command::new("pnpm")

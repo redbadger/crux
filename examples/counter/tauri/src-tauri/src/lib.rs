@@ -6,11 +6,11 @@ static CORE: LazyLock<Arc<Core<Counter>>> = LazyLock::new(|| Arc::new(Core::new(
 
 fn handle_event(event: Event, core: &Arc<Core<Counter>>, app: &tauri::AppHandle) {
     for effect in core.process_event(event) {
-        process_effect(effect, core, app);
+        process_effect(&effect, core, app);
     }
 }
 
-fn process_effect(effect: Effect, core: &Arc<Core<Counter>>, app: &tauri::AppHandle) {
+fn process_effect(effect: &Effect, core: &Arc<Core<Counter>>, app: &tauri::AppHandle) {
     match effect {
         Effect::Render(_) => {
             let view = core.view();

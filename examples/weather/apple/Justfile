@@ -49,6 +49,7 @@ typegen:
 [working-directory('../shared')]
 package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
+    cargo swift --version | grep -q '0.9.0'
     cargo swift package \
         --name Shared \
         --platforms ios macos \
@@ -58,6 +59,12 @@ package: install-targets
     mkdir -p ../apple/generated/Shared
     cp -r Shared/* ../apple/generated/Shared/
     rm -rf Shared
+    # Work around cargo-swift 0.9.0 placing headers one level too deep
+    # (Info.plist declares HeadersPath = Headers, but cargo-swift puts them in Headers/RustFramework/)
+    for slice in ../apple/generated/Shared/RustFramework.xcframework/ios-arm64 ../apple/generated/Shared/RustFramework.xcframework/ios-arm64_x86_64-simulator ../apple/generated/Shared/RustFramework.xcframework/macos-arm64_x86_64; do \
+        mv "$slice"/Headers/RustFramework/* "$slice"/Headers/; \
+        rmdir "$slice"/Headers/RustFramework; \
+    done
 
 # rebuilds the Xcode project from project.yml
 generate-project:

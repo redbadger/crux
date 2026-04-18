@@ -36,7 +36,7 @@ codegen = [
 
 # ANCHOR: typegen_deps
 [dependencies]
-facet = "=0.31"
+facet = { version = "0.44", features = ["chrono"] }
 # ANCHOR_END: typegen_deps
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
