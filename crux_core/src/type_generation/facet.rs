@@ -80,7 +80,6 @@
 use std::{
     fs::{self, File},
     io::Write,
-    path::PathBuf,
     process::Command,
     result::Result,
 };
@@ -100,6 +99,12 @@ use serde_json::json;
 use thiserror::Error;
 
 use crate::App;
+
+macro_rules! extension_data {
+    ($path:literal) => {
+        include_str!(concat!("../../typegen_extensions/", $path))
+    };
+}
 
 #[derive(Error, Debug)]
 pub enum TypeGenError {
@@ -265,8 +270,7 @@ impl CodeGenerator {
             fs::create_dir_all(&output_dir)?;
             let mut output = File::create(output_dir.join("Requests.swift"))?;
 
-            let requests_path = Self::extensions_path("swift/requests.swift");
-            let requests_data = fs::read_to_string(requests_path)?;
+            let requests_data = extension_data!("swift/requests.swift");
             write!(output, "{requests_data}")?;
         }
 
@@ -310,10 +314,7 @@ impl CodeGenerator {
             .generate(&self.0)?;
 
         if config.add_extensions {
-            let requests_path = Self::extensions_path("java/Requests.java");
-
-            let requests_data = fs::read_to_string(requests_path)?;
-
+            let requests_data = extension_data!("java/Requests.java");
             let requests = format!("package {};\n\n{requests_data}", config.package_name);
 
             let output_dir = config.out_dir.join(package_path);
@@ -356,10 +357,7 @@ impl CodeGenerator {
             .generate(&self.0)?;
 
         if config.add_extensions {
-            let requests_path = Self::extensions_path("kotlin/Requests.kt");
-
-            let requests_data = fs::read_to_string(requests_path)?;
-
+            let requests_data = extension_data!("kotlin/Requests.kt");
             let requests = format!("package {};\n\n{requests_data}", config.package_name);
 
             let output_dir = config.out_dir.join(package_path);
@@ -438,21 +436,5 @@ impl CodeGenerator {
     #[must_use]
     pub fn registry(self) -> Registry {
         self.0
-    }
-
-    fn extensions_path(path: &str) -> PathBuf {
-        let custom = PathBuf::from("./typegen_extensions").join(path);
-        let default = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("typegen_extensions")
-            .join(path);
-
-        match custom.try_exists() {
-            Ok(true) => custom,
-            Ok(false) => default,
-            Err(e) => {
-                println!("cant check typegen extensions override: {e}");
-                default
-            }
-        }
     }
 }

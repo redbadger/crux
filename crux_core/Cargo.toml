@@ -22,6 +22,7 @@ crux_macros = { version = "0.8.0", path = "../crux_macros", optional = true }
 facet.workspace = true
 facet_generate = { workspace = true, optional = true }
 futures = "0.3"
+include_dir = { version = "0.7", optional = true }
 log = { version = "0.4", optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde-generate = { version = "=0.26", optional = true }
@@ -48,4 +49,4 @@ uuid = { version = "1.22.0", features = ["serde", "v4"] }
 default = ["crux_macros"]
 cli = ["dep:crux_cli"]
 facet_typegen = ["crux_macros/facet_typegen", "dep:facet_generate", "dep:log"]
-typegen = ["crux_macros/typegen", "dep:serde-generate", "dep:serde-reflection"]
+typegen = ["crux_macros/typegen", "dep:serde-generate", "dep:serde-reflection", "dep:include_dir"]
