@@ -11,6 +11,7 @@ use shared::{
 
 // ANCHOR: home_view
 #[component]
+#[allow(clippy::too_many_lines)]
 pub fn home_view(model: HomeViewModel, set_event: WriteSignal<Event>) -> impl IntoView {
     view! {
         <div class="card">
@@ -115,7 +116,9 @@ pub fn home_view(model: HomeViewModel, set_event: WriteSignal<Event>) -> impl In
                 }
             }}
         </div>
-        {if !model.favorites.is_empty() {
+        {if model.favorites.is_empty() {
+            view! { <div></div> }.into_any()
+        } else {
             view! {
                 <div class="card">
                     <p class="section-title">
@@ -127,8 +130,6 @@ pub fn home_view(model: HomeViewModel, set_event: WriteSignal<Event>) -> impl In
                     }).collect::<Vec<_>>()}
                 </div>
             }.into_any()
-        } else {
-            view! { <div></div> }.into_any()
         }}
         <div class="buttons is-centered" style="margin-top: 1rem;">
             <button class="button is-info btn"

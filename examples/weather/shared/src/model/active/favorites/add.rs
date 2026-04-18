@@ -54,6 +54,7 @@ impl Default for AddFavoriteWorkflow {
 }
 
 impl AddFavoriteWorkflow {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             input: VersionedInput::default(),

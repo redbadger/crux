@@ -26,10 +26,12 @@ pub enum ActiveEvent {
 }
 
 impl ActiveEvent {
+    #[must_use]
     pub fn home(event: HomeEvent) -> Self {
         ActiveEvent::Home(Box::new(event))
     }
 
+    #[must_use]
     pub fn favorites(event: FavoritesScreenEvent) -> Self {
         ActiveEvent::Favorites(Box::new(event))
     }
@@ -145,7 +147,7 @@ impl ActiveModel {
                         cmd,
                     ),
                     super::outcome::Status::Complete(FavoritesTransition::GoToHome(favorites)) => {
-                        let (home_screen, start_cmd) = HomeScreen::start(favorites, &api_key)
+                        let (home_screen, start_cmd) = HomeScreen::start(&favorites, &api_key)
                             .map_event(ActiveEvent::home)
                             .into_parts();
                         Outcome::continuing(

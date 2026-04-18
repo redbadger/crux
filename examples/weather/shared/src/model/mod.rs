@@ -85,9 +85,10 @@ impl Model {
                 api_key,
                 favorites,
             )) => {
-                let (home_screen, start_cmd) = active::home::HomeScreen::start(favorites, &api_key)
-                    .map_event(|he| Event::Active(ActiveEvent::home(he)))
-                    .into_parts();
+                let (home_screen, start_cmd) =
+                    active::home::HomeScreen::start(&favorites, &api_key)
+                        .map_event(|he| Event::Active(ActiveEvent::home(he)))
+                        .into_parts();
                 *self = Model::Active(ActiveModel {
                     api_key,
                     screen: active::Screen::Home(home_screen),
@@ -110,9 +111,10 @@ impl Model {
                 command
             }
             outcome::Status::Complete(onboard::OnboardTransition::Active(api_key, favorites)) => {
-                let (home_screen, start_cmd) = active::home::HomeScreen::start(favorites, &api_key)
-                    .map_event(|he| Event::Active(ActiveEvent::home(he)))
-                    .into_parts();
+                let (home_screen, start_cmd) =
+                    active::home::HomeScreen::start(&favorites, &api_key)
+                        .map_event(|he| Event::Active(ActiveEvent::home(he)))
+                        .into_parts();
                 *self = Model::Active(ActiveModel {
                     api_key,
                     screen: active::Screen::Home(home_screen),

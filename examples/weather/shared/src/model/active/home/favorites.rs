@@ -39,7 +39,7 @@ impl From<Vec<FavoriteWeather>> for Favorites {
 }
 
 pub(crate) fn start(
-    favorites: Favorites,
+    favorites: &Favorites,
     api_key: &ApiKey,
 ) -> Started<Vec<FavoriteWeather>, FavoriteWeatherEvent> {
     let items: Vec<FavoriteWeather> = favorites
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn weather_fetched_updates_state() {
         let (favorites, fav) = favorites_with_phoenix();
-        let items = start(favorites, &api_key()).into_state();
+        let items = start(&favorites, &api_key()).into_state();
 
         let location = fav.location();
         let (items, _cmd) = update(
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn unauthorized_completes_with_transition() {
         let (favorites, fav) = favorites_with_phoenix();
-        let items = start(favorites, &api_key()).into_state();
+        let items = start(&favorites, &api_key()).into_state();
 
         let location = fav.location();
         let (transition, _cmd) = update(
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn network_error_marks_failed() {
         let (favorites, fav) = favorites_with_phoenix();
-        let items = start(favorites, &api_key()).into_state();
+        let items = start(&favorites, &api_key()).into_state();
 
         let location = fav.location();
         let (items, _cmd) = update(
@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn empty_favorites_starts_with_no_effects() {
         let favorites = Favorites::default();
-        let Started { state, .. } = start(favorites, &api_key());
+        let Started { state, .. } = start(&favorites, &api_key());
 
         assert!(state.is_empty());
     }

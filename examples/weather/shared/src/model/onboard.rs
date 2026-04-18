@@ -67,6 +67,7 @@ impl Default for OnboardModel {
 }
 
 impl OnboardModel {
+    #[must_use]
     pub fn new(reason: OnboardReason, favorites: Favorites) -> Self {
         Self {
             reason,
@@ -80,6 +81,7 @@ impl OnboardModel {
 
 impl OnboardModel {
     /// Whether the user can submit the API key (non-empty and in the input state).
+    #[must_use]
     pub fn can_submit(&self) -> bool {
         matches!(self.state, OnboardState::Input { ref api_key } if !api_key.trim().is_empty())
     }

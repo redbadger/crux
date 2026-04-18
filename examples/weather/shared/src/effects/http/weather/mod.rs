@@ -28,6 +28,7 @@ struct CurrentWeatherQuery {
 
 /// Build an `HttpRequest` for testing purposes
 #[cfg(test)]
+#[must_use]
 pub fn build_request(location: Location, api_key: &ApiKey) -> HttpRequest {
     HttpRequest::get(WEATHER_URL)
         .query(&CurrentWeatherQuery {
@@ -42,6 +43,7 @@ pub fn build_request(location: Location, api_key: &ApiKey) -> HttpRequest {
 
 // ANCHOR: fetch
 /// Fetch current weather for a specific location
+#[must_use]
 pub fn fetch<Effect, Event>(
     location: Location,
     api_key: ApiKey,

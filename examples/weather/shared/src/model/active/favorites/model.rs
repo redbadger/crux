@@ -17,6 +17,7 @@ impl From<GeocodingResponse> for Favorite {
 }
 
 impl Favorite {
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.0.name
     }

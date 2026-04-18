@@ -41,10 +41,12 @@ pub enum FavoritesWorkflowEvent {
 }
 
 impl FavoritesScreenEvent {
+    #[must_use]
     pub fn add(event: AddFavoriteEvent) -> Self {
         Self::Workflow(FavoritesWorkflowEvent::Add(event))
     }
 
+    #[must_use]
     pub fn confirm_delete(event: ConfirmDeleteEvent) -> Self {
         Self::Workflow(FavoritesWorkflowEvent::ConfirmDelete(event))
     }
@@ -84,6 +86,7 @@ fn persist_favorites(
 }
 
 impl FavoritesScreen {
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn update(
         mut self,
         event: FavoritesScreenEvent,
@@ -157,7 +160,7 @@ impl FavoritesScreen {
                         FavoritesWorkflowEvent::ConfirmDelete(event),
                     ) => {
                         let (status, cmd) = delete_workflow
-                            .update(event)
+                            .update(&event)
                             .map_event(|e| {
                                 FavoritesScreenEvent::Workflow(
                                     FavoritesWorkflowEvent::ConfirmDelete(e),

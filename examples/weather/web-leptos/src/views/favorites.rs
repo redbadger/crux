@@ -13,110 +13,110 @@ use shared::{
 };
 
 #[component]
+#[allow(clippy::too_many_lines)]
 pub fn favorites_view(model: FavoritesViewModel, set_event: WriteSignal<Event>) -> impl IntoView {
-    match model.workflow {
-        Some(FavoritesWorkflowViewModel::Add(add)) => view! {
+    if let Some(FavoritesWorkflowViewModel::Add(add)) = model.workflow {
+        view! {
             <AddFavoriteView model=add set_event=set_event />
         }
-        .into_any(),
-        _ => {
-            let delete_confirmation = match model.workflow {
-                Some(FavoritesWorkflowViewModel::ConfirmDelete { location }) => Some(location),
-                _ => None,
-            };
-            view! {
-                <div class="card">
-                    <p class="section-title">
-                        <i class="ph ph-star"></i>
-                        {"Favorites"}
-                    </p>
-                    {if model.favorites.is_empty() {
-                        view! {
-                            <div class="status-message">
-                                <i class="ph ph-star"></i>
-                                <p>{"No favorites yet"}</p>
-                            </div>
-                        }.into_any()
-                    } else {
-                        view! {
-                            <div>
-                                {model.favorites.into_iter().map(|fav| {
-                                    let loc = fav.location;
-                                    let name = fav.name.clone();
-                                    view! {
-                                        <div class="fav-card" style="justify-content: space-between;">
-                                            <span class="fav-name">
-                                                <i class="ph ph-map-pin" style="margin-right: 0.25rem;"></i>
-                                                {name}
-                                            </span>
-                                            <button class="button is-danger is-small btn"
-                                                on:click=move |_| set_event.set(Event::Active(
-                                                    ActiveEvent::favorites(
-                                                        FavoritesScreenEvent::RequestDelete(loc)
-                                                    )
-                                                ))
-                                            >
-                                                <span class="icon is-small"><i class="ph ph-trash"></i></span>
-                                            </button>
-                                        </div>
-                                    }
-                                }).collect::<Vec<_>>()}
-                            </div>
-                        }.into_any()
-                    }}
-                </div>
-                {delete_confirmation.map(|_loc| view! {
-                    <div class="modal is-active">
-                        <div class="modal-background"></div>
-                        <div class="modal-content">
-                            <div class="card" style="text-align: center;">
-                                <i class="ph ph-warning" style="font-size: 2.5rem; color: #ef4444;"></i>
-                                <p style="font-weight: 600; font-size: 1.1rem; margin: 0.75rem 0;">{"Delete this favorite?"}</p>
-                                <div class="buttons is-centered">
-                                    <button class="button btn"
-                                        on:click=move |_| set_event.set(Event::Active(
-                                            ActiveEvent::favorites(
-                                                FavoritesScreenEvent::confirm_delete(ConfirmDeleteEvent::Cancelled)
-                                            )
-                                        ))
-                                    >
-                                        {"Cancel"}
-                                    </button>
-                                    <button class="button is-danger btn"
-                                        on:click=move |_| set_event.set(Event::Active(
-                                            ActiveEvent::favorites(
-                                                FavoritesScreenEvent::confirm_delete(ConfirmDeleteEvent::Confirmed)
-                                            )
-                                        ))
-                                    >
-                                        <span class="icon"><i class="ph ph-trash"></i></span>
-                                        <span>{"Delete"}</span>
-                                    </button>
-                                </div>
+        .into_any()
+    } else {
+        let delete_confirmation = match model.workflow {
+            Some(FavoritesWorkflowViewModel::ConfirmDelete { location }) => Some(location),
+            _ => None,
+        };
+        view! {
+            <div class="card">
+                <p class="section-title">
+                    <i class="ph ph-star"></i>
+                    {"Favorites"}
+                </p>
+                {if model.favorites.is_empty() {
+                    view! {
+                        <div class="status-message">
+                            <i class="ph ph-star"></i>
+                            <p>{"No favorites yet"}</p>
+                        </div>
+                    }.into_any()
+                } else {
+                    view! {
+                        <div>
+                            {model.favorites.into_iter().map(|fav| {
+                                let loc = fav.location;
+                                let name = fav.name.clone();
+                                view! {
+                                    <div class="fav-card" style="justify-content: space-between;">
+                                        <span class="fav-name">
+                                            <i class="ph ph-map-pin" style="margin-right: 0.25rem;"></i>
+                                            {name}
+                                        </span>
+                                        <button class="button is-danger is-small btn"
+                                            on:click=move |_| set_event.set(Event::Active(
+                                                ActiveEvent::favorites(
+                                                    FavoritesScreenEvent::RequestDelete(loc)
+                                                )
+                                            ))
+                                        >
+                                            <span class="icon is-small"><i class="ph ph-trash"></i></span>
+                                        </button>
+                                    </div>
+                                }
+                            }).collect::<Vec<_>>()}
+                        </div>
+                    }.into_any()
+                }}
+            </div>
+            {delete_confirmation.map(|_loc| view! {
+                <div class="modal is-active">
+                    <div class="modal-background"></div>
+                    <div class="modal-content">
+                        <div class="card" style="text-align: center;">
+                            <i class="ph ph-warning" style="font-size: 2.5rem; color: #ef4444;"></i>
+                            <p style="font-weight: 600; font-size: 1.1rem; margin: 0.75rem 0;">{"Delete this favorite?"}</p>
+                            <div class="buttons is-centered">
+                                <button class="button btn"
+                                    on:click=move |_| set_event.set(Event::Active(
+                                        ActiveEvent::favorites(
+                                            FavoritesScreenEvent::confirm_delete(ConfirmDeleteEvent::Cancelled)
+                                        )
+                                    ))
+                                >
+                                    {"Cancel"}
+                                </button>
+                                <button class="button is-danger btn"
+                                    on:click=move |_| set_event.set(Event::Active(
+                                        ActiveEvent::favorites(
+                                            FavoritesScreenEvent::confirm_delete(ConfirmDeleteEvent::Confirmed)
+                                        )
+                                    ))
+                                >
+                                    <span class="icon"><i class="ph ph-trash"></i></span>
+                                    <span>{"Delete"}</span>
+                                </button>
                             </div>
                         </div>
                     </div>
-                })}
-                <div class="buttons is-centered" style="margin-top: 1rem;">
-                    <button class="button btn"
-                        on:click=move |_| set_event.set(Event::Active(
-                            ActiveEvent::favorites(FavoritesScreenEvent::GoToHome)
-                        ))
-                    >
-                        <span class="icon"><i class="ph ph-arrow-left"></i></span>
-                        <span>{"Back"}</span>
-                    </button>
-                    <button class="button is-primary btn"
-                        on:click=move |_| set_event.set(Event::Active(
-                            ActiveEvent::favorites(FavoritesScreenEvent::RequestAddFavorite)
-                        ))
-                    >
-                        <span class="icon"><i class="ph ph-plus"></i></span>
-                        <span>{"Add Favorite"}</span>
-                    </button>
                 </div>
-            }.into_any()
-        }
+            })}
+            <div class="buttons is-centered" style="margin-top: 1rem;">
+                <button class="button btn"
+                    on:click=move |_| set_event.set(Event::Active(
+                        ActiveEvent::favorites(FavoritesScreenEvent::GoToHome)
+                    ))
+                >
+                    <span class="icon"><i class="ph ph-arrow-left"></i></span>
+                    <span>{"Back"}</span>
+                </button>
+                <button class="button is-primary btn"
+                    on:click=move |_| set_event.set(Event::Active(
+                        ActiveEvent::favorites(FavoritesScreenEvent::RequestAddFavorite)
+                    ))
+                >
+                    <span class="icon"><i class="ph ph-plus"></i></span>
+                    <span>{"Add Favorite"}</span>
+                </button>
+            </div>
+        }.into_any()
     }
 }
 
@@ -170,7 +170,7 @@ fn add_favorite_view(
                         view! {
                             <div>
                                 {results.into_iter().map(|result| {
-                                    search_result_item(result, set_event)
+                                    search_result_item(&result, set_event)
                                 }).collect::<Vec<_>>()}
                             </div>
                         }.into_any()
@@ -193,7 +193,10 @@ fn add_favorite_view(
     }
 }
 
-fn search_result_item(result: GeocodingResponse, set_event: WriteSignal<Event>) -> impl IntoView {
+fn search_result_item(
+    result: &GeocodingResponse,
+    set_event: WriteSignal<Event>,
+) -> impl IntoView + use<> {
     let name = result.name.clone();
     let country = result.country.clone();
     let state = result.state.clone();

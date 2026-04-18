@@ -24,13 +24,14 @@ pub(crate) enum ConfirmDeleteTransition {
 }
 
 impl ConfirmDeleteWorkflow {
+    #[must_use]
     pub fn new(location: Location) -> Self {
         Self { location }
     }
 
     pub(crate) fn update(
         self,
-        event: ConfirmDeleteEvent,
+        event: &ConfirmDeleteEvent,
     ) -> Outcome<Self, ConfirmDeleteTransition, ConfirmDeleteEvent> {
         match event {
             ConfirmDeleteEvent::Confirmed => {
@@ -60,7 +61,7 @@ mod tests {
     fn confirmed_completes_with_location() {
         let workflow = ConfirmDeleteWorkflow::new(test_location());
         let (transition, mut cmd) = workflow
-            .update(ConfirmDeleteEvent::Confirmed)
+            .update(&ConfirmDeleteEvent::Confirmed)
             .expect_complete()
             .into_parts();
 
@@ -75,7 +76,7 @@ mod tests {
     fn cancelled_completes() {
         let workflow = ConfirmDeleteWorkflow::new(test_location());
         let (transition, mut cmd) = workflow
-            .update(ConfirmDeleteEvent::Cancelled)
+            .update(&ConfirmDeleteEvent::Cancelled)
             .expect_complete()
             .into_parts();
 

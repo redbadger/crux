@@ -35,6 +35,7 @@ struct GeocodingQueryString {
 
 /// Build an `HttpRequest` for testing purposes
 #[cfg(test)]
+#[must_use]
 pub fn build_request(query: &str, api_key: &ApiKey) -> HttpRequest {
     HttpRequest::get(GEOCODING_URL)
         .query(&GeocodingQueryString {
@@ -47,6 +48,7 @@ pub fn build_request(query: &str, api_key: &ApiKey) -> HttpRequest {
 }
 
 /// Fetch geocoding results for a location query
+#[must_use]
 pub fn fetch<Event, Effect>(
     query: &str,
     api_key: ApiKey,
