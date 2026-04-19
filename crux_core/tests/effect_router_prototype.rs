@@ -40,11 +40,27 @@ mod app {
         type Output = StoredImage;
     }
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub enum PermissionRequest {
+        Camera,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub enum PermissionResponse {
+        Granted,
+        Denied,
+    }
+
+    impl Operation for PermissionRequest {
+        type Output = PermissionResponse;
+    }
+
     #[effect]
     #[derive(Debug)]
     pub(crate) enum Effect {
         Render(RenderOperation),
         Time(TimeRequest),
+        Permission(PermissionRequest),
         Camera(CaptureImage),
         FileStore(StoreFile),
     }
@@ -54,6 +70,8 @@ mod app {
         Trigger,
         TriggerWithTimer,
 
+        PermissionForTrigger(PermissionResponse),
+        PermissionForTimer(PermissionResponse),
         TimerFired(TimerOutcome),
         CameraCaptured(OpaqueImageRef),
         FileStored(StoredImage),
@@ -63,9 +81,11 @@ mod app {
     pub(crate) enum SaveStatus {
         #[default]
         Idle,
+        WaitingForPermission,
         WaitingForCapture,
         Saving,
         Saved,
+        PermissionDenied,
     }
 
     #[derive(Debug, Clone, Default)]
@@ -92,6 +112,14 @@ mod app {
             timer.then_send(Event::TimerFired)
         }
 
+        pub(crate) fn request_permission_for_trigger() -> Command<Effect, Event> {
+            Command::request_from_shell(PermissionRequest::Camera).then_send(Event::PermissionForTrigger)
+        }
+
+        pub(crate) fn request_permission_for_timer() -> Command<Effect, Event> {
+            Command::request_from_shell(PermissionRequest::Camera).then_send(Event::PermissionForTimer)
+        }
+
         pub(crate) fn request_camera() -> Command<Effect, Event> {
             Command::request_from_shell(CaptureImage).then_send(Event::CameraCaptured)
         }
@@ -111,15 +139,36 @@ mod app {
             match event {
                 Event::Trigger => {
                     model.countdown = None;
+                    model.save_status = SaveStatus::WaitingForPermission;
+
+                    Command::all([Self::request_permission_for_trigger(), render()])
+                }
+                Event::TriggerWithTimer => {
+                    model.countdown = None;
+                    model.save_status = SaveStatus::WaitingForPermission;
+
+                    Command::all([Self::request_permission_for_timer(), render()])
+                }
+                Event::PermissionForTrigger(PermissionResponse::Granted) => {
                     model.save_status = SaveStatus::WaitingForCapture;
 
                     Command::all([Self::request_camera(), render()])
                 }
-                Event::TriggerWithTimer => {
+                Event::PermissionForTrigger(PermissionResponse::Denied) => {
+                    model.save_status = SaveStatus::PermissionDenied;
+
+                    render()
+                }
+                Event::PermissionForTimer(PermissionResponse::Granted) => {
                     model.countdown = Some(3);
                     model.save_status = SaveStatus::WaitingForCapture;
 
                     Command::all([Self::one_second_timer(), render()])
+                }
+                Event::PermissionForTimer(PermissionResponse::Denied) => {
+                    model.save_status = SaveStatus::PermissionDenied;
+
+                    render()
                 }
                 Event::TimerFired(TimerOutcome::Completed(_)) => {
                     let Some(countdown) = model.countdown else {
@@ -346,6 +395,7 @@ mod ffi {
     pub(crate) enum FfiEffect {
         Render,
         Time { id: u32, request: TimeRequest },
+        Permission { id: u32, request: app::PermissionRequest },
     }
 
     /// A specific typed effect with opaque or pointer based payload
@@ -364,6 +414,7 @@ mod ffi {
     pub(crate) struct CameraFFI {
         router: Arc<Router>,
         serialized_registry: crux_provided::Registry<TimeRequest>,
+        permission_registry: crux_provided::Registry<app::PermissionRequest>,
         camera_registry: crux_provided::Registry<app::CaptureImage>,
     }
 
@@ -378,11 +429,13 @@ mod ffi {
             let core = Core::new();
 
             let serialized_registry = crux_provided::Registry::default();
+            let permission_registry = crux_provided::Registry::default();
             let camera_registry = crux_provided::Registry::default();
 
             let router = Router::new(core, {
                 let shell = shell.clone();
                 let serialized_registry = serialized_registry.clone();
+                let permission_registry = permission_registry.clone();
                 let camera_registry = camera_registry.clone();
 
                 |weak_router| {
@@ -400,6 +453,13 @@ mod ffi {
                                 FfiEffect::Time { id, request: op },
                             );
                         }
+                        app::Effect::Permission(request) => {
+                            let (id, op) = permission_registry.register(request);
+                            emit_serialized_effect(
+                                shell.as_ref(),
+                                FfiEffect::Permission { id, request: op },
+                            );
+                        }
                         app::Effect::Camera(request) => {
                             let (id, op) = camera_registry.register(request);
                             shell.process_camera_effect(CameraEffect { id, operation: op });
@@ -414,6 +474,7 @@ mod ffi {
             Self {
                 router,
                 serialized_registry,
+                permission_registry,
                 camera_registry,
             }
         }
@@ -423,16 +484,26 @@ mod ffi {
         }
 
         /// Resolve an effect sent over the serialized lane.
-        pub(crate) fn resolve(&self, id: u32, data: &[u8]) {
-            // FIXME: use the existing Bridge
+        pub(crate) fn resolve_time(&self, id: u32, data: &[u8]) {
             let output: TimeResponse =
-                serde_json::from_slice(data).expect("serialized resolve payload should decode");
+                serde_json::from_slice(data).expect("time resolve payload should decode");
 
             self.serialized_registry
                 .resolve_with(id, output, |request, output| {
                     self.router.resolve(request, output)
                 })
-                .expect("serialized resolve should work");
+                .expect("time resolve should work");
+        }
+
+        pub(crate) fn resolve_permission(&self, id: u32, data: &[u8]) {
+            let output: app::PermissionResponse =
+                serde_json::from_slice(data).expect("permission resolve payload should decode");
+
+            self.permission_registry
+                .resolve_with(id, output, |request, output| {
+                    self.router.resolve(request, output)
+                })
+                .expect("permission resolve should work");
         }
 
         /// Specific effect FFI for opaque data types
@@ -567,6 +638,28 @@ fn trigger_takes_a_picture() {
 
     core.update(app::Event::Trigger);
 
+    assert_eq!(
+        core.view(),
+        app::ViewModel {
+            countdown: None,
+            save_status: app::SaveStatus::WaitingForPermission,
+            saved_path: None,
+        }
+    );
+
+    let serialized = shell.take_serialized_effects();
+    assert!(serialized.contains(&ffi::FfiEffect::Render));
+    let (permission_id, permission_request) = extract_single_permission_request(serialized);
+    assert_eq!(permission_request, app::PermissionRequest::Camera);
+
+    let camera_effects = shell.take_camera_effects();
+    assert_eq!(camera_effects.len(), 0);
+
+    let permission_response = app::PermissionResponse::Granted;
+    let response_bytes =
+        serde_json::to_vec(&permission_response).expect("permission response should serialize");
+    core.resolve_permission(permission_id, &response_bytes);
+
     let camera_effects = shell.take_camera_effects();
     assert_eq!(camera_effects.len(), 1);
     assert_eq!(camera_effects[0].operation, app::CaptureImage);
@@ -594,13 +687,33 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert_eq!(
         core.view(),
         app::ViewModel {
+            countdown: None,
+            save_status: app::SaveStatus::WaitingForPermission,
+            saved_path: None,
+        }
+    );
+
+    let mut serialized = shell.take_serialized_effects();
+    assert!(serialized.contains(&ffi::FfiEffect::Render));
+    let (permission_id, permission_request) =
+        extract_single_permission_request(std::mem::take(&mut serialized));
+    assert_eq!(permission_request, app::PermissionRequest::Camera);
+
+    let permission_response = app::PermissionResponse::Granted;
+    let permission_bytes =
+        serde_json::to_vec(&permission_response).expect("permission response should serialize");
+    core.resolve_permission(permission_id, &permission_bytes);
+
+    assert_eq!(
+        core.view(),
+        app::ViewModel {
             countdown: Some(3),
             save_status: app::SaveStatus::WaitingForCapture,
             saved_path: None,
         }
     );
 
-    let mut serialized = shell.take_serialized_effects();
+    serialized = shell.take_serialized_effects();
     assert!(serialized.contains(&ffi::FfiEffect::Render));
 
     // 3 -> 2
@@ -610,7 +723,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     };
     let response = TimeResponse::DurationElapsed { id: timer_id };
     let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
-    core.resolve(request_id, &response_bytes);
+    core.resolve_time(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, Some(2));
     serialized = shell.take_serialized_effects();
@@ -623,7 +736,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     };
     let response = TimeResponse::DurationElapsed { id: timer_id };
     let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
-    core.resolve(request_id, &response_bytes);
+    core.resolve_time(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, Some(1));
     serialized = shell.take_serialized_effects();
@@ -636,7 +749,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     };
     let response = TimeResponse::DurationElapsed { id: timer_id };
     let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
-    core.resolve(request_id, &response_bytes);
+    core.resolve_time(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, None);
 
@@ -658,9 +771,18 @@ fn pictures_are_saved_to_file_system() {
 
     core.update(app::Event::Trigger);
 
+    let serialized = shell.take_serialized_effects();
+    let (permission_id, permission_request) = extract_single_permission_request(serialized);
+    assert_eq!(permission_request, app::PermissionRequest::Camera);
+
+    let permission_response = app::PermissionResponse::Granted;
+    let permission_bytes =
+        serde_json::to_vec(&permission_response).expect("permission response should serialize");
+    core.resolve_permission(permission_id, &permission_bytes);
+
     let camera_effect = shell.take_camera_effects().remove(0);
 
-    // Drain render from initial trigger; focus assertions on the save flow.
+    // Drain render from permission resolution; focus assertions on the save flow.
     let _ = shell.take_serialized_effects();
 
     core.resolve_camera(camera_effect.id, app::OpaqueImageRef(42));
@@ -702,11 +824,31 @@ pub(crate) fn extract_single_time_request(effects: Vec<ffi::FfiEffect>) -> (u32,
         .into_iter()
         .filter_map(|effect| match effect {
             ffi::FfiEffect::Time { id, request } => Some((id, request)),
-            FfiEffect::Render => None,
+            FfiEffect::Render | FfiEffect::Permission { .. } => None,
         })
         .collect();
 
     assert_eq!(time_effects.len(), 1, "expected exactly one time request");
 
     time_effects.remove(0)
+}
+
+pub(crate) fn extract_single_permission_request(
+    effects: Vec<ffi::FfiEffect>,
+) -> (u32, app::PermissionRequest) {
+    let mut permission_effects: Vec<_> = effects
+        .into_iter()
+        .filter_map(|effect| match effect {
+            ffi::FfiEffect::Permission { id, request } => Some((id, request)),
+            FfiEffect::Render | FfiEffect::Time { .. } => None,
+        })
+        .collect();
+
+    assert_eq!(
+        permission_effects.len(),
+        1,
+        "expected exactly one permission request"
+    );
+
+    permission_effects.remove(0)
 }
