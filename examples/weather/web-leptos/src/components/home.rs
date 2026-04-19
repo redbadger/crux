@@ -1,8 +1,7 @@
 use leptos::callback::UnsyncCallback;
 use leptos::prelude::*;
 use phosphor_leptos::{
-    CLOUD, CLOUD_SLASH, DROP, EYE, GAUGE, Icon, KEY, MAP_PIN, MAP_PIN_LINE, STAR, THERMOMETER,
-    WIND,
+    CLOUD, CLOUD_SLASH, DROP, EYE, GAUGE, Icon, KEY, MAP_PIN, MAP_PIN_LINE, STAR, THERMOMETER, WIND,
 };
 
 use shared::{
