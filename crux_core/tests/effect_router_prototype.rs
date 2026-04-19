@@ -167,9 +167,9 @@ mod app {
 // A version of this becomes part of crux_core
 mod crux_provided {
     use std::collections::HashMap;
-    use std::sync::Mutex;
     use std::sync::atomic::AtomicU32;
     use std::sync::atomic::Ordering;
+    use std::sync::{Arc, Mutex};
 
     use crux_core::Core;
     use crux_core::Request;
@@ -179,16 +179,30 @@ mod crux_provided {
 
     use crate::app;
 
+    struct RegistryInner<Op: Operation> {
+        next_id: AtomicU32,
+        requests: Mutex<HashMap<u32, Request<Op>>>,
+    }
+
     pub(crate) struct Registry<Op: Operation> {
-        pub(crate) next_id: AtomicU32,
-        pub(crate) requests: Mutex<HashMap<u32, Request<Op>>>,
+        inner: Arc<RegistryInner<Op>>,
+    }
+
+    impl<Op: Operation> Clone for Registry<Op> {
+        fn clone(&self) -> Self {
+            Self {
+                inner: self.inner.clone(),
+            }
+        }
     }
 
     impl<Op: Operation> Default for Registry<Op> {
         fn default() -> Self {
             Self {
-                next_id: AtomicU32::new(0),
-                requests: Mutex::new(HashMap::new()),
+                inner: Arc::new(RegistryInner {
+                    next_id: AtomicU32::new(0),
+                    requests: Mutex::new(HashMap::new()),
+                }),
             }
         }
     }
@@ -198,10 +212,11 @@ mod crux_provided {
         Op: Operation + Clone,
     {
         pub(crate) fn register(&self, request: Request<Op>) -> (u32, Op) {
-            let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+            let id = self.inner.next_id.fetch_add(1, Ordering::Relaxed);
             let operation = request.operation.clone();
 
-            self.requests
+            self.inner
+                .requests
                 .lock()
                 .expect("registry lock poisoned")
                 .insert(id, request);
@@ -223,7 +238,7 @@ mod crux_provided {
         where
             F: FnOnce(&mut Request<Op>, Op::Output) -> Result<(), ResolveError>,
         {
-            let mut requests = self.requests.lock().expect("registry lock poisoned");
+            let mut requests = self.inner.requests.lock().expect("registry lock poisoned");
             let Some(mut request) = requests.remove(&id) else {
                 panic!("missing pending handle for id {id}");
             };
@@ -232,7 +247,8 @@ mod crux_provided {
             resolve(&mut request, output)?;
 
             if !matches!(request.handle, RequestHandle::Never) {
-                self.requests
+                self.inner
+                    .requests
                     .lock()
                     .expect("registry lock poisoned")
                     .insert(id, request);
@@ -244,13 +260,13 @@ mod crux_provided {
 
     pub(crate) struct Router {
         core: Core<app::SelfieApp>,
-        route_effects: Box<dyn Fn(Vec<app::Effect>) + Send + Sync>,
+        route_effects: Box<dyn Fn(app::Effect) + Send + Sync>,
     }
 
     impl Router {
         pub(crate) fn new(
             core: Core<app::SelfieApp>,
-            route_effects: impl Fn(Vec<app::Effect>) + Send + Sync + 'static,
+            route_effects: impl Fn(app::Effect) + Send + Sync + 'static,
         ) -> Self {
             Self {
                 core,
@@ -259,8 +275,9 @@ mod crux_provided {
         }
 
         pub(crate) fn update(&self, event: app::Event) {
-            let effects = self.core.process_event(event);
-            (self.route_effects)(effects);
+            for effect in self.core.process_event(event) {
+                (self.route_effects)(effect);
+            }
         }
 
         pub(crate) fn resolve<Output>(
@@ -268,8 +285,10 @@ mod crux_provided {
             request: &mut impl Resolvable<Output>,
             output: Output,
         ) -> Result<(), ResolveError> {
-            let effects = self.core.resolve(request, output)?;
-            (self.route_effects)(effects);
+            for effect in self.core.resolve(request, output)? {
+                (self.route_effects)(effect);
+            }
+
             Ok(())
         }
 
@@ -280,9 +299,9 @@ mod crux_provided {
 }
 
 mod ffi {
-    use std::sync::{Arc, OnceLock};
+    use std::sync::Arc;
 
-    use crux_core::{Core, Request, RequestHandle};
+    use crux_core::{Core, Request};
     use crux_time::TimeRequest;
     use crux_time::TimeResponse;
     use serde::{Deserialize, Serialize};
@@ -315,9 +334,9 @@ mod ffi {
     }
 
     pub(crate) struct CameraFFI {
-        router: Arc<Router>,
-        serialized_registry: Arc<crux_provided::Registry<TimeRequest>>,
-        camera_registry: Arc<crux_provided::Registry<app::CaptureImage>>,
+        router: Router,
+        serialized_registry: crux_provided::Registry<TimeRequest>,
+        camera_registry: crux_provided::Registry<app::CaptureImage>,
     }
 
     fn emit_serialized_effect(shell: &dyn CameraShell, effect: FfiEffect) {
@@ -328,52 +347,36 @@ mod ffi {
     /// The core FFI
     impl CameraFFI {
         pub(crate) fn new(shell: Arc<dyn CameraShell>) -> Self {
-            let router_ref = Arc::new(OnceLock::<Arc<Router>>::new());
-            let serialized_registry = Arc::new(crux_provided::Registry::default());
-            let camera_registry = Arc::new(crux_provided::Registry::default());
+            let serialized_registry = crux_provided::Registry::default();
+            let camera_registry = crux_provided::Registry::default();
 
-            let file_store = Arc::new(file_store::AsyncFileStoreHandler::new({
-                let router_ref = router_ref.clone();
+            // FIXME: there's a problematic reference cycle here.
+
+            let fs_store = file_store::FileStoreHandler::new({
                 move |mut request: Request<app::StoreFile>, stored: app::StoredImage| {
-                    let router = router_ref.get().expect("router should be initialized");
                     router
                         .resolve(&mut request, stored)
                         .expect("background file store resolve should succeed");
                 }
-            }));
+            });
 
-            let shell_for_route = shell.clone();
-            let serialized_registry_for_route = serialized_registry.clone();
-            let camera_registry_for_route = camera_registry.clone();
-            let file_store_for_route = file_store.clone();
-            let router = Arc::new(Router::new(Core::new(), move |effects| {
-                for effect in effects {
-                    match effect {
-                        app::Effect::Render(request) => {
-                            let (_op, handle) = request.split();
-                            assert!(matches!(handle, RequestHandle::Never));
-                            emit_serialized_effect(shell_for_route.as_ref(), FfiEffect::Render);
-                        }
-                        app::Effect::Time(request) => {
-                            let (id, op) = serialized_registry_for_route.register(request);
-                            emit_serialized_effect(
-                                shell_for_route.as_ref(),
-                                FfiEffect::Time { id, request: op },
-                            );
-                        }
-                        app::Effect::Camera(request) => {
-                            let (id, op) = camera_registry_for_route.register(request);
-                            shell_for_route
-                                .process_camera_effect(CameraEffect { id, operation: op });
-                        }
-                        app::Effect::FileStore(request) => {
-                            file_store_for_route.process_file_store(request);
-                        }
-                    }
+            let router = Router::new(Core::new(), |effect| match effect {
+                app::Effect::Render(request) => {
+                    let (_op, handle) = request.split();
+                    emit_serialized_effect(shell.as_ref(), FfiEffect::Render);
                 }
-            }));
-
-            let _ = router_ref.set(router.clone());
+                app::Effect::Time(request) => {
+                    let (id, op) = serialized_registry.register(request);
+                    emit_serialized_effect(shell.as_ref(), FfiEffect::Time { id, request: op });
+                }
+                app::Effect::Camera(request) => {
+                    let (id, op) = camera_registry.register(request);
+                    shell.process_camera_effect(CameraEffect { id, operation: op });
+                }
+                app::Effect::FileStore(request) => {
+                    fs_store.process_file_store(request);
+                }
+            });
 
             Self {
                 router,
@@ -424,11 +427,12 @@ mod ffi {
 
         use super::app;
 
-        pub(crate) struct AsyncFileStoreHandler {
+        #[derive(Clone)]
+        pub(crate) struct FileStoreHandler {
             jobs_tx: Sender<Request<app::StoreFile>>,
         }
 
-        impl AsyncFileStoreHandler {
+        impl FileStoreHandler {
             pub(crate) fn new(
                 resolve: impl Fn(Request<app::StoreFile>, app::StoredImage) + Send + Sync + 'static,
             ) -> Self {
@@ -460,6 +464,7 @@ mod ffi {
                     path: format!("/tmp/selfie-{image_id}.jpg"),
                 };
 
+                // Ultimately calls the router
                 resolve(request, stored);
             }
         }
