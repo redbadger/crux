@@ -11,6 +11,16 @@ options:
 attributes:
   BuildIndependentTargetsInParallel: true
 
+settingGroups:
+  common:
+    base:
+      SWIFT_VERSION: 6.2
+      SWIFT_APPROACHABLE_CONCURRENCY: YES
+      SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+      SWIFT_STRICT_CONCURRENCY: complete
+      DEAD_CODE_STRIPPING: YES
+      ENABLE_USER_SCRIPT_SANDBOXING: NO
+
 targetTemplates:
   app:
     type: application
@@ -21,6 +31,8 @@ targetTemplates:
     scheme:
       management:
         shared: true
+    settings:
+      groups: [common]
     dependencies:
       - package: Shared
       - package: App
@@ -52,4 +64,3 @@ targets:
         NSSupportsAutomaticGraphicsSwitching: true
     settings:
       OTHER_LDFLAGS: [-w]
-      ENABLE_USER_SCRIPT_SANDBOXING: NO

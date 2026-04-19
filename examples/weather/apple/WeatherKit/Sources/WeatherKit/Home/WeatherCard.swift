@@ -36,7 +36,7 @@ struct WeatherCard: View {
                 icon: "eye",
                 title: "Visibility",
                 value: "\(weatherData.visibility / 1000) km"
-            ),
+            )
         ]
     }
 

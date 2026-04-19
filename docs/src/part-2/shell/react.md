@@ -63,9 +63,9 @@ The root reads the whole `ViewModel` and picks off per-stage slices for each scr
 {{#include ../../../../examples/weather/web-nextjs/src/app/page.tsx:app}}
 ```
 
-`useMemo(() => …, [view])` is the React analogue of Leptos's `Memo`: recompute only when `view` changes, return the same reference when it doesn't. Coarser in one important way — React compares deps by reference, not value. Every `Effect::Render` produces a freshly deserialised `ViewModel`, so `view` is always a new object and the memo always recomputes. For Weather that's fine; the projection functions are cheap.
+`useMemo(() => …, [view])` is the React analogue of Leptos's `Memo` in intent: keep the projection logic explicit and rerun it when `view` changes. Coarser in one important way — React compares deps by reference, not value. Every `Effect::Render` produces a freshly deserialised `ViewModel`, so `view` is always a new object and the memo always recomputes. For Weather that's fine; the projection functions are cheap.
 
-The benefit still shows up when you pass these slices to child components. The slice only changes when the overall view changes; handlers that capture it stay stable across unrelated renders. If you had a very hot sub-tree, `React.memo` with a custom comparator would shave further renders, but for this example it's not warranted.
+So the win here is mostly clarity: the stage-picking logic lives in one place, and each child receives the slice it cares about. It is not fine-grained reactivity, and it doesn't by itself make child handlers stable or suppress rerenders deeper in the tree. If you wanted that, you'd reach for `React.memo` and/or stable callbacks at the relevant component boundary — but this example doesn't need the extra machinery.
 
 ## Handling effects
 

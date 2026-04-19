@@ -28,7 +28,7 @@ In the Weather's case, more options are possible. Recall the effect type:
 {{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-Those are the four possible variants we'll see in the return from `update`. It
+Those are the six possible variants we'll see in the return from `update`. It
 is essentially telling us "I did the state update, and here are some side-effects
 for you to perform".
 

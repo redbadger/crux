@@ -19,8 +19,7 @@ public struct OnboardView: View {
                 .symbolRenderingMode(.multicolor)
 
             Text("Crux Weather")
-            
-            
+
                 .font(.largeTitle)
                 .fontWeight(.bold)
 

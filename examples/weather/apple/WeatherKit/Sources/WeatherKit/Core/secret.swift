@@ -75,7 +75,7 @@ private func keychainSave(key: String, value: String) throws {
         var updateQuery: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrAccount: key,
-            kSecAttrService: keychainService,
+            kSecAttrService: keychainService
         ]
         #if os(iOS)
             updateQuery[kSecUseDataProtectionKeychain] = true as CFBoolean
@@ -124,7 +124,7 @@ private func keychainDelete(key: String) throws {
     var query: [CFString: Any] = [
         kSecClass: kSecClassGenericPassword,
         kSecAttrAccount: key,
-        kSecAttrService: keychainService,
+        kSecAttrService: keychainService
     ]
     #if os(iOS)
         query[kSecUseDataProtectionKeychain] = true as CFBoolean
