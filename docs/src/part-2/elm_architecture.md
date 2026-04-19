@@ -64,6 +64,6 @@ fn view(&self, model: &Model) -> ViewModel;
 
 The Commands are generic over two types: an `Effect` describing the interactions with the outside world we want to do, and our `Event`, acting as a callback when those interactions are complete and return a value of some kind.
 
-We will look at how effects are created and passed to the shell in a later chapter. First, though, we need to see how a real app's state is shaped — not as one big model, but as a lifecycle with distinct stages, each composed of smaller state machines. That's where we'll pick up in the next chapter.
+We will look at how effects are created and passed to the shell in a later chapter. First, the next chapter covers how a real app's state is shaped — as a lifecycle with distinct stages, each composed of smaller state machines.
 
 [^testing]: In reality, we do need to check that at least one of our HTTP requests executes successfully, but once one does, it is very likely that so long as they are described correctly, all of them will.

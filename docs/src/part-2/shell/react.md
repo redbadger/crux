@@ -26,7 +26,7 @@ Three things happen in this component.
 
 The `useRef` holds the `Core` across renders. `coreRef.current` points at the same instance every time the function runs; assigning once inside the init effect locks it in.
 
-The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It calls `init_core()` to download and instantiate the WASM module, constructs the `Core`, then fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for React 19's StrictMode, which double-invokes effects in development to surface resource-leak bugs.
+The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It calls `init_core()` to download and instantiate the WASM module, constructs the `Core`, then fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for StrictMode (on by default in Next.js), which double-invokes effects in development to surface resource-leak bugs.
 
 The `dispatch` callback is wrapped in `useCallback(_, [])` so its reference is stable. Consumers of `useDispatch()` get the same function every render, which matters when passing it into handlers — otherwise every view update would invalidate every handler and trigger spurious re-renders of memoised children.
 

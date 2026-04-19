@@ -83,15 +83,8 @@ The `_ => Default::default()` branch is what makes this type-check without forci
 
 This requires `Default` impls on the stage view models, which live in `shared/src/view/`:
 
-```rust,noplayground
-impl Default for OnboardStateViewModel {
-    fn default() -> Self {
-        OnboardStateViewModel::Input {
-            api_key: String::new(),
-            can_submit: false,
-        }
-    }
-}
+```rust
+{{#include ../../../../examples/weather/shared/src/view/onboard.rs:onboard_default}}
 ```
 
 Enum `#[derive(Default)]` with a `#[default]` variant works for unit variants (like `LocalWeatherViewModel::CheckingPermission`); struct variants need a manual impl.
@@ -121,7 +114,7 @@ Each `move ||` closure tracks only the fields it reads. When `local_weather` cha
 {{#include ../../../../examples/weather/web-leptos/src/core/mod.rs:process_effect}}
 ```
 
-Five capability branches plus `Render`, which writes the current view model into the signal. The shell and the core share the same Rust types, so the match compiles into a direct call — this is the most readable effect dispatch of any shell in the book.
+Five capability branches plus `Render`, which writes the current view model into the signal. The shell and the core share the same Rust types, so the match compiles into a direct call — no serialisation layer between them.
 
 Each capability lives in its own file. Here's HTTP:
 

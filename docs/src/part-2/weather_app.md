@@ -41,14 +41,14 @@ Here's the same app — one shared core — running on iOS, Android, macOS, and 
   </figure>
 </div>
 
-The app works like a system weather utility: you get your local weather,
-search for locations, and save favourites — all backed by a real API.
+The app is a small weather client: local weather on the home screen,
+search for other locations, and a favourites list — all backed by a real API.
 
 You can look at the [full example code](https://github.com/redbadger/crux/tree/master/examples/weather)
 in the Crux GitHub repo, but we'll walk through the key parts. As before, we're going to start with the core
 and, once we have it, look at the shells.
 
-Unlike Part I, we'll work by concept rather than by commit: lifecycle states, nested state machines, effects, testing, capabilities, and shells — each with the Weather app as the worked example.
+The chapters that follow walk through the Weather app one concept at a time: lifecycle states, nested state machines, effects, testing, capabilities, and shells.
 
 Before we dive in though, let's quickly establish some foundations about the app architecture Crux follows,
 known most widely as the Elm architecture, based on the language which popularised it.

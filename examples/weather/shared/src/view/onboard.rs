@@ -19,6 +19,7 @@ pub enum OnboardStateViewModel {
 /// The [`Default`] is the empty `Input` variant — used as the fallback when
 /// the web shell projects `Signal<ViewModel>` into a `Memo<OnboardViewModel>`
 /// for a stage that isn't currently onboarding.
+// ANCHOR: onboard_default
 impl Default for OnboardStateViewModel {
     fn default() -> Self {
         OnboardStateViewModel::Input {
@@ -27,6 +28,7 @@ impl Default for OnboardStateViewModel {
         }
     }
 }
+// ANCHOR_END: onboard_default
 
 impl From<&OnboardModel> for OnboardViewModel {
     fn from(onboard: &OnboardModel) -> Self {

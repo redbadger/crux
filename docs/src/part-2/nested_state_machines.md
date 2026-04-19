@@ -24,7 +24,7 @@ And the counterpart for starting a state machine up:
 {{#include ../../../examples/weather/shared/src/model/outcome.rs:started}}
 ```
 
-A `start()` returns a `Started<Self, Event>` — the initial state bundled with the commands that kick off the work. The `map_event` methods on both types lift a child's event variant into a parent's wider event type, which is how events are routed through the hierarchy without each layer needing to know about the others.
+A `start()` returns a `Started<Self, Event>` — the initial state bundled with the commands that kick off the work. The `map_event` methods on both types lift a child's event variant into its parent's wider event type, so each layer only needs to know about its direct children, not the whole tree beneath them.
 
 That's the whole protocol. Now let's see it in use.
 
@@ -110,7 +110,7 @@ One more pattern comes up inside the favourites workflow. When the user types in
 
 Every keystroke bumps the version. When we fire the geocoding request, we capture the current version. When the response arrives, we check whether the captured version still matches — if not, a newer search has happened, so we discard this result.
 
-This isn't a state machine on its own, but the discipline is the same: make invalid states impossible to represent. Without a version, a stale response and a fresh one are both just strings — indistinguishable. With it, every response carries the version it was fired against, so the ambiguity simply can't happen. `VersionedInput` is used inside the add-favourite workflow, which is itself a nested state machine under favourites management.
+This isn't a state machine on its own, but the discipline is the same: make invalid states impossible to represent. Without a version, a stale response and a fresh one are both strings, and the code has to track out-of-band which is which. Tagging each response with the version it was fired against moves that distinction into the type. `VersionedInput` is used inside the add-favourite workflow, which is itself a nested state machine under favourites management.
 
 ## Next: making it all happen
 

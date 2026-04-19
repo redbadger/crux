@@ -21,7 +21,7 @@ Here's the app entry point:
 {{#include ../../../../examples/weather/apple/WeatherApp/WeatherApp.swift:start}}
 ```
 
-Four lines that matter: construct the bridge, construct the `Core` with it, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in chapter 3.
+Five lines: construct the bridge, build the `Core`, bind it to SwiftUI state, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in chapter 3.
 
 ## The FFI bridge
 

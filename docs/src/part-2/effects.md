@@ -62,7 +62,7 @@ Here is the Weather app's `Effect` type:
 {{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-This tells us the app does six kinds of side effects: rendering the UI, storing key-value data, making HTTP requests, checking location, fetching and storing secrets, and setting timers. That's all it does — and all it can possibly do, until we expand this type further.
+The six variants are every side effect the app can produce: rendering the UI, storing key-value data, making HTTP requests, checking location, storing secrets, and setting timers. To add a new kind of effect, you extend this enum.
 
 ## What is a Command
 
@@ -100,7 +100,7 @@ To help that make more sense, let's look at how Commands are typically used.
 
 ## Working with Commands
 
-The intent behind the command API is to cover 80% of effect orchestration without asking developers to use `async` Rust. We will look at the `async` use in a minute, but first let's look at what can be done without it.
+The command API aims to cover most effect orchestration without asking developers to use `async` Rust. We'll come to `async` in a minute; first, let's look at what can be done without it.
 
 A typical use of a `Command` in an update function will look something like this:
 

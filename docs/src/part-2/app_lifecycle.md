@@ -2,11 +2,11 @@
 
 As we think about the weather app, there's an overall workflow it moves through:
 
-1. **Uninitialized** — the default; the core exists, but the shell hasn't kicked things off yet.
-2. **Initialising** — triggered by `Event::Start`: retrieve resources that may have been saved previously (the API key, saved favourites).
-3. **Onboarding** — if there's no API key, ask the user for one.
-4. **Active** — we have everything we need; the app is running normally.
-5. **Failed** — something went wrong that we can't recover from.
+1. `Uninitialized` — the default; the core exists, but the shell hasn't kicked things off yet.
+2. `Initializing` — triggered by `Event::Start`: retrieves resources that may have been saved previously (the API key, saved favourites).
+3. `Onboard` — if there's no API key, ask the user for one.
+4. `Active` — we have everything we need; the app is running normally.
+5. `Failed` — something went wrong that we can't recover from.
 
 These phases are mutually exclusive — the app is always in exactly one of them — which makes a Rust enum the natural fit. Each variant holds the state for its phase, and we can focus on one at a time with its own events and transitions.
 
@@ -114,4 +114,4 @@ Not every lifecycle transition goes forward. Two things can send `Active` back t
 
 ## Next: the pattern underneath
 
-Every stage in this lifecycle — `Initializing`, `Onboard`, `Active` — returned an `Outcome`. The top-level `update_*` methods all matched on `Status::Continue` vs `Status::Complete(...)`, put the model back where it belongs, and composed commands. That's not a coincidence. It's the pattern the whole app is built on, all the way down to the individual screen workflows. That's what the next chapter is about.
+Every stage in this lifecycle — `Initializing`, `Onboard`, `Active` — returned an `Outcome`. The top-level `update_*` methods all matched on `Status::Continue` vs `Status::Complete(...)`, put the model back where it belongs, and composed commands. The same pattern runs all the way down to the individual screen workflows, which the next chapter covers.

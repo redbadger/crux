@@ -2,7 +2,7 @@
 
 We covered effects and commands in detail, and hinted throughout at capabilities — the developer-friendly APIs you actually use when writing core code. Time to look at them directly, both using them and building our own.
 
-In practice, apps need a fairly limited number of capabilities — typically around seven, almost certainly fewer than ten. The weather app uses six: Render, KeyValue, Http, Time, Location, and Secret. Capabilities are highly reusable, and if you build one you think others would benefit from, the Crux team would love to hear about it.
+In practice, apps need a fairly limited number of capabilities — typically around seven, almost certainly fewer than ten. The weather app uses six: Render, KeyValue, Http, Location, Secret, and Time. Capabilities are reusable across apps — if you build one that others would benefit from, the Crux team would like to hear about it.
 
 ## Using a capability
 
@@ -20,7 +20,7 @@ That's how a capability gets used. But where do these APIs come from? Let's buil
 
 ## A simple custom capability: Location
 
-`crux_http`, `crux_kv`, and `crux_time` are capabilities Crux ships. Location services aren't — they work differently enough across platforms that a cross-platform crate would do more harm than good, and they're specific enough that we didn't want to maintain an official one either. So the weather app defines its own.
+`Render` ships in `crux_core`; `crux_http`, `crux_kv`, and `crux_time` are separate crates Crux publishes. Location services aren't — they work differently enough across platforms that a cross-platform crate would do more harm than good, and they're specific enough that we didn't want to maintain an official one either. So the weather app defines its own.
 
 A capability is two things:
 
@@ -41,7 +41,7 @@ The developer API is equally small:
 {{#include ../../../examples/weather/shared/src/effects/location/command.rs}}
 ```
 
-Each function issues one operation and narrows the response. `is_location_enabled` returns `bool`; `get_location` returns `Option<Location>`. The shared `LocationResult` enum has both variants, but a caller of `is_location_enabled` shouldn't have to `match` on the location-bearing arm — it can never arrive in response to an enabled check. The `.map(...)` on each builder handles that narrowing.
+Each function issues one operation and narrows the response. `is_location_enabled` returns `bool`; `get_location` returns `Option<Location>`. The shared `LocationResult` carries both variants, so each `.map(...)` pins the response to the one that operation expects and falls back to a safe default for the other — `false` for the enabled check, `None` for the location fetch. Secret, later in the chapter, uses `unreachable!()` for the same situation; both patterns have their place.
 
 Notice the generic signatures: both functions are generic over `Effect` and `Event`. The trait bound `Effect: From<Request<LocationOperation>>` says the caller's `Effect` type must be able to wrap a location request — every `#[effect]`-generated enum implements this automatically, so the bound is always satisfied in practice. Being generic lets us drop this capability into any Crux app, not just this one.
 
@@ -51,7 +51,7 @@ Location is about as minimal as a capability gets. Secret — storing, fetching,
 
 ### Narrowing the shell's response
 
-The shell's `SecretResponse` is a single enum with six variants: `Missing`, `Fetched`, `Stored`, `StoreError`, `Deleted`, `DeleteError`. Only two of those are possible responses to a `Fetch`, and they're different from the two possible responses to a `Store` or `Delete`. If a caller holds a `SecretResponse` directly, the type doesn't tell them which operation it's responding to — they'd have to handle variants that can't apply to their call.
+The shell's `SecretResponse` is a single enum with six variants: `Missing`, `Fetched`, `Stored`, `StoreError`, `Deleted`, `DeleteError`. Each operation has its own pair: `Fetch` produces `Missing` or `Fetched`, `Store` produces `Stored` or `StoreError`, and `Delete` produces `Deleted` or `DeleteError`. If a caller holds a `SecretResponse` directly, the type doesn't tell them which operation it's responding to — they'd have to handle variants that can't apply to their call.
 
 The capability fixes this by defining three narrower response types — `SecretFetchResponse`, `SecretStoreResponse`, `SecretDeleteResponse` — and having each command builder return its own. The wide `SecretResponse` stays as the shell protocol; the core developer only ever sees the narrowed versions.
 
@@ -78,6 +78,6 @@ Putting it together, a capability gives you two things:
 - **A protocol** — operation and response types marked with the `Operation` trait, which define the wire format between core and shell.
 - **A developer API** — small command-builder functions that speak in convenient Rust types rather than the raw protocol.
 
-In the ports-and-adapters vocabulary, capabilities are the ports; the shell-side code that actually carries out each operation is the adapter. The core expresses *what* it wants done; the shell decides *how* to do it. Keeping that separation tight is what makes the core portable.
+In [ports-and-adapters](https://en.wikipedia.org/wiki/Hexagonal_architecture) vocabulary, capabilities are the ports; the shell-side code that actually carries out each operation is the adapter. The core expresses *what* it wants done; the shell decides *how* to do it. Keeping that separation tight is what makes the core portable.
 
 Speaking of the shell — it's time to look at how these operations get carried out on each platform. That's the next chapter.

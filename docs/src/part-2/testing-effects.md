@@ -40,7 +40,7 @@ The test itself picks up from `FetchingWeather`, resolves the HTTP effect, and a
 
 It's a test of a whole interaction with multiple kinds of effects — location services and HTTP — and it runs in a couple of milliseconds, entirely deterministic. The code being tested is `LocalWeather::update` from chapter 4; managed effects let us verify the whole transaction without executing any of it.
 
-The full suite of 57 tests of the Weather app runs in around 20 milliseconds on a Mac Mini M4 Pro. In practice, it's rare for a test suite of a Crux app to take longer than compiling it (even incrementally). Even apps with thousands of tests usually run them in seconds, and sadly they do not yet compile in seconds.
+The full suite of 57 tests of the Weather app runs in around 20 milliseconds on a Mac Mini M4 Pro. In practice, it's rare for a test suite of a Crux app to take longer than compiling it (even incrementally). Apps with thousands of tests usually run them in seconds, though compilation takes longer.
 
 ```txt
 cargo nextest run
@@ -53,7 +53,7 @@ cargo nextest run
 
 ## The test steps
 
-Crux provides test APIs to make the tests a bit more readable, but it's still up to the test to execute the app loop.
+Crux provides test APIs to make the tests a bit more readable, but it's still up to the test to drive the event → update → effect → resolve cycle by hand.
 
 Let's walk through a simpler test from the Weather app step by step:
 

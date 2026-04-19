@@ -1,10 +1,8 @@
 # The shell
 
-We've looked at how the Weather app fits together, how it's tested, and if you were developing it along the way, you would
-now have a core with the important business logic, fully tested and rock solid. Time to build the UI.
+We've looked at how the Weather app's core fits together, how it's structured into nested state machines, and how managed effects make it testable end-to-end. Time to build the UI around it.
 
-(Okay sure, in practice, you would not build the whole core first, then the whole UI, you'd probably go feature by feature,
-but the point stands - we now know for a fact that the core does the right thing.)
+(In practice, you wouldn't write the whole core before touching the UI — you'd go feature by feature. But the shape is the same: a tested core first, then a shell that drives it and handles its effects.)
 
 The shell will have two responsibilities:
 
