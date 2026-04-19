@@ -2,6 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use crux_time::{TimeRequest, TimeResponse};
 
+use crate::ffi::FfiEffect;
+
 mod app {
     use crux_core::capability::Operation;
     use crux_macros::effect;
@@ -163,7 +165,7 @@ mod app {
 }
 
 // A version of this becomes part of crux_core
-mod registry {
+mod crux_provided {
     use std::collections::HashMap;
     use std::sync::Mutex;
     use std::sync::atomic::AtomicU32;
@@ -171,11 +173,11 @@ mod registry {
 
     use crux_core::Core;
     use crux_core::Request;
+    use crux_core::Resolvable;
     use crux_core::capability::Operation;
     use crux_core::{RequestHandle, ResolveError};
 
-    // FIXME: we should not depend on the app directly
-    use super::app;
+    use crate::app;
 
     pub(crate) struct Registry<Op: Operation> {
         pub(crate) next_id: AtomicU32,
@@ -212,19 +214,22 @@ mod registry {
     where
         Op: Operation,
     {
-        pub(crate) fn resolve(
+        pub(crate) fn resolve_with<F>(
             &self,
-            core: &Core<app::SelfieApp>,
             id: u32,
             output: Op::Output,
-        ) -> Result<Vec<app::Effect>, ResolveError> {
+            resolve: F,
+        ) -> Result<(), ResolveError>
+        where
+            F: FnOnce(&mut Request<Op>, Op::Output) -> Result<(), ResolveError>,
+        {
             let mut requests = self.requests.lock().expect("registry lock poisoned");
             let Some(mut request) = requests.remove(&id) else {
                 panic!("missing pending handle for id {id}");
             };
             drop(requests);
 
-            let effects = core.resolve(&mut request, output)?;
+            resolve(&mut request, output)?;
 
             if !matches!(request.handle, RequestHandle::Never) {
                 self.requests
@@ -233,30 +238,70 @@ mod registry {
                     .insert(id, request);
             }
 
-            Ok(effects)
+            Ok(())
+        }
+    }
+
+    pub(crate) struct Router {
+        core: Core<app::SelfieApp>,
+        route_effects: Box<dyn Fn(Vec<app::Effect>) + Send + Sync>,
+    }
+
+    impl Router {
+        pub(crate) fn new(
+            core: Core<app::SelfieApp>,
+            route_effects: impl Fn(Vec<app::Effect>) + Send + Sync + 'static,
+        ) -> Self {
+            Self {
+                core,
+                route_effects: Box::new(route_effects),
+            }
+        }
+
+        pub(crate) fn update(&self, event: app::Event) {
+            let effects = self.core.process_event(event);
+            (self.route_effects)(effects);
+        }
+
+        pub(crate) fn resolve<Output>(
+            &self,
+            request: &mut impl Resolvable<Output>,
+            output: Output,
+        ) -> Result<(), ResolveError> {
+            let effects = self.core.resolve(request, output)?;
+            (self.route_effects)(effects);
+            Ok(())
+        }
+
+        pub(crate) fn view(&self) -> app::ViewModel {
+            self.core.view()
         }
     }
 }
 
 mod ffi {
-    use crossbeam_channel::Receiver;
-    use crossbeam_channel::unbounded;
-    use std::sync::Arc;
+    use std::sync::{Arc, OnceLock};
 
-    use crux_core::{Core, RequestHandle};
+    use crux_core::{Core, Request, RequestHandle};
     use crux_time::TimeRequest;
     use crux_time::TimeResponse;
     use serde::{Deserialize, Serialize};
 
     use super::app;
-    use super::registry;
+    use super::crux_provided::{self, Router};
 
+    // Effect types for the shell
+
+    /// A narrowed down effect with only Time and Render
+    ///
+    /// Used by the serialized channel
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub(crate) enum FfiEffect {
         Render,
         Time { id: u32, request: TimeRequest },
     }
 
+    /// A specific typed effect with opaque or pointer based payload
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub(crate) struct CameraEffect {
         pub(crate) id: u32,
@@ -270,147 +315,143 @@ mod ffi {
     }
 
     pub(crate) struct CameraFFI {
-        pub(crate) core: Arc<Core<app::SelfieApp>>,
-        pub(crate) shell: Arc<dyn CameraShell>,
-        pub(crate) time_registry: registry::Registry<TimeRequest>,
-        pub(crate) camera_registry: registry::Registry<app::CaptureImage>,
-        pub(crate) file_store: file_store_worker::AsyncFileStoreHandler,
-        pub(crate) local_effects: Receiver<Vec<app::Effect>>,
+        router: Arc<Router>,
+        serialized_registry: Arc<crux_provided::Registry<TimeRequest>>,
+        camera_registry: Arc<crux_provided::Registry<app::CaptureImage>>,
     }
 
+    fn emit_serialized_effect(shell: &dyn CameraShell, effect: FfiEffect) {
+        let bytes = serde_json::to_vec(&vec![effect]).expect("serialized effect should encode");
+        shell.process_serialized_effects(bytes);
+    }
+
+    /// The core FFI
     impl CameraFFI {
         pub(crate) fn new(shell: Arc<dyn CameraShell>) -> Self {
-            let core = Arc::new(Core::new());
-            let (local_effects_tx, local_effects_rx) = unbounded();
+            let router_ref = Arc::new(OnceLock::<Arc<Router>>::new());
+            let serialized_registry = Arc::new(crux_provided::Registry::default());
+            let camera_registry = Arc::new(crux_provided::Registry::default());
+
+            let file_store = Arc::new(file_store::AsyncFileStoreHandler::new({
+                let router_ref = router_ref.clone();
+                move |mut request: Request<app::StoreFile>, stored: app::StoredImage| {
+                    let router = router_ref.get().expect("router should be initialized");
+                    router
+                        .resolve(&mut request, stored)
+                        .expect("background file store resolve should succeed");
+                }
+            }));
+
+            let shell_for_route = shell.clone();
+            let serialized_registry_for_route = serialized_registry.clone();
+            let camera_registry_for_route = camera_registry.clone();
+            let file_store_for_route = file_store.clone();
+            let router = Arc::new(Router::new(Core::new(), move |effects| {
+                for effect in effects {
+                    match effect {
+                        app::Effect::Render(request) => {
+                            let (_op, handle) = request.split();
+                            assert!(matches!(handle, RequestHandle::Never));
+                            emit_serialized_effect(shell_for_route.as_ref(), FfiEffect::Render);
+                        }
+                        app::Effect::Time(request) => {
+                            let (id, op) = serialized_registry_for_route.register(request);
+                            emit_serialized_effect(
+                                shell_for_route.as_ref(),
+                                FfiEffect::Time { id, request: op },
+                            );
+                        }
+                        app::Effect::Camera(request) => {
+                            let (id, op) = camera_registry_for_route.register(request);
+                            shell_for_route
+                                .process_camera_effect(CameraEffect { id, operation: op });
+                        }
+                        app::Effect::FileStore(request) => {
+                            file_store_for_route.process_file_store(request);
+                        }
+                    }
+                }
+            }));
+
+            let _ = router_ref.set(router.clone());
 
             Self {
-                core: core.clone(),
-                shell,
-                file_store: file_store_worker::AsyncFileStoreHandler::new(core, local_effects_tx),
-                time_registry: registry::Registry::default(),
-                camera_registry: registry::Registry::default(),
-                local_effects: local_effects_rx,
+                router,
+                serialized_registry,
+                camera_registry,
             }
         }
 
         pub(crate) fn update(&self, event: app::Event) {
-            let effects = self.core.process_event(event);
-            self.route_effects(effects);
+            self.router.update(event);
         }
 
-        pub(crate) fn resolve_time(&self, id: u32, output: TimeResponse) {
-            let effects = self
-                .time_registry
-                .resolve(self.core.as_ref(), id, output)
-                .expect("time resolve should work");
-            self.route_effects(effects);
+        /// Resolve an effect sent over the serialized lane.
+        pub(crate) fn resolve(&self, id: u32, data: &[u8]) {
+            // FIXME: use the existing Bridge
+            let output: TimeResponse =
+                serde_json::from_slice(data).expect("serialized resolve payload should decode");
+
+            self.serialized_registry
+                .resolve_with(id, output, |request, output| {
+                    self.router.resolve(request, output)
+                })
+                .expect("serialized resolve should work");
         }
 
+        /// Specific effect FFI for opaque data types
         pub(crate) fn resolve_camera(&self, id: u32, output: app::OpaqueImageRef) {
-            let effects = self
-                .camera_registry
-                .resolve(self.core.as_ref(), id, output)
+            self.camera_registry
+                .resolve_with(id, output, |request, output| {
+                    self.router.resolve(request, output)
+                })
                 .expect("camera resolve should work");
-            self.route_effects(effects);
-        }
-
-        pub(crate) fn drain_local_effects(&self) {
-            for effects in self.local_effects.try_iter() {
-                self.route_effects(effects);
-            }
         }
 
         pub(crate) fn view(&self) -> app::ViewModel {
-            self.core.view()
+            self.router.view()
         }
-
-        pub(crate) fn route_effects(&self, effects: Vec<app::Effect>) {
-            for effect in effects {
-                match effect {
-                    app::Effect::Render(request) => {
-                        let (_op, handle) = request.split();
-                        assert!(matches!(handle, RequestHandle::Never));
-
-                        self.emit_serialized_effect(FfiEffect::Render);
-                    }
-                    app::Effect::Time(request) => {
-                        let (id, op) = self.time_registry.register(request);
-
-                        self.emit_serialized_effect(FfiEffect::Time { id, request: op });
-                    }
-                    app::Effect::Camera(request) => {
-                        let (id, op) = self.camera_registry.register(request);
-
-                        self.shell
-                            .process_camera_effect(CameraEffect { id, operation: op });
-                    }
-                    app::Effect::FileStore(request) => {
-                        self.file_store.process_file_store(request);
-                    }
-                }
-            }
-        }
-
-        pub(crate) fn emit_serialized_effect(&self, effect: FfiEffect) {
-            let bytes = serde_json::to_vec(&vec![effect]).expect("serialized effect should encode");
-            self.shell.process_serialized_effects(bytes);
-        }
-    }
-
-    pub(crate) fn extract_single_time_request(effects: Vec<FfiEffect>) -> (u32, TimeRequest) {
-        let mut time_effects: Vec<_> = effects
-            .into_iter()
-            .filter_map(|effect| match effect {
-                FfiEffect::Time { id, request } => Some((id, request)),
-                FfiEffect::Render => None,
-            })
-            .collect();
-
-        assert_eq!(time_effects.len(), 1, "expected exactly one time request");
-
-        time_effects.remove(0)
     }
 
     // Example core-side effect handler implementation
-    mod file_store_worker {
+    mod file_store {
         use std::sync::Arc;
         use std::thread;
         use std::time::Duration;
 
         use crossbeam_channel::{Receiver, Sender, unbounded};
-        use crux_core::{Core, Request};
+        use crux_core::Request;
 
         use super::app;
 
         pub(crate) struct AsyncFileStoreHandler {
-            jobs: Sender<Request<app::StoreFile>>,
+            jobs_tx: Sender<Request<app::StoreFile>>,
         }
 
         impl AsyncFileStoreHandler {
             pub(crate) fn new(
-                core: Arc<Core<app::SelfieApp>>,
-                local_effects_tx: Sender<Vec<app::Effect>>,
+                resolve: impl Fn(Request<app::StoreFile>, app::StoredImage) + Send + Sync + 'static,
             ) -> Self {
                 let (jobs_tx, jobs_rx) = unbounded();
+                let resolve = Arc::new(resolve);
 
-                thread::spawn(move || run_worker(core, jobs_rx, local_effects_tx));
+                thread::spawn(move || worker(jobs_rx, resolve));
 
-                Self { jobs: jobs_tx }
+                Self { jobs_tx }
             }
 
             pub(crate) fn process_file_store(&self, request: Request<app::StoreFile>) {
-                self.jobs
+                self.jobs_tx
                     .send(request)
                     .expect("file store worker queue disconnected")
             }
         }
 
-        fn run_worker(
-            core: Arc<Core<app::SelfieApp>>,
+        fn worker(
             jobs_rx: Receiver<Request<app::StoreFile>>,
-            local_effects_tx: Sender<Vec<app::Effect>>,
+            resolve: Arc<dyn Fn(Request<app::StoreFile>, app::StoredImage) + Send + Sync>,
         ) {
-            while let Ok(mut request) = jobs_rx.recv() {
+            while let Ok(request) = jobs_rx.recv() {
                 // Ensure async behavior so this path models background work.
                 thread::sleep(Duration::from_millis(1));
 
@@ -419,19 +460,15 @@ mod ffi {
                     path: format!("/tmp/selfie-{image_id}.jpg"),
                 };
 
-                let effects = core
-                    .resolve(&mut request, stored)
-                    .expect("background file store resolve should succeed");
-
-                if !effects.is_empty() && local_effects_tx.send(effects).is_err() {
-                    break;
-                }
+                resolve(request, stored);
             }
         }
     }
 }
 
 /// Pretend shell for testing purposes, implements CameraShell like a real shell would via uniffi or wasm_bindgen
+/// This is only a test stub, IRL the shell would process the effect, then call the core with a result, in this case
+/// the tests do the equivalent
 #[derive(Default)]
 pub(crate) struct TestShell {
     pub(crate) serialized: Mutex<Vec<Vec<u8>>>,
@@ -455,6 +492,7 @@ impl ffi::CameraShell for TestShell {
 }
 
 impl TestShell {
+    /// Test-only helper: take serialized effects emitted from the core
     pub(crate) fn take_serialized_effects(&self) -> Vec<ffi::FfiEffect> {
         let payloads = self
             .serialized
@@ -472,6 +510,7 @@ impl TestShell {
             .collect()
     }
 
+    /// Test only helper: take camera effects emitted from the core
     pub(crate) fn take_camera_effects(&self) -> Vec<ffi::CameraEffect> {
         self.camera
             .lock()
@@ -525,33 +564,39 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert!(serialized.contains(&ffi::FfiEffect::Render));
 
     // 3 -> 2
-    let (request_id, request) = ffi::extract_single_time_request(std::mem::take(&mut serialized));
+    let (request_id, request) = extract_single_time_request(std::mem::take(&mut serialized));
     let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
         panic!("expected NotifyAfter request")
     };
-    core.resolve_time(request_id, TimeResponse::DurationElapsed { id: timer_id });
+    let response = TimeResponse::DurationElapsed { id: timer_id };
+    let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
+    core.resolve(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, Some(2));
     serialized = shell.take_serialized_effects();
     assert!(serialized.contains(&ffi::FfiEffect::Render));
 
     // 2 -> 1
-    let (request_id, request) = ffi::extract_single_time_request(std::mem::take(&mut serialized));
+    let (request_id, request) = extract_single_time_request(std::mem::take(&mut serialized));
     let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
         panic!("expected NotifyAfter request")
     };
-    core.resolve_time(request_id, TimeResponse::DurationElapsed { id: timer_id });
+    let response = TimeResponse::DurationElapsed { id: timer_id };
+    let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
+    core.resolve(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, Some(1));
     serialized = shell.take_serialized_effects();
     assert!(serialized.contains(&ffi::FfiEffect::Render));
 
     // 1 -> camera capture
-    let (request_id, request) = ffi::extract_single_time_request(std::mem::take(&mut serialized));
+    let (request_id, request) = extract_single_time_request(std::mem::take(&mut serialized));
     let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
         panic!("expected NotifyAfter request")
     };
-    core.resolve_time(request_id, TimeResponse::DurationElapsed { id: timer_id });
+    let response = TimeResponse::DurationElapsed { id: timer_id };
+    let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
+    core.resolve(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, None);
 
@@ -593,7 +638,6 @@ fn pictures_are_saved_to_file_system() {
     assert_eq!(serialized, vec![ffi::FfiEffect::Render]);
 
     for _ in 0..50 {
-        core.drain_local_effects();
         if core.view().save_status == app::SaveStatus::Saved {
             break;
         }
@@ -611,4 +655,18 @@ fn pictures_are_saved_to_file_system() {
 
     let serialized = shell.take_serialized_effects();
     assert_eq!(serialized, vec![ffi::FfiEffect::Render]);
+}
+
+pub(crate) fn extract_single_time_request(effects: Vec<ffi::FfiEffect>) -> (u32, TimeRequest) {
+    let mut time_effects: Vec<_> = effects
+        .into_iter()
+        .filter_map(|effect| match effect {
+            ffi::FfiEffect::Time { id, request } => Some((id, request)),
+            FfiEffect::Render => None,
+        })
+        .collect();
+
+    assert_eq!(time_effects.len(), 1, "expected exactly one time request");
+
+    time_effects.remove(0)
 }
