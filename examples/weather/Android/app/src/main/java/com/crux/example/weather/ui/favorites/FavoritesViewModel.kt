@@ -1,59 +1,113 @@
 package com.crux.example.weather.ui.favorites
 
 import androidx.lifecycle.viewModelScope
+import com.crux.example.weather.ActiveEvent
+import com.crux.example.weather.AddFavoriteEvent
+import com.crux.example.weather.ConfirmDeleteEvent
 import com.crux.example.weather.Event
-import com.crux.example.weather.FavoritesEvent
+import com.crux.example.weather.FavoritesScreenEvent
+import com.crux.example.weather.FavoritesWorkflowEvent
+import com.crux.example.weather.GeocodingResponse
 import com.crux.example.weather.Location
-import com.crux.example.weather.Workflow
-import com.crux.example.weather.WorkflowViewModel
 import com.crux.example.weather.core.Core
 import com.crux.example.weather.utils.stateInWhileSubscribed
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-class FavoritesViewModel(
-    private val core: Core,
-    private val uiStateMapper: FavoritesUiStateMapper,
-) : androidx.lifecycle.ViewModel() {
+@HiltViewModel
+class FavoritesViewModel
+    @Inject
+    constructor(
+        private val core: Core,
+        private val uiStateMapper: FavoritesUiStateMapper,
+    ) : androidx.lifecycle.ViewModel() {
 
-    private val initialState = FavoritesUiState(
-        favorites = emptyList(),
-        deleteConfirmation = null,
-    )
+    private val initialState = FavoritesUiState(favorites = emptyList())
 
-    val state: StateFlow<FavoritesUiState> = core.workflowViewModel<WorkflowViewModel.Favorites>()
+    val state: StateFlow<FavoritesUiState> = core.favoritesViewModel()
         .map { uiStateMapper.map(it) }
         .stateInWhileSubscribed(
             scope = viewModelScope,
             initialValue = initialState,
         )
 
-    fun restore() {
-        core.update(Event.Favorites(FavoritesEvent.Restore))
-    }
-
     fun onNavigateHome() {
-        core.update(Event.Navigate(Workflow.Home))
+        core.update(
+            Event.Active(ActiveEvent.Favorites(FavoritesScreenEvent.GoToHome))
+        )
     }
 
     fun onAddFavorite() {
-        core.update(Event.Navigate(Workflow.AddFavorite))
-    }
-
-    fun onSelectFavorite() {
-        // TODO: open selected favorite in home screen
-        core.update(Event.Navigate(Workflow.Home))
+        core.update(
+            Event.Active(ActiveEvent.Favorites(FavoritesScreenEvent.RequestAddFavorite))
+        )
     }
 
     fun onDeletePressed(location: Location) {
-        core.update(Event.Favorites(FavoritesEvent.DeletePressed(location)))
+        core.update(
+            Event.Active(ActiveEvent.Favorites(FavoritesScreenEvent.RequestDelete(location)))
+        )
     }
 
     fun onDeleteConfirmed() {
-        core.update(Event.Favorites(FavoritesEvent.DeleteConfirmed))
+        core.update(
+            Event.Active(
+                ActiveEvent.Favorites(
+                    FavoritesScreenEvent.Workflow(
+                        FavoritesWorkflowEvent.ConfirmDelete(ConfirmDeleteEvent.CONFIRMED)
+                    )
+                )
+            )
+        )
     }
 
     fun onDeleteCancelled() {
-        core.update(Event.Favorites(FavoritesEvent.DeleteCancelled))
+        core.update(
+            Event.Active(
+                ActiveEvent.Favorites(
+                    FavoritesScreenEvent.Workflow(
+                        FavoritesWorkflowEvent.ConfirmDelete(ConfirmDeleteEvent.CANCELLED)
+                    )
+                )
+            )
+        )
+    }
+
+    fun onSearch(query: String) {
+        core.update(
+            Event.Active(
+                ActiveEvent.Favorites(
+                    FavoritesScreenEvent.Workflow(
+                        FavoritesWorkflowEvent.Add(AddFavoriteEvent.Search(query))
+                    )
+                )
+            )
+        )
+    }
+
+    fun onSubmitFavorite(geocodingResponse: GeocodingResponse) {
+        core.update(
+            Event.Active(
+                ActiveEvent.Favorites(
+                    FavoritesScreenEvent.Workflow(
+                        FavoritesWorkflowEvent.Add(AddFavoriteEvent.Submit(geocodingResponse))
+                    )
+                )
+            )
+        )
+    }
+
+    fun onCancelAdd() {
+        core.update(
+            Event.Active(
+                ActiveEvent.Favorites(
+                    FavoritesScreenEvent.Workflow(
+                        FavoritesWorkflowEvent.Add(AddFavoriteEvent.Cancel)
+                    )
+                )
+            )
+        )
     }
 }

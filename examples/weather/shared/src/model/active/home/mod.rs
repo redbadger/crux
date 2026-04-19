@@ -1,0 +1,238 @@
+//! The home screen model — local weather plus saved favourites.
+//!
+//! Composes two sub-workflows that run in parallel: [`LocalWeather`], the
+//! "weather at my current location" state machine, and the favourites
+//! weather loop in [`favorites`], which fetches weather for each saved
+//! favourite. Events addressed to either sub-workflow are routed by the
+//! variants of [`HomeEvent`].
+
+pub mod favorites;
+pub mod local;
+
+use crux_core::render::render;
+use facet::Facet;
+use serde::{Deserialize, Serialize};
+
+use crate::model::ApiKey;
+use crate::model::outcome::{Outcome, Started, Status};
+
+use self::favorites::{FavoriteWeatherEvent, FavoriteWeatherTransition};
+use self::local::{LocalWeatherEvent, LocalWeatherTransition};
+use super::favorites::model::Favorites;
+
+pub use self::favorites::{FavoriteWeather, FavoriteWeatherState};
+pub use self::local::LocalWeather;
+
+// ANCHOR: event
+/// Events for the home screen: user navigation plus sub-workflow events.
+///
+/// The `Local` and `FavoritesWeather` variants are `#[serde(skip)]` /
+/// `#[facet(skip)]` because the sub-workflows' events are internal to the
+/// core — the shell only sends `GoToFavorites`.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[repr(C)]
+pub enum HomeEvent {
+    /// The user tapped the favourites button in the home toolbar.
+    GoToFavorites,
+
+    /// Internal event routed to [`LocalWeather::update`].
+    #[serde(skip)]
+    #[facet(skip)]
+    Local(#[facet(opaque)] LocalWeatherEvent),
+
+    /// Internal event routed to the favourites weather workflow.
+    #[serde(skip)]
+    #[facet(skip)]
+    FavoritesWeather(#[facet(opaque)] FavoriteWeatherEvent),
+}
+// ANCHOR_END: event
+
+// ANCHOR: transition
+/// The exits from the home screen.
+#[derive(Debug)]
+pub(crate) enum HomeTransition {
+    /// The user navigated to the favourites screen; the current favourites
+    /// list is carried over so the next screen has it.
+    GoToFavorites(Favorites),
+    /// The weather API rejected our key from one of the nested workflows;
+    /// the parent should route back through onboarding.
+    ApiKeyRejected(Favorites),
+}
+// ANCHOR_END: transition
+
+/// The home screen's state — the local-weather state machine plus a list
+/// of per-favourite weather workflows.
+#[derive(Default, Debug)]
+pub struct HomeScreen {
+    pub current_weather: LocalWeather,
+    pub favorites_weather: Vec<FavoriteWeather>,
+}
+
+impl HomeScreen {
+    // ANCHOR: start
+    /// Starts the home screen by kicking off both sub-workflows in parallel:
+    /// the local-weather permission check and the per-favourite weather
+    /// fetches. The returned command combines both.
+    pub(crate) fn start(favorites: &Favorites, api_key: &ApiKey) -> Started<Self, HomeEvent> {
+        tracing::debug!("starting home screen");
+
+        let (current_weather, local_cmd) = LocalWeather::start()
+            .map_event(HomeEvent::Local)
+            .into_parts();
+
+        let (favorites_weather, fav_cmd) = self::favorites::start(favorites, api_key)
+            .map_event(HomeEvent::FavoritesWeather)
+            .into_parts();
+
+        let screen = Self {
+            current_weather,
+            favorites_weather,
+        };
+
+        Started::new(screen, local_cmd.and(fav_cmd))
+    }
+    // ANCHOR_END: start
+
+    // ANCHOR: update
+    /// Advances the home screen on an event, using `api_key` to authorise
+    /// any weather API calls.
+    ///
+    /// - `GoToFavorites` → `Complete` with [`HomeTransition::GoToFavorites`].
+    /// - `Local(event)` → delegated to [`LocalWeather::update`]. An
+    ///   `Unauthorized` transition from the sub-machine is lifted to
+    ///   [`HomeTransition::ApiKeyRejected`].
+    /// - `FavoritesWeather(event)` → delegated to the favourites workflow;
+    ///   same lifting from its `Unauthorized` transition.
+    pub(crate) fn update(
+        self,
+        event: HomeEvent,
+        api_key: &ApiKey,
+    ) -> Outcome<Self, HomeTransition, HomeEvent> {
+        match event {
+            HomeEvent::GoToFavorites => Outcome::complete(
+                HomeTransition::GoToFavorites(self.favorites_weather.into()),
+                render(),
+            ),
+
+            HomeEvent::Local(local_event) => {
+                let Self {
+                    current_weather,
+                    favorites_weather,
+                } = self;
+
+                let (status, cmd) = current_weather
+                    .update(local_event, api_key)
+                    .map_event(HomeEvent::Local)
+                    .into_parts();
+
+                match status {
+                    Status::Continue(current_weather) => Outcome::continuing(
+                        Self {
+                            current_weather,
+                            favorites_weather,
+                        },
+                        cmd,
+                    ),
+                    Status::Complete(LocalWeatherTransition::Unauthorized) => Outcome::complete(
+                        HomeTransition::ApiKeyRejected(favorites_weather.into()),
+                        cmd,
+                    ),
+                }
+            }
+
+            HomeEvent::FavoritesWeather(fav_event) => {
+                let Self {
+                    current_weather,
+                    favorites_weather,
+                } = self;
+
+                let (status, cmd) = self::favorites::update(favorites_weather, fav_event)
+                    .map_event(HomeEvent::FavoritesWeather)
+                    .into_parts();
+
+                match status {
+                    Status::Continue(favorites_weather) => Outcome::continuing(
+                        Self {
+                            current_weather,
+                            favorites_weather,
+                        },
+                        cmd,
+                    ),
+                    Status::Complete(FavoriteWeatherTransition::Unauthorized(favorites)) => {
+                        Outcome::complete(HomeTransition::ApiKeyRejected(favorites), cmd)
+                    }
+                }
+            }
+        }
+    }
+    // ANCHOR_END: update
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::effects::http::location::GeocodingResponse;
+    use crate::model::ApiKey;
+    use crate::model::active::favorites::model::{Favorite, Favorites};
+
+    use super::*;
+
+    const TEST_API_KEY: &str = "test_api_key";
+
+    fn test_api_key() -> ApiKey {
+        TEST_API_KEY.to_string().into()
+    }
+
+    fn test_favorite() -> Favorite {
+        Favorite(GeocodingResponse {
+            name: "Phoenix".to_string(),
+            local_names: None,
+            lat: 33.456_789,
+            lon: -112.037_222,
+            country: "US".to_string(),
+            state: None,
+        })
+    }
+
+    #[test]
+    fn start_fetches_favorites_weather() {
+        let mut favorites = Favorites::default();
+        let test_fav = test_favorite();
+        favorites.insert(test_fav.clone());
+
+        let api_key = test_api_key();
+        let (screen, mut cmd) = HomeScreen::start(&favorites, &api_key).into_parts();
+
+        assert_eq!(screen.favorites_weather.len(), 1);
+        assert_eq!(
+            screen.favorites_weather[0].weather,
+            FavoriteWeatherState::Fetching
+        );
+
+        // Should have two effects: location check + favorite weather fetch
+        let effects: Vec<_> = cmd.effects().collect();
+        assert_eq!(effects.len(), 2);
+    }
+
+    #[test]
+    fn fetch_favorites_triggers_fetch_for_all_favorites() {
+        let mut favorites = Favorites::default();
+        favorites.insert(test_favorite());
+        favorites.insert(Favorite(GeocodingResponse {
+            name: "New York".to_string(),
+            local_names: None,
+            lat: 40.7128,
+            lon: -74.0060,
+            country: "US".to_string(),
+            state: None,
+        }));
+
+        let api_key = test_api_key();
+        let (screen, mut cmd) = HomeScreen::start(&favorites, &api_key).into_parts();
+
+        assert_eq!(screen.favorites_weather.len(), 2);
+
+        // location check + 2 favorite weather fetches
+        let effects: Vec<_> = cmd.effects().collect();
+        assert_eq!(effects.len(), 3);
+    }
+}

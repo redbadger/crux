@@ -9,7 +9,7 @@ navigation in a multi-screen app, and the main focus will be on managed effects 
 To that end, we'll need an app that does enough interesting things, while staying reasonably small.
 
 So we're going to build a Weather app. It needs to call an API,
-store data locally, and use location APIs to show local weather. That's plenty of effects
+store data and secrets locally, and use location APIs to show local weather. That's plenty of effects
 for us to play with and see how Crux supports this.
 
 Here's the same app — one shared core — running on iOS, Android, macOS, and the web:
@@ -41,15 +41,14 @@ Here's the same app — one shared core — running on iOS, Android, macOS, and 
   </figure>
 </div>
 
-The app works like a system weather utility: you get your local weather,
-search for locations, and save favourites — all backed by a real API.
+The app is a small weather client: local weather on the home screen,
+search for other locations, and a favourites list — all backed by a real API.
 
 You can look at the [full example code](https://github.com/redbadger/crux/tree/master/examples/weather)
-in the Crux Github repo, but we'll walk through the key parts. As before, we're going to start with the core
-and once we have it, look at the shells.
+in the Crux GitHub repo, but we'll walk through the key parts. As before, we're going to start with the core
+and, once we have it, look at the shells.
 
-Unlike in Part I, we will not build the app step by step, it would be very long and repetitive, we will
-instead do more of a code review of the key parts.
+The chapters that follow walk through the Weather app one concept at a time: lifecycle states, nested state machines, effects, testing, capabilities, and shells.
 
-Before we dive in though, lets quickly establish some foundations about the app architecture Crux follows,
+Before we dive in though, let's quickly establish some foundations about the app architecture Crux follows,
 known most widely as the Elm architecture, based on the language which popularised it.

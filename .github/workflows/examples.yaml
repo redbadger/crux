@@ -106,12 +106,6 @@ jobs:
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@trunk
 
-      - name: Create .env for weather
-        if: matrix.example == 'weather'
-        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
-        env:
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
-
       - name: CI
         run: just ${{ matrix.shell }}/ci
 
@@ -186,12 +180,6 @@ jobs:
         with:
           version: latest
 
-      - name: Create .env for weather
-        if: matrix.example == 'weather'
-        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
-        env:
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
-
       - name: CI
         run: just ${{ matrix.shell }}/ci
 
@@ -237,7 +225,7 @@ jobs:
   # cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
   # so the matrix is just the example name — the shell is always "apple".
   apple:
-    runs-on: macos-latest
+    runs-on: macos-26
 
     strategy:
       fail-fast: false
@@ -270,12 +258,6 @@ jobs:
 
       - name: Install cargo-swift
         run: cargo install cargo-swift --version '=0.9'
-
-      - name: Create .env for weather
-        if: matrix.example == 'weather'
-        run: echo "export OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY" > .env
-        env:
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
 
       - name: CI
         run: just apple/ci

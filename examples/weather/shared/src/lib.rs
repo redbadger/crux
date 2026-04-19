@@ -1,17 +1,19 @@
 #![allow(clippy::unsafe_derive_deserialize)]
 #![allow(clippy::missing_panics_doc)]
 pub mod app;
-mod config;
-pub mod favorites;
+pub mod effects;
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 mod ffi;
-pub mod location;
-pub mod weather;
+pub mod model;
+pub mod view;
 
 pub use app::*;
 pub use crux_core::Core;
 pub use crux_http as http;
 pub use crux_kv as kv;
+pub use effects::Effect;
+pub use model::Event;
+pub use view::ViewModel;
 
 #[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 pub use ffi::CoreFFI;

@@ -1,163 +1,112 @@
-# React
+# React (Next.js)
 
-Let's start with the new part, and also typically the shorter part –
-implementing the capabilities.
+The Next.js shell is TypeScript talking to a WASM blob. Events serialise as bincode, cross the FFI, return effect requests; the shell handles each one, serialises the response, sends it back — the same `Request`/`Response` loop as iOS and Android, just in JavaScript. The interesting half of the chapter is how React's render model shapes the shell, because it's the opposite of Leptos's.
 
-## Capability implementation
+## Components re-run on every render
 
-This is what Weather's `core.ts` looks like
+In Leptos, a `#[component]` function runs *once*, at mount. Signals keep state alive across time; `move ||` closures inside `view!` re-render fine-grained slots.
 
-```typescript
-{{#include ../../../../examples/weather/web-nextjs/src/app/core.ts:core_base}}
-  // ...
-}
-```
+React is the other way round. A function component runs **every time its state changes** — top to bottom, from scratch. Each render produces a new virtual DOM; React diffs against the previous one and patches the actual DOM. Hooks — `useState`, `useRef`, `useContext`, `useMemo`, `useCallback` — exist to keep values alive across those reruns and to schedule work at specific moments rather than on every render.
 
-It's slightly more complicated, but broadly the same as the Counter's core.
-We wrap the `CoreFFI` (loaded via WASM) and hold on to a React `setState`
-callback, which we use to update the view model whenever the core asks us to
-render.
+Three consequences for the Crux shell:
 
-We've truncated the `resolve` method, because it's fairly long, but the basic
-structure is this:
+- The `Core` instance has to live in a `useRef`, not a plain local. A fresh `new Core()` on every render would break effect resolution mid-flight.
+- The view model becomes `useState<ViewModel>`: React-owned state, whose setter triggers a re-render when the core hands us a new view model.
+- The dispatcher is wrapped in `useCallback` so its reference is stable across renders. Button handlers that capture it don't then capture a moving target.
+
+## Booting the Core
+
+The root of the tree is a `CoreProvider`:
 
 ```typescript
-  async resolve(id: number, effect: Effect) {
-    switch (effect.constructor) {
-      case EffectVariantRender:
-        // ...
-
-      case EffectVariantHttp:
-        // ...
-
-      case EffectVariantKeyValue:
-        // ...
-
-      case EffectVariantLocation:
-        // ...
-    }
-  }
+{{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:provider}}
 ```
 
-We get a Request, and do a switch on what the requested effect's constructor is
-to determine the type. In TypeScript we use `instanceof`-style constructor
-checks, so we can also cast and destructure the operation requested.
+Three things happen in this component.
 
-We can have a look at what the HTTP branch does:
+The `useRef` holds the `Core` across renders. `coreRef.current` points at the same instance every time the function runs; assigning once inside the init effect locks it in.
+
+The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It calls `init_core()` to download and instantiate the WASM module, constructs the `Core`, then fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for StrictMode (on by default in Next.js), which double-invokes effects in development to surface resource-leak bugs.
+
+The `dispatch` callback is wrapped in `useCallback(_, [])` so its reference is stable. Consumers of `useDispatch()` get the same function every render, which matters when passing it into handlers — otherwise every view update would invalidate every handler and trigger spurious re-renders of memoised children.
+
+## The signal model — React edition
+
+Same directional story as Leptos: state flows in, events flow out. The mechanisms are different, but the shape is the same. Two separate contexts:
 
 ```typescript
-{{#include ../../../../examples/weather/web-nextjs/src/app/core.ts:http}}
+{{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:context}}
 ```
 
-This delegates to `http.request()`, which does the actual work, and then calls
-`this.respond()` with the result:
+Splitting them matters. With both `view` and `dispatch` in one context, every `view` change re-renders every consumer of either side — even a component that only needed `dispatch`. Two contexts means `useDispatch()` consumers only re-render when the stable callback reference changes, which it never does.
+
+Consumers pull either side with a hook:
 
 ```typescript
-{{#include ../../../../examples/weather/web-nextjs/src/app/core.ts:respond}}
+{{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:hooks}}
 ```
 
-We use `async`/`await` to run the HTTP request, then take the response,
-serialize it and pass it to `core.resolve` via `respond`, which
-**returns more effect requests**. This is perhaps unexpected, but it's the direct
-consequence of the `Command`s async nature. There can easily be a command which
-does something along the lines of:
-
-```rust,noplayground
-Command::new(|ctx| {
-    let http_req = Http::get(url).expect_json<Counter>().build().into_future(ctx);
-    let resp = http_req.await; // effect 1
-
-    let counter = resp.map(|result| match result {
-        Ok(mut response) => match response.take_body() {
-            Some(counter) => {
-                Ok(results)
-            }
-            None => Err(ApiError::ParseError),
-        },
-        Err(_) => Err(ApiError::NetworkError),
-    });
-
-    let _ = KeyValue::set(COUNTER, counter).into_future(ctx).await // effect 2
-
-    // ...
-
-    ctx.send_event(Event::Done);
-})
-```
-
-Once we resolve the http request at the `.await` point marked "effect 1", this future can
-proceed and make a `KeyValue` request at the "effect 2" `.await` point. So on the
-shell end, we need to be able to respond appropriately.
-
-What we do is loop through those effect requests (there could easily be multiple requests
-at once), go through them and recurse—call `resolve` again to handle each one.
-
-Just for completeness, this is what `http.ts` looks like:
+Then components fire events with:
 
 ```typescript
-{{#include ../../../../examples/weather/web-nextjs/src/app/http.ts}}
+const dispatch = useDispatch();
+dispatch(new EventVariantActive(new ActiveEventVariantResetApiKey()));
 ```
 
-Not that interesting, it's a wrapper around the browser's native `fetch` API which takes and
-returns the generated `HttpRequest` and `HttpResponse`, originally defined in Rust by
-`crux_http`.
+Both directions cross the FFI as bincode. `dispatch` is just a JS callback wrapping the serialise-and-call-update flow; `setView` is a React state setter the `Core` invokes after deserialising the response to `Effect::Render`.
 
-The pattern repeats similarly for key-value store and the location capability.
+## Projecting with useMemo
 
-## User interface and navigation
+The root reads the whole `ViewModel` and picks off per-stage slices for each screen:
 
-It's worth looking at how Weather handles the Workflow navigation in React.
-
-As in the Counter example, the Weather's core holds a `ViewModel` which we
-store in React state via `useState`, so the component re-renders whenever the
-core asks us to.
-
-Here's the root component:
-
-```tsx
-{{#include ../../../../examples/weather/web-nextjs/src/app/page.tsx:content_view}}
+```typescript
+{{#include ../../../../examples/weather/web-nextjs/src/app/page.tsx:app}}
 ```
 
-We initialize the WASM core inside a `useEffect` that runs once, create a
-`Core` instance with the `setView` callback, and immediately dispatch the
-initial `Show` event to kick things off.
+`useMemo(() => …, [view])` is the React analogue of Leptos's `Memo` in intent: keep the projection logic explicit and rerun it when `view` changes. Coarser in one important way — React compares deps by reference, not value. Every `Effect::Render` produces a freshly deserialised `ViewModel`, so `view` is always a new object and the memo always recomputes. For Weather that's fine; the projection functions are cheap.
 
-Thanks to the declarative nature of React, we can show the view we need to,
-depending on the workflow, using `instanceof` checks on the workflow variant.
-Each branch renders the appropriate component and passes the core ref down.
+So the win here is mostly clarity: the stage-picking logic lives in one place, and each child receives the slice it cares about. It is not fine-grained reactivity, and it doesn't by itself make child handlers stable or suppress rerenders deeper in the tree. If you wanted that, you'd reach for `React.memo` and/or stable callbacks at the relevant component boundary — but this example doesn't need the extra machinery.
 
-We could do this differently—core could stay in the root component and we
-could pass an `update` callback via React context, and just the appropriate
-section of the view model to each component. You could also use React Router
-for navigation. It's up to you how you want to go about it.
+## Handling effects
 
-Let's look at the HomeView as well, just to complete the picture:
+The FFI bridge is a single class:
 
-```tsx
-{{#include ../../../../examples/weather/web-nextjs/src/app/page.tsx:home_view}}
+```typescript
+{{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:core_base}}
 ```
 
-It simply caters for the possible situations in the view model—checking
-whether `cod === 200` to decide if weather data has loaded—draws the
-weather cards with a grid of details, and adds a "Favorites" button which
-when clicked calls `core.current?.update` with the TypeScript equivalent of
-the `.navigate` event we saw earlier in the core.
+`update` serialises an event with `BincodeSerializer`, calls `CoreFfi.update` (the WASM export), and deserialises the returned bytes into `Request` objects. Each request carries an `id` and an `effect`; we walk them and dispatch each to a per-capability branch.
 
-This is quite a simple navigation setup in that it is a static set of screens
-we're managing. Sometimes a more dynamic navigation is necessary, but
-React Router or similar libraries support quite complex scenarios in a
-declarative fashion, so the general principle of naively projecting the view
-model into the user interface broadly works even there.
+HTTP looks like this:
 
-There isn't much more to it, the rest of the app is rinse and repeat. It is
-relatively rare to implement a new capability, so most of the work is in finessing
-the user interface. Crux tends to work reasonably well with hot module reloading
-so you can typically avoid full page reloads for the inner development loop.
+```typescript
+{{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:http}}
+```
+
+The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest` into a browser `Request` and the `Response` back into the shared `HttpResult`. When it returns, we call `respond`:
+
+```typescript
+{{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:respond}}
+```
+
+Same recursion as the other shells: serialise the response, call `CoreFfi.resolve`, and loop through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
+
+The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape.
+
+## Shared components
+
+Screens compose a set of Tailwind-styled presentational components in `src/app/components/common/`: `Card`, `Button`, `IconButton`, `Spinner`, `StatusMessage`, `TextField`, `ScreenHeader`, `SectionTitle`, `Modal`. Same names and variant set as the Leptos shell — `Button` takes `primary | secondary | danger`; `StatusMessage` takes `neutral | error` — so a reader who's seen both shells sees the same vocabulary twice in slightly different dialects. `clsx` handles the conditional-class plumbing.
+
+The `Home` screen pulls its slice from props, calls `useDispatch` once, and wires buttons to events:
+
+```typescript
+{{#include ../../../../examples/weather/web-nextjs/src/app/components/HomeView.tsx:home_view}}
+```
+
+Icons come from `@phosphor-icons/react` as typed components (`<Key size={18} />`). The `icon` prop on `Button` takes a phosphor component directly; inside the component it's destructured as `{ icon: Icon }` so JSX can render it with a PascalCase tag.
 
 ## What's next
 
-Congratulations! You know now all you will likely need to build Crux apps. The
-following parts of the book will cover advanced topics, other support platforms,
-and internals of Crux, should you be interested in how things work.
+That's the Next.js shell. Structurally the same as the other shells — events in, effects out, view model drives the tree. What's distinctive is the render model (top-to-bottom on every state change, hooks as the persistence mechanism) and the two-context split that keeps dispatch-only consumers off the re-render path.
 
 Happy building!

@@ -44,30 +44,20 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed breakdown.
 ### 1. Get an API key
 
 Sign up for a free API key at
-[openweathermap.org/appid](https://openweathermap.org/appid).
+[openweathermap.org/appid](https://openweathermap.org/appid). The app will
+prompt you to enter it on first launch.
 
-### 2. Create `.env`
-
-In this directory (`examples/weather/`), create a `.env` file:
-
-```sh
-export OPENWEATHER_API_KEY=your_key_here
-```
-
-### 3. Check prerequisites
+### 2. Check prerequisites
 
 ```sh
 just doctor
 ```
 
-This verifies that the required tools are installed and that `.env` is
-configured.
+This verifies that the required tools are installed.
 
 ## Running
 
 ### Web (Leptos or Next.js)
-
-The `.env` file is sourced automatically by the `serve` recipe:
 
 ```sh
 cd web-leptos  # or web-nextjs
@@ -76,20 +66,16 @@ just serve
 
 ### Android
 
-Run setup to copy the API key to `local.properties`, then open Android Studio:
-
 ```sh
-just android/setup
-just android/open
+cd Android
+just open
 ```
 
-Build and run from Android Studio. (The `setup` step is also included in
-`just android/dev`.)
+Build and run from Android Studio.
 
 ### Apple (iOS/macOS)
 
-Generate the Xcode project (this injects the API key into the scheme) and open
-it:
+Generate the Xcode project and open it:
 
 ```sh
 cd apple
