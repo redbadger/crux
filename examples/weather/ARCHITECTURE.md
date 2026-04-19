@@ -15,7 +15,7 @@ experiences.
 graph TB
     subgraph "Shells"
         Apple[apple/<br/>SwiftUI]
-        Android[android/<br/>Jetpack Compose]
+        Android[Android/<br/>Jetpack Compose]
         Leptos[web-leptos/<br/>Leptos]
         NextJS[web-nextjs/<br/>Next.js]
     end
@@ -126,10 +126,10 @@ apple/
         ├── OnboardView.swift       # API key input screen
         ├── ActiveView.swift        # Dispatches to Home or Favorites
         ├── FailedView.swift        # Error display
+        ├── PlatformColors.swift    # iOS/macOS colour shims
         ├── Home/
         │   ├── HomeView.swift      # NavigationSplitView — sidebar + detail
-        │   ├── LocationRow.swift   # Sidebar row: name, icon, temps
-        │   ├── CurrentLocationRow.swift
+        │   ├── LocationRow.swift   # Sidebar rows: current + favourite
         │   ├── WeatherCard.swift   # Detail card: full weather info
         │   ├── WeatherIcon.swift   # Weather code → SF Symbol mapping
         │   ├── WeatherDetailItem.swift

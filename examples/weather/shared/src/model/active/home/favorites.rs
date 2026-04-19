@@ -1,3 +1,15 @@
+//! Per-favourite weather fetches shown on the home screen.
+//!
+//! Given a list of favourites, fires one weather request per entry in
+//! parallel and tracks each one independently. Unlike [`LocalWeather`], this
+//! workflow has no permission or location-fetch steps — just per-favourite
+//! HTTP requests that resolve into [`FavoriteWeatherState`].
+//!
+//! Exposed as free functions rather than methods because the state is a plain
+//! `Vec<FavoriteWeather>` shared with the parent screen.
+//!
+//! [`LocalWeather`]: super::local::LocalWeather
+
 use crux_core::{Command, render::render};
 
 use crate::effects::Effect;
@@ -9,23 +21,34 @@ use crate::model::outcome::{Outcome, Started};
 use crate::effects::http::weather::model::current_response::CurrentWeatherResponse;
 use crate::effects::http::weather::{self as weather_api, WeatherError};
 
+/// Events emitted as each per-favourite weather request resolves.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FavoriteWeatherEvent {
+    /// Weather for the favourite at `location` resolved — either a response
+    /// or an error.
     WeatherFetched(Box<Result<CurrentWeatherResponse, WeatherError>>, Location),
 }
 
+/// The exit from the favourites-weather workflow.
 #[derive(Debug)]
 pub(crate) enum FavoriteWeatherTransition {
+    /// One of the weather requests returned 401; the parent should route
+    /// back through onboarding, carrying the favourites along.
     Unauthorized(Favorites),
 }
 
+/// Per-favourite fetch state.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FavoriteWeatherState {
+    /// Weather request is in flight.
     Fetching,
+    /// Weather received for this favourite.
     Fetched(Box<CurrentWeatherResponse>),
+    /// Weather fetch failed for reasons other than unauthorized.
     Failed,
 }
 
+/// A favourite paired with the state of its weather fetch.
 #[derive(Debug, Clone)]
 pub struct FavoriteWeather {
     pub favorite: Favorite,
@@ -38,6 +61,8 @@ impl From<Vec<FavoriteWeather>> for Favorites {
     }
 }
 
+/// Initialises a per-favourite list in `Fetching` state and kicks off every
+/// weather request in parallel.
 pub(crate) fn start(
     favorites: &Favorites,
     api_key: &ApiKey,
@@ -54,6 +79,10 @@ pub(crate) fn start(
     Started::new(items, cmd)
 }
 
+/// Applies a resolved weather response to the matching favourite. A response
+/// for an unknown location (e.g. a favourite that was removed mid-flight) is
+/// logged and dropped. A 401 anywhere in the batch completes the workflow
+/// with [`FavoriteWeatherTransition::Unauthorized`].
 pub(crate) fn update(
     mut items: Vec<FavoriteWeather>,
     event: FavoriteWeatherEvent,

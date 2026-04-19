@@ -1,3 +1,11 @@
+//! The active state — the fully-initialised app.
+//!
+//! Holds the API key and switches between two screens: [`home`] (local
+//! weather + favourites) and [`favorites`] (add/delete). [`ActiveEvent`]
+//! routes events to whichever screen is visible; unauthorized responses
+//! from either screen bubble up as an `Unauthorized` transition, kicking
+//! the app back to onboarding.
+
 pub mod favorites;
 pub mod home;
 
@@ -16,13 +24,19 @@ use super::{
     outcome::{Outcome, Started},
 };
 
+/// Events for the active app — user actions plus screen-specific sub-events.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum ActiveEvent {
+    /// Routed to the home screen. Boxed because [`HomeEvent`] is large.
     Home(Box<HomeEvent>),
+    /// Routed to the favourites screen. Boxed because
+    /// [`FavoritesScreenEvent`] is large.
     Favorites(Box<FavoritesScreenEvent>),
+    /// The user asked to clear their stored API key and re-enter it.
     ResetApiKey,
 
+    /// Internal: the secret store finished deleting the API key.
     #[serde(skip)]
     #[facet(skip)]
     SecretDeleted(#[facet(opaque)] SecretDeleteResponse),
@@ -40,6 +54,8 @@ impl ActiveEvent {
     }
 }
 
+/// The two screens the active app can show. Mutually exclusive — navigating
+/// between them reconstructs the target screen from the favourites list.
 #[derive(Debug)]
 pub enum Screen {
     Home(HomeScreen),
@@ -61,13 +77,18 @@ impl Screen {
     }
 }
 
-/// Transition value when the active state completes.
+/// The exits from the active state — both return to onboarding carrying the
+/// current favourites along.
 #[derive(Debug)]
 pub(crate) enum ActiveTransition {
+    /// The user explicitly reset their API key; the stored key was deleted.
     ResetApiKey(Favorites),
+    /// A weather or geocoding request returned 401; the stored key is
+    /// stale or invalid and the user needs to re-enter it.
     Unauthorized(Favorites),
 }
 
+/// The active app's state: the authorised API key plus the current screen.
 #[derive(Default, Debug)]
 pub struct ActiveModel {
     pub api_key: ApiKey,

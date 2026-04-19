@@ -2,6 +2,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+/// Geographic coordinates as reported in the weather response.
 #[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Copy, Clone)]
 pub struct Coord {
     pub lat: f64,

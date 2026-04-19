@@ -1,3 +1,9 @@
+//! Geocoding — resolve a place name to a list of candidate locations.
+//!
+//! Wraps OpenWeatherMap's [direct geocoding
+//! endpoint](https://openweathermap.org/api/geocoding-api#direct_name) at
+//! `/geo/1.0/direct`.
+
 use std::{fmt, sync::LazyLock};
 
 use crux_core::{Request, command::RequestBuilder};
@@ -15,10 +21,14 @@ const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
 
 // -- Error --
 
+/// Failures from a geocoding request.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum LocationError {
+    /// Transport-level failure (connection, DNS, TLS).
     NetworkError,
+    /// The response body did not deserialise as a geocoding result.
     ParseError,
+    /// The query returned no matches.
     NoResults,
 }
 
@@ -88,6 +98,12 @@ where
 
 // -- Response Types --
 
+/// Localised names for a place, keyed by ISO 639-1 language code.
+///
+/// Populated by OpenWeatherMap for many but not all places; every field is
+/// optional and unset fields deserialise as `None`. Fields exactly mirror
+/// the `local_names` object in the [geocoding response
+/// schema](https://openweathermap.org/api/geocoding-api#direct_name).
 #[derive(
     Facet, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone,
 )]
@@ -181,6 +197,10 @@ impl fmt::Display for LocalNames {
     }
 }
 
+/// A single geocoding result — a candidate place matching the query.
+///
+/// Mirrors the shape of one element in the OpenWeatherMap geocoding response
+/// array.
 #[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone)]
 pub struct GeocodingResponse {
     pub name: String,

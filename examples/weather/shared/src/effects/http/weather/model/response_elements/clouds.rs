@@ -2,6 +2,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+/// Cloud cover — `all` is the percentage (0-100).
 #[derive(
     Facet, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Copy, Clone,
 )]

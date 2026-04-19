@@ -15,13 +15,16 @@ use super::{
     outcome::{Outcome, Started},
 };
 
-/// Why the user is on the onboarding screen.
+/// Why the user is on the onboarding screen — lets the shell adjust copy.
 #[derive(Facet, Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq)]
 #[repr(C)]
 pub enum OnboardReason {
+    /// First run — no key has ever been stored.
     #[default]
     Welcome,
+    /// The stored key was rejected by the weather API (401).
     Unauthorized,
+    /// The user explicitly reset their key from the active app.
     Reset,
 }
 

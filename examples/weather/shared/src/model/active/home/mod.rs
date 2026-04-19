@@ -35,7 +35,8 @@ pub enum HomeEvent {
     /// The user tapped the favourites button in the home toolbar.
     GoToFavorites,
 
-    /// Internal event routed to [`LocalWeather::update`].
+    /// Internal event routed to the local-weather state machine
+    /// ([`LocalWeather`]).
     #[serde(skip)]
     #[facet(skip)]
     Local(#[facet(opaque)] LocalWeatherEvent),

@@ -1,3 +1,5 @@
+//! The delete-confirmation workflow — a two-button dialog over a location.
+
 use crux_core::render::render;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
@@ -5,21 +7,29 @@ use serde::{Deserialize, Serialize};
 use crate::effects::location::Location;
 use crate::model::outcome::Outcome;
 
+/// State for the delete-confirmation workflow — just the location being
+/// confirmed.
 #[derive(Debug)]
 pub struct ConfirmDeleteWorkflow {
     pub location: Location,
 }
 
+/// The user's response to the confirmation dialog.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum ConfirmDeleteEvent {
+    /// The user confirmed — remove the favourite.
     Confirmed,
+    /// The user dismissed the dialog — keep the favourite.
     Cancelled,
 }
 
+/// The exit from the delete-confirmation workflow.
 #[derive(Debug)]
 pub(crate) enum ConfirmDeleteTransition {
+    /// Confirmed; delete the favourite at this location.
     Confirmed(Location),
+    /// Cancelled; no change.
     Cancelled,
 }
 

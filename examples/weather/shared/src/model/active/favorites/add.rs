@@ -1,3 +1,11 @@
+//! The add-favourite workflow: debounced search, then selection.
+//!
+//! The user types a query; each keystroke resets a 300ms debounce timer. When
+//! the timer fires, a geocoding request goes out. Responses are tagged with
+//! the input version that fired them (via a versioned-input helper) so
+//! stale results from earlier queries can be discarded when they arrive
+//! late.
+
 use std::time::Duration;
 
 use crux_core::{Command, render::render};
@@ -14,25 +22,39 @@ use super::model::Favorite;
 
 const DEBOUNCE_MILLIS: u64 = 300;
 
+/// State for the add-favourite workflow.
 #[derive(Debug)]
 pub struct AddFavoriteWorkflow {
+    /// The current search input, paired with a version used to discard
+    /// stale search responses.
     pub input: VersionedInput,
+    /// The most recent search results, or `None` before any search has
+    /// resolved. An empty `Some(vec![])` means "no matches".
     pub search_results: Option<Vec<GeocodingResponse>>,
+    /// Whether a search is currently in flight — drives the UI spinner.
     pub searching: bool,
     timer_handle: Option<TimerHandle>,
 }
 
+/// Events for the add-favourite workflow.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum AddFavoriteEvent {
+    /// The user typed in the search input.
     Search(String),
+    /// The user selected a result — commit it as a favourite.
     Submit(Box<GeocodingResponse>),
+    /// The user dismissed the workflow without selecting anything.
     Cancel,
 
+    /// Internal: the debounce timer fired (or was cleared).
     #[serde(skip)]
     #[facet(skip)]
     DebounceComplete(#[facet(opaque)] TimerOutcome),
 
+    /// Internal: a geocoding request resolved. `usize` is the input version
+    /// captured when the request went out; responses from stale versions
+    /// are dropped.
     #[serde(skip)]
     #[facet(skip)]
     SearchResult(
@@ -41,9 +63,12 @@ pub enum AddFavoriteEvent {
     ),
 }
 
+/// The exits from the add-favourite workflow.
 #[derive(Debug)]
 pub(crate) enum AddFavoriteTransition {
+    /// The user picked a search result; this is the favourite to save.
     Selected(Box<Favorite>),
+    /// The user dismissed the workflow.
     Cancelled,
 }
 

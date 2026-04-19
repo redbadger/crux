@@ -9,10 +9,13 @@ pub use home::HomeViewModel;
 
 use crate::model::active::{ActiveModel, Screen};
 
+/// The view model for the active app — one variant per screen.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum ActiveViewModel {
+    /// The home screen: current-location weather plus saved favourites.
     Home(HomeViewModel),
+    /// The favourites screen: add, delete, and browse saved locations.
     Favorites(FavoritesViewModel),
 }
 

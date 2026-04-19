@@ -10,6 +10,8 @@ use std::fmt;
 
 pub const WEATHER_URL: &str = "https://api.openweathermap.org/data/2.5/weather";
 
+/// Internal system fields from the weather response — timezone metadata and
+/// sunrise/sunset timestamps.
 #[derive(
     Facet, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Default, Clone,
 )]
@@ -33,6 +35,8 @@ impl fmt::Display for Sys {
     }
 }
 
+/// The "main" block of a weather response — temperature, pressure, humidity.
+/// All temperatures are in °C (the fetch request uses `units=metric`).
 #[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Copy, Clone)]
 pub struct Main {
     pub temp: f64,
@@ -53,6 +57,12 @@ impl fmt::Display for Main {
     }
 }
 
+/// The full response from the current-weather endpoint.
+///
+/// Mirrors the top-level JSON returned by `/data/2.5/weather`; see the
+/// [API docs](https://openweathermap.org/current#fields_json) for field
+/// meanings. The [`derive_builder`]-generated [`CurrentWeatherResponseBuilder`]
+/// is used from tests to assemble fixtures.
 #[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Clone, Builder)]
 #[builder(setter(into))]
 pub struct CurrentWeatherResponse {

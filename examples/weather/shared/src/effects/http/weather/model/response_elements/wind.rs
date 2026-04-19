@@ -2,6 +2,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+/// Wind conditions — speed in m/s, direction in degrees, optional gust speed.
 #[derive(Facet, Debug, Serialize, Deserialize, PartialOrd, PartialEq, Default, Copy, Clone)]
 pub struct Wind {
     pub speed: f64,

@@ -1,4 +1,15 @@
-//! Screen for managing the user's favorite locations, where they want to check weather from.
+//! The favourites screen — manage saved locations.
+//!
+//! The screen holds the favourites list and, optionally, a focused
+//! [`FavoritesWorkflow`] — either an [`add`] search or a [`confirm_delete`]
+//! confirmation. Workflow events are routed through [`FavoritesWorkflowEvent`]
+//! so the outer screen doesn't need to know which workflow is active.
+//!
+//! Changes to the favourites list are persisted through the [`KeyValue`]
+//! effect under [`FAVORITES_KEY`] as a JSON blob.
+//!
+//! [`KeyValue`]: crux_kv::command::KeyValue
+//! [`FAVORITES_KEY`]: model::FAVORITES_KEY
 
 pub mod add;
 pub mod confirm_delete;
@@ -18,21 +29,27 @@ use self::add::{AddFavoriteEvent, AddFavoriteTransition, AddFavoriteWorkflow};
 use self::confirm_delete::{ConfirmDeleteEvent, ConfirmDeleteTransition, ConfirmDeleteWorkflow};
 use self::model::{FAVORITES_KEY, Favorites};
 
-/// Events for the favorites screen.
+/// Events for the favorites screen — navigation, workflow triggers, and
+/// persistence results.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum FavoritesScreenEvent {
+    /// Back to the home screen.
     GoToHome,
+    /// Start the add-favourite search workflow.
     RequestAddFavorite,
+    /// Start the delete-confirmation workflow for the favourite at `location`.
     RequestDelete(Location),
+    /// Routed to the currently-active workflow (add or confirm-delete).
     Workflow(FavoritesWorkflowEvent),
 
+    /// Internal: the KV store finished persisting the favourites list.
     #[serde(skip)]
     #[facet(skip)]
     Persisted(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
 }
 
-/// Events dispatched to the active workflow.
+/// Events routed to whichever [`FavoritesWorkflow`] is currently active.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum FavoritesWorkflowEvent {

@@ -6,6 +6,11 @@ use crate::{
     view::ViewModel,
 };
 
+/// The Crux [`App`] impl for the weather example.
+///
+/// A stateless tag type that wires the [`Model`], [`Event`], [`Effect`], and
+/// [`ViewModel`] together. All logic lives on [`Model::update`] and the
+/// [`From<&Model> for ViewModel`] impl — `Weather` just delegates.
 #[derive(Default)]
 pub struct Weather;
 

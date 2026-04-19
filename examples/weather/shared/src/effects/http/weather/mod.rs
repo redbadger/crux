@@ -1,3 +1,9 @@
+//! Current-weather fetches at a coordinate.
+//!
+//! Wraps OpenWeatherMap's [current weather
+//! endpoint](https://openweathermap.org/current) at `/data/2.5/weather`. The
+//! response shapes live in [`model`] and mirror the API's JSON.
+
 pub mod model;
 
 use crux_core::Request;
@@ -11,10 +17,15 @@ use crate::model::ApiKey;
 
 use self::model::current_response::{CurrentWeatherResponse, WEATHER_URL};
 
+/// Failures from a current-weather request.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum WeatherError {
+    /// The API rejected the API key (401 or 403). Callers bubble this up
+    /// to reset the user's credentials.
     Unauthorized,
+    /// Transport-level failure or unexpected HTTP status.
     NetworkError,
+    /// The response body did not deserialise as a weather response.
     ParseError,
 }
 
