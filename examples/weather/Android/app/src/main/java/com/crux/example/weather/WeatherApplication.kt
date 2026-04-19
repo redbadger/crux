@@ -1,16 +1,7 @@
 package com.crux.example.weather
 
 import android.app.Application
-import com.crux.example.weather.di.appModule
-import org.koin.android.ext.koin.androidContext
-import org.koin.core.context.startKoin
+import dagger.hilt.android.HiltAndroidApp
 
-class WeatherApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        startKoin {
-            androidContext(this@WeatherApplication)
-            modules(appModule)
-        }
-    }
-}
+@HiltAndroidApp
+class WeatherApplication : Application()

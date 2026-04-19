@@ -25,6 +25,7 @@ wasm-bindgen-futures = "0.4.50"
 web-sys = { version = "0.3.91", features = ["Geolocation", "Navigator", "Position", "Coordinates", "Storage", "Window"] }
 
 leptos = { version = "0.8.17", features = ["csr"] }
+phosphor-leptos = "0.8.0"
 
 [lints.clippy]
 empty_docs = "allow"

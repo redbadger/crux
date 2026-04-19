@@ -9,7 +9,7 @@ navigation in a multi-screen app, and the main focus will be on managed effects 
 To that end, we'll need an app that does enough interesting things, while staying reasonably small.
 
 So we're going to build a Weather app. It needs to call an API,
-store data locally, and use location APIs to show local weather. That's plenty of effects
+store data and secrets locally, and use location APIs to show local weather. That's plenty of effects
 for us to play with and see how Crux supports this.
 
 Here's the same app — one shared core — running on iOS, Android, macOS, and the web:
@@ -48,8 +48,7 @@ You can look at the [full example code](https://github.com/redbadger/crux/tree/m
 in the Crux Github repo, but we'll walk through the key parts. As before, we're going to start with the core
 and once we have it, look at the shells.
 
-Unlike in Part I, we will not build the app step by step, it would be very long and repetitive, we will
-instead do more of a code review of the key parts.
+Unlike Part I, we'll work by concept rather than by commit: lifecycle states, nested state machines, effects, testing, capabilities, and shells — each with the Weather app as the worked example.
 
 Before we dive in though, lets quickly establish some foundations about the app architecture Crux follows,
 known most widely as the Elm architecture, based on the language which popularised it.

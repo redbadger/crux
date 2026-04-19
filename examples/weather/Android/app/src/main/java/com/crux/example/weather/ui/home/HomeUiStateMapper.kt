@@ -7,8 +7,9 @@ import com.crux.example.weather.HomeViewModel
 import com.crux.example.weather.LocalWeatherViewModel
 import java.time.Instant
 import java.util.Locale
+import javax.inject.Inject
 
-class HomeUiStateMapper {
+class HomeUiStateMapper @Inject constructor() {
 
     fun map(home: HomeViewModel): HomeUiState {
         return HomeUiState(pages = mapPages(home))

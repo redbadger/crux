@@ -1,3 +1,11 @@
+//! Command builders for the [secret capability](super).
+//!
+//! Each builder issues one [`SecretRequest`] and narrows the shell's wide
+//! [`SecretResponse`] down to the [`SecretFetchResponse`],
+//! [`SecretStoreResponse`], or [`SecretDeleteResponse`] that's relevant
+//! to that operation. They're generic over `Effect` and `Event` so any
+//! Crux app can adopt them.
+
 use std::future::Future;
 
 use crux_core::Request;
@@ -7,6 +15,7 @@ use super::{
     SecretDeleteResponse, SecretFetchResponse, SecretRequest, SecretResponse, SecretStoreResponse,
 };
 
+/// Fetches the secret stored under `key`, if any.
 #[must_use]
 pub fn fetch<Ef, Ev>(
     key: impl Into<String>,
@@ -24,6 +33,7 @@ where
     })
 }
 
+/// Stores `value` under `key`, replacing any existing secret.
 #[must_use]
 pub fn store<Ef, Ev>(
     key: impl Into<String>,
@@ -44,6 +54,7 @@ where
     })
 }
 
+/// Deletes the secret stored under `key`.
 #[must_use]
 pub fn delete<Ef, Ev>(
     key: impl Into<String>,

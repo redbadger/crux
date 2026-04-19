@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model::onboard::{OnboardModel, OnboardReason, OnboardState};
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct OnboardViewModel {
     pub reason: OnboardReason,
     pub state: OnboardStateViewModel,
@@ -14,6 +14,18 @@ pub struct OnboardViewModel {
 pub enum OnboardStateViewModel {
     Input { api_key: String, can_submit: bool },
     Saving,
+}
+
+/// The [`Default`] is the empty `Input` variant — used as the fallback when
+/// the web shell projects `Signal<ViewModel>` into a `Memo<OnboardViewModel>`
+/// for a stage that isn't currently onboarding.
+impl Default for OnboardStateViewModel {
+    fn default() -> Self {
+        OnboardStateViewModel::Input {
+            api_key: String::new(),
+            can_submit: false,
+        }
+    }
 }
 
 impl From<&OnboardModel> for OnboardViewModel {

@@ -32,11 +32,11 @@ import androidx.compose.ui.unit.dp
 import com.crux.example.weather.OnboardReason
 import com.crux.example.weather.R
 import com.crux.example.weather.ui.theme.WeatherTheme
-import org.koin.androidx.compose.koinViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun OnboardScreen() {
-    val viewModel = koinViewModel<OnboardViewModel>()
+    val viewModel = hiltViewModel<OnboardViewModel>()
 
     OnboardScreen(
         state = viewModel.state.collectAsState().value,

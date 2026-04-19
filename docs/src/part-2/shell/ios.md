@@ -1,158 +1,96 @@
 # iOS/macOS
 
-Let's start with the new part, and also typically the shorter part –
-implementing the capabilities.
+This is the first of the shell chapters. We'll walk through how the Swift side talks to the Rust core, how each effect gets carried out, and how the views consume the view model. The other shell chapters follow the same structure in their own idioms.
 
-## Capability implementation
+## The WeatherKit package
 
-This is what Weather's `core.swift` looks like
+The Apple shell is split into two Swift targets:
 
-```swift
-{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:core_base}}
-        // ...
-    }
-}
-```
+- **`WeatherApp`** (the app target) — just a few files: the `@main` struct, the `LiveBridge` that talks to Rust, and `ContentView` as the root view.
+- **`WeatherKit`** (a local Swift Package) — everything else: `Core`, every effect handler, every screen.
 
-It's slightly more complicated, but broadly the same as the Counter's core.
-We have an extra logger which is not really important for us, and we
-also hold on to a `KeyValueStore`, which is the storage for the key-value
-implementation.
+The split exists because building Swift is much faster than rebuilding the whole Rust framework, and SPM gives you the kind of iteration loop you'd expect from `cargo`. When you're tweaking a view, you only recompile the package. When you're iterating on effect handlers, same — the Rust library (and the Swift bindings it emits) only recompile when the core changes.
 
-We've truncated the `processEffect` method, because it's fairly long, but the basic
-structure is this:
+Everything in WeatherKit is written against a `CoreBridge` protocol rather than talking to the Rust FFI directly. That's what lets SwiftUI previews construct a `Core` with a `FakeBridge`; they don't need the Rust framework loaded. More on that at the end.
+
+## Booting the Core
+
+Here's the app entry point:
 
 ```swift
-    func processEffect(_ request: Request) {
-        switch request.effect {
-        case .render:
-            DispatchQueue.main.async {
-                self.view = try! .bincodeDeserialize(input: [UInt8](self.core.view()))
-            }
-        case .http(let req):
-            // ...
-
-        case .keyValue(let keyValue):
-            // ...
-
-        case .location(let locationOp):
-            // ...
-        }
-    }
+{{#include ../../../../examples/weather/apple/WeatherApp/WeatherApp.swift:start}}
 ```
 
-We get a Request, and do an exhaustive match on what the requested effect is. In Swift
-we have tagged unions, so we can also destructure the operation requested.
+Four lines that matter: construct the bridge, construct the `Core` with it, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in chapter 3.
 
-We can have a look at what the HTTP branch does:
+## The FFI bridge
+
+`LiveBridge` is the thin Swift type that carries events and effect responses across the FFI boundary:
 
 ```swift
-{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:http}}
+{{#include ../../../../examples/weather/apple/WeatherApp/LiveBridge.swift}}
 ```
 
-This delegates to `handleHttp`, which does the actual work:
+Three responsibilities:
+
+- `processEvent(_:)` serialises a Swift `Event` with bincode, calls `CoreFfi.update(_:)`, and deserialises the returned effect requests.
+- `resolve(requestId:responseBytes:)` does the same for effect responses — and, importantly, can return further effect requests (async commands produce more effects after each resolve).
+- `currentView()` deserialises the current view model.
+
+This is the only place that knows about bincode or `CoreFfi`. Everything else in the Swift code works with Swift types.
+
+## Handling effects
+
+The `Core` class in WeatherKit owns the bridge and dispatches effect requests:
 
 ```swift
-{{#include ../../../../examples/weather/apple/WeatherApp/core.swift:handle_http}}
+{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/core.swift:dispatch}}
 ```
 
-We start a new `Task` to run this job off the main thread, then use the
-`async requestHttp()` call to run the request.
+An exhaustive match on the effect type. Each branch delegates to a `resolve<Capability>` function defined in its own file (`http.swift`, `kv.swift`, `location.swift`, `secret.swift`, `time.swift`). The handlers are implemented as Swift extensions on `Core`, so they share state (like the `KeyValueStore` and the active timer list) without needing to pass it around.
 
-Then it takes the response, serializes it and passes it to `core.resolve` via `resolveEffects`, which
-**returns more effect requests**. This is perhaps unexpected, but it's the direct
-consequence of the `Command`s async nature. There can easily be a command which
-does something along the lines of:
-
-```rust,noplayground
-Command::new(|ctx| {
-    let http_req = Http::get(url).expect_json<Counter>().build().into_future(ctx);
-    let resp = http_req.await; // effect 1
-
-    let counter = resp.map(|result| match result {
-        Ok(mut response) => match response.take_body() {
-            Some(counter) => {
-                Ok(results)
-            }
-            None => Err(ApiError::ParseError),
-        },
-        Err(_) => Err(ApiError::NetworkError),
-    });
-
-    let _ = KeyValue::set(COUNTER, counter).into_future(ctx).await // effect 2
-
-    // ...
-
-    ctx.send_event(Event::Done);
-})
-```
-
-Once we resolve the http request at the `.await` point marked "effect 1", this future can
-proceed and make a `KeyValue` request at the "effect 2" `.await` point. So on the
-shell end, we need to be able to respond appropriately.
-
-What we do is loop through those effect requests (there could easily be multiple requests
-at once), go through them and recurse - call `processEffect` again to handle it.
-
-Just for completeness, this is what `requestHttp` looks like:
+Here's the HTTP handler in full:
 
 ```swift
-{{#include ../../../../examples/weather/apple/WeatherApp/http.swift}}
+{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/http.swift}}
 ```
 
-Not that interesting, it's a wrapper around `URLRequest` and friends which takes and
-returns the generated `HttpRequest` and `HttpResponse`, originally defined in Rust by
-`crux_http`.
-
-The pattern repeats similarly for key-value store and the location capability.
-
-## User interface and navigation
-
-It's worth looking at how Weather handles the Workflow navigation in SwiftUI.
-
-As in the Counter example, the Weather's core has a `@Published var view: ViewModel`
-which we can use in the Views.
-
-Here's the root content view:
+`resolveHttp` starts a `Task` to run off the main actor, performs the request with `URLSession`, serialises the result, and calls `resolve(requestId:serialize:)`. That call is where things get interesting:
 
 ```swift
-{{#include ../../../../examples/weather/apple/WeatherApp/ContentView.swift:content_view}}
+{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/core.swift:resolve_helper}}
 ```
 
-Thanks to the declarative nature of SwiftUI, we can show the view we need to,
-depending on the workflow, and pass the core down.
+It passes the bytes to the bridge and then loops over any **new** effect requests that came back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. The shell has to keep processing until the command's task finishes.
 
-We could do this differently - core could stay in the root view and we could pass
-an `update` callback in an environment, and just the appropriate section of the
-view model to each view, it's up to you how you want to go about it.
+The other effect handlers follow the same shape — run the work, serialise the response, call `resolve(requestId:serialize:)`.
 
-Let's look at the HomeView as well, just to complete the picture:
+## Views driven by the ViewModel
+
+The `Core` class exposes its view model via `@Observable`, so SwiftUI views can read it directly. `@Observable` signals at the property level: when one property changes from render to render, only views attached to that property re-render. The rest of the view hierarchy stays exactly as it was, rather than rebuilding wholesale each time the model updates.
+
+The root `ContentView` dispatches on the top-level `ViewModel` variants:
 
 ```swift
-{{#include ../../../../examples/weather/apple/WeatherApp/HomeView.swift:home_view}}
+{{#include ../../../../examples/weather/apple/WeatherApp/ContentView.swift}}
 ```
 
-It simply caters for the possible situations in the view model, draws the
-weather cards for each favorite and adds a toolbar with an item, which
-when tapped calls `core.update` with the swift equivalent of the `.navigate`
-event we saw earlier in the call.
+Four lifecycle states, four views. `ActiveView` in turn dispatches on the active sub-variants (Home vs Favorites), and so on down the tree — each level of the model has a corresponding layer of view.
 
-This is quite a simple navigation setup in that it is a static set of screens
-we're managing. Sometimes a more dynamic navigation is necessary, but
-SwiftUI's `NavigationStack` in recent iOS supports quite complex scenarios in
-a declarative fashion using [`NavigationPath`](https://developer.apple.com/documentation/swiftui/navigationpath),
-so the general principle of naively projecting the view model into the user
-interface broadly works even there.
+When the user taps a button, the view sends an event via the `CoreUpdater` that was injected into the environment at the app root. The event travels through the bridge, the core updates its state, and the `@Observable` property re-renders the view.
 
-There isn't much more to it, the rest of the app is rinse and repeat. It is
-relatively rare to implement a new capability, so most of the work is in finessing
-the user interface. Crux tends to work reasonably well with SwiftUI previews as well
-so you can typically avoid the Simulator or device for the inner development loop.
+## Previewing with FakeBridge
+
+Because WeatherKit is written against `CoreBridge`, we can construct a `Core` for SwiftUI previews without loading the Rust framework:
+
+```swift
+{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/bridge.swift}}
+```
+
+`FakeBridge` returns a static `ViewModel` and ignores everything else. Combined with the `Core.forPreviewing` helper, any view can be previewed with whatever `ViewModel` state you want — previews run as fast as regular SwiftUI previews, no FFI boundary to cross.
 
 ## What's next
 
-Congratulations! You know now all you will likely need to build Crux apps. The
-following parts of the book will cover advanced topics, other support platforms,
-and internals of Crux, should you be interested in how things work.
+That's one shell end-to-end. The core doesn't know or care what platform it's on; everything platform-specific lives here. The other shell chapters walk through the same story — booting the core, the bridge, the effect handlers, the views — in Kotlin, Rust with Leptos, and TypeScript with React.
 
 Happy building!

@@ -8,7 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
-    "bulma": "^1.0.4",
+    "@phosphor-icons/react": "^2.1.10",
+    "clsx": "^2.1.1",
     "eslint": "^9.28.0",
     "eslint-config-next": "16.1.7",
     "next": "16.1.7",
@@ -19,9 +20,12 @@
     "typescript": "5.9.3"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "25.5.0",
     "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3"
+    "@types/react-dom": "19.2.3",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.2.2"
   },
   "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
 }

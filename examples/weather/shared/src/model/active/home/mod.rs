@@ -1,3 +1,11 @@
+//! The home screen model — local weather plus saved favourites.
+//!
+//! Composes two sub-workflows that run in parallel: [`LocalWeather`], the
+//! "weather at my current location" state machine, and the favourites
+//! weather loop in [`favorites`], which fetches weather for each saved
+//! favourite. Events addressed to either sub-workflow are routed by the
+//! variants of [`HomeEvent`].
+
 pub mod favorites;
 pub mod local;
 
@@ -15,26 +23,45 @@ use super::favorites::model::Favorites;
 pub use self::favorites::{FavoriteWeather, FavoriteWeatherState};
 pub use self::local::LocalWeather;
 
+// ANCHOR: event
+/// Events for the home screen: user navigation plus sub-workflow events.
+///
+/// The `Local` and `FavoritesWeather` variants are `#[serde(skip)]` /
+/// `#[facet(skip)]` because the sub-workflows' events are internal to the
+/// core — the shell only sends `GoToFavorites`.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum HomeEvent {
+    /// The user tapped the favourites button in the home toolbar.
     GoToFavorites,
 
+    /// Internal event routed to [`LocalWeather::update`].
     #[serde(skip)]
     #[facet(skip)]
     Local(#[facet(opaque)] LocalWeatherEvent),
 
+    /// Internal event routed to the favourites weather workflow.
     #[serde(skip)]
     #[facet(skip)]
     FavoritesWeather(#[facet(opaque)] FavoriteWeatherEvent),
 }
+// ANCHOR_END: event
 
+// ANCHOR: transition
+/// The exits from the home screen.
 #[derive(Debug)]
 pub(crate) enum HomeTransition {
+    /// The user navigated to the favourites screen; the current favourites
+    /// list is carried over so the next screen has it.
     GoToFavorites(Favorites),
+    /// The weather API rejected our key from one of the nested workflows;
+    /// the parent should route back through onboarding.
     ApiKeyRejected(Favorites),
 }
+// ANCHOR_END: transition
 
+/// The home screen's state — the local-weather state machine plus a list
+/// of per-favourite weather workflows.
 #[derive(Default, Debug)]
 pub struct HomeScreen {
     pub current_weather: LocalWeather,
@@ -42,6 +69,10 @@ pub struct HomeScreen {
 }
 
 impl HomeScreen {
+    // ANCHOR: start
+    /// Starts the home screen by kicking off both sub-workflows in parallel:
+    /// the local-weather permission check and the per-favourite weather
+    /// fetches. The returned command combines both.
     pub(crate) fn start(favorites: &Favorites, api_key: &ApiKey) -> Started<Self, HomeEvent> {
         tracing::debug!("starting home screen");
 
@@ -60,7 +91,18 @@ impl HomeScreen {
 
         Started::new(screen, local_cmd.and(fav_cmd))
     }
+    // ANCHOR_END: start
 
+    // ANCHOR: update
+    /// Advances the home screen on an event, using `api_key` to authorise
+    /// any weather API calls.
+    ///
+    /// - `GoToFavorites` → `Complete` with [`HomeTransition::GoToFavorites`].
+    /// - `Local(event)` → delegated to [`LocalWeather::update`]. An
+    ///   `Unauthorized` transition from the sub-machine is lifted to
+    ///   [`HomeTransition::ApiKeyRejected`].
+    /// - `FavoritesWeather(event)` → delegated to the favourites workflow;
+    ///   same lifting from its `Unauthorized` transition.
     pub(crate) fn update(
         self,
         event: HomeEvent,
@@ -123,6 +165,7 @@ impl HomeScreen {
             }
         }
     }
+    // ANCHOR_END: update
 }
 
 #[cfg(test)]

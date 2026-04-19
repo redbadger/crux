@@ -17,21 +17,24 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.crux.example.weather.core.Core
-import com.crux.example.weather.core.LocationManager
-import com.crux.example.weather.core.LocationManager.PermissionRequestListener
+import com.crux.example.weather.core.LocationHandler
+import com.crux.example.weather.core.LocationHandler.PermissionRequestListener
 import com.crux.example.weather.ui.failed.FailedScreen
 import com.crux.example.weather.ui.favorites.FavoritesScreen
 import com.crux.example.weather.ui.home.HomeScreen
 import com.crux.example.weather.ui.loading.LoadingScreen
 import com.crux.example.weather.ui.onboard.OnboardScreen
 import com.crux.example.weather.ui.theme.WeatherTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import org.koin.android.ext.android.inject
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val core by inject<Core>()
-    private val locationManager by inject<LocationManager>()
+    @Inject lateinit var core: Core
+
+    @Inject lateinit var locationHandler: LocationHandler
 
     private var permissionRequestListener: PermissionRequestListener? = null
     private val permissionLauncher = registerForActivityResult(
@@ -105,14 +108,14 @@ class MainActivity : ComponentActivity() {
     private fun observeLocationPermissionRequests() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                locationManager.permissionRequests.collect { request ->
+                locationHandler.permissionRequests.collect { request ->
                     requestLocationPermission(request)
                 }
             }
         }
     }
 
-    private fun requestLocationPermission(request: LocationManager.PermissionRequest) {
+    private fun requestLocationPermission(request: LocationHandler.PermissionRequest) {
         permissionRequestListener = request.listener
         permissionLauncher.launch(request.permissions)
     }

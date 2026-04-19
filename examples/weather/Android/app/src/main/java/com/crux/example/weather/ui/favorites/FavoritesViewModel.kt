@@ -11,13 +11,18 @@ import com.crux.example.weather.GeocodingResponse
 import com.crux.example.weather.Location
 import com.crux.example.weather.core.Core
 import com.crux.example.weather.utils.stateInWhileSubscribed
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-class FavoritesViewModel(
-    private val core: Core,
-    private val uiStateMapper: FavoritesUiStateMapper,
-) : androidx.lifecycle.ViewModel() {
+@HiltViewModel
+class FavoritesViewModel
+    @Inject
+    constructor(
+        private val core: Core,
+        private val uiStateMapper: FavoritesUiStateMapper,
+    ) : androidx.lifecycle.ViewModel() {
 
     private val initialState = FavoritesUiState(favorites = emptyList())
 

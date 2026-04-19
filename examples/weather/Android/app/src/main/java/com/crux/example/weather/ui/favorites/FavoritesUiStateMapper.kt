@@ -2,8 +2,9 @@ package com.crux.example.weather.ui.favorites
 
 import com.crux.example.weather.FavoritesViewModel
 import com.crux.example.weather.FavoritesWorkflowViewModel
+import javax.inject.Inject
 
-class FavoritesUiStateMapper {
+class FavoritesUiStateMapper @Inject constructor() {
     fun map(favorites: FavoritesViewModel): FavoritesUiState {
         return FavoritesUiState(
             favorites = favorites.favorites.map {

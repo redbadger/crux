@@ -20,8 +20,8 @@ the Shell is the body of the robot. The brain instructs the body through
 commands and the body passes information about the outside world back to it
 with Events.
 
-In this chapter we will explore how commands are created and used, before the next chapter, where we
-dive into capabilities, which provide a convenient way to create common commands.
+In this chapter we will explore how commands are created and used; we'll come back
+to capabilities, which provide a convenient way to create common commands, in chapter 7.
 
 ## Note on intent and execution
 
@@ -59,10 +59,10 @@ it is expected to return a `Command`.
 Here is the Weather app's `Effect` type:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/app.rs:effect}}
+{{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-This tells us the app does four kinds of side effects: Rendering the UI, storing something in Key-Value store, using a HTTP client and using Location services. That's all it does, that's also all it can possibly do, until we expand this type further.
+This tells us the app does six kinds of side effects: rendering the UI, storing key-value data, making HTTP requests, checking location, fetching and storing secrets, and setting timers. That's all it does — and all it can possibly do, until we expand this type further.
 
 ## What is a Command
 
@@ -84,17 +84,17 @@ Types acting as an Operation must implement the [`crux_core::capability::Operati
 The `Effect` type is typically defined with the help of the `#[effect]` macro. Here is the Weather app's effect again:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/app.rs:effect}}
+{{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-The four operations it carries are actually defined by four different _Capabilities_, so let's talk about those.
+The six operations it carries are actually defined by six different _Capabilities_, so let's talk about those.
 
 ## Capabilities
 
 Capabilities are developer-friendly, ergonomic APIs to construct commands, from
 very basic ones all the way to complex stateful orchestrations. Capabilities are an abstraction layer that bundles related operations together with code to create them, and cover one kind of a side-effect (e.g. HTTP, or timers).
 
-We will look at writing capabilities in the next chapter, but for now, it's useful to know that their API often doesn't return `Commands` straight away, but instead returns command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
+We will look at writing capabilities in chapter 7, but for now, it's useful to know that their API often doesn't return `Commands` straight away, but instead returns command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
 
 To help that make more sense, let's look at how Commands are typically used.
 
@@ -116,7 +116,7 @@ This code is using a HTTP capability and its API up to the `.build()` call which
 Here's an example of the same from the Weather app:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/favorites/events.rs:key_value}}
+{{#include ../../../examples/weather/shared/src/model/initializing.rs:kv_example}}
 ```
 
 The `get()` call again returns a command builder, which is used to create a command with `.then_send()`. The `Command` is now fully baked and bound to the specific callback event, and can no longer be meaningfully chained into an "effect pipeline".
@@ -132,13 +132,13 @@ Soon enough, your app will get a little more complicated, you will need to run m
 We've seen an example of this already, but here it is again:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/app.rs:command_all}}
+{{#include ../../../examples/weather/shared/src/model/initializing.rs:start}}
 ```
 
-The two `update` calls involved each return a command, and we want to run them concurrently. The result is another `Command`, which can be returned from `update`.
+The two capability calls each produce a command, and we want to run them concurrently. `Command::all` combines them into a single `Command`, which `start()` returns as part of its `Started` bundle.
 
 ```admonish note
-Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in the next chapter, when we look at building Capabilities.
+Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in chapter 7, when we look at building Capabilities.
 ```
 
 You might also want to run effects in a sequence, passing output of one as the input of another. This is another thing the command builders can facilitate. Let's look at that.

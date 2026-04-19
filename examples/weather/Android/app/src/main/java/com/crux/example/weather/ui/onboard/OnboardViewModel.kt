@@ -7,12 +7,17 @@ import com.crux.example.weather.OnboardReason
 import com.crux.example.weather.OnboardStateViewModel
 import com.crux.example.weather.core.Core
 import com.crux.example.weather.utils.stateInWhileSubscribed
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-class OnboardViewModel(
-    private val core: Core,
-) : androidx.lifecycle.ViewModel() {
+@HiltViewModel
+class OnboardViewModel
+    @Inject
+    constructor(
+        private val core: Core,
+    ) : androidx.lifecycle.ViewModel() {
 
     private val initialState = OnboardUiState(
         reason = OnboardReason.WELCOME,

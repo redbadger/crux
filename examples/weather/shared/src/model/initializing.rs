@@ -20,24 +20,38 @@ use super::{
     outcome::{Outcome, Started},
 };
 
+// ANCHOR: event
+/// Events emitted as the parallel initialisation fetches resolve.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum InitializingEvent {
+    /// The API key fetch has resolved — either a key was stored or it wasn't.
     #[serde(skip)]
     #[facet(skip)]
     SecretFetched(#[facet(opaque)] SecretFetchResponse),
 
+    /// The favourites fetch from the KV store has resolved. Raw bytes are
+    /// deserialised by `update`.
     #[serde(skip)]
     #[facet(skip)]
     FavoritesLoaded(#[facet(opaque)] Result<Option<Vec<u8>>, KeyValueError>),
 }
+// ANCHOR_END: event
 
+// ANCHOR: transition
+/// The two possible exits from the `Initializing` phase.
 #[derive(Debug)]
 pub(crate) enum InitializingTransition {
+    /// No API key stored; transition to onboarding, carrying the loaded
+    /// favourites along.
     Onboard(Favorites),
+    /// API key and favourites loaded; transition to the active app.
     Active(ApiKey, Favorites),
 }
+// ANCHOR_END: transition
 
+// ANCHOR: model
+/// A value that's either still being fetched or has been fetched.
 #[derive(Default, Debug)]
 enum InitializingValue<T> {
     #[default]
@@ -45,27 +59,38 @@ enum InitializingValue<T> {
     Fetched(T),
 }
 
+/// The state held while the app is initialising.
+///
+/// Two fetches run in parallel — the API key from secure storage and the
+/// favourites list from the KV store. Each is tracked independently so the
+/// model knows when both have resolved.
 #[derive(Default, Debug)]
 pub struct InitializingModel {
     api_key: InitializingValue<Option<ApiKey>>,
     favorites: InitializingValue<Favorites>,
 }
+// ANCHOR_END: model
 
 impl InitializingModel {
+    // ANCHOR: start
     pub(crate) fn start() -> Started<Self, Event> {
         tracing::debug!("starting initialization, fetching API key and favorites");
 
         let fetch_secret = secret::command::fetch(secret::API_KEY_NAME)
             .then_send(|r| Event::Initializing(InitializingEvent::SecretFetched(r)));
+        // ANCHOR: kv_example
         let fetch_favorites = KeyValue::get(FAVORITES_KEY)
             .then_send(|r| Event::Initializing(InitializingEvent::FavoritesLoaded(r)));
+        // ANCHOR_END: kv_example
 
         Started::new(
             Self::default(),
             Command::all([fetch_secret, fetch_favorites]),
         )
     }
+    // ANCHOR_END: start
 
+    // ANCHOR: update
     pub(crate) fn update(
         mut self,
         event: InitializingEvent,
@@ -99,7 +124,9 @@ impl InitializingModel {
             }
         }
     }
+    // ANCHOR_END: update
 
+    // ANCHOR: resolve
     fn resolve(self) -> Outcome<Self, InitializingTransition, InitializingEvent> {
         match (self.api_key, self.favorites) {
             (InitializingValue::Fetched(Some(api_key)), InitializingValue::Fetched(favorites)) => {
@@ -111,7 +138,7 @@ impl InitializingModel {
             }
             (InitializingValue::Fetched(None), InitializingValue::Fetched(favorites)) => {
                 tracing::debug!("API key missing, transitioning to onboarding");
-                Outcome::complete(InitializingTransition::Onboard(favorites), render())
+                Outcome::complete(InitializingTransition::Onboard(favorites), Command::done())
             }
             (api_key, favorites) => {
                 tracing::debug!("waiting for remaining initialization data");
@@ -119,6 +146,7 @@ impl InitializingModel {
             }
         }
     }
+    // ANCHOR_END: resolve
 }
 
 #[cfg(test)]
@@ -153,9 +181,8 @@ mod tests {
 
         // Second: favorites arrive
         let outcome = model.update(InitializingEvent::FavoritesLoaded(Ok(None)));
-        let (transition, mut cmd) = outcome.expect_complete().into_parts();
+        let transition = outcome.expect_complete().into_value();
         assert!(matches!(transition, InitializingTransition::Onboard(_)));
-        cmd.expect_one_effect().expect_render();
     }
 
     #[test]

@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct FavoritesViewModel {
     pub favorites: Vec<FavoriteViewModel>,
     pub workflow: Option<FavoritesWorkflowViewModel>,
@@ -27,7 +27,7 @@ pub enum FavoritesWorkflowViewModel {
     Add(AddFavoriteViewModel),
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct AddFavoriteViewModel {
     pub search_input: String,
     pub search_results: Option<Vec<GeocodingResponse>>,

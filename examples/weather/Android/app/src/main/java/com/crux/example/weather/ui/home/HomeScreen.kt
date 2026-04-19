@@ -63,7 +63,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.crux.example.weather.R
 import com.crux.example.weather.ui.theme.WeatherTheme
-import org.koin.androidx.compose.koinViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -71,7 +71,7 @@ import java.time.format.DateTimeFormatter
 // ANCHOR: home_screen
 @Composable
 fun HomeScreen() {
-    val viewModel = koinViewModel<HomeViewModel>()
+    val viewModel = hiltViewModel<HomeViewModel>()
 
     HomeScreen(
         homeUiState = viewModel.state.collectAsState().value,

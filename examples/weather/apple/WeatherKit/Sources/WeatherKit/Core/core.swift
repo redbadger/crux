@@ -44,6 +44,7 @@ public class Core {
         }
     }
 
+    // ANCHOR: dispatch
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
@@ -60,7 +61,9 @@ public class Core {
             resolveLocation(request: locationRequest, requestId: request.id)
         }
     }
+    // ANCHOR_END: dispatch
 
+    // ANCHOR: resolve_helper
     func resolve(requestId: UInt32, serialize: () throws -> [UInt8]) {
         let responseBytes = try! serialize() // swiftlint:disable:this force_try
         let requests = bridge.resolve(requestId: requestId, responseBytes: responseBytes)
@@ -68,4 +71,5 @@ public class Core {
             processEffect(request)
         }
     }
+    // ANCHOR_END: resolve_helper
 }

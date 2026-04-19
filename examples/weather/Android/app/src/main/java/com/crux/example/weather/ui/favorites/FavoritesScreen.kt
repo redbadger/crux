@@ -57,11 +57,11 @@ import com.crux.example.weather.LocalNames
 import com.crux.example.weather.Location
 import com.crux.example.weather.R
 import com.crux.example.weather.ui.theme.WeatherTheme
-import org.koin.androidx.compose.koinViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun FavoritesScreen() {
-    val viewModel = koinViewModel<FavoritesViewModel>()
+    val viewModel = hiltViewModel<FavoritesViewModel>()
 
     FavoritesScreen(
         favoritesUiState = viewModel.state.collectAsState().value,

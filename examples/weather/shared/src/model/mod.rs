@@ -19,12 +19,21 @@ pub use self::onboard::OnboardEvent;
 use self::onboard::OnboardModel;
 
 // ANCHOR: event
+/// The top-level event type, namespaced by lifecycle stage.
+///
+/// `Start` kicks the app out of `Uninitialized`. The remaining variants carry
+/// sub-events for the stage currently in progress. `Initializing` is internal
+/// to the core and not visible to the shell.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub enum Event {
+    /// Sent by the shell once, at launch. Triggers initialisation.
     Start,
+    /// Sub-events for the onboarding flow.
     Onboard(OnboardEvent),
+    /// Sub-events for the active app (home and favourites).
     Active(ActiveEvent),
+    /// Internal events resolving the parallel initialisation fetches.
     #[serde(skip)]
     #[facet(skip)]
     Initializing(InitializingEvent),
@@ -32,13 +41,27 @@ pub enum Event {
 // ANCHOR_END: event
 
 // ANCHOR: model
+/// The app's top-level lifecycle state machine.
+///
+/// The app moves between mutually exclusive phases: it starts uninitialised,
+/// fetches stored data during initialisation, then either onboards the user
+/// (if no API key is stored) or activates. From active, a 401 response or a
+/// user-initiated reset sends it back to onboarding.
 #[derive(Default, Debug)]
 pub enum Model {
+    /// The default state before the shell sends `Event::Start`. The core
+    /// exists but has not begun any work yet.
     #[default]
     Uninitialized,
+    /// Shell sent `Event::Start`; fetching the API key and favourites in
+    /// parallel.
     Initializing(InitializingModel),
+    /// No API key available; prompting the user for one. Entered on first
+    /// run, after a 401, or on explicit reset.
     Onboard(OnboardModel),
+    /// API key and favourites loaded; running the main app.
     Active(ActiveModel),
+    /// Unrecoverable error; carrying a message for the UI.
     Failed(String),
 }
 // ANCHOR_END: model
@@ -59,6 +82,7 @@ impl Model {
     }
     // ANCHOR_END: update
 
+    // ANCHOR: lifecycle_transition
     fn update_initializing(&mut self, event: InitializingEvent) -> Command<Effect, Event> {
         let owned = std::mem::take(self);
         let Model::Initializing(initializing) = owned else {
@@ -75,28 +99,26 @@ impl Model {
                 command
             }
             outcome::Status::Complete(initializing::InitializingTransition::Onboard(favorites)) => {
-                *self = Model::Onboard(OnboardModel::new(
-                    onboard::OnboardReason::default(),
-                    favorites,
-                ));
-                command
+                let (onboard, start_cmd) =
+                    OnboardModel::start(onboard::OnboardReason::default(), favorites)
+                        .map_event(Event::Onboard)
+                        .into_parts();
+                *self = Model::Onboard(onboard);
+                command.and(start_cmd)
             }
             outcome::Status::Complete(initializing::InitializingTransition::Active(
                 api_key,
                 favorites,
             )) => {
-                let (home_screen, start_cmd) =
-                    active::home::HomeScreen::start(&favorites, &api_key)
-                        .map_event(|he| Event::Active(ActiveEvent::home(he)))
-                        .into_parts();
-                *self = Model::Active(ActiveModel {
-                    api_key,
-                    screen: active::Screen::Home(home_screen),
-                });
+                let (active, start_cmd) = ActiveModel::start(api_key, favorites)
+                    .map_event(Event::Active)
+                    .into_parts();
+                *self = Model::Active(active);
                 command.and(start_cmd)
             }
         }
     }
+    // ANCHOR_END: lifecycle_transition
 
     fn update_onboard(&mut self, event: OnboardEvent) -> Command<Effect, Event> {
         let owned = std::mem::take(self);
@@ -111,14 +133,10 @@ impl Model {
                 command
             }
             outcome::Status::Complete(onboard::OnboardTransition::Active(api_key, favorites)) => {
-                let (home_screen, start_cmd) =
-                    active::home::HomeScreen::start(&favorites, &api_key)
-                        .map_event(|he| Event::Active(ActiveEvent::home(he)))
-                        .into_parts();
-                *self = Model::Active(ActiveModel {
-                    api_key,
-                    screen: active::Screen::Home(home_screen),
-                });
+                let (active, start_cmd) = ActiveModel::start(api_key, favorites)
+                    .map_event(Event::Active)
+                    .into_parts();
+                *self = Model::Active(active);
                 command.and(start_cmd)
             }
             outcome::Status::Complete(onboard::OnboardTransition::Failed(msg)) => {
@@ -144,15 +162,20 @@ impl Model {
                 command
             }
             outcome::Status::Complete(active::ActiveTransition::ResetApiKey(favorites)) => {
-                *self = Model::Onboard(OnboardModel::new(onboard::OnboardReason::Reset, favorites));
-                command
+                let (onboard, start_cmd) =
+                    OnboardModel::start(onboard::OnboardReason::Reset, favorites)
+                        .map_event(Event::Onboard)
+                        .into_parts();
+                *self = Model::Onboard(onboard);
+                command.and(start_cmd)
             }
             outcome::Status::Complete(active::ActiveTransition::Unauthorized(favorites)) => {
-                *self = Model::Onboard(OnboardModel::new(
-                    onboard::OnboardReason::Unauthorized,
-                    favorites,
-                ));
-                command
+                let (onboard, start_cmd) =
+                    OnboardModel::start(onboard::OnboardReason::Unauthorized, favorites)
+                        .map_event(Event::Onboard)
+                        .into_parts();
+                *self = Model::Onboard(onboard);
+                command.and(start_cmd)
             }
         }
     }

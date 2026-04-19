@@ -2462,6 +2462,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "phosphor-leptos"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c65763c7e36d6af027a0b96604ffbae96e904a0dc3b7d3cefae1b43902a694cb"
+dependencies = [
+ "leptos",
+]
+
+[[package]]
 name = "pin-project"
 version = "1.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3993,6 +4002,7 @@ dependencies = [
  "js-sys",
  "leptos",
  "log",
+ "phosphor-leptos",
  "shared",
  "wasm-bindgen",
  "wasm-bindgen-futures",

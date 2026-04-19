@@ -11,7 +11,10 @@ use self::{
     favorites::{FavoritesScreen, FavoritesScreenEvent, FavoritesTransition, model::Favorites},
     home::{HomeEvent, HomeScreen, HomeTransition},
 };
-use super::{ApiKey, outcome::Outcome};
+use super::{
+    ApiKey,
+    outcome::{Outcome, Started},
+};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
@@ -72,6 +75,20 @@ pub struct ActiveModel {
 }
 
 impl ActiveModel {
+    pub(crate) fn start(api_key: ApiKey, favorites: Favorites) -> Started<Self, ActiveEvent> {
+        tracing::debug!("starting active");
+        let (home_screen, start_cmd) = HomeScreen::start(&favorites, &api_key)
+            .map_event(ActiveEvent::home)
+            .into_parts();
+        Started::new(
+            ActiveModel {
+                api_key,
+                screen: Screen::Home(home_screen),
+            },
+            start_cmd,
+        )
+    }
+
     pub(crate) fn update(self, event: ActiveEvent) -> Outcome<Self, ActiveTransition, ActiveEvent> {
         let ActiveModel { api_key, screen } = self;
 

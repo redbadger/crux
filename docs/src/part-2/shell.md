@@ -25,7 +25,7 @@ returned a request for a `RenderOperation` - a signal that a new view model is a
 In the Weather's case, more options are possible. Recall the effect type:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/app.rs:effect}}
+{{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
 Those are the four possible variants we'll see in the return from `update`. It

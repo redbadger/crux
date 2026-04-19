@@ -7,6 +7,7 @@ use shared::http::{
     protocol::{HttpRequest, HttpResponse},
 };
 
+// ANCHOR: resolve
 pub(super) fn resolve(
     core: &super::Core,
     mut request: crux_core::Request<HttpRequest>,
@@ -21,6 +22,7 @@ pub(super) fn resolve(
         super::resolve_effect(&core, &mut request, response.into(), render);
     });
 }
+// ANCHOR_END: resolve
 
 async fn send_request(
     HttpRequest {

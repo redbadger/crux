@@ -6,15 +6,19 @@ use crate::{
     model::active::home::{FavoriteWeather, FavoriteWeatherState, HomeScreen, LocalWeather},
 };
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub struct HomeViewModel {
     pub local_weather: LocalWeatherViewModel,
     pub favorites: Vec<FavoriteWeatherViewModel>,
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+/// The [`Default`] variant is `CheckingPermission` — the state before any
+/// work has been done. Used as the fallback when the web shell projects the
+/// top-level view model into a `Memo<HomeViewModel>`.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[repr(C)]
 pub enum LocalWeatherViewModel {
+    #[default]
     CheckingPermission,
     LocationDisabled,
     FetchingLocation,

@@ -22,144 +22,165 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import javax.inject.Singleton
 
 // ANCHOR: core_base
-class Core(
-    private val httpClient: HttpClient,
-    private val locationManager: LocationManager,
-    private val keyValueStore: KeyValueStore,
-    private val secretStore: SecretStore,
-    private val timeHandler: TimeHandler,
-) {
-    private val coreFfi = CoreFfi()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+@Singleton
+class Core
+    @Inject
+    constructor(
+        private val httpHandler: HttpHandler,
+        private val locationHandler: LocationHandler,
+        private val keyValueHandler: KeyValueHandler,
+        private val secretStore: SecretStore,
+        private val timeHandler: TimeHandler,
+    ) {
+        private val coreFfi = CoreFfi()
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val _viewModel: MutableStateFlow<ViewModel> = MutableStateFlow(getViewModel())
-    val viewModel: StateFlow<ViewModel> = _viewModel.asStateFlow()
+        private val _viewModel: MutableStateFlow<ViewModel> = MutableStateFlow(getViewModel())
+        val viewModel: StateFlow<ViewModel> = _viewModel.asStateFlow()
 
-    init {
-        update(Event.Start)
-    }
-
-    fun homeViewModel(): Flow<HomeViewModel> {
-        return viewModel.mapNotNull { vm ->
-            (vm as? ViewModel.Active)?.let { (it.value as? ActiveViewModel.Home)?.value }
+        // ANCHOR: start
+        init {
+            update(Event.Start)
         }
-    }
+        // ANCHOR_END: start
 
-    fun favoritesViewModel(): Flow<FavoritesViewModel> {
-        return viewModel.mapNotNull { vm ->
-            (vm as? ViewModel.Active)?.let { (it.value as? ActiveViewModel.Favorites)?.value }
+        fun homeViewModel(): Flow<HomeViewModel> =
+            viewModel.mapNotNull { vm ->
+                (vm as? ViewModel.Active)?.let { (it.value as? ActiveViewModel.Home)?.value }
+            }
+
+        fun favoritesViewModel(): Flow<FavoritesViewModel> =
+            viewModel.mapNotNull { vm ->
+                (vm as? ViewModel.Active)?.let { (it.value as? ActiveViewModel.Favorites)?.value }
+            }
+
+        fun onboardViewModel(): Flow<OnboardViewModel> =
+            viewModel.mapNotNull { (it as? ViewModel.Onboard)?.value }
+
+        fun update(event: Event) {
+            Log.d(TAG, "update: $event")
+            scope.launch {
+                val effects = coreFfi.update(event.bincodeSerialize())
+                handleEffects(effects)
+            }
         }
-    }
+        // ANCHOR_END: core_base
 
-    fun onboardViewModel(): Flow<OnboardViewModel> {
-        return viewModel.mapNotNull { (it as? ViewModel.Onboard)?.value }
-    }
+        private suspend fun handleEffects(effects: ByteArray) {
+            if (effects.isEmpty()) {
+                Log.d(TAG, "handleEffects: empty response (no effects)")
+                return
+            }
+            val requests = Requests.bincodeDeserialize(effects)
+            for (request in requests) {
+                processRequest(request)
+            }
+        }
 
-    fun update(event: Event) {
-        Log.d(TAG, "update: $event")
+        // ANCHOR: process_request
+        private suspend fun processRequest(request: Request) {
+            Log.d(TAG, "processRequest: $request")
 
-        scope.launch {
-            val effects = coreFfi.update(event.bincodeSerialize())
+            when (val effect = request.effect) {
+                // ANCHOR: http
+                is Effect.Http -> {
+                    handleHttpEffect(effect, request.id)
+                }
+                // ANCHOR_END: http
+
+                is Effect.KeyValue -> {
+                    handleKeyValueEffect(effect, request.id)
+                }
+
+                is Effect.Location -> {
+                    handleLocationEffect(effect, request.id)
+                }
+
+                is Effect.Secret -> {
+                    handleSecretEffect(effect, request.id)
+                }
+
+                is Effect.Time -> {
+                    // Fire-and-forget: the time handler launches its own coroutines
+                    // and resolves asynchronously when timers fire.
+                    timeHandler.handle(effect.value, request.id, ::resolveAndHandleEffects)
+                }
+
+                is Effect.Render -> {
+                    render()
+                }
+            }
+        }
+        // ANCHOR_END: process_request
+
+        // ANCHOR: handle_http
+        private suspend fun handleHttpEffect(
+            effect: Effect.Http,
+            requestId: UInt,
+        ) {
+            val result = httpHandler.request(effect.value)
+            resolveAndHandleEffects(requestId, result.bincodeSerialize())
+        }
+        // ANCHOR_END: handle_http
+
+        private suspend fun handleLocationEffect(
+            effect: Effect.Location,
+            requestId: UInt,
+        ) {
+            val result =
+                when (effect.value) {
+                    LocationOperation.ISLOCATIONENABLED -> {
+                        LocationResult.Enabled(locationHandler.isLocationEnabled())
+                    }
+
+                    LocationOperation.GETLOCATION -> {
+                        LocationResult.Location(locationHandler.getLastLocation())
+                    }
+                }
+            resolveAndHandleEffects(requestId, result.bincodeSerialize())
+        }
+
+        private suspend fun handleKeyValueEffect(
+            effect: Effect.KeyValue,
+            requestId: UInt,
+        ) {
+            val result = keyValueHandler.handleEffect(effect)
+            resolveAndHandleEffects(requestId, result.bincodeSerialize())
+        }
+
+        private suspend fun handleSecretEffect(
+            effect: Effect.Secret,
+            requestId: UInt,
+        ) {
+            val result = secretStore.handle(effect.value)
+            resolveAndHandleEffects(requestId, result.bincodeSerialize())
+        }
+
+        // ANCHOR: resolve
+        private suspend fun resolveAndHandleEffects(
+            requestId: UInt,
+            data: ByteArray,
+        ) {
+            Log.d(TAG, "resolveAndHandleEffects for request id: $requestId")
+            val effects = coreFfi.resolve(requestId, data)
             handleEffects(effects)
         }
-    }
-    // ANCHOR_END: core_base
+        // ANCHOR_END: resolve
 
-    private suspend fun handleEffects(effects: ByteArray) {
-        val requests = Requests.bincodeDeserialize(effects)
-        for (request in requests) {
-            processRequest(request)
+        private fun render() {
+            _viewModel.value =
+                getViewModel().also {
+                    Log.d(TAG, "render: $it")
+                }
+        }
+
+        private fun getViewModel(): ViewModel = ViewModel.bincodeDeserialize(coreFfi.view())
+
+        companion object {
+            private const val TAG = "Core"
         }
     }
-
-    // ANCHOR: process_request
-    private suspend fun processRequest(request: Request) {
-        Log.d(TAG, "processRequest: $request")
-
-        when (val effect = request.effect) {
-            // ANCHOR: http
-            is Effect.Http -> {
-                handleHttpEffect(effect, request.id)
-            }
-            // ANCHOR_END: http
-
-            is Effect.KeyValue -> {
-                handleKeyValueEffect(effect, request.id)
-            }
-
-            is Effect.Location -> {
-                handleLocationEffect(effect, request.id)
-            }
-
-            is Effect.Secret -> {
-                handleSecretEffect(effect, request.id)
-            }
-
-            is Effect.Time -> {
-                // Fire-and-forget: the time handler launches its own coroutines
-                // and resolves asynchronously when timers fire.
-                timeHandler.handle(effect.value, request.id, ::resolveAndHandleEffects)
-            }
-
-            is Effect.Render -> {
-                render()
-            }
-        }
-    }
-    // ANCHOR_END: process_request
-
-    // ANCHOR: handle_http
-    private suspend fun handleHttpEffect(effect: Effect.Http, requestId: UInt) {
-        val result = httpClient.request(effect.value)
-        resolveAndHandleEffects(requestId, result.bincodeSerialize())
-    }
-    // ANCHOR_END: handle_http
-
-    private suspend fun handleLocationEffect(effect: Effect.Location, requestId: UInt) {
-        val result = when (effect.value) {
-            LocationOperation.ISLOCATIONENABLED -> {
-                LocationResult.Enabled(locationManager.isLocationEnabled())
-            }
-
-            LocationOperation.GETLOCATION -> {
-                LocationResult.Location(locationManager.getLastLocation())
-            }
-        }
-        resolveAndHandleEffects(requestId, result.bincodeSerialize())
-    }
-
-    private suspend fun handleKeyValueEffect(effect: Effect.KeyValue, requestId: UInt) {
-        val result = keyValueStore.handleEffect(effect)
-        resolveAndHandleEffects(requestId, result.bincodeSerialize())
-    }
-
-    private suspend fun handleSecretEffect(effect: Effect.Secret, requestId: UInt) {
-        val result = secretStore.handle(effect.value)
-        resolveAndHandleEffects(requestId, result.bincodeSerialize())
-    }
-
-    // ANCHOR: resolve
-    private suspend fun resolveAndHandleEffects(requestId: UInt, data: ByteArray) {
-        Log.d(TAG, "resolveAndHandleEffects for request id: $requestId")
-
-        val effects = coreFfi.resolve(requestId, data)
-        handleEffects(effects)
-    }
-    // ANCHOR_END: resolve
-
-    private fun render() {
-        _viewModel.value = getViewModel().also {
-            Log.d(TAG, "render: $it")
-        }
-    }
-
-    private fun getViewModel(): ViewModel {
-        return ViewModel.bincodeDeserialize(coreFfi.view())
-    }
-
-    companion object {
-        private const val TAG = "Core"
-    }
-}

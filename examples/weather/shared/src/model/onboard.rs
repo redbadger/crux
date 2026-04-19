@@ -9,7 +9,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::effects::secret::{self, SecretStoreResponse};
 
-use super::{ApiKey, active::favorites::model::Favorites, outcome::Outcome};
+use super::{
+    ApiKey,
+    active::favorites::model::Favorites,
+    outcome::{Outcome, Started},
+};
 
 /// Why the user is on the onboarding screen.
 #[derive(Facet, Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq)]
@@ -76,6 +80,14 @@ impl OnboardModel {
                 api_key: String::new(),
             },
         }
+    }
+
+    pub(crate) fn start(
+        reason: OnboardReason,
+        favorites: Favorites,
+    ) -> Started<Self, OnboardEvent> {
+        tracing::debug!("starting onboarding");
+        Started::new(Self::new(reason, favorites), render())
     }
 }
 

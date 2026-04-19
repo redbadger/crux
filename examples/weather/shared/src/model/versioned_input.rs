@@ -1,7 +1,10 @@
+// ANCHOR: versioned_input
 /// A text input that tracks a version number, incremented on each update.
 ///
 /// Used to correlate async responses (e.g. search results) with the input
-/// that triggered them, so stale responses can be discarded.
+/// that triggered them, so stale responses can be discarded. Capture the
+/// version when an effect is started, then check it against the current
+/// version via [`Self::is_current`] when the response arrives.
 #[derive(Debug, Default)]
 pub struct VersionedInput {
     version: usize,
@@ -9,25 +12,31 @@ pub struct VersionedInput {
 }
 
 impl VersionedInput {
-    /// Update the input value and bump the version. Returns the new version.
+    /// Updates the input value and bumps the version, returning the new
+    /// version.
     pub fn update(&mut self, value: String) -> usize {
         self.version = self.version.wrapping_add(1);
         self.value = value;
         self.version
     }
 
+    /// Returns the current input text.
     pub fn value(&self) -> &str {
         &self.value
     }
 
+    /// Returns the current version number.
     pub fn version(&self) -> usize {
         self.version
     }
 
+    /// Whether the given version matches the current one — used to discard
+    /// responses from stale inputs.
     pub fn is_current(&self, version: usize) -> bool {
         self.version == version
     }
 }
+// ANCHOR_END: versioned_input
 
 #[cfg(test)]
 mod tests {
