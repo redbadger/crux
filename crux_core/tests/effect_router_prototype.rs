@@ -264,14 +264,18 @@ mod crux_provided {
     }
 
     impl Router {
-        pub(crate) fn new(
-            core: Core<app::SelfieApp>,
-            route_effects: impl Fn(app::Effect) + Send + Sync + 'static,
-        ) -> Self {
-            Self {
-                core,
-                route_effects: Box::new(route_effects),
-            }
+        pub(crate) fn new<F, R>(core: Core<app::SelfieApp>, route_effects_builder: F) -> Arc<Self>
+        where
+            F: FnOnce(std::sync::Weak<Self>) -> R,
+            R: Fn(app::Effect) + Send + Sync + 'static,
+        {
+            Arc::new_cyclic(|weak| {
+                let route_effects = route_effects_builder(weak.clone());
+                Self {
+                    core: core,
+                    route_effects: Box::new(route_effects),
+                }
+            })
         }
 
         pub(crate) fn update(&self, event: app::Event) {
@@ -296,12 +300,36 @@ mod crux_provided {
             self.core.view()
         }
     }
+
+    pub(crate) trait ResolveSink<Op>
+    where
+        Op: Operation,
+    {
+        fn resolve_request(
+            &self,
+            request: Request<Op>,
+            output: Op::Output,
+        ) -> Result<(), ResolveError>;
+    }
+
+    impl<Op> ResolveSink<Op> for Router
+    where
+        Op: Operation,
+    {
+        fn resolve_request(
+            &self,
+            mut request: Request<Op>,
+            output: Op::Output,
+        ) -> Result<(), ResolveError> {
+            self.resolve(&mut request, output)
+        }
+    }
 }
 
 mod ffi {
     use std::sync::Arc;
 
-    use crux_core::{Core, Request};
+    use crux_core::Core;
     use crux_time::TimeRequest;
     use crux_time::TimeResponse;
     use serde::{Deserialize, Serialize};
@@ -334,7 +362,7 @@ mod ffi {
     }
 
     pub(crate) struct CameraFFI {
-        router: Router,
+        router: Arc<Router>,
         serialized_registry: crux_provided::Registry<TimeRequest>,
         camera_registry: crux_provided::Registry<app::CaptureImage>,
     }
@@ -347,34 +375,39 @@ mod ffi {
     /// The core FFI
     impl CameraFFI {
         pub(crate) fn new(shell: Arc<dyn CameraShell>) -> Self {
+            let core = Core::new();
+
             let serialized_registry = crux_provided::Registry::default();
             let camera_registry = crux_provided::Registry::default();
 
-            // FIXME: there's a problematic reference cycle here.
+            let router = Router::new(core, {
+                let shell = shell.clone();
+                let serialized_registry = serialized_registry.clone();
+                let camera_registry = camera_registry.clone();
 
-            let fs_store = file_store::FileStoreHandler::new({
-                move |mut request: Request<app::StoreFile>, stored: app::StoredImage| {
-                    router
-                        .resolve(&mut request, stored)
-                        .expect("background file store resolve should succeed");
-                }
-            });
+                |weak_router| {
+                    let fs_store = file_store::FileStoreHandler::new(weak_router.clone());
 
-            let router = Router::new(Core::new(), |effect| match effect {
-                app::Effect::Render(request) => {
-                    let (_op, handle) = request.split();
-                    emit_serialized_effect(shell.as_ref(), FfiEffect::Render);
-                }
-                app::Effect::Time(request) => {
-                    let (id, op) = serialized_registry.register(request);
-                    emit_serialized_effect(shell.as_ref(), FfiEffect::Time { id, request: op });
-                }
-                app::Effect::Camera(request) => {
-                    let (id, op) = camera_registry.register(request);
-                    shell.process_camera_effect(CameraEffect { id, operation: op });
-                }
-                app::Effect::FileStore(request) => {
-                    fs_store.process_file_store(request);
+                    move |effect| match effect {
+                        app::Effect::Render(request) => {
+                            let (_op, _handle) = request.split();
+                            emit_serialized_effect(shell.as_ref(), FfiEffect::Render);
+                        }
+                        app::Effect::Time(request) => {
+                            let (id, op) = serialized_registry.register(request);
+                            emit_serialized_effect(
+                                shell.as_ref(),
+                                FfiEffect::Time { id, request: op },
+                            );
+                        }
+                        app::Effect::Camera(request) => {
+                            let (id, op) = camera_registry.register(request);
+                            shell.process_camera_effect(CameraEffect { id, operation: op });
+                        }
+                        app::Effect::FileStore(request) => {
+                            fs_store.process_file_store(request);
+                        }
+                    }
                 }
             });
 
@@ -418,7 +451,7 @@ mod ffi {
 
     // Example core-side effect handler implementation
     mod file_store {
-        use std::sync::Arc;
+        use std::sync::Weak;
         use std::thread;
         use std::time::Duration;
 
@@ -426,20 +459,20 @@ mod ffi {
         use crux_core::Request;
 
         use super::app;
+        use super::crux_provided::ResolveSink;
 
-        #[derive(Clone)]
         pub(crate) struct FileStoreHandler {
             jobs_tx: Sender<Request<app::StoreFile>>,
         }
 
         impl FileStoreHandler {
-            pub(crate) fn new(
-                resolve: impl Fn(Request<app::StoreFile>, app::StoredImage) + Send + Sync + 'static,
-            ) -> Self {
+            pub(crate) fn new<S>(sink: Weak<S>) -> Self
+            where
+                S: ResolveSink<app::StoreFile> + Send + Sync + 'static,
+            {
                 let (jobs_tx, jobs_rx) = unbounded();
-                let resolve = Arc::new(resolve);
 
-                thread::spawn(move || worker(jobs_rx, resolve));
+                thread::spawn(move || worker(jobs_rx, sink));
 
                 Self { jobs_tx }
             }
@@ -451,10 +484,10 @@ mod ffi {
             }
         }
 
-        fn worker(
-            jobs_rx: Receiver<Request<app::StoreFile>>,
-            resolve: Arc<dyn Fn(Request<app::StoreFile>, app::StoredImage) + Send + Sync>,
-        ) {
+        fn worker<S>(jobs_rx: Receiver<Request<app::StoreFile>>, sink: Weak<S>)
+        where
+            S: ResolveSink<app::StoreFile> + Send + Sync + 'static,
+        {
             while let Ok(request) = jobs_rx.recv() {
                 // Ensure async behavior so this path models background work.
                 thread::sleep(Duration::from_millis(1));
@@ -464,8 +497,10 @@ mod ffi {
                     path: format!("/tmp/selfie-{image_id}.jpg"),
                 };
 
-                // Ultimately calls the router
-                resolve(request, stored);
+                if let Some(sink) = sink.upgrade() {
+                    sink.resolve_request(request, stored)
+                        .expect("background file store resolve should succeed");
+                }
             }
         }
     }
