@@ -10,7 +10,9 @@ use thiserror::Error;
 use crate::{App, Core, core::ResolveError};
 pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
-pub(crate) use registry::ResolveRegistry;
+// FIXME(effect-router-rfc): revisit this public re-export once router/serialized-lane
+// integration settles and we can provide a smaller dedicated API.
+pub use registry::ResolveRegistry;
 // ResolveByte is public to be accessible from crux_macros
 #[doc(hidden)]
 pub use request_serde::ResolveSerialized;

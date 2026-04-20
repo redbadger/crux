@@ -28,6 +28,11 @@ impl<T: FfiFormat> ResolveRegistry<T> {
     ///
     /// The `effect` will be serialized into its FFI counterpart before being stored
     /// and wrapped in a [`Request`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal mutex has been poisoned, or if we've run out of
+    /// available effect IDs
     // used in docs/internals/bridge.md
     // ANCHOR: register
     pub fn register<Eff>(&self, effect: Eff) -> Request<Eff::Ffi>
@@ -51,6 +56,14 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 
     /// Resume a previously registered effect. This may fail, either because `EffectId` wasn't
     /// found or because this effect was not expected to be resumed again.
+    ///
+    /// # Errors
+    ///
+    /// Returns `BridgeError` if the stored request could not be resolved.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal mutex has been poisoned
     pub fn resume(&self, id: EffectId, response: &[u8]) -> Result<(), BridgeError<T>> {
         let mut registry_lock = self.0.lock().expect("Registry Mutex poisoned");
 
