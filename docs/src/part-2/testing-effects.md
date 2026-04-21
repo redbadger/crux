@@ -26,83 +26,48 @@ integration tests.
 Not only are the unit tests easy to write, but they run extremely quickly, and
 can be run in parallel.
 
-For example, here's a test checking that when the weather screen is shown,
-a location gets checked and the weather gets refreshed.
+For example, here's a test that drives `LocalWeather` through a full weather fetch — checking location permission, resolving the location, then handling the weather response. A setup helper advances the state machine through the first two events by resolving each effect with a canned response:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/weather/events.rs:test}}
+{{#include ../../../examples/weather/shared/src/model/active/home/local.rs:drive_helper}}
 ```
 
-You can see it's a test of a whole interaction with multiple kinds of effects,
-and it runs in 11 ms and is entirely deterministic.
-
-Here's the corresponding code it's testing:
+The test itself picks up from `FetchingWeather`, resolves the HTTP effect, and asserts that the final state is `Fetched` with the expected data:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/weather/events.rs:code}}
+{{#include ../../../examples/weather/shared/src/model/active/home/local.rs:full_test}}
 ```
 
-Hopefully this illustrates that the managed effects let you test entire transactions
-involving effects, without ever executing any.
+It's a test of a whole interaction with multiple kinds of effects — location services and HTTP — and it runs in a couple of milliseconds, entirely deterministic. The code being tested is `LocalWeather::update` from chapter 4; managed effects let us verify the whole transaction without executing any of it.
 
-The full suite of 18 tests of the Weather app runs in 36 milliseconds on a Mac Mini M4 Pro. In practice,
-it's rare for a test suite of a Crux app to take longer than compiling it (even incrementally).
-Even apps with thousands of tests usually run them in seconds, and sadly they do not yet compile
-in seconds.
+The full suite of 57 tests of the Weather app runs in around 20 milliseconds on a Mac Mini M4 Pro. In practice, it's rare for a test suite of a Crux app to take longer than compiling it (even incrementally). Apps with thousands of tests usually run them in seconds, though compilation takes longer.
 
 ```txt
 cargo nextest run
-   Compiling shared v0.1.0
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.60s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.28s
 ────────────
- Nextest run ID 53981226-e01e-443a-a6a8-ded6fb5af6e8 with nextest profile: default
-    Starting 18 tests across 1 binary
-        PASS [   0.014s] ( 1/18) shared favorites::events::tests::test_delete_cancelled
-        PASS [   0.014s] ( 2/18) shared favorites::events::tests::test_kv_load_empty
-        PASS [   0.014s] ( 3/18) shared favorites::events::tests::test_delete_confirmed
-        PASS [   0.014s] ( 4/18) shared favorites::events::tests::test_cancel_returns_to_favorites
-        PASS [   0.015s] ( 5/18) shared favorites::events::tests::test_add_multiple_favorites
-        PASS [   0.015s] ( 6/18) shared favorites::events::tests::test_kv_set_and_load
-        PASS [   0.015s] ( 7/18) shared favorites::events::tests::test_delete_with_persistence
-        PASS [   0.015s] ( 8/18) shared favorites::events::tests::test_kv_load_error
-        PASS [   0.015s] ( 9/18) shared app::tests::test_navigation
-        PASS [   0.015s] (10/18) shared favorites::events::tests::test_submit_adds_favorite
-        PASS [   0.016s] (11/18) shared favorites::events::tests::test_delete_pressed
-        PASS [   0.010s] (12/18) shared favorites::events::tests::test_submit_persists_favorite
-        PASS [   0.010s] (13/18) shared favorites::events::tests::test_submit_duplicate_favorite
-        PASS [   0.010s] (14/18) shared weather::events::tests::test_show_triggers_set_weather
-        PASS [   0.010s] (15/18) shared weather::events::tests::test_fetch_favorites_triggers_fetch_for_all_favorites
-        PASS [   0.010s] (16/18) shared weather::events::tests::test_fetch_triggers_favorites_fetch_when_favorites_exist
-        PASS [   0.029s] (17/18) shared favorites::events::tests::test_search_triggers_api_call
-        PASS [   0.021s] (18/18) shared weather::events::tests::test_current_weather_fetch
-────────────
-     Summary [   0.036s] 18 tests run: 18 passed, 0 skipped
+    Starting 57 tests across 1 binary
+    ...
+     Summary [   0.020s] 57 tests run: 57 passed, 0 skipped
 ```
 
 ## The test steps
 
-Crux provides test APIs to make the tests a bit more readable and nicer to write,
-but it's still up to the test to execute the app loop.
+Crux provides test APIs to make the tests a bit more readable, but it's still up to the test to drive the event → update → effect → resolve cycle by hand.
 
-Let's have a look at a simpler test from the Weather app and go through it step by step:
+Let's walk through a simpler test from the Weather app step by step:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/favorites/events.rs:test}}
+{{#include ../../../examples/weather/shared/src/model/active/home/local.rs:simple_test}}
 ```
 
-First, we do some setup - create a model, create a favorite and insert it, and
-make sure the app is in the right Workflow state.
+First, we build a fresh `LocalWeather::default()` — its starting state is `CheckingPermission`.
 
-Then, we call update with `FavoritesEvent::DeleteConfirmed` and get back a command, which we
-store in `cmd`.
+We then call `update` with `LocationEnabled(true)`, as if the shell had just reported that location services are available. `update` returns an `Outcome`, which we destructure with `.expect_continue().into_parts()` — we know this event doesn't complete the state machine, so we assert on `Continue` and get back the updated state plus any command.
 
-The next line is our assertion on the command - we expect an effect, and we expect it to be
-a key value effect. The expectation either returns the KeyValueRequest or panics.
+We assert the new state is `FetchingLocation`. Then we ask the command for its single effect via `.expect_one_effect()`, narrow it to a location effect with `.expect_location()`, and check the operation is `GetLocation`.
 
-Then we inspect the request's operation to check it's a `Set` – for the purposes of this test
-that's enough.
-
-We can then check the favourites in the model are gone, and there is nothing else to do.
+That's the whole test. `update` is a pure function, so there's nothing to set up beyond the initial state and nothing to tear down.
 
 ## More integrated tests and deterministic simulation testing
 

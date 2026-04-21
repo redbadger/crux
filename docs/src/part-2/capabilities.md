@@ -1,99 +1,83 @@
 # Building capabilities
 
-The final piece of the puzzle we should look at in our exploration
-of the Weather app before we move to the Shell is Capabilities.
+We covered effects and commands in detail, and hinted throughout at capabilities — the developer-friendly APIs you actually use when writing core code. Time to look at them directly, both using them and building our own.
 
-We looked at effects a fair bit and explored the `Command`s and `CommandBuilder`s,
-but in practice, it's quite rare that you'd interact with those directly from
-your app.
+In practice, apps need a fairly limited number of capabilities — typically around seven, almost certainly fewer than ten. The weather app uses six: Render, KeyValue, Http, Location, Secret, and Time. Capabilities are reusable across apps — if you build one that others would benefit from, the Crux team would like to hear about it.
 
-Typically, you'll be working with effects using Capabilities - more developer-friendly APIs
-which implement a specific kind of side-effect in a generic fashion. They define the core-shell
-message protocol for the side-effect and provide an ergonomic API to create the right `CommandBuilder`s.
-Examples include: HTTP client, Timer operations, Key-Value storage, Secrets provider, Geolocation, etc.
+## Using a capability
 
-In practice, we find there is a limited number of these effect packages, they should be very reusable,
-and an individual app will typically need around seven of them, almost certainly fewer than ten.
+Capabilities don't return a `Command` directly — they return a command *builder*, which lets you chain behaviour before committing to a specific event. We saw the abstract shape in chapter 5: `Http::get(...).expect_json().build().then_send(Event::ReceivedResponse)`.
 
-## Included capabilities
-
-The weather app uses two out of the three capabilities provided with Crux: HTTP client (`crux_http`),
-Key-Value store (`crux_kv`) (the third is the time capability – `crux_time`).
-
-These are the most common things we think people will want to use in their apps. There are more,
-and we will probably build those over time as well, we just haven't worked on a motivating use-case
-ourselves yet. If you have and built a capability which you'd like to donate, definitely get in touch!
-
-Let's look at the use of `crux_http` quickly, as it's the most extensive of the three. The Weather
-app makes a pretty typical move and centralises the weather API use in a client:
+The weather app's current-weather fetch shows the same pattern in production code:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/weather/client.rs:client}}
+{{#include ../../../examples/weather/shared/src/effects/http/weather/mod.rs:fetch}}
 ```
 
-The main method there is `fetch`, which uses `Http::get` from `crux_http` to create a GET request expecting
-a json response which deserialises into a specific type, and provides a URL query to specify
-the search. At the end of that chained call is a `.map` unpicking the response and turning
-it into a more convenient `Result` type for the app code.
+`Http::get(...)` starts a builder, `.expect_json::<T>()` pins down the response type, `.query(...)` adds URL parameters, `.build()` produces a `RequestBuilder`, and `.map(...)` translates the shell's `Result<Response, HttpError>` into the more convenient `Result<CurrentWeatherResponse, WeatherError>`. The caller finishes it off with `.then_send(SomeEvent)` — `fetch` returns a builder, not a command, so callers can hook it into their own event type.
 
-The interesting thing here is that the `fetch` method returns a `RequestBuilder`. In a way, this
-makes it a half-way step to a custom capability, but it also just means the `fetch` call is
-convenient to use from both normal and `async` context.
+That's how a capability gets used. But where do these APIs come from? Let's build one.
 
-This is one of the things capabilities do - they map the lower-level FFI protocols into a more
-convenient API for the app developer.
+## A simple custom capability: Location
 
-Let's look at the other thing they do.
+`Render` ships in `crux_core`; `crux_http`, `crux_kv`, and `crux_time` are separate crates Crux publishes. Location services aren't — they work differently enough across platforms that a cross-platform crate would do more harm than good, and they're specific enough that we didn't want to maintain an official one either. So the weather app defines its own.
 
-## Custom capabilities
+A capability is two things:
 
-The Weather app has one specialty - it works with location services. This is an example of a
-capability which we'd probably struggle to find a cross-platform crate for. It's also not
-so common or complex that we feel we should develop and maintain an official one. So a custom
-capability in the app is the way to go.
+1. A protocol for talking to the shell — an operation type and a response type.
+2. An ergonomic API for the core developer — usually a handful of command-builder functions.
 
-The capability defines two things:
-
-1. The protocol for communicating to the Shell
-2. The APIs used by the programmer of the Core
-
-Here is Weather app's Location capability in full:
+Here's the whole protocol for Location:
 
 ```rust
-{{#include ../../../examples/weather/shared/src/location/capability.rs}}
+{{#include ../../../examples/weather/shared/src/effects/location/mod.rs}}
 ```
 
-There are two interesting types: `LocationOperation` and `LocationResult` - they are the
-request and response pair for the capability. The capability tells Crux that `LocationResult`
-is the expected output for the `LocationOperation` with the trait implementation at the very
-bottom. It marks the `LocationOperation` as an `Operation` as defined by Crux and associates
-the output type.
+Two operation variants (`IsLocationEnabled`, `GetLocation`), two result variants (`Enabled(bool)`, `Location(Option<Location>)`), and an `impl Operation for LocationOperation` pairing them. The `Operation` trait is Crux's way of saying "when you see this operation, expect this response type" — the macro-generated `Effect` type uses it so the core and shell agree on the wire format.
 
-That's number 1 done - protocol defined. This is what the Shell will need to understand and
-return back in order to implement the location capability.
+The developer API is equally small:
 
-The rest of the code are the two APIs used by the Core developer - `is_location_enabled` and `get_location`.
-Their type signatures are fairly complex, so let's pick them apart.
+```rust
+{{#include ../../../examples/weather/shared/src/effects/location/command.rs}}
+```
 
-First, they are both generic over Effect and Event. This isn't strictly necessary for local
-capabilities, but it makes the capability reusable for any `Effect` and `Event`, not just the
-ones from the Weather app.
+Each function issues one operation and narrows the response. `is_location_enabled` returns `bool`; `get_location` returns `Option<Location>`. The shared `LocationResult` carries both variants, so each `.map(...)` pins the response to the one that operation expects and falls back to a safe default for the other — `false` for the enabled check, `None` for the location fetch. Secret, later in the chapter, uses `unreachable!()` for the same situation; both patterns have their place.
 
-The other interesting thing is the trait bound `Effect: From<Request<LocationOperation>>`,
-which says that the Effect type needs to be able to convert from a location Request, or
-in other words - we need to be able to wrap a `Request<LocationOperation>` into the app's
-Effect type. All Effect types generated with the `#[effect]` macro already do this.
+Notice the generic signatures: both functions are generic over `Effect` and `Event`. The trait bound `Effect: From<Request<LocationOperation>>` says the caller's `Effect` type must be able to wrap a location request — every `#[effect]`-generated enum implements this automatically, so the bound is always satisfied in practice. Being generic lets us drop this capability into any Crux app, not just this one.
 
-Other than that, the APIs just create command builders and return them. Those types are also
-somewhat gnarly, but it's mostly the `impl Future<Output = [value]>` that's interesting.
-Notice that the Output types are not `LocationResult`, they are the specific convenient
-type the Core developer wants.
+## A richer example: Secret
 
-And that's all Capabilities do - they provide a convenient API for creating `CommandBuilder`s,
-and converting between convenient Rust types and an FFI "wire protocol" used to communicate
-with the Shell.
+Location is about as minimal as a capability gets. Secret — storing, fetching, and deleting an API key — has a bit more going on, and it shows a pattern worth calling out.
 
-In the ports and adapters architecture, Capabilities are the ports, and the shell-side
-implementations are the adapters.
+### Narrowing the shell's response
 
-In fact, let's go build one in the next chapter.
+The shell's `SecretResponse` is a single enum with six variants: `Missing`, `Fetched`, `Stored`, `StoreError`, `Deleted`, `DeleteError`. Each operation has its own pair: `Fetch` produces `Missing` or `Fetched`, `Store` produces `Stored` or `StoreError`, and `Delete` produces `Deleted` or `DeleteError`. If a caller holds a `SecretResponse` directly, the type doesn't tell them which operation it's responding to — they'd have to handle variants that can't apply to their call.
+
+The capability fixes this by defining three narrower response types — `SecretFetchResponse`, `SecretStoreResponse`, `SecretDeleteResponse` — and having each command builder return its own. The wide `SecretResponse` stays as the shell protocol; the core developer only ever sees the narrowed versions.
+
+Here's the protocol:
+
+```rust
+{{#include ../../../examples/weather/shared/src/effects/secret/mod.rs}}
+```
+
+And the developer API:
+
+```rust
+{{#include ../../../examples/weather/shared/src/effects/secret/command.rs}}
+```
+
+Each builder issues a request, then `.map(...)` narrows the wide `SecretResponse` down to the operation-specific type. The `unreachable!()` calls document an invariant: because the shell only ever produces the "right" variants for a given operation, the other arms should never fire. If they do, there's a bug in the shell's handler that the panic surfaces rather than hides.
+
+Using these builders looks no different to the location ones: call `secret::command::fetch(API_KEY_NAME)` and finish with `.then_send(...)` to bind the eventual `SecretFetchResponse` to an event.
+
+## What capabilities provide
+
+Putting it together, a capability gives you two things:
+
+- **A protocol** — operation and response types marked with the `Operation` trait, which define the wire format between core and shell.
+- **A developer API** — small command-builder functions that speak in convenient Rust types rather than the raw protocol.
+
+In [ports-and-adapters](https://en.wikipedia.org/wiki/Hexagonal_architecture) vocabulary, capabilities are the ports; the shell-side code that actually carries out each operation is the adapter. The core expresses *what* it wants done; the shell decides *how* to do it. Keeping that separation tight is what makes the core portable.
+
+Speaking of the shell — it's time to look at how these operations get carried out on each platform. That's the next chapter.

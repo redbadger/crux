@@ -1,151 +1,87 @@
 # Android
 
-Let's start with the new part, and also typically the shorter part –
-implementing the capabilities.
+The Android shell talks to the Rust core the same way the iOS shell does — serialise events, hand them across the FFI, deserialise effect requests, handle each effect, resolve with the response, repeat. The Kotlin and Compose idioms differ from Swift and SwiftUI, but the shape is the same.
 
-## Capability implementation
+## Booting the Core with Hilt
 
-This is what Weather's `Core.kt` looks like
-
-```kotlin
-{{#include ../../../../examples/weather/android/app/src/main/java/com/crux/example/weather/core/Core.kt:core_base}}
-        // ...
-    }
-}
-```
-
-It's slightly more complicated, but broadly the same as the Counter's core.
-We have an extra logger which is not really important for us, and we
-also hold on to a `KeyValueStore`, which is the storage for the key-value
-implementation. The dependencies (`HttpClient`, `LocationManager`, `KeyValueStore`)
-are injected via the constructor using Koin DI.
-
-The `processRequest` method handles each effect type:
+The Android app uses [Dagger Hilt](https://dagger.dev/hilt/) to wire up the core and its dependencies. `WeatherApplication` is annotated `@HiltAndroidApp`, which bootstraps the DI graph, and `MainActivity` is `@AndroidEntryPoint`, which lets it receive `@Inject` field injection. Handlers and the core itself use constructor injection — so the Hilt module is small:
 
 ```kotlin
-{{#include ../../../../examples/weather/android/app/src/main/java/com/crux/example/weather/core/Core.kt:process_request}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/AppModule.kt}}
 ```
 
-We get a Request, and do an exhaustive match on what the requested effect is. In Kotlin
-we have sealed classes, so we can use a `when` expression to also destructure the
-operation requested.
+The only explicit provider is `OkHttpClient`, since it isn't under our control. `Core` and every handler get `@Inject constructor(...)` — Hilt figures out the graph from there.
 
-We can have a look at what the HTTP branch does:
+`Core` itself takes five injected dependencies — one per capability that needs a real-world implementation: `HttpHandler` (OkHttp), `LocationHandler` (Fused Location Provider + permission flow), `KeyValueHandler` (DataStore-backed), `SecretStore` (AndroidKeyStore-backed), and `TimeHandler` (coroutine timers).
+
+One thing to flag upfront: the word "ViewModel" shows up in two senses on Android. Crux's own `ViewModel` is the state projection produced by the core — what the UI ultimately consumes. Android's `androidx.lifecycle.ViewModel` is the lifecycle-aware class that survives configuration changes. The per-screen Android VMs (`HomeViewModel`, `FavoritesViewModel`, `OnboardViewModel`) sit between them: they observe a flow of Crux view models from `Core` and map each one to a Compose-friendly UI state. All three are `@HiltViewModel @Inject constructor(...)`.
+
+`Core` kicks the lifecycle off right in its `init` block:
 
 ```kotlin
-{{#include ../../../../examples/weather/android/app/src/main/java/com/crux/example/weather/core/Core.kt:http}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:start}}
 ```
 
-This delegates to `handleHttpEffect`, which does the actual work:
+The same `Event.Start` we saw in chapter 3 — the moment the core is constructed, it fetches the API key and favourites.
+
+## The FFI bridge
+
+Kotlin doesn't have a separate bridge file like Swift's `LiveBridge`; the bridging is inline in `Core.kt`. Here's the top of the class with the FFI instance and the flow the view layer observes:
 
 ```kotlin
-{{#include ../../../../examples/weather/android/app/src/main/java/com/crux/example/weather/core/Core.kt:handle_http}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:core_base}}
 ```
 
-We launch a coroutine to run this job off the main thread, then use the
-`httpClient.request()` call to run the request.
+`update(event)` serialises the event with bincode, calls `coreFfi.update(...)`, and hands the resulting bytes to `handleEffects`. The Crux view-model flow (`_viewModel`) is a `MutableStateFlow<ViewModel>` — a Kotlin coroutines type that always holds a current value, and conflates on equality: when you set the flow's `.value`, collectors are only notified if the new value differs from the previous one. That property keeps identical renders from rippling downstream.
 
-Then it takes the response, serializes it and passes it to `core.resolve` via `resolveAndHandleEffects`, which
-**returns more effect requests**. This is perhaps unexpected, but it's the direct
-consequence of the `Command`s async nature. There can easily be a command which
-does something along the lines of:
+## Handling effects
 
-```rust,noplayground
-Command::new(|ctx| {
-    let http_req = Http::get(url).expect_json<Counter>().build().into_future(ctx);
-    let resp = http_req.await; // effect 1
-
-    let counter = resp.map(|result| match result {
-        Ok(mut response) => match response.take_body() {
-            Some(counter) => {
-                Ok(results)
-            }
-            None => Err(ApiError::ParseError),
-        },
-        Err(_) => Err(ApiError::NetworkError),
-    });
-
-    let _ = KeyValue::set(COUNTER, counter).into_future(ctx).await // effect 2
-
-    // ...
-
-    ctx.send_event(Event::Done);
-})
-```
-
-Once we resolve the http request at the `.await` point marked "effect 1", this future can
-proceed and make a `KeyValue` request at the "effect 2" `.await` point. So on the
-shell end, we need to be able to respond appropriately.
-
-What we do is loop through those effect requests (there could easily be multiple requests
-at once), go through them and recurse - call `processRequest` again to handle it.
-
-This is what `resolveAndHandleEffects` looks like:
+`handleEffects` deserialises the list of effect requests and dispatches each one:
 
 ```kotlin
-{{#include ../../../../examples/weather/android/app/src/main/java/com/crux/example/weather/core/Core.kt:resolve}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:process_request}}
 ```
 
-Just for completeness, this is what the `request` method on `HttpClient` looks like:
+An exhaustive `when` over the sealed `Effect` class — Kotlin's equivalent of the Swift match, and the compiler enforces the coverage. Each branch delegates to a per-capability handler method.
+
+Here's the HTTP handler delegation:
 
 ```kotlin
-{{#include ../../../../examples/weather/android/app/src/main/java/com/crux/example/weather/core/HttpClient.kt:request}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:handle_http}}
 ```
 
-Not that interesting, it's a wrapper around Ktor's `HttpClient` which takes and
-returns the generated `HttpRequest` and `HttpResponse`, originally defined in Rust by
-`crux_http`.
-
-The pattern repeats similarly for key-value store and the location capability.
-
-## User interface and navigation
-
-It's worth looking at how Weather handles the Workflow navigation in Jetpack Compose.
-
-As in the Counter example, the Weather's core has a `StateFlow<ViewModel>`
-which we can collect with `collectAsState()` in the composables.
-
-Here's the root content view:
+`httpHandler.request(...)` is a `suspend` function that wraps OkHttp:
 
 ```kotlin
-{{#include ../../../../examples/weather/android/app/src/main/java/com/crux/example/weather/MainActivity.kt:content_view}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/HttpHandler.kt:request}}
 ```
 
-Thanks to the declarative nature of Jetpack Compose, we can show the view we need to,
-depending on the workflow, and pass the core down. We use `AnimatedContent` with
-a `when` block to switch between screens based on the current workflow state, and
-a `BackHandler` to navigate back when the user presses the system back button.
-
-We could do this differently - core could stay in the root view and we could pass
-an `update` callback in a `CompositionLocal`, and just the appropriate section of the
-view model to each view, it's up to you how you want to go about it.
-
-Let's look at the HomeScreen as well, just to complete the picture:
+When it returns, we serialise the result and call `resolveAndHandleEffects`:
 
 ```kotlin
-{{#include ../../../../examples/weather/android/app/src/main/java/com/crux/example/weather/ui/home/HomeScreen.kt:home_screen}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:resolve}}
 ```
 
-It uses `koinViewModel` to obtain its view model, collects the UI state,
-draws the weather cards for each favorite using a `HorizontalPager`, and adds
-a toolbar with an `IconButton`, which when tapped calls `onShowFavorites`
-with the Kotlin equivalent of the `.navigate` event we saw earlier.
+Which calls `coreFfi.resolve(...)` and then **recurses** through `handleEffects` with the new effect requests. Same reason as in the iOS chapter: `Command` is async, and a command with multiple `.await` points produces its next effect only after the previous one is resolved. The shell has to keep looping.
 
-This is quite a simple navigation setup in that it is a static set of screens
-we're managing. Sometimes a more dynamic navigation is necessary, but
-Jetpack Compose Navigation with `NavHost` supports quite complex scenarios in
-a declarative fashion, so the general principle of naively projecting the view model
-into the user interface broadly works even there.
+The other handlers (`handleKeyValueEffect`, `handleLocationEffect`, `handleSecretEffect`, plus the `timeHandler.handle(...)` delegation) all follow the same pattern.
 
-There isn't much more to it, the rest of the app is rinse and repeat. It is
-relatively rare to implement a new capability, so most of the work is in finessing
-the user interface. Crux tends to work reasonably well with Compose previews as well
-so you can typically avoid the Emulator or device for the inner development loop.
+## Views driven by the Crux view model
+
+`Core` exposes the current view model as a `StateFlow<ViewModel>`, so Compose can collect it with `collectAsState()` and recompose when it changes. The root of the view tree lives in `MainActivity.onCreate`:
+
+```kotlin
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/MainActivity.kt:content_view}}
+```
+
+`AnimatedContent` cross-fades between screens as the lifecycle state changes. A `when` block dispatches on the top-level `ViewModel` variants, and `ActiveViewModel` gets a nested `when` for Home vs Favorites.
+
+The individual screens (`HomeScreen`, `FavoritesScreen`, `OnboardScreen`) don't take the Crux view model directly — they get a per-screen Android `ViewModel` via `hiltViewModel()`, which owns a `UiStateMapper` that transforms the Crux data into a Compose-friendly `UiState`. This is standard Android MVVM and keeps the Compose layer free of Crux-specific types.
+
+Two things keep that loop efficient. `StateFlow` suppresses equal emissions, so if a screen's mapper produces a `UiState` that equals the previous one, the flow doesn't emit at all. When it does emit, Compose's recomposition is equality-based — composables whose inputs haven't changed are skipped. The practical effect is the same as iOS's `@Observable`: a small change in the Crux model triggers a small recomposition, not a sweep of the whole tree.
 
 ## What's next
 
-Congratulations! You know now all you will likely need to build Crux apps. The
-following parts of the book will cover advanced topics, other support platforms,
-and internals of Crux, should you be interested in how things work.
+That's the Android shell. Structure-wise it mirrors iOS: events go in, effects come out, the view layer collects the view model. The rest of the app is screens and view models — standard Compose work.
 
 Happy building!

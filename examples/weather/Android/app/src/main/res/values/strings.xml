@@ -1,11 +1,25 @@
 <resources>
     <string name="app_name">Weather</string>
 
-    <string name="weather_loading">Loading weather data…</string>
+    <string name="loading_message">Loading\u2026</string>
+    <string name="failed_title">Something went wrong</string>
+
+    <string name="onboard_title">Crux Weather</string>
+    <string name="onboard_reason_welcome">Enter your OpenWeather API key to get started.</string>
+    <string name="onboard_reason_unauthorized">That API key was rejected. Please try again.</string>
+    <string name="onboard_reason_reset">Enter a new API key.</string>
+    <string name="onboard_api_key_label">API Key</string>
+    <string name="onboard_api_key_placeholder">Paste your API key here</string>
+    <string name="onboard_submit">Get Started</string>
+    <string name="onboard_saving">Saving\u2026</string>
+
+    <string name="weather_loading">Loading weather data\u2026</string>
+    <string name="weather_location_disabled">Location services are disabled</string>
+    <string name="weather_error">Failed to load weather</string>
     <string name="weather_sunrise">Sunrise</string>
     <string name="weather_sunset">Sunset</string>
     <string name="weather_time_format">HH:mm</string>
-    <string name="weather_temp_format">%.1f°</string>
+    <string name="weather_temp_format">%.1f\u00B0</string>
     <string name="weather_wind_format">%.1f m/s</string>
     <string name="weather_pressure_format">%d hPa</string>
     <string name="weather_humidity_format">%d%%</string>
@@ -22,13 +36,14 @@
     <string name="favorites_empty">No favorites yet</string>
     <string name="favorites_delete_title">Delete Favorite?</string>
     <string name="add_favorite_title">Add Favorite</string>
-    <string name="add_favorite_search_hint">Search location...</string>
-    <string name="add_favorite_searching">Searching...</string>
+    <string name="add_favorite_search_hint">Search location\u2026</string>
+    <string name="add_favorite_searching">Searching\u2026</string>
     <string name="add_favorite_prompt">Enter a location to search</string>
     <string name="add_favorite_no_results">No results found</string>
     <string name="action_home">Home</string>
     <string name="action_add_favorite">Add favorite</string>
     <string name="action_delete_favorite">Delete favorite</string>
+    <string name="action_reset_api_key">Reset API Key</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
     <string name="action_clear_search">Clear search</string>
