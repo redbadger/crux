@@ -1,4 +1,4 @@
-//! Generation of foreign language types (currently Swift, Java, TypeScript) for Crux
+//! Generation of foreign language types (currently Swift, Kotlin, C#, TypeScript) for Crux
 //!
 //! To use this module, you can add a separate crate from your shared library, possibly
 //! called `shared_types`, which will allow you to reference types from your shared library
@@ -70,6 +70,12 @@
 //!      .build()
 //!  )?;
 //!
+//!  typegen.csharp(
+//!      &Config::builder("CounterApp.Shared", output_root.join("csharp"))
+//!      .add_extensions()
+//!      .build()
+//!  )?;
+//!
 //!  typegen.typescript(
 //!      &Config::builder("shared_types", output_root.join("typescript"))
 //!      .add_extensions()
@@ -89,7 +95,7 @@ pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
     Registry,
     generation::{
-        Encoding, java, kotlin, swift,
+        Encoding, csharp, java, kotlin, swift,
         typescript::{self, InstallTarget},
     },
     reflection::RegistryBuilder,
@@ -363,6 +369,49 @@ impl CodeGenerator {
             let output_dir = config.out_dir.join(package_path);
             fs::create_dir_all(&output_dir)?;
             fs::write(output_dir.join("Requests.kt"), requests)?;
+        }
+
+        Ok(())
+    }
+
+    /// Generates types for C#
+    /// e.g.
+    /// ```rust
+    /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
+    /// # use std::env::temp_dir;
+    /// # let mut typegen = TypeRegistry::new().build()?;
+    /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
+    /// typegen.csharp(
+    ///     &Config::builder("CounterApp.Shared", output_root.join("csharp"))
+    ///     .add_extensions()
+    ///     .build()
+    /// )?;
+    /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+    /// ```
+    ///
+    /// # Errors
+    /// Errors that can occur during type generation.
+    pub fn csharp(&self, config: &Config) -> Result<(), TypeGenError> {
+        info!("Generating C# types");
+        fs::create_dir_all(&config.out_dir)?;
+
+        let package_path = config.package_name.replace('.', "/");
+
+        // remove any existing generated shared types, this ensures that we remove no longer used types
+        fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
+
+        csharp::Installer::new(&config.package_name, &config.out_dir)
+            .encoding(Encoding::Bincode)
+            .external_packages(&config.external_packages)
+            .generate(&self.0)?;
+
+        if config.add_extensions {
+            let requests_data = extension_data!("csharp/Requests.cs");
+            let requests = format!("namespace {}{requests_data}", config.package_name);
+
+            let output_dir = config.out_dir.join(package_path);
+            fs::create_dir_all(&output_dir)?;
+            fs::write(output_dir.join("Requests.cs"), requests)?;
         }
 
         Ok(())

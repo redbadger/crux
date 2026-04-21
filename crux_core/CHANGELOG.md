@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### 🚀 Features
+
+- **C# Typegen on `facet_generate`**: The newer `facet_generate` typegen backend now exposes
+  `CodeGenerator::csharp(&Config)`, producing an `MSBuild` project targeting `net10.0` with a
+  `CommunityToolkit.Mvvm` base reference and a Bincode runtime.
+
 ## [0.17.0](https://github.com/redbadger/crux/compare/crux_core-v0.16.2...crux_core-v0.17.0) - 2026-03-20
 
 ### 🚀 Features

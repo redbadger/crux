@@ -62,6 +62,24 @@ check-apple:
     @just lib::check-rust-target aarch64-apple-ios-sim
     @just lib::check-rust-target x86_64-apple-ios
 
+# Check tools for Windows / WinUI3 shells
+[no-cd]
+check-windows:
+    @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-tool dotnet "install the .NET 10 SDK: https://dotnet.microsoft.com/download"
+    @just lib::_check-vswhere
+    @just lib::check-rust-target x86_64-pc-windows-msvc
+
+# (internal) check for Visual Studio via vswhere at its canonical install path
+[script('sh'), no-cd]
+_check-vswhere:
+    vswhere='/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe'
+    if [ -f "$vswhere" ]; then
+        echo '  ✓ Visual Studio (vswhere)'
+    else
+        echo '  {{ style("error") }}✗ Visual Studio vswhere{{ NORMAL }} — install Visual Studio 2022+ with the Windows App SDK workload'
+    fi
+
 # Check tools for Android shells
 [no-cd]
 check-android:
