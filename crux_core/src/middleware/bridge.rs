@@ -71,6 +71,15 @@ where
         self.process(Some(id), output, requests_out)
     }
 
+    /// Process any tasks in the effect runtime of the Core, which are able to proceed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`BridgeError`] when serialization fails.
+    pub fn process_tasks(&self, requests_out: &mut Vec<u8>) -> Result<(), BridgeError<Format>> {
+        self.process(None, &[], requests_out)
+    }
+
     fn process(
         &self,
         id: Option<EffectId>,
@@ -99,10 +108,14 @@ where
 
         let effects = match id {
             None => {
-                let shell_event =
-                    Format::deserialize(event_or_output).map_err(BridgeError::DeserializeEvent)?;
+                if event_or_output.is_empty() {
+                    self.next.process_tasks(effect_callback)
+                } else {
+                    let shell_event = Format::deserialize(event_or_output)
+                        .map_err(BridgeError::DeserializeEvent)?;
 
-                self.next.update(shell_event, effect_callback)
+                    self.next.update(shell_event, effect_callback)
+                }
             }
             Some(id) => {
                 self.registry.resume(id, event_or_output)?;

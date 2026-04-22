@@ -592,6 +592,11 @@ where
             aborted: self.aborted.clone(),
         }
     }
+
+    #[must_use]
+    pub(crate) fn waker(&self) -> &AtomicWaker {
+        &self.waker
+    }
 }
 
 impl<Effect, Event> FromIterator<Command<Effect, Event>> for Command<Effect, Event>
