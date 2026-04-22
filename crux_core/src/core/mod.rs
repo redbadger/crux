@@ -4,6 +4,7 @@ mod resolve;
 
 use std::collections::VecDeque;
 use std::sync::{Mutex, RwLock};
+use std::task::Waker;
 
 pub use effect::{Effect, EffectFFI};
 pub use request::Request;
@@ -35,6 +36,7 @@ where
     app: A,
 
     // internals
+    root_waker: Option<Waker>,
     root_command: Mutex<Command<A::Effect, A::Event>>,
 }
 // ANCHOR_END: core
@@ -57,6 +59,7 @@ where
         Self {
             model: RwLock::default(),
             app: A::default(),
+            root_waker: None,
             root_command: Mutex::new(Command::done()),
         }
     }
@@ -79,8 +82,20 @@ where
         Self {
             model: RwLock::new(model),
             app,
+            root_waker: None,
             root_command: Mutex::new(Command::done()),
         }
+    }
+
+    /// Register a [`Waker`] that gets called every time a task spawned on the
+    /// runtime is ready to progress.
+    ///
+    /// This comes handy for injecting async dependencies that you can't model
+    /// via effects - the waker should then just call [`Self::process()`].
+    #[must_use]
+    pub fn with_waker(mut self, waker: Waker) -> Self {
+        self.root_waker = Some(waker);
+        self
     }
 
     /// Run the app's `update` function with a given `event`, returning a vector of
@@ -139,13 +154,28 @@ where
     }
     // ANCHOR_END: resolve
 
+    /// Process pending tasks.
+    ///
+    /// This is called automatically as a part of [`Self::process_event()`] and
+    /// [`Self::resolve()`], so usually there's no need for you to call this
+    /// function.
+    ///
+    /// See: [`Self::with_waker()`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the inner `RwLock` was poisoned.
     // used in docs/internals/runtime.md
     // ANCHOR: process
-    pub(crate) fn process(&self) -> Vec<A::Effect> {
+    pub fn process(&self) -> Vec<A::Effect> {
         let mut root_command = self
             .root_command
             .lock()
             .expect("Capability runtime lock was poisoned");
+
+        if let Some(waker) = &self.root_waker {
+            root_command.waker().register(waker);
+        }
 
         let mut events: VecDeque<_> = root_command.events().collect();
 
