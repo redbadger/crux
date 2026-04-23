@@ -3,7 +3,13 @@ mod lib '../../lib.just'
 default: dev
 
 common := "shared tui web-leptos web-yew web-dioxus web-nextjs web-react-router tauri Android"
-shells := if os() == "macos" { common + " apple" } else { common }
+shells := if os() == "macos" {
+    common + " apple"
+} else if os() == "windows" {
+    common + " windows"
+} else {
+    common
+}
 
 # checks required tools across all shells
 [script('sh')]

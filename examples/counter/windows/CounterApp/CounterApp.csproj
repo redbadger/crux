@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>CounterApp</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Drop a real app.ico into Assets/ to get a taskbar / title-bar icon. -->
+    <ApplicationIcon Condition="Exists('Assets\app.ico')">Assets\app.ico</ApplicationIcon>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <!-- EnableMsixTooling=true enables resources.pri generation (required so
+         ms-appx:/// can resolve XAML theme resources); WindowsPackageType=None
+         keeps the output unpackaged (no MSIX). -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <!-- Copy the Windows App SDK runtime into the output so the app runs
+         without requiring the separate Windows App Runtime installer. -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- Required by the LibraryImport source generator used in CoreFfi.cs -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- MVVMTK0045 warns that [ObservableProperty] on fields is not AOT-friendly
+         for WinRT. Partial properties are the AOT-friendly alternative but are
+         not yet wired up by CommunityToolkit.Mvvm 8.4.0 in this SDK. Suppress
+         until CsWinRT + CTMvvm catch up; non-AOT builds are fine.
+         TODO: switch to CTMvvm partial-property form and enable PublishAot once
+         CsWinRT source-gen supports the partial-property pattern end-to-end. -->
+    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <CargoProfile Condition="'$(Configuration)' == 'Debug'">debug</CargoProfile>
+    <CargoProfile Condition="'$(Configuration)' == 'Release'">release</CargoProfile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\generated\CounterApp.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\target\x86_64-pc-windows-msvc\$(CargoProfile)\shared.dll" Visible="false">
+      <Link>shared.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

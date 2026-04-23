@@ -1,0 +1,89 @@
+set windows-shell := ["pwsh.exe", "-NoLogo", "-NoProfile", "-Command"]
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# Platform for the .NET build. WinUI3 apps are never AnyCPU; default to x64.
+platform := "x64"
+rust_target := "x86_64-pc-windows-msvc"
+
+# Resolve Visual Studio's MSBuild via vswhere. `dotnet build` alone cannot
+# drive WinUI3's Appx packaging tasks, so we use the MSBuild that ships with
+# Visual Studio (same pattern as apple/ requiring `xcodebuild` and android/
+# requiring Gradle / the Android SDK).
+vswhere := '"C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"'
+
+[windows]
+assert-windows:
+    $null = $true
+
+[unix]
+assert-windows:
+    @echo '{{ style("error") }}This example is Windows-only. Run it on Windows to build the WinUI 3 shell.{{ NORMAL }}'
+    @exit 1
+
+# checks required tools are installed
+doctor: assert-windows
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    if (Get-Command cargo -ErrorAction SilentlyContinue) { Write-Host '  ✓ cargo' } else { Write-Host '  {{ style("error") }}✗ cargo{{ NORMAL }} — install with: https://rustup.rs'; exit 1 }
+    if (Get-Command dotnet -ErrorAction SilentlyContinue) { Write-Host '  ✓ dotnet' } else { Write-Host '  {{ style("error") }}✗ dotnet{{ NORMAL }} — install the .NET 10 SDK: https://dotnet.microsoft.com/download'; exit 1 }
+    if (Test-Path {{ vswhere }}) { Write-Host '  ✓ Visual Studio (vswhere)' } else { Write-Host '  {{ style("error") }}✗ Visual Studio vswhere{{ NORMAL }} — install Visual Studio 2022+ with the Windows App SDK workload'; exit 1 }
+    if ((rustup target list --installed) -match '^{{ rust_target }}$') { Write-Host '  ✓ {{ rust_target }}' } else { Write-Host '  {{ style("error") }}✗ {{ rust_target }}{{ NORMAL }} — install with: rustup target add {{ rust_target }}'; exit 1 }
+
+# install Windows Rust targets
+install-targets: assert-windows
+    @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
+    rustup target add {{ rust_target }}
+
+# auto-fix formatting issues in the WinUI3 shell
+# (the generated CounterApp.Shared project is left as facet-generate emits it)
+fix: assert-windows
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    dotnet format CounterApp/CounterApp.csproj
+
+# validate formatting of the WinUI3 shell (requires generated types for the
+# ProjectReference to resolve)
+check: assert-windows typegen
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    dotnet format CounterApp/CounterApp.csproj --verify-no-changes --verbosity minimal
+
+# generate C# types via the codegen binary
+typegen: assert-windows
+    @echo '{{ style("command") }}typegen:{{ NORMAL }}'
+    $env:RUST_LOG='info'; cargo run --package shared --bin codegen --features codegen,facet_typegen -- --language csharp --output-dir generated
+
+# build the x64 shared Rust library so MSBuild can copy shared.dll into the app output
+build-shared: assert-windows
+    @echo '{{ style("command") }}build-shared:{{ NORMAL }}'
+    cargo build -p shared --features csharp --target {{ rust_target }}
+
+# build the x64 WinUI3 app (generates types and shared.dll first)
+build: assert-windows typegen build-shared
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    $msbuild = & {{ vswhere }} -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1; if (-not $msbuild) { throw 'Could not locate MSBuild via vswhere.' }; & $msbuild CounterApp.sln "-p:Platform={{ platform }}" -nologo -verbosity:minimal -restore -target:Build
+
+# run tests
+test: assert-windows
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    @echo "  No tests configured for the WinUI3 shell"
+
+# remove build artifacts
+clean: assert-windows
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    if (Test-Path 'generated') { Remove-Item 'generated' -Recurse -Force }
+    if (Test-Path 'CounterApp/bin') { Remove-Item 'CounterApp/bin' -Recurse -Force }
+    if (Test-Path 'CounterApp/obj') { Remove-Item 'CounterApp/obj' -Recurse -Force }
+    cargo clean
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test
+
+# open in Visual Studio
+open: assert-windows
+    @echo '{{ style("command") }}open:{{ NORMAL }}'
+    Start-Process CounterApp.sln

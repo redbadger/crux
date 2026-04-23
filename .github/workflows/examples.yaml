@@ -10,6 +10,7 @@
 #   web-dioxus — 1 entry   (counter only)
 #   web-js     — 6 entries (all 5 examples x web-nextjs + counter/web-react-router)
 #   tauri      — 1 entry   (counter only)
+#   windows    — 1 entry   (counter only)
 #   apple      — 5 entries (all 5 examples, shell is always "apple")
 #   android    — 5 entries (all 5 examples, shell is always "Android")
 #
@@ -133,7 +134,7 @@ jobs:
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@v2
         with:
-          tool: dioxus-cli
+          tool: dioxus-cli@0.7.5
 
       - name: CI
         run: just web-dioxus/ci
@@ -220,6 +221,38 @@ jobs:
         run: just tauri/ci
         env:
           CI: true
+
+  # Windows (WinUI 3) shell. Needs: Windows runner, Rust with the MSVC target,
+  # .NET 10 SDK, just, and Visual Studio (pre-installed on windows-latest,
+  # resolved via vswhere). Only counter has this shell, so no matrix needed.
+  windows:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+          components: clippy, rustfmt
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: CI
+        run: just windows/ci
 
   # Apple (iOS/macOS) shells. Needs: macOS runner, Rust with Apple targets,
   # cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
