@@ -134,7 +134,7 @@ jobs:
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@v2
         with:
-          tool: dioxus-cli
+          tool: dioxus-cli@0.7.5
 
       - name: CI
         run: just web-dioxus/ci
