@@ -1,0 +1,114 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "timezone": "Etc/UTC",
+  "schedule": ["after 6am and before 9am on Wednesday"],
+  "prConcurrentLimit": 3,
+  "minimumReleaseAge": "7 days",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Automerge patch-level and pin/digest updates — CI gates correctness",
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge minor updates for dev dependencies — low risk for non-published code",
+      "matchDepTypes": ["devDependencies", "dev-dependencies"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": true
+    },
+    {
+      "description": "Group core crate Cargo updates",
+      "matchFileNames": [
+        "Cargo.toml",
+        "crux_core/**",
+        "crux_http/**",
+        "crux_kv/**",
+        "crux_macros/**",
+        "crux_platform/**",
+        "crux_time/**"
+      ],
+      "matchManagers": ["cargo"],
+      "groupName": "core-cargo",
+      "commitMessagePrefix": "chore(core):"
+    },
+    {
+      "description": "Group crux_cli Cargo updates",
+      "matchFileNames": ["crux_cli/**"],
+      "matchManagers": ["cargo"],
+      "groupName": "crux-cli-cargo",
+      "commitMessagePrefix": "chore(cli):"
+    },
+    {
+      "description": "Group support crate Cargo updates",
+      "matchFileNames": [
+        "doctest_support/**",
+        "examples_support/**",
+        "xtask/**"
+      ],
+      "matchManagers": ["cargo"],
+      "groupName": "support-cargo",
+      "commitMessagePrefix": "chore(support):"
+    },
+    {
+      "description": "Group all example deps (Cargo, npm, Gradle)",
+      "matchFileNames": ["examples/**"],
+      "groupName": "examples",
+      "commitMessagePrefix": "chore(examples):"
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "commitMessagePrefix": "chore(ci):"
+    },
+    {
+      "description": "Group typegen extension npm updates",
+      "matchFileNames": ["crux_core/typegen_extensions/**"],
+      "matchManagers": ["npm"],
+      "groupName": "typegen-npm",
+      "commitMessagePrefix": "chore(core):"
+    },
+    {
+      "description": "Update Cargo lockfiles even when the version range is already satisfied",
+      "matchManagers": ["cargo"],
+      "rangeStrategy": "update-lockfile"
+    },
+    {
+      "description": "Pin uniffi to 0.29.4 — waiting on NordSecurity/uniffi-bindgen-cs#163 for C# support",
+      "matchPackageNames": ["uniffi", "uniffi_bindgen"],
+      "matchManagers": ["cargo"],
+      "allowedVersions": "0.29.4"
+    },
+    {
+      "description": "Pin facet to 0.31 — waiting on redbadger/crux#501 (facet-generate 0.16 / facet 0.44)",
+      "matchPackageNames": ["facet"],
+      "matchManagers": ["cargo"],
+      "allowedVersions": "0.31"
+    },
+    {
+      "description": "Pin bincode to 1.x — 2.x has incompatible API; plan is to replace bincode entirely as it is unmaintained",
+      "matchPackageNames": ["bincode"],
+      "matchManagers": ["cargo"],
+      "allowedVersions": "<2"
+    },
+    {
+      "description": "Pin cargo_metadata to 0.19 in crux_cli — newer versions have breaking changes affecting CLI metadata parsing",
+      "matchPackageNames": ["cargo_metadata"],
+      "matchFileNames": ["crux_cli/**"],
+      "matchManagers": ["cargo"],
+      "allowedVersions": "0.19"
+    },
+    {
+      "description": "Pin rustdoc-types to 0.35 — tracks a specific rustdoc JSON format version",
+      "matchPackageNames": ["rustdoc-types"],
+      "matchManagers": ["cargo"],
+      "allowedVersions": "0.35"
+    }
+  ]
+}
