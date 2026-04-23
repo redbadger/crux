@@ -1,2 +1,7 @@
 /target
 apple/generated/
+windows/generated/
+windows/**/bin/
+windows/**/obj/
+windows/**/.vs/
+windows/**/*.user

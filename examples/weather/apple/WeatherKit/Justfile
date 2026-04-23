@@ -1,0 +1,48 @@
+# WeatherKit - SPM package for shared SwiftUI components
+mod lib './../../../../lib.just'
+
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# removes build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    swift package clean
+    rm -rf .build
+
+# builds the package
+build:
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    swift build
+
+# runs tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    swift test
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    swiftformat . --config .swiftformat --swiftversion 6
+
+# validate formatting and lint (strict, no auto-fix)
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    swiftformat . --config .swiftformat --lint --swiftversion 6
+    swiftlint lint --config .swiftlint.yml --strict
+
+# local development: fix, check, build, test
+dev: fix check build test
+
+# CI pipeline: check, build, test
+ci: check build test
+
+# check that all required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-tool swift "Install Xcode or Swift toolchain"
+    @just lib::check-tool swiftformat "brew install swiftformat"
+    @just lib::check-tool swiftlint "brew install swiftlint"

@@ -1,5 +1,4 @@
 mod lib '../../../lib.just'
-mod wlib '../weather-lib.just'
 
 default: dev
 
@@ -11,7 +10,6 @@ default: dev
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-web-trunk
-    @just wlib::check-env
 
 # auto-fix formatting issues
 fix:
@@ -49,4 +47,4 @@ ci: check build test
 # serve the app locally
 serve:
     @echo '{{ style("command") }}serve:{{ NORMAL }}'
-    . ../.env && trunk serve
+    trunk serve

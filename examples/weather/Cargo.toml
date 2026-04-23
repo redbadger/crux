@@ -8,7 +8,7 @@ edition = "2024"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
 keywords = ["crux", "crux_core", "cross-platform-ui", "ffi", "wasm"]
-rust-version = "1.88"
+rust-version = "1.90"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
@@ -22,6 +22,7 @@ anyhow = "1.0.102"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }
+crux_time = { path = "../../crux_time" }
 # crux_core = "0.17.0"
 # crux_http = "0.16.0"
 # crux_kv = "0.11.0"

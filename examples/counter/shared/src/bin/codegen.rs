@@ -14,6 +14,7 @@ use shared::Counter;
 enum Language {
     Swift,
     Kotlin,
+    Csharp,
     Typescript,
 }
 
@@ -35,11 +36,11 @@ fn main() -> Result<()> {
     let name = match args.language {
         Language::Swift => "App",
         Language::Kotlin => "com.crux.examples.counter",
+        Language::Csharp => "CounterApp.Shared",
         Language::Typescript => "app",
     };
     let config = Config::builder(name, &args.output_dir)
         .add_extensions()
-        .add_runtimes()
         .build();
 
     match args.language {
@@ -57,6 +58,10 @@ fn main() -> Result<()> {
                 .kotlin(&args.output_dir)
                 .build()?;
             bindgen(&bindgen_args)?;
+        }
+        Language::Csharp => {
+            info!("Typegen for C#");
+            typegen_app.csharp(&config)?;
         }
         Language::Typescript => {
             info!("Typegen for TypeScript");

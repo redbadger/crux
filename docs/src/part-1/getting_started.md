@@ -53,7 +53,7 @@ members = ["shared"]
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 
 [workspace.dependencies]
 anyhow = "1.0.100"

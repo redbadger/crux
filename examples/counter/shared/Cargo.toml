@@ -8,8 +8,13 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 
-[lints]
-workspace = true
+[lints.clippy]
+pedantic = "warn"
+
+[lints.rust]
+# Match the workspace's unsafe_code policy, but at `deny` rather than `forbid`
+# so the `csharp` feature's P/Invoke layer can opt in via `#[allow(unsafe_code)]`.
+unsafe_code = "deny"
 
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]
@@ -24,6 +29,7 @@ required-features = ["codegen"]
 [features]
 facet_typegen = ["crux_core/facet_typegen"]
 # ANCHOR_END: typegen
+csharp = []
 uniffi = ["dep:uniffi"]
 wasm_bindgen = ["dep:wasm-bindgen"]
 codegen = [
@@ -36,7 +42,7 @@ codegen = [
 
 # ANCHOR: typegen_deps
 [dependencies]
-facet = "=0.31"
+facet = { version = "0.44", features = ["chrono"] }
 # ANCHOR_END: typegen_deps
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }

@@ -72,51 +72,8 @@
 //!    Ok(())
 //!}
 //! ```
-//!
-//! ## Custom extensions
-//!
-//! If you need to use customized files for one of:
-//!
-//! - `generated/typescript/*`,
-//! - `generated/swift/(requests | Package).swift` -
-//! - `generated/java/Requests.java`
-//!
-//! Then create the `typegen_extensions/{target}/{target-file}`
-//! with the desired content next to your `build.rs` file.
-//!
-//! For example `typegen_extensions/swift/Package.swift`:
-//!
-//! ```swift
-//! // swift-tools-version: 5.7.1
-//! // The swift-tools-version declares the minimum version of Swift required to build this package.
-//!
-//! import PackageDescription
-//!
-//! let package = Package(
-//!     name: "SharedTypes",
-//!     products: [
-//!         // Products define the executables and libraries a package produces, and make them visible to other packages.
-//!         .library(
-//!             name: "SharedTypes",
-//!             targets: ["SharedTypes"]),
-//!     ],
-//!     dependencies: [
-//!         // Dependencies declare other packages that this package depends on.
-//!         // .package(url: /* package url */, from: "1.0.0"),
-//!     ],
-//!     targets: [
-//!         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
-//!         // Targets can depend on other targets in this package, and on products in packages this package depends on.
-//!         .target(
-//!             name: "Serde",
-//!             dependencies: []),
-//!         .target(
-//!             name: "SharedTypes",
-//!             dependencies: ["Serde"]),
-//!     ]
-//! )
-//! ```
 
+use include_dir::{Dir, include_dir};
 use serde::Deserialize;
 use serde_generate::{Encoding, SourceInstaller, csharp, java, swift, typescript};
 use serde_reflection::{Registry, Tracer, TracerConfig};
@@ -124,9 +81,18 @@ use std::{
     fs::{self, File},
     io::Write,
     mem,
-    path::{Path, PathBuf},
+    path::Path,
 };
 use thiserror::Error;
+
+macro_rules! extension_data {
+    ($path:literal) => {
+        include_str!(concat!("../../typegen_extensions/", $path))
+    };
+}
+
+static TYPESCRIPT_EXTENSIONS: Dir<'_> =
+    include_dir!("$CARGO_MANIFEST_DIR/typegen_extensions/typescript");
 
 // Expose from `serde_reflection` for `register_type_with_samples()`
 use serde_reflection::Samples;
@@ -439,19 +405,13 @@ The 2 common cases are:
                 .join("Requests.swift"),
         )?;
 
-        let requests_path = Self::extensions_path("swift/requests.swift");
-
-        let requests_data = fs::read_to_string(requests_path)?;
-
+        let requests_data = extension_data!("swift/requests.swift");
         write!(output, "{requests_data}")?;
 
         // wrap it all up in a swift package
         let mut output = File::create(path.join("Package.swift"))?;
 
-        let package_path = Self::extensions_path("swift/Package.swift");
-
-        let package_data = fs::read_to_string(package_path)?;
-
+        let package_data = extension_data!("swift/Package.swift");
         write!(
             output,
             "{}",
@@ -511,10 +471,7 @@ The 2 common cases are:
             .install_module(&config, registry)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let requests_path = Self::extensions_path("java/Requests.java");
-
-        let requests_data = fs::read_to_string(requests_path)?;
-
+        let requests_data = extension_data!("java/Requests.java");
         let requests = format!("package {package_name};\n\n{requests_data}");
 
         fs::write(
@@ -575,10 +532,7 @@ The 2 common cases are:
             .install_module(&config, registry)
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let requests_path = Self::extensions_path("csharp/Requests.cs");
-
-        let requests_data = fs::read_to_string(requests_path)?;
-
+        let requests_data = extension_data!("csharp/Requests.cs");
         let requests = format!("namespace {module_name}{requests_data}");
 
         fs::write(
@@ -632,8 +586,7 @@ The 2 common cases are:
             .install_bincode_runtime()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        let extensions_dir = Self::extensions_path("typescript");
-        copy(extensions_dir, path)?;
+        TYPESCRIPT_EXTENSIONS.extract(&output_dir)?;
 
         let State::Generating(registry) = &self.state else {
             panic!("registry creation failed");
@@ -702,40 +655,6 @@ The 2 common cases are:
         }
         Ok(())
     }
-
-    fn extensions_path(path: &str) -> PathBuf {
-        let custom = PathBuf::from("./typegen_extensions").join(path);
-        let default = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("typegen_extensions")
-            .join(path);
-
-        match custom.try_exists() {
-            Ok(true) => custom,
-            Ok(false) => default,
-            Err(e) => {
-                println!("cant check typegen extensions override: {e}");
-                default
-            }
-        }
-    }
-}
-
-fn copy(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result {
-    fs::create_dir_all(to.as_ref())?;
-
-    let entries = fs::read_dir(from)?;
-    for entry in entries {
-        let entry = entry?;
-
-        let to = to.as_ref().to_path_buf().join(entry.file_name());
-        if entry.file_type()?.is_dir() {
-            copy(entry.path(), to)?;
-        } else {
-            fs::copy(entry.path(), to)?;
-        }
-    }
-
-    Ok(())
 }
 
 #[cfg(feature = "typegen")]

@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@source "./src/**/*.rs";
+@source "./index.html";
+
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    @apply font-sans min-h-screen text-slate-900 antialiased;
+    background: linear-gradient(180deg, #4a90d9 0%, #1c5fa5 100%);
+  }
+}

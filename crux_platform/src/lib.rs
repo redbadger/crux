@@ -1,3 +1,4 @@
+#![allow(clippy::unsafe_derive_deserialize)]
 //! A demo capability to get a name of the current platform
 
 pub mod command;

@@ -1,0 +1,3 @@
+--commas inline
+--exclude .build/**/*
+--disable wrapMultilineStatementBraces

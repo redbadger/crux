@@ -48,15 +48,9 @@ The execution of effects, including drawing the user interface, is done in a nat
 
 The Shell thus has two sides: the _driving_ side – the interactions causing events which push the Core to action, and the _driven_ side, which services the Core's requests for side effects. The Core itself is also _driven_ — Without being prompted by the Shell, the Core does nothing, it can't – with no other I/O, there are no other triggers which could cause the Core code to run. To the Shell, the Core is a simple library, providing some computation. From the perspective of the Core, the Shell is a platform the Core runs on.
 
-```admonish note title="The effect runtime is also driven"
-Note that this driven nature impacts how effects execute in Crux. In the next few chapters, you'll see that you can write effect orchestration with `async` Rust, but because the entirety of the core is driven, this async code only executes when the core APIs are called by the shell.
-
-Don't worry if this means nothing to you for now, it'll make sense later.
-```
-
 ## Managed effects: the complex interactions between the core and the shell
 
-While the basic effects are quite simple (e.g. "fetch a response over HTTP"), real world apps tend to compose them in quite complicated patterns with data dependencies between them, and we need to support this use well. In the next chapter, we'll introduce the `Command` API used to compose the basic effects into more complex interactions, and later we'll build on this with Capabilities, which provide an abstraction on top of these basic building blocks with a more ergonomic API.
+While the basic effects are quite simple (e.g. "fetch a response over HTTP"), real world apps tend to compose them in quite complicated patterns with data dependencies between them, and we need to support this use well. In a later chapter, we'll introduce the `Command` API used to compose the basic effects into more complex interactions, and later we'll build on this with Capabilities, which provide an abstraction on top of these basic building blocks with a more ergonomic API.
 
 Capabilities not only provide a nicer API for creating effects and effect orchestrations; in the future, they will likely also provide implementations of the effect execution for the various supported platforms.
 
@@ -70,6 +64,6 @@ fn view(&self, model: &Model) -> ViewModel;
 
 The Commands are generic over two types: an `Effect` describing the interactions with the outside world we want to do, and our `Event`, acting as a callback when those interactions are complete and return a value of some kind.
 
-We will look at how effects are created and passed to the shell in a chapter following the next one, in which we'll first have a look at how larger apps fit together in Crux.
+We will look at how effects are created and passed to the shell in a later chapter. First, the next chapter covers how a real app's state is shaped — as a lifecycle with distinct stages, each composed of smaller state machines.
 
 [^testing]: In reality, we do need to check that at least one of our HTTP requests executes successfully, but once one does, it is very likely that so long as they are described correctly, all of them will.

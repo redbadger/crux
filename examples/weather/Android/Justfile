@@ -1,5 +1,4 @@
 mod lib '../../../lib.just'
-mod wlib '../weather-lib.just'
 
 default: dev
 
@@ -11,27 +10,6 @@ default: dev
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-android
-    @just wlib::check-env
-
-# copies API key from .env to local.properties
-[script('sh')]
-setup:
-    set -euo pipefail
-    echo '{{ style("command") }}setup:{{ NORMAL }}'
-    . ../.env
-    if [ -z "${OPENWEATHER_API_KEY:-}" ]; then
-        echo "  ERROR: OPENWEATHER_API_KEY not set in ../.env"
-        exit 1
-    fi
-    touch local.properties
-    if grep -q '^OPENWEATHER_API_KEY=' local.properties 2>/dev/null; then
-        tmp=$(mktemp)
-        sed "s/^OPENWEATHER_API_KEY=.*/OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}/" local.properties > "$tmp"
-        mv "$tmp" local.properties
-    else
-        echo "OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}" >> local.properties
-    fi
-    echo "  API key written to local.properties"
 
 # install Android Rust cross-compilation targets
 install-targets:
@@ -87,7 +65,7 @@ clean:
     rm -rf generated
 
 # local development workflow
-dev: setup fix check build test
+dev: fix check build test
 
 # CI workflow
 ci: check build test

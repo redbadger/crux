@@ -1,56 +1,22 @@
 import SwiftUI
-import App
+import WeatherKit
 
-// View modifier to handle smooth transitions
-private struct SmoothTransitionModifier: ViewModifier {
-    let workflow: WorkflowViewModel
-
-    func body(content: Content) -> some View {
-        content
-            .animation(.easeInOut, value: workflow)
-    }
-}
-
-// ANCHOR: content_view
 struct ContentView: View {
-    @ObservedObject var core: Core
-
-    init(core: Core) {
-        self.core = core
-    }
+    @Environment(Core.self) var core
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // Base background that's always present
-                Color(platformGroupedBackground)
-                    .ignoresSafeArea()
+        switch core.view {
+        case .loading:
+            ProgressView("Loading...")
 
-                // Content views
-                switch core.view.workflow {
-                case .home:
-                    HomeView(core: core)
-                        .transition(
-                            .opacity.combined(with: .offset(x: 0, y: 10))
-                        )
-                case .favorites:
-                    FavoritesView(core: core)
-                        .transition(
-                            .opacity.combined(with: .offset(x: 0, y: 10))
-                        )
-                case .addFavorite:
-                    AddFavoriteView(core: core)
-                        .transition(
-                            .opacity.combined(with: .offset(x: 0, y: 10))
-                        )
-                }
-            }
-            .animation(.easeOut(duration: 0.2), value: core.view.workflow)
+        case let .onboard(onboard):
+            OnboardView(model: onboard)
+
+        case let .active(active):
+            ActiveView(model: active)
+
+        case let .failed(message):
+            FailedView(message: message)
         }
     }
-}
-// ANCHOR_END: content_view
-
-#Preview {
-    ContentView(core: Core())
 }
