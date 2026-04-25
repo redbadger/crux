@@ -135,7 +135,8 @@ The first step for anything to happen is spawning a task from a capability. Each
 capability is created with a `CapabilityContext`. This is the definition:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/mod.rs:capability_context}}
+// Note: CapabilityContext has been removed in favour of the Command-based API.
+// See crux_core/src/command/ for the current implementation.
 ```
 
 There are a couple of sending ends of channels for requests and events, which we
@@ -143,7 +144,9 @@ will get to soon, and also a spawner, from the executor module. The `Spawner`
 looks like this:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:spawner}}
+// Note: The capability executor has been refactored.
+// crux_core/src/capability/executor.rs no longer exists.
+// The executor is now part of the Command system in crux_core/src/command/executor.rs.
 ```
 
 also holding a sending end of a channel, this one for `Task`s.
@@ -153,13 +156,15 @@ end of the tasks channel, because tasks need to be able to submit themselves
 when awoken.
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:task}}
+// Note: The Task type has been refactored.
+// See crux_core/src/command/executor.rs for the current implementation.
 ```
 
 Tasks are spawned by the Spawner as follows:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:spawning}}
+// Note: Task spawning has been refactored.
+// See crux_core/src/command/executor.rs for the current implementation.
 ```
 
 after constructing a task, it is submitted using the task sender.
@@ -167,7 +172,8 @@ after constructing a task, it is submitted using the task sender.
 The final piece of the puzzle is the executor itself:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:executor}}
+// Note: The Executor type has been refactored.
+// See crux_core/src/command/executor.rs for the current implementation.
 ```
 
 This is the receiving end of the channel from the spawner.
@@ -175,7 +181,8 @@ This is the receiving end of the channel from the spawner.
 The executor has a single public method, `run_all`:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:run_all}}
+// Note: run_all has been refactored into run_until_settled.
+// See crux_core/src/command/executor.rs for the current implementation.
 ```
 
 besides the locking and waker mechanics, the gist is quite simple - while there
@@ -186,7 +193,8 @@ call. The `waker_ref` creates a waker which, when asked to wake up, will call
 this method on the task:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/executor.rs:wake}}
+// Note: The waker implementation has been refactored.
+// See crux_core/src/command/executor.rs for the current implementation.
 ```
 
 this is where the task resubmits itself for processing on the next run.
@@ -297,7 +305,8 @@ We've already mentioned the resolve function itself briefly, but for
 completeness, here's an example from `request_from_shell`:
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/capability/shell_request.rs:resolve}}
+// Note: crux_core/src/capability/shell_request.rs no longer exists.
+// The resolve callback is now part of RequestHandle in crux_core/src/core/resolve.rs.
 ```
 
 Bar the locking and sharing mechanics, all it does is update the state of the

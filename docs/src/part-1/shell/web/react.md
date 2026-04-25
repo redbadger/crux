@@ -167,7 +167,7 @@ the core and the shell. This is because the core is running in a separate
 WebAssembly instance, and so we can't just pass the data directly.
 
 ```typescript
-{{#include ../../../../examples/simple_counter/web-nextjs/src/app/core.ts}}
+{{#include ../../../../../examples/simple_counter/web-nextjs/src/app/core.ts}}
 ```
 
 ```admonish tip
@@ -187,7 +187,7 @@ WebAssembly core and sends it an initial event. Notice that we pass the
 response to a render effect from the core.
 
 ```typescript
-{{#include ../../../../examples/simple_counter/web-nextjs/src/app/page.tsx}}
+{{#include ../../../../../examples/simple_counter/web-nextjs/src/app/page.tsx}}
 ```
 
 Now all we need is some CSS. First add the `Bulma` package, and then import it
@@ -198,7 +198,7 @@ pnpm add bulma
 ```
 
 ```typescript
-{{#include ../../../../examples/simple_counter/web-nextjs/src/app/layout.tsx}}
+{{#include ../../../../../examples/simple_counter/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app

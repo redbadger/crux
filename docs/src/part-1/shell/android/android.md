@@ -33,7 +33,7 @@ Open Android Studio and create a new project, for "Phone and Tablet", of type
 - "Package name": `com.example.simple_counter`
 - "Save Location": a directory called `Android` at the root of our monorepo
 - "Minimum SDK" `API 34`
-- "Build configuration language": `Groovy DSL (build.gradle)`
+- "Build configuration language": `Kotlin DSL (build.gradle.kts)`
 
 Your repo's directory structure might now look something like this (some files
 elided):
@@ -42,7 +42,7 @@ elided):
 .
 ├── Android
 │  ├── app
-│  │  ├── build.gradle
+│  │  ├── build.gradle.kts
 │  │  ├── libs
 │  │  └── src
 │  │     └── main
@@ -52,7 +52,7 @@ elided):
 │  │              └── example
 │  │                 └── simple_counter
 │  │                    └── MainActivity.kt
-│  ├── build.gradle
+│  ├── build.gradle.kts
 │  ├── gradle.properties
 │  ├── local.properties
 │  └── settings.gradle
@@ -82,18 +82,18 @@ Under `File -> New -> New Module`, choose "Android Library" and give it the "Mod
 `shared`. Set the "Package name" to match the one from your
 `/shared/uniffi.toml`, which in this example is `com.example.simple_counter.shared`.
 
-Again, set the "Build configuration language" to `Groovy DSL (build.gradle)`.
+Again, set the "Build configuration language" to `Kotlin DSL (build.gradle.kts)`.
 
 For more information on how to add an Android library see
 <https://developer.android.com/studio/projects/android-library>.
 
 We can now add this library as a _dependency_ of our app.
 
-Edit the **app**'s `build.gradle` (`/Android/app/build.gradle`) to look like
+Edit the **app**'s `build.gradle.kts` (`/Android/app/build.gradle.kts`) to look like
 this:
 
 ```gradle
-{{#include ../../../../examples/simple_counter/Android/app/build.gradle}}
+{{#include ../../../../../examples/simple_counter/Android/app/build.gradle.kts}}
 ```
 
 ````admonish
@@ -103,7 +103,7 @@ will need to ensure this is kept up to date.
 Our catalog (`Android/gradle/libs.versions.toml`) will end up looking like this:
 
 ```toml
-{{#include ../../../../examples/simple_counter/Android/gradle/libs.versions.toml}}
+{{#include ../../../../../examples/simple_counter/Android/gradle/libs.versions.toml}}
 ```
 ````
 
@@ -130,23 +130,23 @@ Add the four rust android toolchains to your system:
 $ rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 ```
 
-Edit the **project**'s `build.gradle` (`/Android/build.gradle`) to look like
+Edit the **project**'s `build.gradle.kts` (`/Android/build.gradle.kts`) to look like
 this:
 
 ```gradle
-{{#include ../../../../examples/simple_counter/Android/build.gradle}}
+{{#include ../../../../../examples/simple_counter/Android/build.gradle.kts}}
 ```
 
-Edit the **library**'s `build.gradle` (`/Android/shared/build.gradle`) to look
+Edit the **library**'s `build.gradle.kts` (`/Android/shared/build.gradle.kts`) to look
 like this:
 
 ```gradle
-{{#include ../../../../examples/simple_counter/Android/shared/build.gradle}}
+{{#include ../../../../../examples/simple_counter/Android/shared/build.gradle.kts}}
 
 ```
 
 ```admonish warning title="Sharp edge"
-You will need to set the `ndkVersion` to one you have installed, go to "**Tools, SDK Manager, SDK Tools**" and check "**Show Package Details**" to get your installed version, or to install the version matching `build.gradle` above.
+You will need to set the `ndkVersion` to one you have installed, go to "**Tools, SDK Manager, SDK Tools**" and check "**Show Package Details**" to get your installed version, or to install the version matching `build.gradle.kts` above.
 ```
 
 ```admonish tip
@@ -252,7 +252,7 @@ so we just handle this render effect by updating the published view model from
 the core.
 
 ```swift
-{{#include ../../../../examples/simple_counter/Android/app/src/main/java/com/example/simple_counter/Core.kt}}
+{{#include ../../../../../examples/simple_counter/Android/app/src/main/java/com/crux/examples/simplecounter/Core.kt}}
 ```
 
 ```admonish tip
@@ -268,7 +268,7 @@ Edit `/Android/app/src/main/java/com/example/simple_counter/MainActivity.kt` to
 look like the following:
 
 ```kotlin
-{{#include ../../../../examples/simple_counter/Android/app/src/main/java/com/example/simple_counter/MainActivity.kt}}
+{{#include ../../../../../examples/simple_counter/Android/app/src/main/java/com/crux/examples/simplecounter/MainActivity.kt}}
 ```
 
 ```admonish success

@@ -60,7 +60,8 @@ interested in the gory details. For our purposes, the type definition will
 suffice.
 
 ```rust,no_run,noplayground
-{{#include ../../../crux_core/src/bridge/mod.rs:bridge_with_serializer}}
+// Note: BridgeWithSerializer has been refactored into Bridge<A, F>.
+// See crux_core/src/bridge/mod.rs for the current implementation.
 ```
 
 The bridge holds an instance of the `Core` and a `ResolveRegistry` to store the
@@ -152,7 +153,9 @@ uniffi::include_scaffolding!("shared");
 which refers to the `shared.udl` file in the same folder
 
 ```
-{{#include ../../../examples/bridge_echo/shared/src/shared.udl}}
+// Note: The shared.udl file has been removed. UniFFI now uses
+// uniffi::setup_scaffolding!() in lib.rs and a uniffi.toml config file.
+// See examples/bridge_echo/shared/uniffi.toml for the current configuration.
 ```
 
 This is UniFFI's interface definition used to generate the scaffolding for the
@@ -162,14 +165,16 @@ and their counterparts in the "foreign" languages (like Swift or Kotlin).
 The scaffolding is built in the `build.rs` script of the crate
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/bridge_echo/shared/build.rs}}
+// Note: build.rs has been removed. UniFFI scaffolding is now generated
+// via the uniffi::setup_scaffolding!() macro in lib.rs.
 ```
 
 The foreign language code is built by an additional binary target for the same
 crate, in `src/bin/uniffi-bindgen.rs`
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/bridge_echo/shared/src/bin/uniffi-bindgen.rs}}
+// Note: uniffi-bindgen.rs has been replaced by src/bin/codegen.rs.
+// See examples/bridge_echo/shared/src/bin/codegen.rs for the current implementation.
 ```
 
 this builds a CLI which can be used as part of the build process for clients of
