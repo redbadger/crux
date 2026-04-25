@@ -56,7 +56,7 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-anyhow = "1.0.100"
+anyhow = "1.0.102"
 crux_core = "0.17.0"
 serde = "1.0.228"
 ```
@@ -108,15 +108,17 @@ for your app code.
 
 For now, the `lib.rs` file looks as follows:
 
-```rust
+```rust,noplayground
 // src/lib.rs
-pub mod app;
+mod app;
+
+pub use app::*;
 ```
 
 and `app.rs` can be empty, but let's put our app's main type in it,
 call it `Counter`:
 
-```rust
+```rust,noplayground
 // src/app.rs
 
 #[derive(Default)]

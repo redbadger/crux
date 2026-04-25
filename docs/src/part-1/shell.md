@@ -21,13 +21,13 @@ Crux provides code generation support for all of the above.
 
 ```admonish note
 It isn't in any way actual black magic. What happens is Crux exposes FFI calls taking and returning
-the values serialized with `bincode` (by default), and generated "foreign" (Swift, Kotlin, ...)
+the values serialized with `bincode` (by default), and generated "foreign" (Swift, Kotlin, TypeScript, ...)
 types handling the foreign side of the serialization.
 
 Yes, this introduces some extra work to the FFI, but generally, for each user interaction we
 make a relatively small number of round-trips (almost certainly less than ten), and our benchmarks say
 we can make thousands of them per second. The real throughput _is_ dependent on how much data gets serialized,
-but it only becomes a problem with _really_ large messages, and advanced workarounds exists. You
+but it only becomes a problem with _really_ large messages, and advanced workarounds exist. You
 most likely don't need to worry about it, at least not for now.
 ```
 
@@ -53,7 +53,7 @@ A lot has changed! The key things we added are:
 
 And since we've declared the `codegen` target, we need to add the code for it.
 
-```rust
+```rust,noplayground
 // shared/src/bin/codegen.rs
 {{#include ../../../examples/simple_counter/shared/src/bin/codegen.rs}}
 ```
@@ -78,6 +78,39 @@ For most platforms we use UniFFI, except for WebAssembly, where we use `wasm_bin
 
 **codegen** – you guessed it, "code generation" – is the two things above combined.
 
+## Updating our `app.rs`
+
+There's a few things we need to do to our `app.rs` module to support typegen. The first thing we need to do is update the annotation of the `Effect` type to tell our `effect` attribute macro that we want to use the Facet-based typegen.
+
+```rust,noplayground
+#[derive(Debug)]
+#[effect(facet_typegen)] // previously #[effect]
+pub enum Effect {
+    Render(RenderOperation),
+}
+```
+
+We also need to annotate the other types that cross the FFI boundary with the `Facet` derive macro. Note that we are using Facet v0.31 (with `crux_core` v0.17), and so we also need to specify a layout for enums, e.g. `repr(C)` or `repr(u8)`.
+
+```rust,noplayground
+use facet::Facet;
+
+// derive Facet and specify layout
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[repr(C)]
+pub enum Event {
+    Increment,
+    Decrement,
+    Reset,
+}
+
+// derive Facet
+#[derive(Facet, Serialize, Deserialize, Clone, Default)]
+pub struct ViewModel {
+    pub count: String,
+}
+```
+
 ## Bindings code
 
 Now we need to add the Rust side of the bindings into our code. Update your `lib.rs` to look like this:
@@ -92,7 +125,7 @@ in use.
 
 More importantly, it introduced a new `ffi.rs` module. Let's look at it closer:
 
-```rust
+```rust,noplayground
 // shared/src/ffi.rs
 {{#include ../../../examples/simple_counter/shared/src/ffi.rs}}
 ```

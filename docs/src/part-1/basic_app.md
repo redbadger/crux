@@ -60,7 +60,7 @@ eventually be crossing the FFI boundary. We will get to that soon.
 
 Model holds our application's internal state. You can probably guess what this will look like:
 
-```rust
+```rust,noplayground
 #[derive(Default)]
 pub struct Model {
     count: isize,
@@ -93,11 +93,11 @@ some navigation into the mix in Part II.
 For now, the counter has no side effects. Except it wants to update the user interface, and
 that is also a side effect. We'll go with this:
 
-```rust
+```rust,noplayground
 use crux_core::macros::effect;
 use crux_core::render::RenderOperation;
 
-#[effect(typegen)]
+#[effect]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
