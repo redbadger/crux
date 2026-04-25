@@ -81,6 +81,7 @@ Your repo's directory structure might now look something like this
 │  │     └── main
 │  │        ├── AndroidManifest.xml
 │  │        └── java/com/crux/examples/counter
+│  │           ├── Core.kt
 │  │           └── MainActivity.kt
 │  ├── build.gradle.kts
 │  ├── gradle.properties
@@ -168,7 +169,6 @@ like this:
 
 ```kotlin
 {{#include ../../../../../examples/counter/Android/shared/build.gradle.kts}}
-
 ```
 
 ```admonish warning title="Sharp edge"
@@ -265,4 +265,3 @@ look like the following:
 You should then be able to run the app in the simulator, and it should look like this:
 
 <p align="center"><img alt="simple counter app" src="./counter.webp"  width="300"></p>
-```

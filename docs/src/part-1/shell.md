@@ -153,19 +153,7 @@ Now we need to add the Rust side of the bindings into our code. Update your `lib
 
 ```rust,noplayground
 // shared/src/lib.rs
-mod app;
-pub mod ffi;
-
-pub use app::*;
-pub use crux_core::Core;
-
-#[cfg(feature = "uniffi")]
-const _: () = assert!(
-    uniffi::check_compatible_version("0.29.4"),
-    "please use uniffi v0.29.4"
-);
-#[cfg(feature = "uniffi")]
-uniffi::setup_scaffolding!();
+{{#include ../../../examples/counter/shared/src/lib.rs}}
 ```
 
 This code uses our feature flags to conditionally initialize the UniFFI bindings and check the version
