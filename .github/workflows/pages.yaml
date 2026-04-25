@@ -34,7 +34,7 @@ jobs:
         working-directory: latest
         run: |
           ref=$(cat docs/STABLE_REF)
-          git rev-parse --verify "${ref}^{tag}"
+          git rev-parse --verify "${ref}^{commit}"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
       - name: Checkout (stable)
