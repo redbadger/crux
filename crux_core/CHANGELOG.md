@@ -10,6 +10,24 @@ and this project adheres to
 
 ### 🚀 Features
 
+**This is a breaking release.**
+
+#### Major Breaking Changes:
+
+- **`facet_generate` 0.16 / `facet` 0.44**: Runtime installation is now automatic. Remove
+  `.add_runtimes()` from any `Config::builder(...)` chain in your `codegen.rs` — it is no longer
+  available. No other call-site changes are needed; `typegen.swift(&config)`,
+  `typegen.kotlin(&config)`, `typegen.typescript(&config)`, and `typegen.csharp(&config)` work the
+  same as before.
+- **`typegen_extensions/` is no longer read from disk**: Template files for the `serde` typegen
+  backend are now embedded into the library at compile time, so type generation works in
+  sandboxed builds (e.g. Bazel) where the source tree may not exist on the host running `codegen`.
+  If you placed a `typegen_extensions/` directory next to your `build.rs` to override templates,
+  that override no longer takes effect — fork or contribute upstream instead. If you didn't
+  customize templates, no action is required.
+
+#### New Features:
+
 - **C# Typegen on `facet_generate`**: The newer `facet_generate` typegen backend now exposes
   `CodeGenerator::csharp(&Config)`, producing an `MSBuild` project targeting `net10.0` with a
   `CommunityToolkit.Mvvm` base reference and a Bincode runtime.

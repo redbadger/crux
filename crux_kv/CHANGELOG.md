@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### ⚙️ Miscellaneous Tasks
+
+- Align with `crux_core` 0.18.0. No public API changes.
+
 ## [0.11.0](https://github.com/redbadger/crux/compare/crux_kv-v0.10.0...crux_kv-v0.11.0) - 2026-03-20
 
 ### 🚀 Features

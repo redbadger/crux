@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.16 and `facet` 0.44. No changes to the public derive surface
+  (`#[derive(Effect)]`, `#[effect]`); no migration needed for downstream apps.
+- Align with `crux_core` 0.18.0.
+
 ## [0.8.0](https://github.com/redbadger/crux/compare/crux_macros-v0.7.0...crux_macros-v0.8.0) - 2026-03-20
 
 ### 🚀 Features

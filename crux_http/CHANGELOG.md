@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### ⚙️ Miscellaneous Tasks
+
+- Align with `crux_core` 0.18.0 and update to `facet_generate` 0.16 / `facet` 0.44. No public
+  API changes; users who consume only the `crux_http` API (e.g. `Http::get(...)`) need no
+  migration. Users running `crux_core` typegen on `crux_http` types should follow the
+  `crux_core` 0.18.0 migration notes.
+
 ## [0.16.0](https://github.com/redbadger/crux/compare/crux_http-v0.15.0...crux_http-v0.16.0) - 2026-03-20
 
 ### 🚀 Features
