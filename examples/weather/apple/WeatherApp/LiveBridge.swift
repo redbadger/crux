@@ -1,8 +1,8 @@
 import App
 import Foundation
-import os
 import Shared
 import WeatherKit
+import os
 
 private let logger = Logger(subsystem: "com.crux.examples.weather", category: "live-bridge")
 
@@ -18,7 +18,7 @@ struct LiveBridge: CoreBridge {
     }
 
     func processEvent(_ event: Event) -> [Request] {
-        let eventBytes = try! event.bincodeSerialize() // swiftlint:disable:this force_try
+        let eventBytes = try! event.bincodeSerialize()  // swiftlint:disable:this force_try
         logger.debug("sending \(eventBytes.count) event bytes")
 
         let effects = [UInt8](ffi.update(Data(eventBytes)))
@@ -45,6 +45,6 @@ struct LiveBridge: CoreBridge {
             logger.error("response too short (\(bytes.count) bytes)")
             return []
         }
-        return try! .bincodeDeserialize(input: bytes) // swiftlint:disable:this force_try
+        return try! Requests.bincodeDeserialize(input: bytes).value  // swiftlint:disable:this force_try
     }
 }

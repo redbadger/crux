@@ -14,7 +14,7 @@ open class Core : androidx.lifecycle.ViewModel() {
     fun update(event: Event) {
         val effects = core.update(event.bincodeSerialize())
 
-        val requests = Requests.bincodeDeserialize(effects)
+        val requests = Requests.bincodeDeserialize(effects).value
         for (request in requests) {
             processEffect(request)
         }

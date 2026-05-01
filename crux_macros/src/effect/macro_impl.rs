@@ -198,6 +198,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                             .register_type::<#ffi_enum_ident>()
                             .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(err.to_string()))?
                             .register_type::<::crux_core::bridge::Request<#ffi_enum_ident>>()
+                            .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(err.to_string()))?
+                            .register_type::<::crux_core::bridge::Requests<#ffi_enum_ident>>()
                             .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(err.to_string()))?;
 
                         Ok(generator)

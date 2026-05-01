@@ -37,9 +37,7 @@ fn main() -> Result<()> {
         Language::Kotlin => "com.crux.examples.counter",
         Language::Typescript => "app",
     };
-    let config = Config::builder(name, &args.output_dir)
-        .add_extensions()
-        .build();
+    let config = Config::builder(name, &args.output_dir).build();
 
     match args.language {
         Language::Swift => {

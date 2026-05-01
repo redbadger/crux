@@ -14,10 +14,10 @@ public sealed class Core : IDisposable
         ViewModel.BincodeDeserialize(CoreFfi.View(handle));
 
     public IReadOnlyList<Request> Update(Event @event) =>
-        Requests.BincodeDeserialize(CoreFfi.Update(handle, EventBincode.BincodeSerialize(@event)));
+        Requests.BincodeDeserialize(CoreFfi.Update(handle, EventBincode.BincodeSerialize(@event))).Value;
 
     public IReadOnlyList<Request> Resolve(uint id, byte[] data) =>
-        Requests.BincodeDeserialize(CoreFfi.Resolve(handle, id, data));
+        Requests.BincodeDeserialize(CoreFfi.Resolve(handle, id, data)).Value;
 
     public void Dispose() => handle.Dispose();
 }
