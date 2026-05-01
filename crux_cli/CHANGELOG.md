@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚙️ Miscellaneous Tasks
+
+- Update to `facet_generate` 0.16 and `facet` 0.44. No changes to the `crux bindgen` CLI surface.
+- Align with `crux_core` 0.18.0.
+
 ## [0.2.0](https://github.com/redbadger/crux/compare/crux_cli-v0.1.1...crux_cli-v0.2.0) - 2026-03-20
 
 ### ⚠️ Breaking Changes
