@@ -164,7 +164,10 @@ mod tests {
     use crux_http::protocol::{HttpResponse, HttpResult};
 
     use crate::{
-        effects::location::{Location, LocationOperation, LocationResult},
+        effects::{
+            EffectTestExt,
+            location::{Location, LocationOperation, LocationResult},
+        },
         model::{ApiKey, Effect},
     };
 
@@ -249,12 +252,10 @@ mod tests {
             .expect_continue()
             .into_parts();
 
-        let mut location_effect = cmd.expect_one_effect().expect_location();
-        location_effect
-            .resolve(LocationResult::Location(Some(phoenix_location())))
-            .expect("to resolve");
+        let event = cmd
+            .resolve_location(|_op| LocationResult::Location(Some(phoenix_location())))
+            .expect_event();
 
-        let event = cmd.expect_one_event();
         local.update(event, &key).expect_continue().into_parts()
     }
     // ANCHOR_END: drive_helper
@@ -271,8 +272,9 @@ mod tests {
 
         assert!(matches!(local, LocalWeather::FetchingLocation));
 
-        let location_effect = cmd.expect_one_effect().expect_location();
-        assert_eq!(location_effect.operation, LocationOperation::GetLocation);
+        cmd.expect_only_location_with(|op| {
+            assert_eq!(op, &LocationOperation::GetLocation);
+        });
     }
     // ANCHOR_END: simple_test
 
@@ -303,11 +305,9 @@ mod tests {
 
         assert!(matches!(local, LocalWeather::FetchingWeather(_)));
 
-        let request = cmd.effects().next().unwrap().expect_http();
-        assert_eq!(
-            &request.operation,
-            &weather::build_request(location, &api_key())
-        );
+        cmd.expect_http_with(|op| {
+            assert_eq!(op, &weather::build_request(location, &api_key()));
+        });
     }
 
     #[test]
@@ -328,16 +328,15 @@ mod tests {
         let (local, mut cmd) = drive_to_fetching_weather();
         assert!(matches!(local, LocalWeather::FetchingWeather(_)));
 
-        let mut request = cmd.expect_one_effect().expect_http();
-        request
-            .resolve(HttpResult::Ok(
-                HttpResponse::ok()
-                    .body(phoenix_weather_json().as_bytes())
-                    .build(),
-            ))
-            .unwrap();
-
-        let event = cmd.expect_one_event();
+        let event = cmd
+            .resolve_http(|_op| {
+                HttpResult::Ok(
+                    HttpResponse::ok()
+                        .body(phoenix_weather_json().as_bytes())
+                        .build(),
+                )
+            })
+            .expect_event();
         let (local, _cmd) = local
             .update(event, &api_key())
             .expect_continue()
@@ -356,14 +355,11 @@ mod tests {
     fn weather_unauthorized_completes_with_transition() {
         let (local, mut cmd) = drive_to_fetching_weather();
 
-        let mut request = cmd.expect_one_effect().expect_http();
-        request
-            .resolve(HttpResult::Ok(
-                HttpResponse::status(401).body(b"Unauthorized").build(),
-            ))
-            .unwrap();
-
-        let event = cmd.expect_one_event();
+        let event = cmd
+            .resolve_http(|_op| {
+                HttpResult::Ok(HttpResponse::status(401).body(b"Unauthorized").build())
+            })
+            .expect_event();
         let (transition, _cmd) = local
             .update(event, &api_key())
             .expect_complete()
@@ -376,14 +372,11 @@ mod tests {
     fn weather_network_error_transitions_to_failed() {
         let (local, mut cmd) = drive_to_fetching_weather();
 
-        let mut request = cmd.expect_one_effect().expect_http();
-        request
-            .resolve(HttpResult::Err(crux_http::HttpError::Url(
-                "connection refused".into(),
-            )))
-            .unwrap();
-
-        let event = cmd.expect_one_event();
+        let event = cmd
+            .resolve_http(|_op| {
+                HttpResult::Err(crux_http::HttpError::Url("connection refused".into()))
+            })
+            .expect_event();
         let (local, _cmd) = local
             .update(event, &api_key())
             .expect_continue()
@@ -403,10 +396,8 @@ mod tests {
 
         assert!(matches!(local, LocalWeather::CheckingPermission));
 
-        let location_effect = cmd.expect_one_effect().expect_location();
-        assert_eq!(
-            location_effect.operation,
-            LocationOperation::IsLocationEnabled
-        );
+        cmd.expect_only_location_with(|op| {
+            assert_eq!(op, &LocationOperation::IsLocationEnabled);
+        });
     }
 }

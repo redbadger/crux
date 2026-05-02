@@ -152,7 +152,7 @@ impl InitializingModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::effects::secret;
+    use crate::effects::{EffectTestExt, secret};
 
     const API_KEY_VALUE: &str = "my_key";
 
@@ -166,7 +166,7 @@ mod tests {
         let (model, mut cmd) = outcome.expect_continue().into_parts();
         assert!(matches!(model.api_key, InitializingValue::Fetched(None)));
         assert!(matches!(model.favorites, InitializingValue::Fetching));
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 
     #[test]
@@ -195,7 +195,7 @@ mod tests {
         let (model, mut cmd) = outcome.expect_continue().into_parts();
         assert!(matches!(model.api_key, InitializingValue::Fetched(Some(_))));
         assert!(matches!(model.favorites, InitializingValue::Fetching));
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 
     #[test]
@@ -206,7 +206,7 @@ mod tests {
         let (model, mut cmd) = outcome.expect_continue().into_parts();
         assert!(matches!(model.api_key, InitializingValue::Fetching));
         assert!(matches!(model.favorites, InitializingValue::Fetched(_)));
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 
     #[test]

@@ -152,6 +152,149 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         }
     });
 
+    let test_ext_trait_ident = format_ident!("{}TestExt", enum_ident);
+
+    let test_ext_trait_methods = effects.clone().map(|effect| {
+        let effect_ident_str = effect.ident.to_string();
+        let effect_ident_snake = effect_ident_str.to_snake_case();
+        let operation = &effect.operation;
+        let expect_fn = Ident::new(&format!("expect_{effect_ident_snake}"), Span::call_site());
+        let expect_with_fn = Ident::new(
+            &format!("expect_{effect_ident_snake}_with"),
+            Span::call_site(),
+        );
+        let expect_only_fn = Ident::new(
+            &format!("expect_only_{effect_ident_snake}"),
+            Span::call_site(),
+        );
+        let expect_only_with_fn = Ident::new(
+            &format!("expect_only_{effect_ident_snake}_with"),
+            Span::call_site(),
+        );
+        let resolve_fn = Ident::new(&format!("resolve_{effect_ident_snake}"), Span::call_site());
+        quote! {
+            fn #expect_fn(&mut self) -> &mut Self;
+            fn #expect_with_fn<F>(&mut self, f: F) -> &mut Self
+            where
+                F: ::core::ops::FnOnce(&#operation);
+            fn #expect_only_fn(&mut self);
+            fn #expect_only_with_fn<F>(&mut self, f: F)
+            where
+                F: ::core::ops::FnOnce(&#operation);
+            fn #resolve_fn<F>(&mut self, f: F) -> &mut Self
+            where
+                F: ::core::ops::FnOnce(&#operation)
+                    -> <#operation as ::crux_core::capability::Operation>::Output;
+        }
+    });
+
+    let test_ext_impl_methods = effects.clone().map(|effect| {
+        let effect_ident_str = effect.ident.to_string();
+        let effect_ident_snake = effect_ident_str.to_snake_case();
+        let operation = &effect.operation;
+        let expect_fn = Ident::new(&format!("expect_{effect_ident_snake}"), Span::call_site());
+        let expect_with_fn = Ident::new(
+            &format!("expect_{effect_ident_snake}_with"),
+            Span::call_site(),
+        );
+        let expect_only_fn = Ident::new(
+            &format!("expect_only_{effect_ident_snake}"),
+            Span::call_site(),
+        );
+        let expect_only_with_fn = Ident::new(
+            &format!("expect_only_{effect_ident_snake}_with"),
+            Span::call_site(),
+        );
+        let resolve_fn = Ident::new(&format!("resolve_{effect_ident_snake}"), Span::call_site());
+        let no_more_msg = format!("expected {effect_ident_str} effect but no more effects remain");
+        quote! {
+            #[track_caller]
+            fn #expect_fn(&mut self) -> &mut Self {
+                let effect = self.effects().next()
+                    .unwrap_or_else(|| panic!(#no_more_msg));
+                let _ = effect.#expect_fn();
+                self
+            }
+
+            #[track_caller]
+            fn #expect_with_fn<F>(&mut self, f: F) -> &mut Self
+            where
+                F: ::core::ops::FnOnce(&#operation),
+            {
+                let effect = self.effects().next()
+                    .unwrap_or_else(|| panic!(#no_more_msg));
+                let req = effect.#expect_fn();
+                f(&req.operation);
+                self
+            }
+
+            #[track_caller]
+            fn #expect_only_fn(&mut self) {
+                let effect = self.effects().next()
+                    .unwrap_or_else(|| panic!(#no_more_msg));
+                let _ = effect.#expect_fn();
+                self.expect_no_effect_or_events();
+            }
+
+            #[track_caller]
+            fn #expect_only_with_fn<F>(&mut self, f: F)
+            where
+                F: ::core::ops::FnOnce(&#operation),
+            {
+                let effect = self.effects().next()
+                    .unwrap_or_else(|| panic!(#no_more_msg));
+                let req = effect.#expect_fn();
+                f(&req.operation);
+                self.expect_no_effect_or_events();
+            }
+
+            #[track_caller]
+            fn #resolve_fn<F>(&mut self, f: F) -> &mut Self
+            where
+                F: ::core::ops::FnOnce(&#operation)
+                    -> <#operation as ::crux_core::capability::Operation>::Output,
+            {
+                let effect = self.effects().next()
+                    .unwrap_or_else(|| panic!(#no_more_msg));
+                let mut req = effect.#expect_fn();
+                let output = f(&req.operation);
+                req.resolve(output).expect("resolve failed");
+                self
+            }
+        }
+    });
+
+    let test_ext = quote! {
+        pub trait #test_ext_trait_ident<Event>
+        where
+            Event: ::core::marker::Send + 'static,
+        {
+            #(#test_ext_trait_methods)*
+
+            fn then_event<F>(&mut self, f: F) -> &mut Self
+            where
+                F: ::core::ops::FnOnce(&Event);
+        }
+
+        impl<Event> #test_ext_trait_ident<Event> for ::crux_core::Command<#enum_ident, Event>
+        where
+            Event: ::core::marker::Send + 'static,
+        {
+            #(#test_ext_impl_methods)*
+
+            #[track_caller]
+            fn then_event<F>(&mut self, f: F) -> &mut Self
+            where
+                F: ::core::ops::FnOnce(&Event),
+            {
+                let ev = self.events().next()
+                    .unwrap_or_else(|| panic!("expected an event but got none"));
+                f(&ev);
+                self
+            }
+        }
+    };
+
     let type_gen = match typegen_kind {
         TypegenKind::Serde => {
             let effect_gen = effects.map(|effect| {
@@ -251,6 +394,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         #(#from_impls)*
 
         #(#filters)*
+
+        #test_ext
 
         #type_gen
 

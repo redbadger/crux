@@ -173,6 +173,7 @@ impl OnboardModel {
 
 #[cfg(test)]
 mod tests {
+    use crate::effects::EffectTestExt;
     use crate::effects::secret::{self, SecretRequest};
     use rstest::rstest;
 
@@ -217,7 +218,7 @@ mod tests {
             model.state,
             OnboardState::Input { ref api_key } if api_key == "abc123"
         ));
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 
     #[test]
@@ -229,11 +230,12 @@ mod tests {
         assert!(
             matches!(model.state, OnboardState::Saving { ref api_key } if *api_key == "my_new_key")
         );
-        let request = cmd.expect_one_effect().expect_secret();
-        assert_eq!(
-            request.operation,
-            SecretRequest::Store(secret::API_KEY_NAME.to_string(), "my_new_key".to_string(),)
-        );
+        cmd.expect_only_secret_with(|op| {
+            assert_eq!(
+                op,
+                &SecretRequest::Store(secret::API_KEY_NAME.to_string(), "my_new_key".to_string())
+            );
+        });
     }
 
     #[test]
@@ -243,7 +245,7 @@ mod tests {
         let outcome = model.update(OnboardEvent::Submit);
 
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         assert_let_bind::assert_let!(OnboardTransition::Failed(msg), transition);
         assert!(msg.contains("empty"));
     }
@@ -254,7 +256,7 @@ mod tests {
         let outcome = model.update(OnboardEvent::ApiKey("oops".to_string()));
 
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         assert_let_bind::assert_let!(OnboardTransition::Failed(_), transition);
     }
 
@@ -266,7 +268,7 @@ mod tests {
         )));
 
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         assert_let_bind::assert_let!(OnboardTransition::Failed(msg), transition);
         assert!(msg.contains("disk full"));
     }
@@ -279,7 +281,7 @@ mod tests {
         )));
 
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         assert_let_bind::assert_let!(OnboardTransition::Active(api_key, _favorites), transition);
         assert_eq!(api_key, "the_key");
     }

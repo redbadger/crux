@@ -53,7 +53,7 @@ cargo nextest run
 
 ## The test steps
 
-Crux provides test APIs to make the tests a bit more readable, but it's still up to the test to drive the event → update → effect → resolve cycle by hand.
+Crux gives us a chainable test API that keeps assertions concise, but you still drive the event → update → effect → resolve cycle yourself. You'll see methods like `.expect_only_render()` and `.resolve_http(|op| ...)` on `Command` throughout this chapter. They come from an `EffectTestExt` trait the `#[effect]` macro generates next to your `Effect` enum.
 
 Let's walk through a simpler test from the Weather app step by step:
 
@@ -61,11 +61,11 @@ Let's walk through a simpler test from the Weather app step by step:
 {{#include ../../../examples/weather/shared/src/model/active/home/local.rs:simple_test}}
 ```
 
-First, we build a fresh `LocalWeather::default()` — its starting state is `CheckingPermission`.
+First, we build a fresh `LocalWeather::default()`. Its starting state is `CheckingPermission`.
 
-We then call `update` with `LocationEnabled(true)`, as if the shell had just reported that location services are available. `update` returns an `Outcome`, which we destructure with `.expect_continue().into_parts()` — we know this event doesn't complete the state machine, so we assert on `Continue` and get back the updated state plus any command.
+We then call `update` with `LocationEnabled(true)`, as if the shell had just reported that location services are available. `update` returns an `Outcome`, which we destructure with `.expect_continue().into_parts()`. We know this event doesn't complete the state machine, so we assert on `Continue` and get back the updated state plus any command.
 
-We assert the new state is `FetchingLocation`. Then we ask the command for its single effect via `.expect_one_effect()`, narrow it to a location effect with `.expect_location()`, and check the operation is `GetLocation`.
+We assert the new state is `FetchingLocation`. Then we call `.expect_only_location_with(|op| ...)` on the command. That one chained call says "the only effect on this command is a `Location` effect, and here's a closure to inspect its operation." Inside the closure we check the operation is `GetLocation`.
 
 That's the whole test. `update` is a pure function, so there's nothing to set up beyond the initial state and nothing to tear down.
 

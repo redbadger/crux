@@ -344,8 +344,8 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::MoveCursor(5), &mut model);
-        cmd.expect_one_effect().expect_render();
+        app.update(Event::MoveCursor(5), &mut model)
+            .expect_only_render();
 
         let view = app.view(&model);
 
@@ -363,8 +363,8 @@ mod editing_tests {
             ..Default::default()
         };
 
-        let mut cmd = app.update(Event::Select(2, 5), &mut model);
-        cmd.expect_one_effect().expect_render();
+        app.update(Event::Select(2, 5), &mut model)
+            .expect_only_render();
 
         let view = app.view(&model);
 

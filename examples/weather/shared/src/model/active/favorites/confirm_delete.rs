@@ -59,6 +59,7 @@ impl ConfirmDeleteWorkflow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::effects::EffectTestExt;
 
     fn test_location() -> Location {
         Location {
@@ -79,7 +80,7 @@ mod tests {
             transition,
             ConfirmDeleteTransition::Confirmed(loc) if loc == test_location()
         ));
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 
     #[test]
@@ -91,6 +92,6 @@ mod tests {
             .into_parts();
 
         assert!(matches!(transition, ConfirmDeleteTransition::Cancelled));
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 }

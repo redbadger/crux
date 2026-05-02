@@ -37,7 +37,11 @@ impl App for Weather {
 mod tests {
     use crux_core::App as _;
 
-    use crate::{effects::secret, model::initializing::InitializingModel, view::ViewModel};
+    use crate::{
+        effects::{EffectTestExt, secret},
+        model::initializing::InitializingModel,
+        view::ViewModel,
+    };
 
     use super::*;
 
@@ -50,17 +54,15 @@ mod tests {
 
         assert!(matches!(model, Model::Initializing(_)));
 
-        let secret_request = cmd.expect_effect().expect_secret();
-        assert_eq!(
-            secret_request.operation,
-            secret::SecretRequest::Fetch(secret::API_KEY_NAME.to_string())
-        );
-
-        let kv_request = cmd.expect_one_effect().expect_key_value();
-        assert!(matches!(
-            kv_request.operation,
-            crux_kv::KeyValueOperation::Get { .. }
-        ));
+        cmd.expect_secret_with(|op| {
+            assert_eq!(
+                op,
+                &secret::SecretRequest::Fetch(secret::API_KEY_NAME.to_string())
+            );
+        })
+        .expect_key_value_with(|op| {
+            assert!(matches!(op, crux_kv::KeyValueOperation::Get { .. }));
+        });
     }
 
     #[test]

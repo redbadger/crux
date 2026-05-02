@@ -235,6 +235,7 @@ impl FavoritesScreen {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::effects::EffectTestExt;
     use crate::effects::http::location::GeocodingResponse;
     use crate::model::active::favorites::model::Favorite;
 
@@ -280,7 +281,7 @@ mod tests {
             .expect_complete()
             .into_parts();
 
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         assert!(matches!(transition, FavoritesTransition::GoToHome(fav) if fav.len() == 1));
     }
 
@@ -292,7 +293,7 @@ mod tests {
             .expect_continue()
             .into_parts();
 
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         assert!(matches!(screen.workflow, Some(FavoritesWorkflow::Add(_))));
     }
 
@@ -308,7 +309,7 @@ mod tests {
             .expect_continue()
             .into_parts();
 
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         assert!(matches!(
             screen.workflow,
             Some(FavoritesWorkflow::ConfirmDelete(_))
@@ -355,7 +356,7 @@ mod tests {
         assert!(screen.workflow.is_none());
 
         // only a render, no KV set
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 
     #[test]
@@ -372,7 +373,7 @@ mod tests {
             .into_parts();
 
         assert!(screen.workflow.is_none());
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 
     #[test]
@@ -417,6 +418,6 @@ mod tests {
 
         assert_eq!(screen.favorites.len(), 1);
         assert!(screen.workflow.is_none());
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 }
