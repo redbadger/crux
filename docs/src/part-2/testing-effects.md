@@ -53,7 +53,7 @@ cargo nextest run
 
 ## The test steps
 
-Crux gives us a chainable test API that keeps assertions concise, but you still drive the event → update → effect → resolve cycle yourself. You'll see methods like `.expect_only_render()` and `.resolve_http(|op| ...)` on `Command` throughout this chapter. They come from an `EffectTestExt` trait the `#[effect]` macro generates next to your `Effect` enum.
+Crux gives us a chainable test API that keeps assertions concise, but you still drive the event → update → effect → resolve cycle yourself. You'll see methods like `.expect_only_render()` and `.resolve_http(|op| ...)` on `Command` throughout this chapter. They come from an `EffectTestExt` trait the `#[effect]` macro generates next to your `Effect` enum, and auto-implements for `Command<Effect, E>` where `E` is an event.
 
 Let's walk through a simpler test from the Weather app step by step:
 
