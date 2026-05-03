@@ -3,7 +3,7 @@ pub mod app;
 mod capabilities;
 mod ffi;
 #[cfg(feature = "uniffi")]
-mod middleware;
+mod rng_handler;
 
 pub use crux_http as http;
 

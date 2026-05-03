@@ -4,14 +4,15 @@ pub mod uniffi {
 
     use crux_core::{
         Core,
-        bridge::EffectId,
+        bridge::{EffectId, FfiFormat, ResolveRegistry},
+        effects::EffectRouter,
         macros::effect,
-        middleware::{BincodeFfiFormat, Bridge, HandleEffectLayer, Layer as _, MapEffectLayer},
+        middleware::BincodeFfiFormat,
         render::RenderOperation,
     };
     use crux_http::protocol::HttpRequest;
 
-    use crate::{Counter, middleware::RngMiddleware, sse::SseRequest};
+    use crate::{Counter, rng_handler::RngHandler, sse::SseRequest};
 
     #[effect(facet_typegen)]
     pub enum Effect {
@@ -44,10 +45,8 @@ pub mod uniffi {
     /// The main interface used by the shell
     #[derive(uniffi::Object)]
     pub struct CoreFFI {
-        core: Bridge<
-            MapEffectLayer<HandleEffectLayer<Core<Counter>, RngMiddleware>, Effect>,
-            BincodeFfiFormat,
-        >,
+        router: Arc<EffectRouter<Counter>>,
+        registry: Arc<ResolveRegistry<BincodeFfiFormat>>,
     }
 
     #[uniffi::export]
@@ -55,42 +54,60 @@ pub mod uniffi {
     impl CoreFFI {
         #[uniffi::constructor]
         pub fn new(shell: Arc<dyn CruxShell>) -> Self {
-            let core = Core::<Counter>::new()
-                .handle_effects_using(RngMiddleware::new())
-                .map_effect::<Effect>()
-                .bridge::<BincodeFfiFormat>(move |effect_bytes| match effect_bytes {
-                    Ok(effect) => shell.process_effects(effect),
-                    Err(e) => panic!("{e}"),
-                });
+            let registry = Arc::new(ResolveRegistry::default());
 
-            Self { core }
+            let core = Core::new();
+            let router = EffectRouter::new(core, {
+                let shell = shell.clone();
+                let registry = registry.clone();
+
+                |weak_router| {
+                    let rng_handler = RngHandler::new(weak_router.clone());
+
+                    move |effect| match effect {
+                        crate::app::Effect::Random(req) => {
+                            rng_handler.process(req);
+                        }
+                        effect => {
+                            let serialized_effect = Effect::from(effect);
+
+                            let request = registry.register(serialized_effect);
+                            let mut bytes = vec![];
+                            BincodeFfiFormat::serialize(&mut bytes, &vec![request])
+                                .expect("serialized effect request should encode");
+
+                            shell.process_effects(bytes);
+                        }
+                    }
+                }
+            });
+
+            Self { router, registry }
         }
 
         #[must_use]
-        pub fn update(&self, data: &[u8]) -> Vec<u8> {
-            let mut effects = Vec::new();
-            match self.core.update(data, &mut effects) {
-                Ok(()) => effects,
-                Err(e) => panic!("{e}"),
-            }
+        pub fn update(&self, data: &[u8]) {
+            let event = BincodeFfiFormat::deserialize(data).expect("event should deserialize");
+
+            self.router.update(event);
         }
 
         #[must_use]
-        pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
-            let mut effects = Vec::new();
-            match self.core.resolve(EffectId(effect_id), data, &mut effects) {
-                Ok(()) => effects,
-                Err(e) => panic!("{e}"),
-            }
+        pub fn resolve(&self, effect_id: u32, data: &[u8]) {
+            self.registry
+                .resume(EffectId(effect_id), data)
+                .expect("failed to resolve effect");
+
+            self.router.process();
         }
 
         #[must_use]
         pub fn view(&self) -> Vec<u8> {
             let mut view_model = Vec::new();
-            match self.core.view(&mut view_model) {
-                Ok(()) => view_model,
-                Err(e) => panic!("{e}"),
-            }
+            BincodeFfiFormat::serialize(&mut view_model, &self.router.view())
+                .expect("view model should serialize");
+
+            view_model
         }
     }
 }

@@ -37,8 +37,7 @@ class Core(
         Log.d(TAG, "update: $event")
 
         scope.launch {
-            val effects = coreFfi.update(event.bincodeSerialize())
-            handleEffects(effects)
+            coreFfi.update(event.bincodeSerialize())
         }
     }
 
@@ -87,8 +86,7 @@ class Core(
     private suspend fun resolveAndHandleEffects(requestId: UInt, data: ByteArray) {
         Log.d(TAG, "resolveAndHandleEffects for request id: $requestId")
 
-        val effects = coreFfi.resolve(requestId, data)
-        handleEffects(effects)
+        coreFfi.resolve(requestId, data)
     }
 
     private fun render() {
