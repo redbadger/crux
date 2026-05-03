@@ -234,7 +234,12 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 let effect = self.effects().next()
                     .unwrap_or_else(|| panic!(#no_more_msg));
                 let _ = effect.#expect_fn();
-                self.expect_no_effect_or_events();
+                let remaining_effects = self.effects().count();
+                let remaining_events = self.events().count();
+                assert!(
+                    remaining_effects + remaining_events == 0,
+                    "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+                );
             }
 
             #[track_caller]
@@ -246,7 +251,12 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                     .unwrap_or_else(|| panic!(#no_more_msg));
                 let req = effect.#expect_fn();
                 f(&req.operation);
-                self.expect_no_effect_or_events();
+                let remaining_effects = self.effects().count();
+                let remaining_events = self.events().count();
+                assert!(
+                    remaining_effects + remaining_events == 0,
+                    "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+                );
             }
 
             #[track_caller]

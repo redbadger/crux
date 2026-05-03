@@ -45,3 +45,6 @@ assert_fs = "1.1.3"
 futures-test = "0.3"
 assert_matches = "1.5"
 insta = "1.46.3"
+crux_core = { version = "0.17.0", path = "../crux_core", features = [
+    "testing",
+] }

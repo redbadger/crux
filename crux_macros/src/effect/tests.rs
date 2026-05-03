@@ -144,7 +144,12 @@ fn single_with_typegen() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -159,7 +164,12 @@ fn single_with_typegen() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -328,7 +338,12 @@ fn single_with_new_name() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -343,7 +358,12 @@ fn single_with_new_name() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -518,7 +538,12 @@ fn single_with_facet_typegen() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -533,7 +558,12 @@ fn single_with_facet_typegen() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -725,7 +755,12 @@ fn single_facet_typegen_with_new_name() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -740,7 +775,12 @@ fn single_facet_typegen_with_new_name() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -910,7 +950,12 @@ fn single_without_typegen() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -925,7 +970,12 @@ fn single_without_typegen() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -1128,7 +1178,12 @@ fn multiple_with_typegen() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -1143,7 +1198,12 @@ fn multiple_with_typegen() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -1198,7 +1258,12 @@ fn multiple_with_typegen() {
                     panic!("expected Http effect but no more effects remain")
                 });
             let _ = effect.expect_http();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_http_with<F>(&mut self, f: F)
@@ -1213,7 +1278,12 @@ fn multiple_with_typegen() {
                 });
             let req = effect.expect_http();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_http<F>(&mut self, f: F) -> &mut Self
@@ -1435,7 +1505,12 @@ fn multiple_with_facet_typegen() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -1450,7 +1525,12 @@ fn multiple_with_facet_typegen() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -1505,7 +1585,12 @@ fn multiple_with_facet_typegen() {
                     panic!("expected Http effect but no more effects remain")
                 });
             let _ = effect.expect_http();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_http_with<F>(&mut self, f: F)
@@ -1520,7 +1605,12 @@ fn multiple_with_facet_typegen() {
                 });
             let req = effect.expect_http();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_http<F>(&mut self, f: F) -> &mut Self
@@ -1737,7 +1827,12 @@ fn multiple_without_typegen() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -1752,7 +1847,12 @@ fn multiple_without_typegen() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -1807,7 +1907,12 @@ fn multiple_without_typegen() {
                     panic!("expected Http effect but no more effects remain")
                 });
             let _ = effect.expect_http();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_http_with<F>(&mut self, f: F)
@@ -1822,7 +1927,12 @@ fn multiple_without_typegen() {
                 });
             let req = effect.expect_http();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_http<F>(&mut self, f: F) -> &mut Self
@@ -1965,7 +2075,12 @@ fn single_without_typegen_with_attributes() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -1980,7 +2095,12 @@ fn single_without_typegen_with_attributes() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self
@@ -2145,7 +2265,12 @@ fn facet_typegen_with_namespace_attribute() {
                     panic!("expected Render effect but no more effects remain")
                 });
             let _ = effect.expect_render();
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn expect_only_render_with<F>(&mut self, f: F)
@@ -2160,7 +2285,12 @@ fn facet_typegen_with_namespace_attribute() {
                 });
             let req = effect.expect_render();
             f(&req.operation);
-            self.expect_no_effect_or_events();
+            let remaining_effects = self.effects().count();
+            let remaining_events = self.events().count();
+            assert!(
+                remaining_effects + remaining_events == 0,
+                "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+            );
         }
         #[track_caller]
         fn resolve_render<F>(&mut self, f: F) -> &mut Self

@@ -47,6 +47,7 @@ wasm-bindgen = { version = "0.2.114", optional = true }
 
 [dev-dependencies]
 assert_let_bind = "0.1"
+crux_core = { workspace = true, features = ["testing"] }
 insta = { version = "1.46.3", features = ["yaml"] }
 rstest = "0.25"
 

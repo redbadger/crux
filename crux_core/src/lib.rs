@@ -156,6 +156,7 @@ pub mod bridge;
 pub mod capability;
 pub mod command;
 pub mod middleware;
+#[cfg(any(test, feature = "testing"))]
 pub mod testing;
 #[cfg(any(feature = "typegen", feature = "facet_typegen"))]
 pub mod type_generation;

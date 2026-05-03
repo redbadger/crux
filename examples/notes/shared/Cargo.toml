@@ -46,3 +46,6 @@ wasm-bindgen = { version = "0.2.114", optional = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+crux_core = { workspace = true, features = ["testing"] }
