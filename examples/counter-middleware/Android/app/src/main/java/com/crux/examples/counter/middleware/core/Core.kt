@@ -43,7 +43,7 @@ class Core(
     }
 
     private suspend fun handleEffects(effects: ByteArray) {
-        val requests = Requests.bincodeDeserialize(effects)
+        val requests = Requests.bincodeDeserialize(effects).value
         for (request in requests) {
             processRequest(request)
         }

@@ -110,7 +110,7 @@ impl Model {
                 api_key,
                 favorites,
             )) => {
-                let (active, start_cmd) = ActiveModel::start(api_key, favorites)
+                let (active, start_cmd) = ActiveModel::start(api_key, &favorites)
                     .map_event(Event::Active)
                     .into_parts();
                 *self = Model::Active(active);
@@ -133,7 +133,7 @@ impl Model {
                 command
             }
             outcome::Status::Complete(onboard::OnboardTransition::Active(api_key, favorites)) => {
-                let (active, start_cmd) = ActiveModel::start(api_key, favorites)
+                let (active, start_cmd) = ActiveModel::start(api_key, &favorites)
                     .map_event(Event::Active)
                     .into_parts();
                 *self = Model::Active(active);

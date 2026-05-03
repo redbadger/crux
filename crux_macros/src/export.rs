@@ -78,6 +78,7 @@ impl ToTokens for ExportStructReceiver {
                     #(#output_type_exports_facet)*
                     generator.register_type::<#ffi_export_name>()?;
                     generator.register_type::<::crux_core::bridge::Request<#ffi_export_name>>()?;
+                    generator.register_type::<::crux_core::bridge::Requests<#ffi_export_name>>()?;
 
                     Ok(())
                 }
@@ -171,6 +172,7 @@ mod tests {
                 > as Capability<Event>>::Operation::register_types_facet(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                generator.register_type::<::crux_core::bridge::Requests<EffectFfi>>()?;
                 Ok(())
             }
         }
@@ -252,6 +254,7 @@ mod tests {
                 > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                generator.register_type::<::crux_core::bridge::Requests<EffectFfi>>()?;
                 Ok(())
             }
         }
@@ -322,6 +325,7 @@ mod tests {
                 > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
+                generator.register_type::<::crux_core::bridge::Requests<EffectFfi>>()?;
                 Ok(())
             }
         }
@@ -368,6 +372,7 @@ mod tests {
                 > as Capability<Event>>::Operation::register_types_facet(generator)?;
                 generator.register_type::<MyEffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
+                generator.register_type::<::crux_core::bridge::Requests<MyEffectFfi>>()?;
                 Ok(())
             }
         }

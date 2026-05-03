@@ -19,7 +19,7 @@ class Core: ObservableObject {
         let effects = [UInt8](core.update(data: Data(try! event.bincodeSerialize())))
 
         // swiftlint:disable:next force_try
-        let requests: [Request] = try! .bincodeDeserialize(input: effects)
+        let requests = try! Requests.bincodeDeserialize(input: effects).value
         for request in requests {
             processEffect(request)
         }

@@ -96,9 +96,9 @@ pub struct ActiveModel {
 }
 
 impl ActiveModel {
-    pub(crate) fn start(api_key: ApiKey, favorites: Favorites) -> Started<Self, ActiveEvent> {
+    pub(crate) fn start(api_key: ApiKey, favorites: &Favorites) -> Started<Self, ActiveEvent> {
         tracing::debug!("starting active");
-        let (home_screen, start_cmd) = HomeScreen::start(&favorites, &api_key)
+        let (home_screen, start_cmd) = HomeScreen::start(favorites, &api_key)
             .map_event(ActiveEvent::home)
             .into_parts();
         Started::new(

@@ -48,40 +48,37 @@
 //! #         }
 //! #     }
 //! # }
-//! # use std::path::PathBuf;
-//!use crux_core::type_generation::facet::{Config, TypeRegistry};
-//!use tempfile::tempdir;
-//!use shared::App;
+//! use crux_core::type_generation::facet::{Config, TypeRegistry};
+//! use tempfile::tempdir;
+//! use shared::App;
 //!
-//!  let tmp_dir = tempdir()?;
-//!  let output_root = tmp_dir.path();
+//! # fn main() -> Result<(), crux_core::type_generation::facet::TypeGenError> {
+//! let tmp_dir = tempdir()?;
+//! let output_root = tmp_dir.path();
 //!
-//!  let typegen = TypeRegistry::new().register_app::<App>()?.build()?;
+//! let typegen = TypeRegistry::new().register_app::<App>()?.build()?;
 //!
-//!  typegen.swift(
-//!      &Config::builder("SharedTypes", &output_root.join("swift"))
-//!      .add_extensions()
-//!      .build()
-//!  )?;
+//! typegen.swift(
+//!     &Config::builder("SharedTypes", &output_root.join("swift"))
+//!     .build()
+//! )?;
 //!
-//!  typegen.java(
-//!      &Config::builder("com.crux.example.counter.shared", output_root.join("java"))
-//!      .add_extensions()
-//!      .build()
-//!  )?;
+//! typegen.kotlin(
+//!     &Config::builder("com.crux.example.counter.shared", output_root.join("kotlin"))
+//!     .build()
+//! )?;
 //!
-//!  typegen.csharp(
-//!      &Config::builder("CounterApp.Shared", output_root.join("csharp"))
-//!      .add_extensions()
-//!      .build()
-//!  )?;
+//! typegen.csharp(
+//!     &Config::builder("CounterApp.Shared", output_root.join("csharp"))
+//!     .build()
+//! )?;
 //!
-//!  typegen.typescript(
-//!      &Config::builder("shared_types", output_root.join("typescript"))
-//!      .add_extensions()
-//!      .build()
-//!  )?;
-//! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+//! typegen.typescript(
+//!     &Config::builder("shared_types", output_root.join("typescript"))
+//!     .build()
+//! )?;
+//! # Ok(())
+//! # }
 //! ```
 use std::{
     fs::{self, File},
@@ -94,10 +91,7 @@ use facet::Facet;
 pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
 use facet_generate::{
     Registry,
-    generation::{
-        Encoding, csharp, java, kotlin, swift,
-        typescript::{self, InstallTarget},
-    },
+    generation::{bincode::BincodePlugin, csharp, kotlin, swift, typescript},
     reflection::RegistryBuilder,
 };
 use log::info;
@@ -105,12 +99,6 @@ use serde_json::json;
 use thiserror::Error;
 
 use crate::App;
-
-macro_rules! extension_data {
-    ($path:literal) => {
-        include_str!(concat!("../../typegen_extensions/", $path))
-    };
-}
 
 #[derive(Error, Debug)]
 pub enum TypeGenError {
@@ -250,7 +238,6 @@ impl CodeGenerator {
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.swift(
     ///     &Config::builder("SharedTypes", output_root.join("swift"))
-    ///     .add_extensions()
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -261,72 +248,13 @@ impl CodeGenerator {
     pub fn swift(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Swift types");
         let path = config.out_dir.join(&config.package_name);
-        let sources = path.join("Sources");
 
         fs::create_dir_all(&path)?;
 
         swift::Installer::new(&config.package_name, &path)
-            .encoding(Encoding::Bincode)
+            .plugin(BincodePlugin)
             .external_packages(&config.external_packages)
             .generate(&self.0)?;
-
-        if config.add_extensions {
-            // add bincode deserialization for Vec<Request>
-            let output_dir = sources.join(&config.package_name);
-            fs::create_dir_all(&output_dir)?;
-            let mut output = File::create(output_dir.join("Requests.swift"))?;
-
-            let requests_data = extension_data!("swift/requests.swift");
-            write!(output, "{requests_data}")?;
-        }
-
-        Ok(())
-    }
-
-    /// Generates types for Java
-    /// e.g.
-    /// ```rust
-    /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
-    /// # use std::env::temp_dir;
-    /// # let mut typegen = TypeRegistry::new().build()?;
-    /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
-    /// typegen.java(
-    ///     &Config::builder("com.crux.example", output_root.join("java"))
-    ///     .add_extensions()
-    ///     .build()
-    /// )?;
-    /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
-    /// ```
-    ///
-    /// # Errors
-    /// Errors that can occur during type generation.
-    #[deprecated(
-        since = "0.17.0",
-        note = "The Java typegen is deprecated. Use Kotlin typegen instead."
-    )]
-    pub fn java(&self, config: &Config) -> Result<(), TypeGenError> {
-        info!("Generating Java types");
-        fs::create_dir_all(&config.out_dir)?;
-
-        let package_path = config.package_name.replace('.', "/");
-
-        // remove any existing generated shared types, this ensures that we remove no longer used types
-        fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
-
-        #[allow(deprecated)]
-        java::Installer::new(&config.package_name, &config.out_dir)
-            .encoding(Encoding::Bincode)
-            .external_packages(&config.external_packages)
-            .generate(&self.0)?;
-
-        if config.add_extensions {
-            let requests_data = extension_data!("java/Requests.java");
-            let requests = format!("package {};\n\n{requests_data}", config.package_name);
-
-            let output_dir = config.out_dir.join(package_path);
-            fs::create_dir_all(&output_dir)?;
-            fs::write(output_dir.join("Requests.java"), requests)?;
-        }
 
         Ok(())
     }
@@ -340,7 +268,6 @@ impl CodeGenerator {
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.kotlin(
     ///     &Config::builder("com.crux.example", output_root.join("kotlin"))
-    ///     .add_extensions()
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -358,18 +285,9 @@ impl CodeGenerator {
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
         kotlin::Installer::new(&config.package_name, &config.out_dir)
-            .encoding(Encoding::Bincode)
+            .plugin(BincodePlugin)
             .external_packages(&config.external_packages)
             .generate(&self.0)?;
-
-        if config.add_extensions {
-            let requests_data = extension_data!("kotlin/Requests.kt");
-            let requests = format!("package {};\n\n{requests_data}", config.package_name);
-
-            let output_dir = config.out_dir.join(package_path);
-            fs::create_dir_all(&output_dir)?;
-            fs::write(output_dir.join("Requests.kt"), requests)?;
-        }
 
         Ok(())
     }
@@ -383,7 +301,6 @@ impl CodeGenerator {
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.csharp(
     ///     &Config::builder("CounterApp.Shared", output_root.join("csharp"))
-    ///     .add_extensions()
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -401,18 +318,9 @@ impl CodeGenerator {
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
         csharp::Installer::new(&config.package_name, &config.out_dir)
-            .encoding(Encoding::Bincode)
+            .plugin(BincodePlugin)
             .external_packages(&config.external_packages)
             .generate(&self.0)?;
-
-        if config.add_extensions {
-            let requests_data = extension_data!("csharp/Requests.cs");
-            let requests = format!("namespace {}{requests_data}", config.package_name);
-
-            let output_dir = config.out_dir.join(package_path);
-            fs::create_dir_all(&output_dir)?;
-            fs::write(output_dir.join("Requests.cs"), requests)?;
-        }
 
         Ok(())
     }
@@ -426,7 +334,6 @@ impl CodeGenerator {
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.typescript(
     ///     &Config::builder("shared_types", output_root.join("typescript"))
-    ///     .add_extensions()
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -438,8 +345,8 @@ impl CodeGenerator {
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
-        typescript::Installer::new(&config.package_name, output_dir, InstallTarget::Node)
-            .encoding(Encoding::Bincode)
+        typescript::Installer::new(&config.package_name, output_dir)
+            .plugin(BincodePlugin)
             .external_packages(&config.external_packages)
             .generate(&self.0)?;
 

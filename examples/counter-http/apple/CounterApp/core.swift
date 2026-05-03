@@ -19,7 +19,7 @@ class Core: ObservableObject {
         let effects = [UInt8](core.update(Data(try! event.bincodeSerialize())))
 
         // swiftlint:disable:next force_try
-        let requests: [Request] = try! .bincodeDeserialize(input: effects)
+        let requests = try! Requests.bincodeDeserialize(input: effects).value
         for request in requests {
             processEffect(request)
         }
@@ -32,21 +32,22 @@ class Core: ObservableObject {
                 // swiftlint:disable:next force_try
                 self.view = try! .bincodeDeserialize(input: [UInt8](self.core.view()))
             }
-        case let .http(httpRequest):
+        case .http(let httpRequest):
             Task {
                 let result = await performHttpRequest(httpRequest)
                 // swiftlint:disable force_try
-                let effects = [UInt8](self.core.resolve(
-                    request.id,
-                    Data(try! result.bincodeSerialize())
-                ))
-                let requests: [Request] = try! .bincodeDeserialize(input: effects)
+                let effects = [UInt8](
+                    self.core.resolve(
+                        request.id,
+                        Data(try! result.bincodeSerialize())
+                    ))
+                let requests = try! Requests.bincodeDeserialize(input: effects).value
                 // swiftlint:enable force_try
                 for request in requests {
                     self.processEffect(request)
                 }
             }
-        case let .serverSentEvents(sseRequest):
+        case .serverSentEvents(let sseRequest):
             Task {
                 await performSseRequest(sseRequest, requestId: request.id)
             }
@@ -96,11 +97,12 @@ class Core: ObservableObject {
                     let response = SseResponse.chunk([UInt8](buffer))
                     buffer = Data()
                     // swiftlint:disable force_try
-                    let effects = [UInt8](self.core.resolve(
-                        requestId,
-                        Data(try! response.bincodeSerialize())
-                    ))
-                    let requests: [Request] = try! .bincodeDeserialize(input: effects)
+                    let effects = [UInt8](
+                        self.core.resolve(
+                            requestId,
+                            Data(try! response.bincodeSerialize())
+                        ))
+                    let requests = try! Requests.bincodeDeserialize(input: effects).value
                     // swiftlint:enable force_try
                     for request in requests {
                         self.processEffect(request)
@@ -110,11 +112,12 @@ class Core: ObservableObject {
 
             let done = SseResponse.done
             // swiftlint:disable force_try
-            let effects = [UInt8](self.core.resolve(
-                requestId,
-                Data(try! done.bincodeSerialize())
-            ))
-            let requests: [Request] = try! .bincodeDeserialize(input: effects)
+            let effects = [UInt8](
+                self.core.resolve(
+                    requestId,
+                    Data(try! done.bincodeSerialize())
+                ))
+            let requests = try! Requests.bincodeDeserialize(input: effects).value
             // swiftlint:enable force_try
             for request in requests {
                 self.processEffect(request)
