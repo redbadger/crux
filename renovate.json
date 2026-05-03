@@ -86,10 +86,10 @@
       "allowedVersions": "0.29.4"
     },
     {
-      "description": "Pin facet to 0.31 — waiting on redbadger/crux#501 (facet-generate 0.16 / facet 0.44)",
+      "description": "Pin facet to 0.44 — aligns with facet_generate 0.17",
       "matchPackageNames": ["facet"],
       "matchManagers": ["cargo"],
-      "allowedVersions": "0.31"
+      "allowedVersions": "0.44"
     },
     {
       "description": "Pin bincode to 1.x — 2.x has incompatible API; plan is to replace bincode entirely as it is unmaintained",
