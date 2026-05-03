@@ -1,5 +1,11 @@
 # RFC: New side effect API - Command
 
+```admonish
+This RFC has been **adopted** and implemented, it's kept
+for future reference as additional context for the design
+choices.
+```
+
 This is a proposed implementation of a new API for creating (requesting)
 side-effects in crux apps. It is quite a significant part of the Crux API
 surface, so we'd really appreciate feedback on the direction this is taking.

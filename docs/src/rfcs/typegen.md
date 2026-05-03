@@ -1,5 +1,19 @@
 # Type generation migration
 
+```admonish
+This RFC has been **adopted** and implemented, it's kept
+for future reference as additional context for the design
+choices.
+```
+
+```admonish warning
+The actual roadmap has diverged from this decision when we adopted Facet as the
+frontend for type generation. The philosophy and overall design stays the same,
+and we may revisit the front-end again, but Facet gives us a good way of focusing
+on the IR and backend, unlocking features, rather than on the rustdoc based
+frontend without getting any immediate value.
+```
+
 This note proposes a roadmap of migrating Crux and the apps to a new type generation system, based on rustdoc JSON.
 
 ## Why?
@@ -18,9 +32,9 @@ The current system is based on Serde. It's a combination of two related crates: 
 
 This system has limitations:
 
-* Only supports types which are `Deserialize` (this is not a big problem in practice).
-* Only supports types expressed using the [Serde data model](https://serde.rs/data-model.html). This means it fundamentally can't capture certain kinds of metadata, e.g. use of generic types and their trait bounds, any additional decorations on the foreign side (implemented protocols in Swift, etc.), any other information not provided to the deserializer.
-* We have no control over the generated code. This is especially problematic in TypeScript and the representation of enums.
+- Only supports types which are `Deserialize` (this is not a big problem in practice).
+- Only supports types expressed using the [Serde data model](https://serde.rs/data-model.html). This means it fundamentally can't capture certain kinds of metadata, e.g. use of generic types and their trait bounds, any additional decorations on the foreign side (implemented protocols in Swift, etc.), any other information not provided to the deserializer.
+- We have no control over the generated code. This is especially problematic in TypeScript and the representation of enums.
 
 ### Why not use Typeshare?
 
@@ -29,9 +43,10 @@ Typeshare is great, but has its own set of limitations. The very key one is that
 ## Rustdoc based system
 
 The system we've been working on is based on rustdoc, specifically it's ability to output the type metadata in JSON. This actually covers all the bases:
-* It sees all the types in all the used crates (including `core` and `std`)
-* It can see macro generated code
-* It has all the relevant metadata - generic arguments, trait bounds, implementors of traits, etc.
+
+- It sees all the types in all the used crates (including `core` and `std`)
+- It can see macro generated code
+- It has all the relevant metadata - generic arguments, trait bounds, implementors of traits, etc.
 
 It is only a data set however. We need to do the work of finding the types, understanding them, and generating the foreign equivalents.
 
@@ -46,12 +61,13 @@ This broadly happens in three phases.
 Because we can discover the apps and find entry points from there, we no longer need the separate `shared_types` crate, where developers can register extra types and direct the typegen.
 
 We can support a wider feature set:
-* Better generated code, including "decorations" (e.g. Swift protocols)
-* Generic types support (in languages which support them)
-* Additional foreign code extensions:
-    * Different serialisation format
-    * Data based interior mutability support (to support fine-grained updates of the view model in the future)
-    * Custom code extensions
+
+- Better generated code, including "decorations" (e.g. Swift protocols)
+- Generic types support (in languages which support them)
+- Additional foreign code extensions:
+  - Different serialisation format
+  - Data based interior mutability support (to support fine-grained updates of the view model in the future)
+  - Custom code extensions
 
 The goal of this work is to make the type generation completely transparent to the developers most of the time. It should Just Work ™️.
 
@@ -120,7 +136,6 @@ In this phase we still use serde-generate as a backend, and focus on getting the
 **1 - serde-generate feature parity and start validating**
 
 Gets us to a working, reliable type generation front end, able to discover all the relevant types and capture the metadata. This is likely to require a period of testing with real-world codebases.
-
 
 **2 - enable annotation controlled feature selection**
 
