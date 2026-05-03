@@ -31,11 +31,9 @@ mod test {
 
 We create an instance of the app, and an instance of the model. Then we call update with the `Event::Reset` event.
 As you may remember we get back a `Command`, which we expect to carry a request for a render operation.
-The `#[effect]` macro on the `Effect` enum we declared earlier generates an `EffectTestExt` extension trait
-that adds chainable test-helper methods to `Command`. One of them is `expect_only_render`, which asserts
+The `#[effect]` macro on the `Effect` enum we declared earlier generates chainable test-helper methods for `Command` (technically, this is implemented a a trait called `EffectTestExt`, which needs to be in scope). One of them is `expect_only_render`, which asserts
 "the next effect is a Render and there are no others." It panics if either condition fails.
 The trait is generated alongside the `Effect` declaration, so `use super::*;` brings it into scope automatically.
-By convention these `expect_*` helpers are intended for test use only.
 
 That test should pass (check with `cargo nextest run`). Next up, we can check that the view model is rendered
 correctly
