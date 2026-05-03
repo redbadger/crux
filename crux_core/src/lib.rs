@@ -154,6 +154,7 @@
 pub mod bridge;
 pub mod capability;
 pub mod command;
+pub mod effects;
 pub mod middleware;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;

@@ -1,0 +1,88 @@
+use crate::Request;
+use crate::RequestHandle;
+use crate::ResolveError;
+use crate::capability::Operation;
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering;
+
+pub struct Registry<Op: Operation> {
+    next_id: AtomicU32,
+    requests: Mutex<HashMap<u32, Request<Op>>>,
+}
+
+impl<Op: Operation> Default for Registry<Op> {
+    fn default() -> Self {
+        Self {
+            next_id: AtomicU32::new(0),
+            requests: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+impl<Op> Registry<Op>
+where
+    Op: Operation + Clone,
+{
+    /// Register an effect request for later continuing with `resolve_with`. Stores
+    /// The effect under an ID, returns the id and the operation the request was carrying
+    ///
+    /// # Panics
+    ///
+    /// Panics if the lock around the underlying storage was poisoned
+    pub fn register(&self, request: Request<Op>) -> (u32, Op) {
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        let operation = request.operation.clone();
+
+        self.requests
+            .lock()
+            .expect("registry lock poisoned")
+            .insert(id, request);
+
+        (id, operation)
+    }
+}
+
+impl<Op> Registry<Op>
+where
+    Op: Operation,
+{
+    /// Resolve an effect stored under `id` with an `output` using a `resolve` callback.
+    /// If the request is expected to resolve multiple times it will be reinserted
+    ///
+    /// # Errors
+    ///
+    /// Returns an Err(ResolveError) returned by the `resolve` callback.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the lock around the underlying storage was poisoned
+    pub fn resolve_with<F>(
+        &self,
+        id: u32,
+        output: Op::Output,
+        resolve: F,
+    ) -> Result<(), ResolveError>
+    where
+        F: FnOnce(&mut Request<Op>, Op::Output) -> Result<(), ResolveError>,
+    {
+        let mut requests = self.requests.lock().expect("registry lock poisoned");
+        let Some(mut request) = requests.remove(&id) else {
+            panic!("missing pending handle for id {id}");
+        };
+        drop(requests);
+
+        resolve(&mut request, output)?;
+
+        if !matches!(request.handle, RequestHandle::Never) {
+            self.requests
+                .lock()
+                .expect("registry lock poisoned")
+                .insert(id, request);
+        }
+
+        Ok(())
+    }
+}

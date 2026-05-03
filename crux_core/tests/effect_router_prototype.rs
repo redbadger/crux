@@ -17,12 +17,12 @@ mod app {
     use crux_time::{Time, TimeRequest, TimerOutcome};
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    pub struct CaptureImage;
+    pub struct CaptureImageOp;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct OpaqueImageRef(pub usize);
 
-    impl Operation for CaptureImage {
+    impl Operation for CaptureImageOp {
         type Output = OpaqueImageRef;
     }
 
@@ -61,7 +61,7 @@ mod app {
         Render(RenderOperation),
         Time(TimeRequest),
         Permission(PermissionRequest),
-        Camera(CaptureImage),
+        Camera(CaptureImageOp),
         FileStore(StoreFile),
     }
 
@@ -123,7 +123,7 @@ mod app {
         }
 
         pub(crate) fn request_camera() -> Command<Effect, Event> {
-            Command::request_from_shell(CaptureImage).then_send(Event::CameraCaptured)
+            Command::request_from_shell(CaptureImageOp).then_send(Event::CameraCaptured)
         }
     }
 
@@ -215,174 +215,6 @@ mod app {
     }
 }
 
-// A version of this becomes part of crux_core
-mod crux_provided {
-    use std::collections::HashMap;
-    use std::sync::atomic::AtomicU32;
-    use std::sync::atomic::Ordering;
-    use std::sync::{Arc, Mutex};
-
-    use crux_core::Core;
-    use crux_core::Request;
-    use crux_core::Resolvable;
-    use crux_core::capability::Operation;
-    use crux_core::{RequestHandle, ResolveError};
-
-    use crate::app;
-
-    struct RegistryInner<Op: Operation> {
-        next_id: AtomicU32,
-        requests: Mutex<HashMap<u32, Request<Op>>>,
-    }
-
-    pub(crate) struct Registry<Op: Operation> {
-        inner: Arc<RegistryInner<Op>>,
-    }
-
-    impl<Op: Operation> Clone for Registry<Op> {
-        fn clone(&self) -> Self {
-            Self {
-                inner: self.inner.clone(),
-            }
-        }
-    }
-
-    impl<Op: Operation> Default for Registry<Op> {
-        fn default() -> Self {
-            Self {
-                inner: Arc::new(RegistryInner {
-                    next_id: AtomicU32::new(0),
-                    requests: Mutex::new(HashMap::new()),
-                }),
-            }
-        }
-    }
-
-    impl<Op> Registry<Op>
-    where
-        Op: Operation + Clone,
-    {
-        pub(crate) fn register(&self, request: Request<Op>) -> (u32, Op) {
-            let id = self.inner.next_id.fetch_add(1, Ordering::Relaxed);
-            let operation = request.operation.clone();
-
-            self.inner
-                .requests
-                .lock()
-                .expect("registry lock poisoned")
-                .insert(id, request);
-
-            (id, operation)
-        }
-    }
-
-    impl<Op> Registry<Op>
-    where
-        Op: Operation,
-    {
-        pub(crate) fn resolve_with<F>(
-            &self,
-            id: u32,
-            output: Op::Output,
-            resolve: F,
-        ) -> Result<(), ResolveError>
-        where
-            F: FnOnce(&mut Request<Op>, Op::Output) -> Result<(), ResolveError>,
-        {
-            let mut requests = self.inner.requests.lock().expect("registry lock poisoned");
-            let Some(mut request) = requests.remove(&id) else {
-                panic!("missing pending handle for id {id}");
-            };
-            drop(requests);
-
-            resolve(&mut request, output)?;
-
-            if !matches!(request.handle, RequestHandle::Never) {
-                self.inner
-                    .requests
-                    .lock()
-                    .expect("registry lock poisoned")
-                    .insert(id, request);
-            }
-
-            Ok(())
-        }
-    }
-
-    pub(crate) struct Router {
-        core: Core<app::SelfieApp>,
-        route_effects: Box<dyn Fn(app::Effect) + Send + Sync>,
-    }
-
-    impl Router {
-        pub(crate) fn new<F, R>(core: Core<app::SelfieApp>, route_effects_builder: F) -> Arc<Self>
-        where
-            F: FnOnce(std::sync::Weak<Self>) -> R,
-            R: Fn(app::Effect) + Send + Sync + 'static,
-        {
-            Arc::new_cyclic(|weak| {
-                let route_effects = route_effects_builder(weak.clone());
-                Self {
-                    core: core,
-                    route_effects: Box::new(route_effects),
-                }
-            })
-        }
-
-        pub(crate) fn update(&self, event: app::Event) {
-            for effect in self.core.process_event(event) {
-                (self.route_effects)(effect);
-            }
-        }
-
-        pub(crate) fn resolve<Output>(
-            &self,
-            request: &mut impl Resolvable<Output>,
-            output: Output,
-        ) -> Result<(), ResolveError> {
-            for effect in self.core.resolve(request, output)? {
-                (self.route_effects)(effect);
-            }
-
-            Ok(())
-        }
-
-        pub(crate) fn view(&self) -> app::ViewModel {
-            self.core.view()
-        }
-
-        pub(crate) fn process(&self) {
-            for effect in self.core.process() {
-                (self.route_effects)(effect);
-            }
-        }
-    }
-
-    pub(crate) trait ResolveSink<Op>
-    where
-        Op: Operation,
-    {
-        fn resolve_request(
-            &self,
-            request: Request<Op>,
-            output: Op::Output,
-        ) -> Result<(), ResolveError>;
-    }
-
-    impl<Op> ResolveSink<Op> for Router
-    where
-        Op: Operation,
-    {
-        fn resolve_request(
-            &self,
-            mut request: Request<Op>,
-            output: Op::Output,
-        ) -> Result<(), ResolveError> {
-            self.resolve(&mut request, output)
-        }
-    }
-}
-
 mod ffi {
     use std::sync::Arc;
 
@@ -390,12 +222,12 @@ mod ffi {
     use crux_core::bridge::{
         EffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest, ResolveRegistry,
     };
+    use crux_core::effects::{EffectRouter, Registry};
     use crux_core::render::RenderOperation;
     use crux_macros::effect;
     use crux_time::TimeRequest;
 
     use super::app;
-    use super::crux_provided::{self, Router};
 
     /// Narrowed effect, down to the serialized variants
     ///
@@ -428,7 +260,7 @@ mod ffi {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub(crate) struct CameraEffect {
         pub(crate) id: u32,
-        pub(crate) operation: app::CaptureImage,
+        pub(crate) operation: app::CaptureImageOp,
     }
 
     // Trait implemented by the shells, e.g with UniFFI of wasm_bindgen
@@ -438,9 +270,9 @@ mod ffi {
     }
 
     pub(crate) struct CameraFFI<Format: FfiFormat = JsonFfiFormat> {
-        router: Arc<Router>,
+        router: Arc<EffectRouter<app::SelfieApp>>,
         serialized_registry: Arc<ResolveRegistry<Format>>,
-        camera_registry: crux_provided::Registry<app::CaptureImage>,
+        camera_registry: Arc<Registry<app::CaptureImageOp>>,
     }
 
     /// The core FFI
@@ -455,9 +287,9 @@ mod ffi {
             let core = Core::new();
 
             let serialized_registry = Arc::new(ResolveRegistry::default());
-            let camera_registry = crux_provided::Registry::default();
+            let camera_registry = Arc::new(Registry::default());
 
-            let router = Router::new(core, {
+            let router = EffectRouter::new(core, {
                 let shell = shell.clone();
                 let serialized_registry = serialized_registry.clone();
                 let camera_registry = camera_registry.clone();
@@ -512,6 +344,7 @@ mod ffi {
                 .resume(EffectId(id), data)
                 .expect("serialized resolve should work");
 
+            // FIXME: adjust the APIs such that it's not possible to forget this call
             self.router.process();
         }
 
@@ -536,10 +369,9 @@ mod ffi {
         use std::time::Duration;
 
         use crossbeam_channel::{Receiver, Sender, unbounded};
-        use crux_core::Request;
+        use crux_core::{Request, effects::ResolveSink};
 
         use super::app;
-        use super::crux_provided::ResolveSink;
 
         pub(crate) struct FileStoreHandler {
             jobs_tx: Sender<Request<app::StoreFile>>,
@@ -671,7 +503,7 @@ fn trigger_takes_a_picture() {
 
     let camera_effects = shell.take_camera_effects();
     assert_eq!(camera_effects.len(), 1);
-    assert_eq!(camera_effects[0].operation, app::CaptureImage);
+    assert_eq!(camera_effects[0].operation, app::CaptureImageOp);
 
     let serialized = shell.take_serialized_effects();
     assert_only_render_effect(serialized);
@@ -764,7 +596,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
 
     let camera_effects = shell.take_camera_effects();
     assert_eq!(camera_effects.len(), 1);
-    assert_eq!(camera_effects[0].operation, app::CaptureImage);
+    assert_eq!(camera_effects[0].operation, app::CaptureImageOp);
 
     let serialized = shell.take_serialized_effects();
     assert_only_render_effect(serialized);

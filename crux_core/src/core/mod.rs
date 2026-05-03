@@ -141,10 +141,7 @@ where
 
     // used in docs/internals/runtime.md
     // ANCHOR: process
-    // FIXME(effect-router-rfc): this was made public to allow router-driven
-    // resume-by-id flows to kick pending work. Revisit naming and API shape.
-    #[allow(clippy::missing_panics_doc)]
-    pub fn process(&self) -> Vec<A::Effect> {
+    pub(crate) fn process(&self) -> Vec<A::Effect> {
         let mut root_command = self
             .root_command
             .lock()
