@@ -75,7 +75,7 @@ class Core
                 Log.d(TAG, "handleEffects: empty response (no effects)")
                 return
             }
-            val requests = Requests.bincodeDeserialize(effects)
+            val requests = Requests.bincodeDeserialize(effects).value
             for (request in requests) {
                 processRequest(request)
             }

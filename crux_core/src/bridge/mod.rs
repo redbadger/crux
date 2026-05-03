@@ -53,6 +53,24 @@ where
 }
 // ANCHOR_END: request
 
+/// A batch of effect requests from the Core to the Shell, as serialised by
+/// [`Bridge::update`] and [`Bridge::resolve`].
+///
+/// The wire format is identical to `Vec<Request<Eff>>` (the newtype is
+/// `serde(transparent)`), so existing shell code that already deserialises
+/// a `Vec<Request>` remains binary-compatible.
+///
+/// Registering this type with the type-generation system causes the code
+/// generators to emit a `Requests` type (with a `value` field containing the
+/// list) together with a top-level `bincodeDeserialize` / `BincodeDeserialize`
+/// helper, replacing the hand-written extension files that were previously
+/// appended by `add_extensions()`.
+#[derive(Facet, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Requests<Eff>(pub Vec<Request<Eff>>)
+where
+    Eff: Serialize;
+
 /// Bridge is a core wrapper presenting the same interface as the [`Core`] but in a
 /// serialized form, using bincode as the serialization format.
 pub struct Bridge<A, F = BincodeFfiFormat>
