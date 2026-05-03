@@ -42,7 +42,7 @@ mod app {
                 Event::Render => render(),
                 Event::Ping => ping().then_send(Event::Echo),
                 Event::Both => render().and(ping().then_send(Event::Echo)),
-                Event::Echo(_) => Command::done(),
+                Event::Echo(()) => Command::done(),
             }
         }
 

@@ -72,6 +72,7 @@ fn single_with_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let Effect::Render(request) = self {
@@ -81,6 +82,7 @@ fn single_with_typegen() {
             }
         }
     }
+    #[cfg(test)]
     pub trait EffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -102,6 +104,7 @@ fn single_with_typegen() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> EffectTestExt<Event> for ::crux_core::Command<Effect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -253,6 +256,7 @@ fn single_with_new_name() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let MyEffect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let MyEffect::Render(request) = self {
@@ -262,6 +266,7 @@ fn single_with_new_name() {
             }
         }
     }
+    #[cfg(test)]
     pub trait MyEffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -283,6 +288,7 @@ fn single_with_new_name() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> MyEffectTestExt<Event> for ::crux_core::Command<MyEffect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -440,6 +446,7 @@ fn single_with_facet_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let Effect::Render(request) = self {
@@ -449,6 +456,7 @@ fn single_with_facet_typegen() {
             }
         }
     }
+    #[cfg(test)]
     pub trait EffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -470,6 +478,7 @@ fn single_with_facet_typegen() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> EffectTestExt<Event> for ::crux_core::Command<Effect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -644,6 +653,7 @@ fn single_facet_typegen_with_new_name() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let MyEffect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let MyEffect::Render(request) = self {
@@ -653,6 +663,7 @@ fn single_facet_typegen_with_new_name() {
             }
         }
     }
+    #[cfg(test)]
     pub trait MyEffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -674,6 +685,7 @@ fn single_facet_typegen_with_new_name() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> MyEffectTestExt<Event> for ::crux_core::Command<MyEffect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -826,6 +838,7 @@ fn single_without_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let Effect::Render(request) = self {
@@ -835,6 +848,7 @@ fn single_without_typegen() {
             }
         }
     }
+    #[cfg(test)]
     pub trait EffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -856,6 +870,7 @@ fn single_without_typegen() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> EffectTestExt<Event> for ::crux_core::Command<Effect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -1011,6 +1026,7 @@ fn multiple_with_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let Effect::Render(request) = self {
@@ -1027,6 +1043,7 @@ fn multiple_with_typegen() {
         pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
             if let Effect::Http(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_http(self) -> ::crux_core::Request<HttpRequest> {
             if let Effect::Http(request) = self {
@@ -1036,6 +1053,7 @@ fn multiple_with_typegen() {
             }
         }
     }
+    #[cfg(test)]
     pub trait EffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -1070,6 +1088,7 @@ fn multiple_with_typegen() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> EffectTestExt<Event> for ::crux_core::Command<Effect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -1314,6 +1333,7 @@ fn multiple_with_facet_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let Effect::Render(request) = self {
@@ -1330,6 +1350,7 @@ fn multiple_with_facet_typegen() {
         pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
             if let Effect::Http(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_http(self) -> ::crux_core::Request<HttpRequest> {
             if let Effect::Http(request) = self {
@@ -1339,6 +1360,7 @@ fn multiple_with_facet_typegen() {
             }
         }
     }
+    #[cfg(test)]
     pub trait EffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -1373,6 +1395,7 @@ fn multiple_with_facet_typegen() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> EffectTestExt<Event> for ::crux_core::Command<Effect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -1612,6 +1635,7 @@ fn multiple_without_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let Effect::Render(request) = self {
@@ -1628,6 +1652,7 @@ fn multiple_without_typegen() {
         pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
             if let Effect::Http(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_http(self) -> ::crux_core::Request<HttpRequest> {
             if let Effect::Http(request) = self {
@@ -1637,6 +1662,7 @@ fn multiple_without_typegen() {
             }
         }
     }
+    #[cfg(test)]
     pub trait EffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -1671,6 +1697,7 @@ fn multiple_without_typegen() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> EffectTestExt<Event> for ::crux_core::Command<Effect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -1866,6 +1893,7 @@ fn single_without_typegen_with_attributes() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let Effect::Render(request) = self {
@@ -1875,6 +1903,7 @@ fn single_without_typegen_with_attributes() {
             }
         }
     }
+    #[cfg(test)]
     pub trait EffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -1896,6 +1925,7 @@ fn single_without_typegen_with_attributes() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> EffectTestExt<Event> for ::crux_core::Command<Effect, Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -2043,6 +2073,7 @@ fn facet_typegen_with_namespace_attribute() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
+        #[cfg(test)]
         #[track_caller]
         pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
             if let Effect::Render(request) = self {
@@ -2052,6 +2083,7 @@ fn facet_typegen_with_namespace_attribute() {
             }
         }
     }
+    #[cfg(test)]
     pub trait EffectTestExt<Event>
     where
         Event: ::core::marker::Send + 'static,
@@ -2073,6 +2105,7 @@ fn facet_typegen_with_namespace_attribute() {
         where
             F: ::core::ops::FnOnce(&Event);
     }
+    #[cfg(test)]
     impl<Event> EffectTestExt<Event> for ::crux_core::Command<Effect, Event>
     where
         Event: ::core::marker::Send + 'static,
