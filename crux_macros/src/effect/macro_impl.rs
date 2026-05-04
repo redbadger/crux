@@ -140,6 +140,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                         None
                     }
                 }
+                #[doc(hidden)]
                 #[track_caller]
                 pub fn #expect_fn(self) -> ::crux_core::Request<#operation> {
                     if let #enum_ident::#effect_ident(request) = self {
@@ -233,7 +234,12 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 let effect = self.effects().next()
                     .unwrap_or_else(|| panic!(#no_more_msg));
                 let _ = effect.#expect_fn();
-                self.expect_no_effect_or_events();
+                let remaining_effects = self.effects().count();
+                let remaining_events = self.events().count();
+                assert!(
+                    remaining_effects + remaining_events == 0,
+                    "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+                );
             }
 
             #[track_caller]
@@ -245,7 +251,12 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                     .unwrap_or_else(|| panic!(#no_more_msg));
                 let req = effect.#expect_fn();
                 f(&req.operation);
-                self.expect_no_effect_or_events();
+                let remaining_effects = self.effects().count();
+                let remaining_events = self.events().count();
+                assert!(
+                    remaining_effects + remaining_events == 0,
+                    "expected command to be done, found {remaining_effects} effects and {remaining_events} events",
+                );
             }
 
             #[track_caller]
@@ -265,6 +276,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     });
 
     let test_ext = quote! {
+        #[doc(hidden)]
         pub trait #test_ext_trait_ident<Event>
         where
             Event: ::core::marker::Send + 'static,
@@ -276,6 +288,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 F: ::core::ops::FnOnce(&Event);
         }
 
+        #[doc(hidden)]
         impl<Event> #test_ext_trait_ident<Event> for ::crux_core::Command<#enum_ident, Event>
         where
             Event: ::core::marker::Send + 'static,

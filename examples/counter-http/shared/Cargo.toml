@@ -51,6 +51,7 @@ workspace = true
 
 [dev-dependencies]
 insta = { version = "1.46.3", features = ["yaml"] }
+crux_core = { workspace = true, features = ["testing"] }
 
 # wasm
 [target.'cfg(target_family = "wasm")'.dependencies]

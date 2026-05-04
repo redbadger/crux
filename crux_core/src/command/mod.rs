@@ -204,7 +204,7 @@
 //!     .then_send(Event::GotPost);
 //!
 //! // Check the effect is an HTTP request ...
-//! let effect = cmd.expect_one_effect();
+//! let effect = cmd.effects().next().expect("expected an effect");
 //! let Effect::Http(mut request) = effect else {
 //!     panic!("Expected a HTTP effect")
 //! };
@@ -229,7 +229,7 @@
 //!     .expect("Resolve should succeed");
 //!
 //! // Check the event is a GotPost event with the successful response
-//! let actual = cmd.expect_one_event();
+//! let actual = cmd.events().next().expect("expected an event");
 //! let expected = Event::GotPost(Ok(ResponseBuilder::ok().body(body).build()));
 //! assert_eq!(actual, expected);
 //!
