@@ -79,7 +79,7 @@ fn expect_render_panics_on_empty_command() {
 }
 
 #[test]
-#[should_panic(expected = "not a Render effect")]
+#[should_panic(expected = "expected Render effect, got Ping")]
 fn expect_render_panics_on_wrong_variant() {
     let mut model = ();
     app::PanicApp

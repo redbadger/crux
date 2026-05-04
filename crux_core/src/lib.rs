@@ -161,6 +161,22 @@ pub mod testing;
 #[cfg(any(feature = "typegen", feature = "facet_typegen"))]
 pub mod type_generation;
 
+#[doc(hidden)]
+#[macro_export]
+#[cfg(any(test, feature = "testing"))]
+macro_rules! __crux_core_testing_items {
+    ($($tokens:tt)*) => {
+        $($tokens)*
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+#[cfg(not(any(test, feature = "testing")))]
+macro_rules! __crux_core_testing_items {
+    ($($tokens:tt)*) => {};
+}
+
 mod capabilities;
 mod core;
 

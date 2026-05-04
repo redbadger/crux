@@ -77,6 +77,15 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         Effect { ident, operation }
     });
 
+    let effect_names = effects
+        .clone()
+        .map(|effect| {
+            let ident = effect.ident;
+            let ident_str = ident.to_string();
+            (ident, ident_str)
+        })
+        .collect::<Vec<_>>();
+
     let effect_variants = effects.clone().map(|effect| {
         let effect_ident = &effect.ident;
         let operation = &effect.operation;
@@ -124,6 +133,11 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         let filter_fn = Ident::new(&format!("is_{effect_ident_snake}"), Span::call_site());
         let map_fn = Ident::new(&format!("into_{effect_ident_snake}"), Span::call_site());
         let expect_fn = Ident::new(&format!("expect_{effect_ident_snake}"), Span::call_site());
+        let variant_name_arms = effect_names.iter().map(|(effect_ident, effect_ident_str)| {
+            quote! {
+                #enum_ident::#effect_ident(_) => #effect_ident_str
+            }
+        });
         quote! {
             impl #enum_ident {
                 pub fn #filter_fn(&self) -> bool {
@@ -140,13 +154,23 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                         None
                     }
                 }
-                #[doc(hidden)]
-                #[track_caller]
-                pub fn #expect_fn(self) -> ::crux_core::Request<#operation> {
-                    if let #enum_ident::#effect_ident(request) = self {
-                        request
-                    } else {
-                        panic!("not a {} effect", #effect_ident_str)
+            }
+
+            ::crux_core::__crux_core_testing_items! {
+                impl #enum_ident {
+                    #[doc(hidden)]
+                    #[track_caller]
+                    pub fn #expect_fn(self) -> ::crux_core::Request<#operation> {
+                        match self {
+                            #enum_ident::#effect_ident(request) => request,
+                            effect => {
+                                let actual = match &effect {
+                                    #(#variant_name_arms,)*
+                                };
+
+                                panic!("expected {} effect, got {actual}", #effect_ident_str)
+                            }
+                        }
                     }
                 }
             }
@@ -276,34 +300,36 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     });
 
     let test_ext = quote! {
-        #[doc(hidden)]
-        pub trait #test_ext_trait_ident<Event>
-        where
-            Event: ::core::marker::Send + 'static,
-        {
-            #(#test_ext_trait_methods)*
-
-            fn then_event<F>(&mut self, f: F) -> &mut Self
+        ::crux_core::__crux_core_testing_items! {
+            #[doc(hidden)]
+            pub trait #test_ext_trait_ident<Event>
             where
-                F: ::core::ops::FnOnce(&Event);
-        }
-
-        #[doc(hidden)]
-        impl<Event> #test_ext_trait_ident<Event> for ::crux_core::Command<#enum_ident, Event>
-        where
-            Event: ::core::marker::Send + 'static,
-        {
-            #(#test_ext_impl_methods)*
-
-            #[track_caller]
-            fn then_event<F>(&mut self, f: F) -> &mut Self
-            where
-                F: ::core::ops::FnOnce(&Event),
+                Event: ::core::marker::Send + 'static,
             {
-                let ev = self.events().next()
-                    .unwrap_or_else(|| panic!("expected an event but got none"));
-                f(&ev);
-                self
+                #(#test_ext_trait_methods)*
+
+                fn then_event<F>(&mut self, f: F) -> &mut Self
+                where
+                    F: ::core::ops::FnOnce(&Event);
+            }
+
+            #[doc(hidden)]
+            impl<Event> #test_ext_trait_ident<Event> for ::crux_core::Command<#enum_ident, Event>
+            where
+                Event: ::core::marker::Send + 'static,
+            {
+                #(#test_ext_impl_methods)*
+
+                #[track_caller]
+                fn then_event<F>(&mut self, f: F) -> &mut Self
+                where
+                    F: ::core::ops::FnOnce(&Event),
+                {
+                    let ev = self.events().next()
+                        .unwrap_or_else(|| panic!("expected an event but got none"));
+                    f(&ev);
+                    self
+                }
             }
         }
     };
