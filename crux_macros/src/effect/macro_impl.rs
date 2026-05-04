@@ -140,7 +140,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                         None
                     }
                 }
-                #[cfg(test)]
+                #[doc(hidden)]
                 #[track_caller]
                 pub fn #expect_fn(self) -> ::crux_core::Request<#operation> {
                     if let #enum_ident::#effect_ident(request) = self {
@@ -276,7 +276,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     });
 
     let test_ext = quote! {
-        #[cfg(test)]
+        #[doc(hidden)]
         pub trait #test_ext_trait_ident<Event>
         where
             Event: ::core::marker::Send + 'static,
@@ -288,7 +288,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 F: ::core::ops::FnOnce(&Event);
         }
 
-        #[cfg(test)]
+        #[doc(hidden)]
         impl<Event> #test_ext_trait_ident<Event> for ::crux_core::Command<#enum_ident, Event>
         where
             Event: ::core::marker::Send + 'static,
