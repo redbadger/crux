@@ -216,13 +216,14 @@ mod app {
 }
 
 mod ffi {
-    use std::sync::Arc;
+    use std::sync::{Arc, Weak};
 
     use crux_core::Core;
-    use crux_core::bridge::{
-        EffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest, ResolveRegistry,
+    use crux_core::bridge::{EffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest};
+    use crux_core::effects::{
+        EffectRouter,
+        routes::{Parked, Serialized},
     };
-    use crux_core::effects::{EffectRouter, Registry};
     use crux_core::render::RenderOperation;
     use crux_macros::effect;
     use crux_time::TimeRequest;
@@ -270,9 +271,33 @@ mod ffi {
     }
 
     pub(crate) struct CameraFFI<Format: FfiFormat = JsonFfiFormat> {
-        router: Arc<EffectRouter<app::SelfieApp>>,
-        serialized_registry: Arc<ResolveRegistry<Format>>,
-        camera_registry: Arc<Registry<app::CaptureImageOp>>,
+        router: Arc<EffectRouter<app::SelfieApp, Routes<Format>>>,
+    }
+
+    struct Routes<Format: FfiFormat> {
+        serialized: Arc<Serialized<app::SelfieApp, Self, Format>>,
+        camera: Arc<Parked<app::SelfieApp, Self, app::CaptureImageOp>>,
+        file_store: Arc<file_store::FileStoreHandler>,
+    }
+
+    impl<Format: FfiFormat> Clone for Routes<Format> {
+        fn clone(&self) -> Self {
+            Self {
+                serialized: self.serialized.clone(),
+                camera: self.camera.clone(),
+                file_store: self.file_store.clone(),
+            }
+        }
+    }
+
+    impl<Format: FfiFormat> crux_core::effects::Routes<app::SelfieApp> for Routes<Format> {
+        fn new(router: Weak<EffectRouter<app::SelfieApp, Self>>) -> Self {
+            Self {
+                serialized: Arc::new(Serialized::new(router.clone())),
+                camera: Arc::new(Parked::new(router.clone())),
+                file_store: Arc::new(file_store::FileStoreHandler::new(router)),
+            }
+        }
     }
 
     /// The core FFI
@@ -286,50 +311,38 @@ mod ffi {
         pub(crate) fn new_with_format(shell: Arc<dyn CameraShell>) -> Self {
             let core = Core::new();
 
-            let serialized_registry = Arc::new(ResolveRegistry::default());
-            let camera_registry = Arc::new(Registry::default());
-
-            let router = EffectRouter::new(core, {
+            let router = EffectRouter::new(core, move |routes: Routes<Format>| {
+                let routes = routes.clone();
                 let shell = shell.clone();
-                let serialized_registry = serialized_registry.clone();
-                let camera_registry = camera_registry.clone();
 
-                |weak_router| {
-                    let fs_store = file_store::FileStoreHandler::new(weak_router.clone());
+                move |effect| match effect {
+                    // Core-side effect, processed in Rust
+                    app::Effect::FileStore(request) => {
+                        routes.file_store.process_file_store(request);
+                    }
+                    // Shell-side effect, but with a custom FFI to allow for opaque types, pointers, etc.
+                    // this doesn't necessarily need to rely on the shell instance either, could be another
+                    // form of callback to the shell
+                    app::Effect::Camera(request) => {
+                        let (id, operation) = routes.camera.park(request);
+                        shell.process_camera_effect(CameraEffect { id, operation });
+                    }
+                    // Original serialized FFI
+                    effect => {
+                        let serialized_effect = SerializedEffect::try_from(effect)
+                            .expect("non-serialized effects are handled above");
 
-                    move |effect| match effect {
-                        // Core-side effect, processed in Rust
-                        app::Effect::FileStore(request) => {
-                            fs_store.process_file_store(request);
-                        }
-                        // Shell-side effect, but with a custom FFI to allow for opaque types, pointers, etc.
-                        // this doesn't necessarily need to rely on the shell instance either, could be another
-                        // form of callback to the shell
-                        app::Effect::Camera(request) => {
-                            let (id, op) = camera_registry.register(request);
-                            shell.process_camera_effect(CameraEffect { id, operation: op });
-                        }
-                        // Original serialized FFI
-                        effect => {
-                            let serialized_effect = SerializedEffect::try_from(effect)
-                                .expect("non-serialized effects are handled above");
+                        let bytes = routes
+                            .serialized
+                            .serialize(serialized_effect)
+                            .expect("serialized effect request should encode");
 
-                            let request = serialized_registry.register(serialized_effect);
-                            let mut bytes = vec![];
-                            Format::serialize(&mut bytes, &vec![request])
-                                .expect("serialized effect request should encode");
-
-                            shell.process_serialized_effects(bytes);
-                        }
+                        shell.process_serialized_effects(bytes);
                     }
                 }
             });
 
-            Self {
-                router,
-                serialized_registry,
-                camera_registry,
-            }
+            Self { router }
         }
 
         // The FFI below is fully controlled by the given core
@@ -340,20 +353,19 @@ mod ffi {
 
         /// Resolve an effect sent over the serialized lane.
         pub(crate) fn resolve_serialized(&self, id: u32, data: &[u8]) {
-            self.serialized_registry
-                .resume(EffectId(id), data)
+            self.router
+                .routes
+                .serialized
+                .resolve(EffectId(id), data)
                 .expect("serialized resolve should work");
-
-            // FIXME: adjust the APIs such that it's not possible to forget this call
-            self.router.process();
         }
 
         /// Specific effect FFI for opaque data types
         pub(crate) fn resolve_camera(&self, id: u32, output: app::OpaqueImageRef) {
-            self.camera_registry
-                .resolve_with(id, output, |request, output| {
-                    self.router.resolve(request, output)
-                })
+            self.router
+                .routes
+                .camera
+                .resolve(id, output)
                 .expect("camera resolve should work");
         }
 
@@ -400,7 +412,7 @@ mod ffi {
         where
             S: ResolveSink<app::StoreFile> + Send + Sync + 'static,
         {
-            while let Ok(request) = jobs_rx.recv() {
+            while let Ok(mut request) = jobs_rx.recv() {
                 // Ensure async behavior so this path models background work.
                 thread::sleep(Duration::from_millis(1));
 
@@ -410,7 +422,7 @@ mod ffi {
                 };
 
                 if let Some(sink) = sink.upgrade() {
-                    sink.resolve_request(request, stored)
+                    sink.resolve_request(&mut request, stored)
                         .expect("background file store resolve should succeed");
                 }
             }

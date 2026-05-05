@@ -29,7 +29,7 @@ impl RngHandler {
             let mut rng =
                 StdRng::seed_from_u64(sys_rng.try_next_u64().expect("could not seed RNG"));
 
-            while let Ok(request) = jobs_rx.recv() {
+            while let Ok(mut request) = jobs_rx.recv() {
                 let RandomNumberRequest(from, to) = request.operation;
 
                 #[allow(clippy::cast_sign_loss)]
@@ -38,7 +38,7 @@ impl RngHandler {
                 let out = rng.random_range(0..top) as isize + from;
 
                 if let Some(sink) = sink.upgrade() {
-                    sink.resolve_request(request, RandomNumber(out))
+                    sink.resolve_request(&mut request, RandomNumber(out))
                         .expect("background file store resolve should succeed");
                 }
             }

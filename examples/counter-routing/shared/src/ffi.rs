@@ -1,13 +1,12 @@
 #[cfg(feature = "uniffi")]
 pub mod uniffi {
-    use std::sync::Arc;
+    use std::sync::{Arc, Weak};
 
     use crux_core::{
         Core,
-        bridge::{EffectId, FfiFormat, ResolveRegistry},
-        effects::EffectRouter,
+        bridge::{BincodeFfiFormat, EffectId},
+        effects::{EffectRouter, routes::Serialized},
         macros::effect,
-        middleware::BincodeFfiFormat,
         render::RenderOperation,
     };
     use crux_http::protocol::HttpRequest;
@@ -45,69 +44,77 @@ pub mod uniffi {
     /// The main interface used by the shell
     #[derive(uniffi::Object)]
     pub struct CoreFFI {
-        router: Arc<EffectRouter<Counter>>,
-        registry: Arc<ResolveRegistry<BincodeFfiFormat>>,
+        router: Arc<EffectRouter<Counter, EffectRoutes>>,
+    }
+
+    #[derive(Clone)]
+    struct EffectRoutes {
+        serialized: Arc<Serialized<Counter, Self, BincodeFfiFormat>>,
+        rng_handler: Arc<RngHandler>,
+    }
+
+    impl crux_core::effects::Routes<Counter> for EffectRoutes {
+        fn new(router: Weak<EffectRouter<Counter, Self>>) -> Self {
+            Self {
+                serialized: Arc::new(Serialized::new(router.clone())),
+                rng_handler: Arc::new(RngHandler::new(router)),
+            }
+        }
     }
 
     #[uniffi::export]
-    #[allow(clippy::missing_panics_doc)]
+    #[allow(clippy::missing_panics_doc, clippy::needless_pass_by_value)]
     impl CoreFFI {
         #[uniffi::constructor]
         pub fn new(shell: Arc<dyn CruxShell>) -> Self {
-            let registry = Arc::new(ResolveRegistry::default());
-
-            let core = Core::new();
-            let router = EffectRouter::new(core, {
+            let router = EffectRouter::new(Core::new(), move |routes: EffectRoutes| {
+                let routes = routes.clone();
                 let shell = shell.clone();
-                let registry = registry.clone();
 
-                |weak_router| {
-                    let rng_handler = RngHandler::new(weak_router.clone());
+                // Effect routing
+                move |effect| match effect {
+                    crate::app::Effect::Random(req) => {
+                        routes.rng_handler.process(req);
+                    }
+                    effect => {
+                        let serialized_effect = Effect::from(effect);
 
-                    move |effect| match effect {
-                        crate::app::Effect::Random(req) => {
-                            rng_handler.process(req);
-                        }
-                        effect => {
-                            let serialized_effect = Effect::from(effect);
+                        let bytes = routes
+                            .serialized
+                            .serialize(serialized_effect)
+                            .expect("serialized effect request should encode");
 
-                            let request = registry.register(serialized_effect);
-                            let mut bytes = vec![];
-                            BincodeFfiFormat::serialize(&mut bytes, &vec![request])
-                                .expect("serialized effect request should encode");
-
-                            shell.process_effects(bytes);
-                        }
+                        shell.process_effects(bytes);
                     }
                 }
             });
 
-            Self { router, registry }
+            Self { router }
         }
 
-        #[must_use]
         pub fn update(&self, data: &[u8]) {
-            let event = BincodeFfiFormat::deserialize(data).expect("event should deserialize");
-
-            self.router.update(event);
+            self.router
+                .routes
+                .serialized
+                .update(data)
+                .expect("event should deserialize");
         }
 
-        #[must_use]
         pub fn resolve(&self, effect_id: u32, data: &[u8]) {
-            self.registry
-                .resume(EffectId(effect_id), data)
+            self.router
+                .routes
+                .serialized
+                .resolve(EffectId(effect_id), data)
                 .expect("failed to resolve effect");
-
-            self.router.process();
         }
 
         #[must_use]
         pub fn view(&self) -> Vec<u8> {
-            let mut view_model = Vec::new();
-            BincodeFfiFormat::serialize(&mut view_model, &self.router.view())
-                .expect("view model should serialize");
-
-            view_model
+            self.router
+                .routes
+                .serialized
+                .view()
+                .expect("view model should serialize")
         }
     }
 }

@@ -26,7 +26,7 @@ impl<Op> Registry<Op>
 where
     Op: Operation + Clone,
 {
-    /// Register an effect request for later continuing with `resolve_with`. Stores
+    /// Register an effect request for later continuing with [`Self::resolve`]. Stores
     /// The effect under an ID, returns the id and the operation the request was carrying
     ///
     /// # Panics
@@ -49,32 +49,24 @@ impl<Op> Registry<Op>
 where
     Op: Operation,
 {
-    /// Resolve an effect stored under `id` with an `output` using a `resolve` callback.
+    /// Resolve an effect stored under `id` with an `output`.
     /// If the request is expected to resolve multiple times it will be reinserted
     ///
     /// # Errors
     ///
-    /// Returns an Err(ResolveError) returned by the `resolve` callback.
+    /// Returns an Err(ResolveError) if the request cannot be resolved.
     ///
     /// # Panics
     ///
     /// Panics if the lock around the underlying storage was poisoned
-    pub fn resolve_with<F>(
-        &self,
-        id: u32,
-        output: Op::Output,
-        resolve: F,
-    ) -> Result<(), ResolveError>
-    where
-        F: FnOnce(&mut Request<Op>, Op::Output) -> Result<(), ResolveError>,
-    {
+    pub fn resolve(&self, id: u32, output: Op::Output) -> Result<(), ResolveError> {
         let mut requests = self.requests.lock().expect("registry lock poisoned");
         let Some(mut request) = requests.remove(&id) else {
             panic!("missing pending handle for id {id}");
         };
         drop(requests);
 
-        resolve(&mut request, output)?;
+        request.resolve(output)?;
 
         if !matches!(request.handle, RequestHandle::Never) {
             self.requests

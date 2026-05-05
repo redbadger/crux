@@ -10,8 +10,9 @@
 //! TODO complete docs
 
 mod registry;
+pub mod routes;
 
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use crate::Core;
 use crate::Request;
@@ -21,21 +22,39 @@ use crate::capability::Operation;
 
 pub use registry::Registry;
 
-pub struct EffectRouter<App: crate::App> {
+pub struct EffectRouter<App, RouteSet>
+where
+    App: crate::App,
+{
+    pub routes: RouteSet,
     core: Core<App>,
     route_effects: Box<dyn Fn(App::Effect) + Send + Sync>,
 }
 
-impl<App: crate::App> EffectRouter<App> {
+pub trait Routes<App>: Sized + Clone
+where
+    App: crate::App,
+{
+    fn new(router: Weak<EffectRouter<App, Self>>) -> Self;
+}
+
+impl<App, RouteSet> EffectRouter<App, RouteSet>
+where
+    App: crate::App,
+    RouteSet: Routes<App> + Send + Sync + 'static,
+{
     pub fn new<F, R>(core: Core<App>, route_effects_builder: F) -> Arc<Self>
     where
-        F: FnOnce(std::sync::Weak<Self>) -> R,
+        F: FnOnce(RouteSet) -> R,
         R: Fn(App::Effect) + Send + Sync + 'static,
     {
         Arc::new_cyclic(|weak| {
-            let route_effects = route_effects_builder(weak.clone());
+            let routes = RouteSet::new(weak.clone());
+            let route_effects = route_effects_builder(routes.clone());
+
             Self {
                 core,
+                routes,
                 route_effects: Box::new(route_effects),
             }
         })
@@ -69,7 +88,7 @@ impl<App: crate::App> EffectRouter<App> {
         self.core.view()
     }
 
-    pub fn process(&self) {
+    fn process(&self) {
         for effect in self.core.process() {
             (self.route_effects)(effect);
         }
@@ -86,19 +105,27 @@ where
     ///
     /// Returns an error if the request is not expected to be resolved by
     /// the underlying [`Core`].
-    fn resolve_request(&self, request: Request<Op>, output: Op::Output)
-    -> Result<(), ResolveError>;
+    fn resolve_request(
+        &self,
+        request: &mut Request<Op>,
+        output: Op::Output,
+    ) -> Result<(), ResolveError>;
 }
 
-impl<App: crate::App, Op> ResolveSink<Op> for EffectRouter<App>
+impl<App, RouteSet, Op> ResolveSink<Op> for EffectRouter<App, RouteSet>
 where
+    App: crate::App,
+    RouteSet: Routes<App> + Send + Sync + 'static,
     Op: Operation,
 {
     fn resolve_request(
         &self,
-        mut request: Request<Op>,
+        request: &mut Request<Op>,
         output: Op::Output,
     ) -> Result<(), ResolveError> {
-        self.resolve(&mut request, output)
+        self.resolve(request, output)?;
+        self.process();
+
+        Ok(())
     }
 }
