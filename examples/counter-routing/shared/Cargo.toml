@@ -55,6 +55,7 @@ wit-bindgen = { version = "0.54.0", optional = true }
 workspace = true
 
 [dev-dependencies]
+crux_core = { workspace = true, features = ["testing"] }
 insta = { version = "1.46.3", features = ["yaml"] }
 
 # wasm
