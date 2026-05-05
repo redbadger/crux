@@ -1,3 +1,8 @@
+#![expect(
+    clippy::too_many_lines,
+    reason = "snapshot tests embed full macro expansion"
+)]
+
 use quote::format_ident;
 use syn::parse_quote;
 
@@ -67,14 +72,53 @@ fn single_with_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let Effect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
+        request, effect => { let actual = match & effect { Effect::Render(_) => "Render", };
+        panic!("expected {} effect, got {actual}", "Render") } } } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
+        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
+        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
+        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
+        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
+        #[doc(hidden)] impl < Event > EffectTestExt < Event > for ::crux_core::Command <
+        Effect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
+        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
+        effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
+        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
+        ev); self } }
     }
     #[cfg(feature = "typegen")]
     impl ::crux_core::type_generation::serde::Export for Effect {
@@ -140,14 +184,53 @@ fn single_with_new_name() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let MyEffect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let MyEffect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl MyEffect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { MyEffect::Render(request) =>
+        request, effect => { let actual = match & effect { MyEffect::Render(_) => "Render",
+        }; panic!("expected {} effect, got {actual}", "Render") } } } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait MyEffectTestExt < Event > where Event : ::core::marker::Send
+        + 'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation);
+        fn expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f :
+        F) where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
+        #[doc(hidden)] impl < Event > MyEffectTestExt < Event > for ::crux_core::Command <
+        MyEffect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
+        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
+        effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
+        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
+        ev); self } }
     }
     #[cfg(feature = "typegen")]
     impl ::crux_core::type_generation::serde::Export for MyEffect {
@@ -219,14 +302,53 @@ fn single_with_facet_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let Effect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
+        request, effect => { let actual = match & effect { Effect::Render(_) => "Render", };
+        panic!("expected {} effect, got {actual}", "Render") } } } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
+        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
+        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
+        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
+        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
+        #[doc(hidden)] impl < Event > EffectTestExt < Event > for ::crux_core::Command <
+        Effect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
+        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
+        effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
+        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
+        ev); self } }
     }
     #[cfg(feature = "facet_typegen")]
     impl ::crux_core::type_generation::facet::Export for Effect {
@@ -315,14 +437,53 @@ fn single_facet_typegen_with_new_name() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let MyEffect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let MyEffect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl MyEffect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { MyEffect::Render(request) =>
+        request, effect => { let actual = match & effect { MyEffect::Render(_) => "Render",
+        }; panic!("expected {} effect, got {actual}", "Render") } } } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait MyEffectTestExt < Event > where Event : ::core::marker::Send
+        + 'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation);
+        fn expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f :
+        F) where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
+        #[doc(hidden)] impl < Event > MyEffectTestExt < Event > for ::crux_core::Command <
+        MyEffect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
+        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
+        effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
+        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
+        ev); self } }
     }
     #[cfg(feature = "facet_typegen")]
     impl ::crux_core::type_generation::facet::Export for MyEffect {
@@ -389,14 +550,53 @@ fn single_without_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let Effect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
+        request, effect => { let actual = match & effect { Effect::Render(_) => "Render", };
+        panic!("expected {} effect, got {actual}", "Render") } } } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
+        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
+        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
+        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
+        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
+        #[doc(hidden)] impl < Event > EffectTestExt < Event > for ::crux_core::Command <
+        Effect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
+        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
+        effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
+        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
+        ev); self } }
     }
     "#);
 }
@@ -466,14 +666,13 @@ fn multiple_with_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let Effect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
+        request, effect => { let actual = match & effect { Effect::Render(_) => "Render",
+        Effect::Http(_) => "Http", }; panic!("expected {} effect, got {actual}", "Render") }
+        } } }
     }
     impl Effect {
         pub fn is_http(&self) -> bool {
@@ -482,13 +681,84 @@ fn multiple_with_typegen() {
         pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
             if let Effect::Http(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_http(self) -> ::crux_core::Request<HttpRequest> {
-            if let Effect::Http(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Http")
-            }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_http(self) ->
+        ::crux_core::Request < HttpRequest > { match self { Effect::Http(request) => request,
+        effect => { let actual = match & effect { Effect::Render(_) => "Render",
+        Effect::Http(_) => "Http", }; panic!("expected {} effect, got {actual}", "Http") } }
+        } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
+        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
+        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
+        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
+        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn expect_http(&
+        mut self) -> & mut Self; fn expect_http_with < F > (& mut self, f : F) -> & mut Self
+        where F : ::core::ops::FnOnce(& HttpRequest); fn expect_only_http(& mut self); fn
+        expect_only_http_with < F > (& mut self, f : F) where F : ::core::ops::FnOnce(&
+        HttpRequest); fn resolve_http < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& HttpRequest) -> < HttpRequest as
+        ::crux_core::capability::Operation > ::Output; fn then_event < F > (& mut self, f :
+        F) -> & mut Self where F : ::core::ops::FnOnce(& Event); } #[doc(hidden)] impl <
+        Event > EffectTestExt < Event > for ::crux_core::Command < Effect, Event > where
+        Event : ::core::marker::Send + 'static, { #[track_caller] fn expect_render(& mut
+        self) -> & mut Self { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut self, f :
+        F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let effect =
+        self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn expect_http(&
+        mut self) -> & mut Self { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let _ = effect
+        .expect_http(); self } #[track_caller] fn expect_http_with < F > (& mut self, f : F)
+        -> & mut Self where F : ::core::ops::FnOnce(& HttpRequest), { let effect = self
+        .effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let req = effect
+        .expect_http(); f(& req.operation); self } #[track_caller] fn expect_only_http(& mut
+        self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let _ = effect
+        .expect_http(); let remaining_effects = self.effects().count(); let remaining_events
+        = self.events().count(); assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_http_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& HttpRequest), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Http effect but no more effects remain")); let
+        req = effect.expect_http(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_http < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& HttpRequest) -> < HttpRequest as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Http effect but no more effects remain")); let
+        mut req = effect.expect_http(); let output = f(& req.operation); req.resolve(output)
+        .expect("resolve failed"); self } #[track_caller] fn then_event < F > (& mut self, f
+        : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev = self.events()
+        .next().unwrap_or_else(|| panic!("expected an event but got none")); f(& ev); self }
         }
     }
     #[cfg(feature = "typegen")]
@@ -578,14 +848,13 @@ fn multiple_with_facet_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let Effect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
+        request, effect => { let actual = match & effect { Effect::Render(_) => "Render",
+        Effect::Http(_) => "Http", }; panic!("expected {} effect, got {actual}", "Render") }
+        } } }
     }
     impl Effect {
         pub fn is_http(&self) -> bool {
@@ -594,13 +863,84 @@ fn multiple_with_facet_typegen() {
         pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
             if let Effect::Http(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_http(self) -> ::crux_core::Request<HttpRequest> {
-            if let Effect::Http(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Http")
-            }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_http(self) ->
+        ::crux_core::Request < HttpRequest > { match self { Effect::Http(request) => request,
+        effect => { let actual = match & effect { Effect::Render(_) => "Render",
+        Effect::Http(_) => "Http", }; panic!("expected {} effect, got {actual}", "Http") } }
+        } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
+        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
+        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
+        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
+        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn expect_http(&
+        mut self) -> & mut Self; fn expect_http_with < F > (& mut self, f : F) -> & mut Self
+        where F : ::core::ops::FnOnce(& HttpRequest); fn expect_only_http(& mut self); fn
+        expect_only_http_with < F > (& mut self, f : F) where F : ::core::ops::FnOnce(&
+        HttpRequest); fn resolve_http < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& HttpRequest) -> < HttpRequest as
+        ::crux_core::capability::Operation > ::Output; fn then_event < F > (& mut self, f :
+        F) -> & mut Self where F : ::core::ops::FnOnce(& Event); } #[doc(hidden)] impl <
+        Event > EffectTestExt < Event > for ::crux_core::Command < Effect, Event > where
+        Event : ::core::marker::Send + 'static, { #[track_caller] fn expect_render(& mut
+        self) -> & mut Self { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut self, f :
+        F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let effect =
+        self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn expect_http(&
+        mut self) -> & mut Self { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let _ = effect
+        .expect_http(); self } #[track_caller] fn expect_http_with < F > (& mut self, f : F)
+        -> & mut Self where F : ::core::ops::FnOnce(& HttpRequest), { let effect = self
+        .effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let req = effect
+        .expect_http(); f(& req.operation); self } #[track_caller] fn expect_only_http(& mut
+        self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let _ = effect
+        .expect_http(); let remaining_effects = self.effects().count(); let remaining_events
+        = self.events().count(); assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_http_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& HttpRequest), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Http effect but no more effects remain")); let
+        req = effect.expect_http(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_http < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& HttpRequest) -> < HttpRequest as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Http effect but no more effects remain")); let
+        mut req = effect.expect_http(); let output = f(& req.operation); req.resolve(output)
+        .expect("resolve failed"); self } #[track_caller] fn then_event < F > (& mut self, f
+        : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev = self.events()
+        .next().unwrap_or_else(|| panic!("expected an event but got none")); f(& ev); self }
         }
     }
     #[cfg(feature = "facet_typegen")]
@@ -685,14 +1025,13 @@ fn multiple_without_typegen() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let Effect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
+        request, effect => { let actual = match & effect { Effect::Render(_) => "Render",
+        Effect::Http(_) => "Http", }; panic!("expected {} effect, got {actual}", "Render") }
+        } } }
     }
     impl Effect {
         pub fn is_http(&self) -> bool {
@@ -701,13 +1040,84 @@ fn multiple_without_typegen() {
         pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
             if let Effect::Http(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_http(self) -> ::crux_core::Request<HttpRequest> {
-            if let Effect::Http(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Http")
-            }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_http(self) ->
+        ::crux_core::Request < HttpRequest > { match self { Effect::Http(request) => request,
+        effect => { let actual = match & effect { Effect::Render(_) => "Render",
+        Effect::Http(_) => "Http", }; panic!("expected {} effect, got {actual}", "Http") } }
+        } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
+        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
+        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
+        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
+        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn expect_http(&
+        mut self) -> & mut Self; fn expect_http_with < F > (& mut self, f : F) -> & mut Self
+        where F : ::core::ops::FnOnce(& HttpRequest); fn expect_only_http(& mut self); fn
+        expect_only_http_with < F > (& mut self, f : F) where F : ::core::ops::FnOnce(&
+        HttpRequest); fn resolve_http < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& HttpRequest) -> < HttpRequest as
+        ::crux_core::capability::Operation > ::Output; fn then_event < F > (& mut self, f :
+        F) -> & mut Self where F : ::core::ops::FnOnce(& Event); } #[doc(hidden)] impl <
+        Event > EffectTestExt < Event > for ::crux_core::Command < Effect, Event > where
+        Event : ::core::marker::Send + 'static, { #[track_caller] fn expect_render(& mut
+        self) -> & mut Self { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut self, f :
+        F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let effect =
+        self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn expect_http(&
+        mut self) -> & mut Self { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let _ = effect
+        .expect_http(); self } #[track_caller] fn expect_http_with < F > (& mut self, f : F)
+        -> & mut Self where F : ::core::ops::FnOnce(& HttpRequest), { let effect = self
+        .effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let req = effect
+        .expect_http(); f(& req.operation); self } #[track_caller] fn expect_only_http(& mut
+        self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Http effect but no more effects remain")); let _ = effect
+        .expect_http(); let remaining_effects = self.effects().count(); let remaining_events
+        = self.events().count(); assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_http_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& HttpRequest), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Http effect but no more effects remain")); let
+        req = effect.expect_http(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_http < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& HttpRequest) -> < HttpRequest as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Http effect but no more effects remain")); let
+        mut req = effect.expect_http(); let output = f(& req.operation); req.resolve(output)
+        .expect("resolve failed"); self } #[track_caller] fn then_event < F > (& mut self, f
+        : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev = self.events()
+        .next().unwrap_or_else(|| panic!("expected an event but got none")); f(& ev); self }
         }
     }
     "#);
@@ -748,14 +1158,53 @@ fn single_without_typegen_with_attributes() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let Effect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
+        request, effect => { let actual = match & effect { Effect::Render(_) => "Render", };
+        panic!("expected {} effect, got {actual}", "Render") } } } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
+        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
+        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
+        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
+        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
+        #[doc(hidden)] impl < Event > EffectTestExt < Event > for ::crux_core::Command <
+        Effect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
+        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
+        effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
+        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
+        ev); self } }
     }
     "#);
 }
@@ -817,14 +1266,53 @@ fn facet_typegen_with_namespace_attribute() {
         pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
             if let Effect::Render(request) = self { Some(request) } else { None }
         }
-        #[track_caller]
-        pub fn expect_render(self) -> ::crux_core::Request<RenderOperation> {
-            if let Effect::Render(request) = self {
-                request
-            } else {
-                panic!("not a {} effect", "Render")
-            }
-        }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
+        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
+        request, effect => { let actual = match & effect { Effect::Render(_) => "Render", };
+        panic!("expected {} effect, got {actual}", "Render") } } } }
+    }
+    ::crux_core::__crux_core_testing_items! {
+        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
+        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
+        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
+        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
+        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
+        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
+        #[doc(hidden)] impl < Event > EffectTestExt < Event > for ::crux_core::Command <
+        Effect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
+        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
+        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
+        effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let req = effect
+        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
+        mut self) { let effect = self.effects().next().unwrap_or_else(||
+        panic!("expected Render effect but no more effects remain")); let _ = effect
+        .expect_render(); let remaining_effects = self.effects().count(); let
+        remaining_events = self.events().count(); assert!(remaining_effects +
+        remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
+        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
+        .effects().count(); let remaining_events = self.events().count();
+        assert!(remaining_effects + remaining_events == 0,
+        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
+        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
+        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
+        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
+        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
+        mut req = effect.expect_render(); let output = f(& req.operation); req
+        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
+        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
+        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
+        ev); self } }
     }
     #[cfg(feature = "facet_typegen")]
     impl ::crux_core::type_generation::facet::Export for Effect {

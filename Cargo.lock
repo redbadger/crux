@@ -762,6 +762,7 @@ dependencies = [
  "bincode",
  "crossbeam-channel",
  "crux_cli",
+ "crux_core",
  "crux_http",
  "crux_macros",
  "crux_time",

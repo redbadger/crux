@@ -32,6 +32,7 @@ slab = "0.4"
 thiserror.workspace = true
 
 [dev-dependencies]
+crux_core = { path = ".", features = ["testing"] }
 assert_fs = "1.1.3"
 assert_matches = "1.5"
 async-channel = "2.5.0"
@@ -49,4 +50,10 @@ uuid = { version = "1.22.0", features = ["serde", "v4"] }
 default = ["crux_macros"]
 cli = ["dep:crux_cli"]
 facet_typegen = ["crux_macros/facet_typegen", "dep:facet_generate", "dep:log"]
-typegen = ["crux_macros/typegen", "dep:serde-generate", "dep:serde-reflection", "dep:include_dir"]
+testing = []
+typegen = [
+    "crux_macros/typegen",
+    "dep:serde-generate",
+    "dep:serde-reflection",
+    "dep:include_dir",
+]

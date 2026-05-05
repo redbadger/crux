@@ -70,10 +70,7 @@ mod test {
         let app = Counter;
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Reset, &mut model);
-
-        // Check update asked us to `Render`
-        cmd.expect_one_effect().expect_render();
+        app.update(Event::Reset, &mut model).expect_only_render();
     }
 
     #[test]
@@ -91,10 +88,8 @@ mod test {
         let app = Counter;
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Increment, &mut model);
-
-        // Check update asked us to `Render`
-        cmd.expect_one_effect().expect_render();
+        app.update(Event::Increment, &mut model)
+            .expect_only_render();
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: 1";
@@ -106,10 +101,8 @@ mod test {
         let app = Counter;
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Decrement, &mut model);
-
-        // Check update asked us to `Render`
-        cmd.expect_one_effect().expect_render();
+        app.update(Event::Decrement, &mut model)
+            .expect_only_render();
 
         let actual_view = app.view(&model).count;
         let expected_view = "Count is: -1";

@@ -204,6 +204,7 @@ impl ActiveModel {
 
 #[cfg(test)]
 mod tests {
+    use crate::effects::EffectTestExt;
     use crate::effects::secret::{self, SecretRequest};
 
     use super::favorites::model::Favorites;
@@ -222,11 +223,9 @@ mod tests {
         let outcome = model.update(ActiveEvent::ResetApiKey);
 
         let mut cmd = outcome.expect_continue().into_command();
-        let request = cmd.expect_one_effect().expect_secret();
-        assert_eq!(
-            request.operation,
-            SecretRequest::Delete(secret::API_KEY_NAME.to_string())
-        );
+        cmd.expect_only_secret_with(|op| {
+            assert_eq!(op, &SecretRequest::Delete(secret::API_KEY_NAME.to_string()));
+        });
     }
 
     #[test]
@@ -238,7 +237,7 @@ mod tests {
 
         let (transition, mut cmd) = outcome.expect_complete().into_parts();
         assert!(matches!(transition, ActiveTransition::ResetApiKey(_)));
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
     }
 
     #[test]
@@ -247,7 +246,7 @@ mod tests {
         let outcome = model.update(ActiveEvent::home(HomeEvent::GoToFavorites));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         assert!(matches!(
             model.screen,
             Screen::Favorites(FavoritesScreen { workflow: None, .. })
@@ -283,7 +282,7 @@ mod tests {
         ));
 
         let (model, mut cmd) = outcome.expect_continue().into_parts();
-        cmd.expect_one_effect().expect_render();
+        cmd.expect_only_render();
         let Screen::Favorites(fav) = &model.screen else {
             panic!("Expected Favorites screen");
         };

@@ -2,8 +2,20 @@
 
 In this chapter we'll write some basic tests for our counter app. It is tempting
 to skip reading this, but please don't. Testing and testability is one of the
-most important benefits of Crux, and even in this simple case, subtle things are going on,
-which we'll build on later.
+most important benefits of Crux, and even in this simple case, subtle things are
+going on, which we'll build on later.
+
+Before writing tests that use Crux's command test helpers, enable the testing
+API for tests in `shared/Cargo.toml`:
+
+```toml
+[dev-dependencies]
+crux_core = { workspace = true, features = ["testing"] }
+```
+
+This enables Crux's test-only command helpers, including the generated
+`EffectTestExt` fluent helpers and the `Command` assertion helpers we'll use in
+tests, without adding them to your production dependency.
 
 ## The first test
 
@@ -23,20 +35,25 @@ mod test {
         let app = Counter;
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Reset, &mut model);
-
-        // Check update asked us to `Render`
-        cmd.expect_one_effect().expect_render();
+        // Check update asked us to `Render`, and only that
+        app.update(Event::Reset, &mut model).expect_only_render();
     }
 }
 ```
 
-We create an instance of the app, and an instance of the model. Then we call update with the `Event::Reset` event.
-As you may remember we get back a `Command`, which we expect to carry a request for a render operation. Using the
-expectation helper API of the Command type, we check we got one effect, and that the effect is a render. Both methods will panic if they don't succeed (they are also `#[cfg(test)]` only, don't use them outside of tests).
+We create an instance of the app, and an instance of the model. Then we call
+update with the `Event::Reset` event. As you may remember we get back
+a `Command`, which we expect to carry a request for a render operation. The
+`#[effect]` macro on the `Effect` enum we declared earlier generates chainable
+test-helper methods for `Command`. These methods live on a generated trait
+called `EffectTestExt`, which needs to be in scope. One of them is
+`expect_only_render`, which asserts "the next effect is a Render and there are
+no others." It panics if either condition fails. The trait is generated
+alongside the `Effect` declaration when `crux_core`'s `testing` feature is
+enabled, so `use super::*;` brings it into scope automatically for module tests.
 
-That test should pass (check with `cargo nextest run`). Next up, we can check that the view model is rendered
-correctly
+That test should pass (check with `cargo nextest run`). Next up, we can check
+that the view model is rendered correctly
 
 ```rust,noplayground
 #[test]
@@ -59,10 +76,8 @@ fn increments_count() {
     let app = Counter;
     let mut model = Model::default();
 
-    let mut cmd = app.update(Event::Increment, &mut model);
-
-    // Check update asked us to `Render`
-    cmd.expect_one_effect().expect_render();
+    // Check update asked us to `Render`, and only that
+    app.update(Event::Increment, &mut model).expect_only_render();
 
     let actual_view = app.view(&model).count;
     let expected_view = "Count is: 1";
@@ -83,7 +98,8 @@ By now you get the gist, so here's all the tests to satisfy ourselves that the a
 
 You can see that occasionally, we test for the render to be requested. This will be important later, because
 we'll be able to not only check for the effects, but also _resolve_ them – provide the value they requested,
-for example the response to a HTTP request.
+for example the response to a HTTP request. The same `EffectTestExt` extension generates a `resolve_<variant>`
+method per effect variant for that purpose, which we'll meet in [Testing with Effects](../part-2/testing-effects.md).
 
 That will let us test entire user flows calling web APIs, working with local storage and timers, and anything
 else, all at the speed of unit test and without ever touching the external world or writing a single fake (and maintaining it later).
