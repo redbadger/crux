@@ -20,8 +20,6 @@ use crate::Resolvable;
 use crate::ResolveError;
 use crate::capability::Operation;
 
-pub use registry::Registry;
-
 pub struct EffectRouter<App, RouteSet>
 where
     App: crate::App,

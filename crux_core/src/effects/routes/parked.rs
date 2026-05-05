@@ -3,7 +3,7 @@ use std::sync::Weak;
 use crate::{
     Request, ResolveError,
     capability::Operation,
-    effects::{EffectRouter, Registry, Routes},
+    effects::{EffectRouter, Routes, registry::Registry},
 };
 
 pub struct Parked<A, RouteSet, Op>
