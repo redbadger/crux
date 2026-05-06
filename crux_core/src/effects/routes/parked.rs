@@ -1,4 +1,4 @@
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 use crate::{
     Request, ResolveError,
@@ -47,7 +47,7 @@ where
         Ok(())
     }
 
-    fn router(&self) -> std::sync::Arc<EffectRouter<App, RouteSet>> {
+    fn router(&self) -> Arc<EffectRouter<App, RouteSet>> {
         self.router.upgrade().expect("effect router dropped")
     }
 }

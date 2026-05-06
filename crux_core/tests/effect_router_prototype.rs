@@ -1,20 +1,24 @@
+use crux_time::{TimeRequest, TimeResponse};
 use std::sync::{Arc, Mutex};
 
-use crux_time::{TimeRequest, TimeResponse};
-
-use crate::ffi::FfiEffect;
+use crate::{
+    app::{
+        CaptureImageOp, Event, OpaqueImageRef, PermissionRequest, PermissionResponse, SaveStatus,
+        ViewModel,
+    },
+    ffi::{CameraEffect, CameraFFI, FfiEffect, FfiRequest},
+};
 
 mod app {
-    use crux_core::capability::Operation;
+    use crux_core::{
+        App, Command,
+        capability::Operation,
+        render::{RenderOperation, render},
+    };
     use crux_macros::effect;
+    use crux_time::{Time, TimeRequest, TimerOutcome};
     use serde::{Deserialize, Serialize};
     use std::time::Duration;
-
-    use crux_core::App;
-    use crux_core::Command;
-    use crux_core::render::RenderOperation;
-    use crux_core::render::render;
-    use crux_time::{Time, TimeRequest, TimerOutcome};
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     pub struct CaptureImageOp;
@@ -107,7 +111,7 @@ mod app {
 
     impl SelfieApp {
         pub(crate) fn one_second_timer() -> Command<Effect, Event> {
-            let (timer, _handle) = Time::<Effect, Event>::notify_after(Duration::from_secs(1));
+            let (timer, _handle) = Time::notify_after(Duration::from_secs(1));
 
             timer.then_send(Event::TimerFired)
         }
@@ -156,18 +160,14 @@ mod app {
 
                     Command::all([Self::request_camera(), render()])
                 }
-                Event::PermissionForTrigger(PermissionResponse::Denied) => {
-                    model.save_status = SaveStatus::PermissionDenied;
-
-                    render()
-                }
                 Event::PermissionForTimer(PermissionResponse::Granted) => {
                     model.countdown = Some(3);
                     model.save_status = SaveStatus::WaitingForCapture;
 
                     Command::all([Self::one_second_timer(), render()])
                 }
-                Event::PermissionForTimer(PermissionResponse::Denied) => {
+                Event::PermissionForTrigger(PermissionResponse::Denied)
+                | Event::PermissionForTimer(PermissionResponse::Denied) => {
                     model.save_status = SaveStatus::PermissionDenied;
 
                     render()
@@ -216,17 +216,23 @@ mod app {
 }
 
 mod ffi {
-    use std::sync::{Arc, Weak};
-
-    use crux_core::Core;
-    use crux_core::bridge::{EffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest};
-    use crux_core::effects::{
-        EffectRouter,
-        routes::{Parked, Serialized},
+    use crux_core::{
+        Core,
+        bridge::{EffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest},
+        effects::{
+            EffectRouter, Routes,
+            routes::{Parked, Serialized},
+        },
+        render::RenderOperation,
     };
-    use crux_core::render::RenderOperation;
     use crux_macros::effect;
     use crux_time::TimeRequest;
+    use std::sync::{Arc, Weak};
+
+    use crate::{
+        app::{CaptureImageOp, Effect, Event, OpaqueImageRef, PermissionRequest, SelfieApp},
+        ffi::file_store::FileStoreHandler,
+    };
 
     use super::app;
 
@@ -238,17 +244,17 @@ mod ffi {
     pub enum SerializedEffect {
         Render(RenderOperation),
         Time(TimeRequest),
-        Permission(app::PermissionRequest),
+        Permission(PermissionRequest),
     }
 
-    impl TryFrom<app::Effect> for SerializedEffect {
-        type Error = app::Effect;
+    impl TryFrom<Effect> for SerializedEffect {
+        type Error = Effect;
 
-        fn try_from(value: app::Effect) -> Result<Self, Self::Error> {
+        fn try_from(value: Effect) -> Result<Self, Self::Error> {
             match value {
-                app::Effect::Render(request) => Ok(Self::Render(request)),
-                app::Effect::Time(request) => Ok(Self::Time(request)),
-                app::Effect::Permission(request) => Ok(Self::Permission(request)),
+                Effect::Render(request) => Ok(Self::Render(request)),
+                Effect::Time(request) => Ok(Self::Time(request)),
+                Effect::Permission(request) => Ok(Self::Permission(request)),
                 other => Err(other),
             }
         }
@@ -261,7 +267,7 @@ mod ffi {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub(crate) struct CameraEffect {
         pub(crate) id: u32,
-        pub(crate) operation: app::CaptureImageOp,
+        pub(crate) operation: CaptureImageOp,
     }
 
     // Trait implemented by the shells, e.g with UniFFI of wasm_bindgen
@@ -271,16 +277,16 @@ mod ffi {
     }
 
     pub(crate) struct CameraFFI<Format: FfiFormat = JsonFfiFormat> {
-        router: Arc<EffectRouter<app::SelfieApp, Routes<Format>>>,
+        router: Arc<EffectRouter<SelfieApp, EffectRoutes<Format>>>,
     }
 
-    struct Routes<Format: FfiFormat> {
-        serialized: Arc<Serialized<app::SelfieApp, Self, Format>>,
-        camera: Arc<Parked<app::SelfieApp, Self, app::CaptureImageOp>>,
-        file_store: Arc<file_store::FileStoreHandler>,
+    struct EffectRoutes<Format: FfiFormat> {
+        serialized: Arc<Serialized<SelfieApp, Self, Format>>,
+        camera: Arc<Parked<SelfieApp, Self, CaptureImageOp>>,
+        file_store: Arc<FileStoreHandler>,
     }
 
-    impl<Format: FfiFormat> Clone for Routes<Format> {
+    impl<Format: FfiFormat> Clone for EffectRoutes<Format> {
         fn clone(&self) -> Self {
             Self {
                 serialized: self.serialized.clone(),
@@ -290,12 +296,12 @@ mod ffi {
         }
     }
 
-    impl<Format: FfiFormat> crux_core::effects::Routes<app::SelfieApp> for Routes<Format> {
-        fn new(router: Weak<EffectRouter<app::SelfieApp, Self>>) -> Self {
+    impl<Format: FfiFormat> Routes<SelfieApp> for EffectRoutes<Format> {
+        fn new(router: Weak<EffectRouter<SelfieApp, Self>>) -> Self {
             Self {
                 serialized: Arc::new(Serialized::new(router.clone())),
                 camera: Arc::new(Parked::new(router.clone())),
-                file_store: Arc::new(file_store::FileStoreHandler::new(router)),
+                file_store: Arc::new(FileStoreHandler::new(router)),
             }
         }
     }
@@ -311,19 +317,19 @@ mod ffi {
         pub(crate) fn new_with_format(shell: Arc<dyn CameraShell>) -> Self {
             let core = Core::new();
 
-            let router = EffectRouter::new(core, move |routes: Routes<Format>| {
+            let router = EffectRouter::new(core, move |routes: EffectRoutes<Format>| {
                 let routes = routes.clone();
                 let shell = shell.clone();
 
                 move |effect| match effect {
                     // Core-side effect, processed in Rust
-                    app::Effect::FileStore(request) => {
+                    Effect::FileStore(request) => {
                         routes.file_store.process_file_store(request);
                     }
                     // Shell-side effect, but with a custom FFI to allow for opaque types, pointers, etc.
                     // this doesn't necessarily need to rely on the shell instance either, could be another
                     // form of callback to the shell
-                    app::Effect::Camera(request) => {
+                    Effect::Camera(request) => {
                         let (id, operation) = routes.camera.park(request);
                         shell.process_camera_effect(CameraEffect { id, operation });
                     }
@@ -347,7 +353,7 @@ mod ffi {
 
         // The FFI below is fully controlled by the given core
 
-        pub(crate) fn update(&self, event: app::Event) {
+        pub(crate) fn update(&self, event: Event) {
             self.router.update(event);
         }
 
@@ -361,7 +367,7 @@ mod ffi {
         }
 
         /// Specific effect FFI for opaque data types
-        pub(crate) fn resolve_camera(&self, id: u32, output: app::OpaqueImageRef) {
+        pub(crate) fn resolve_camera(&self, id: u32, output: OpaqueImageRef) {
             self.router
                 .routes
                 .camera
@@ -376,41 +382,41 @@ mod ffi {
 
     // Example core-side effect handler implementation
     mod file_store {
-        use std::sync::Weak;
-        use std::thread;
-        use std::time::Duration;
+        use std::{sync::Weak, thread, time::Duration};
 
         use crossbeam_channel::{Receiver, Sender, unbounded};
         use crux_core::{Request, effects::ResolveSink};
 
+        use crate::app::StoreFile;
+
         use super::app;
 
         pub(crate) struct FileStoreHandler {
-            jobs_tx: Sender<Request<app::StoreFile>>,
+            jobs_tx: Sender<Request<StoreFile>>,
         }
 
         impl FileStoreHandler {
             pub(crate) fn new<S>(sink: Weak<S>) -> Self
             where
-                S: ResolveSink<app::StoreFile> + Send + Sync + 'static,
+                S: ResolveSink<StoreFile> + Send + Sync + 'static,
             {
                 let (jobs_tx, jobs_rx) = unbounded();
 
-                thread::spawn(move || worker(jobs_rx, sink));
+                thread::spawn(move || worker(&jobs_rx, &sink));
 
                 Self { jobs_tx }
             }
 
-            pub(crate) fn process_file_store(&self, request: Request<app::StoreFile>) {
+            pub(crate) fn process_file_store(&self, request: Request<StoreFile>) {
                 self.jobs_tx
                     .send(request)
-                    .expect("file store worker queue disconnected")
+                    .expect("file store worker queue disconnected");
             }
         }
 
-        fn worker<S>(jobs_rx: Receiver<Request<app::StoreFile>>, sink: Weak<S>)
+        fn worker<S>(jobs_rx: &Receiver<Request<StoreFile>>, sink: &Weak<S>)
         where
-            S: ResolveSink<app::StoreFile> + Send + Sync + 'static,
+            S: ResolveSink<StoreFile> + Send + Sync + 'static,
         {
             while let Ok(mut request) = jobs_rx.recv() {
                 // Ensure async behavior so this path models background work.
@@ -430,13 +436,13 @@ mod ffi {
     }
 }
 
-/// Pretend shell for testing purposes, implements CameraShell like a real shell would via UniFFI or wasm_bindgen
+/// Pretend shell for testing purposes, implements `CameraShell` like a real shell would via `uniffi` or `wasm_bindgen`
 /// This is only a test stub. In real life the shell would process the effect, then call the core with a result,
 /// in this case the tests do those steps
 #[derive(Default)]
 pub(crate) struct TestShell {
     pub(crate) serialized: Mutex<Vec<Vec<u8>>>,
-    pub(crate) camera: Mutex<Vec<ffi::CameraEffect>>,
+    pub(crate) camera: Mutex<Vec<CameraEffect>>,
 }
 
 impl ffi::CameraShell for TestShell {
@@ -447,7 +453,7 @@ impl ffi::CameraShell for TestShell {
             .push(bytes);
     }
 
-    fn process_camera_effect(&self, effect: ffi::CameraEffect) {
+    fn process_camera_effect(&self, effect: CameraEffect) {
         self.camera
             .lock()
             .expect("fake shell camera lock poisoned")
@@ -457,7 +463,7 @@ impl ffi::CameraShell for TestShell {
 
 impl TestShell {
     /// Test-only helper: take serialized effects emitted from the core
-    pub(crate) fn take_serialized_effects(&self) -> Vec<ffi::FfiRequest> {
+    pub(crate) fn take_serialized_effects(&self) -> Vec<FfiRequest> {
         let payloads = self
             .serialized
             .lock()
@@ -468,14 +474,14 @@ impl TestShell {
         payloads
             .into_iter()
             .flat_map(|bytes| {
-                serde_json::from_slice::<Vec<ffi::FfiRequest>>(&bytes)
+                serde_json::from_slice::<Vec<FfiRequest>>(&bytes)
                     .expect("serialized shell payload should decode")
             })
             .collect()
     }
 
     /// Test only helper: take camera effects emitted from the core
-    pub(crate) fn take_camera_effects(&self) -> Vec<ffi::CameraEffect> {
+    pub(crate) fn take_camera_effects(&self) -> Vec<CameraEffect> {
         self.camera
             .lock()
             .expect("fake shell camera lock poisoned")
@@ -487,15 +493,15 @@ impl TestShell {
 #[test]
 fn trigger_takes_a_picture() {
     let shell = Arc::new(TestShell::default());
-    let core = ffi::CameraFFI::new(shell.clone());
+    let core = CameraFFI::new(shell.clone());
 
-    core.update(app::Event::Trigger);
+    core.update(Event::Trigger);
 
     assert_eq!(
         core.view(),
-        app::ViewModel {
+        ViewModel {
             countdown: None,
-            save_status: app::SaveStatus::WaitingForPermission,
+            save_status: SaveStatus::WaitingForPermission,
             saved_path: None,
         }
     );
@@ -503,28 +509,28 @@ fn trigger_takes_a_picture() {
     let serialized = shell.take_serialized_effects();
     assert!(has_render_effect(&serialized));
     let (permission_id, permission_request) = extract_single_permission_request(serialized);
-    assert_eq!(permission_request, app::PermissionRequest::Camera);
+    assert_eq!(permission_request, PermissionRequest::Camera);
 
     let camera_effects = shell.take_camera_effects();
     assert_eq!(camera_effects.len(), 0);
 
-    let permission_response = app::PermissionResponse::Granted;
+    let permission_response = PermissionResponse::Granted;
     let response_bytes =
         serde_json::to_vec(&permission_response).expect("permission response should serialize");
     core.resolve_serialized(permission_id, &response_bytes);
 
     let camera_effects = shell.take_camera_effects();
     assert_eq!(camera_effects.len(), 1);
-    assert_eq!(camera_effects[0].operation, app::CaptureImageOp);
+    assert_eq!(camera_effects[0].operation, CaptureImageOp);
 
     let serialized = shell.take_serialized_effects();
-    assert_only_render_effect(serialized);
+    assert_only_render_effect(&serialized);
 
     assert_eq!(
         core.view(),
-        app::ViewModel {
+        ViewModel {
             countdown: None,
-            save_status: app::SaveStatus::WaitingForCapture,
+            save_status: SaveStatus::WaitingForCapture,
             saved_path: None,
         }
     );
@@ -533,35 +539,34 @@ fn trigger_takes_a_picture() {
 #[test]
 fn trigger_with_timer_takes_a_picture_after_countdown() {
     let shell = Arc::new(TestShell::default());
-    let core = ffi::CameraFFI::new(shell.clone());
+    let core = CameraFFI::new(shell.clone());
 
-    core.update(app::Event::TriggerWithTimer);
+    core.update(Event::TriggerWithTimer);
 
     assert_eq!(
         core.view(),
-        app::ViewModel {
+        ViewModel {
             countdown: None,
-            save_status: app::SaveStatus::WaitingForPermission,
+            save_status: SaveStatus::WaitingForPermission,
             saved_path: None,
         }
     );
 
     let mut serialized = shell.take_serialized_effects();
     assert!(has_render_effect(&serialized));
-    let (permission_id, permission_request) =
-        extract_single_permission_request(std::mem::take(&mut serialized));
-    assert_eq!(permission_request, app::PermissionRequest::Camera);
+    let (permission_id, permission_request) = extract_single_permission_request(serialized);
+    assert_eq!(permission_request, PermissionRequest::Camera);
 
-    let permission_response = app::PermissionResponse::Granted;
+    let permission_response = PermissionResponse::Granted;
     let permission_bytes =
         serde_json::to_vec(&permission_response).expect("permission response should serialize");
     core.resolve_serialized(permission_id, &permission_bytes);
 
     assert_eq!(
         core.view(),
-        app::ViewModel {
+        ViewModel {
             countdown: Some(3),
-            save_status: app::SaveStatus::WaitingForCapture,
+            save_status: SaveStatus::WaitingForCapture,
             saved_path: None,
         }
     );
@@ -570,7 +575,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert!(has_render_effect(&serialized));
 
     // 3 -> 2
-    let (request_id, request) = extract_single_time_request(std::mem::take(&mut serialized));
+    let (request_id, request) = extract_single_time_request(serialized);
     let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
         panic!("expected NotifyAfter request")
     };
@@ -583,7 +588,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert!(has_render_effect(&serialized));
 
     // 2 -> 1
-    let (request_id, request) = extract_single_time_request(std::mem::take(&mut serialized));
+    let (request_id, request) = extract_single_time_request(serialized);
     let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
         panic!("expected NotifyAfter request")
     };
@@ -596,7 +601,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert!(has_render_effect(&serialized));
 
     // 1 -> camera capture
-    let (request_id, request) = extract_single_time_request(std::mem::take(&mut serialized));
+    let (request_id, request) = extract_single_time_request(serialized);
     let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
         panic!("expected NotifyAfter request")
     };
@@ -608,27 +613,24 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
 
     let camera_effects = shell.take_camera_effects();
     assert_eq!(camera_effects.len(), 1);
-    assert_eq!(camera_effects[0].operation, app::CaptureImageOp);
+    assert_eq!(camera_effects[0].operation, CaptureImageOp);
 
     let serialized = shell.take_serialized_effects();
-    assert_only_render_effect(serialized);
+    assert_only_render_effect(&serialized);
 }
 
 #[test]
 fn pictures_are_saved_to_file_system() {
-    use std::thread;
-    use std::time::Duration;
-
     let shell = Arc::new(TestShell::default());
-    let core = ffi::CameraFFI::new(shell.clone());
+    let core = CameraFFI::new(shell.clone());
 
-    core.update(app::Event::Trigger);
+    core.update(Event::Trigger);
 
     let serialized = shell.take_serialized_effects();
     let (permission_id, permission_request) = extract_single_permission_request(serialized);
-    assert_eq!(permission_request, app::PermissionRequest::Camera);
+    assert_eq!(permission_request, PermissionRequest::Camera);
 
-    let permission_response = app::PermissionResponse::Granted;
+    let permission_response = PermissionResponse::Granted;
     let permission_bytes =
         serde_json::to_vec(&permission_response).expect("permission response should serialize");
     core.resolve_serialized(permission_id, &permission_bytes);
@@ -638,58 +640,58 @@ fn pictures_are_saved_to_file_system() {
     // Drain render from permission resolution; focus assertions on the save flow.
     let _ = shell.take_serialized_effects();
 
-    core.resolve_camera(camera_effect.id, app::OpaqueImageRef(42));
+    core.resolve_camera(camera_effect.id, OpaqueImageRef(42));
 
     assert_eq!(
         core.view(),
-        app::ViewModel {
+        ViewModel {
             countdown: None,
-            save_status: app::SaveStatus::Saving,
+            save_status: SaveStatus::Saving,
             saved_path: None,
         }
     );
 
     let serialized = shell.take_serialized_effects();
-    assert_only_render_effect(serialized);
+    assert_only_render_effect(&serialized);
 
     for _ in 0..50 {
-        if core.view().save_status == app::SaveStatus::Saved {
+        if core.view().save_status == SaveStatus::Saved {
             break;
         }
-        thread::sleep(Duration::from_millis(5));
+        std::thread::sleep(std::time::Duration::from_millis(5));
     }
 
     assert_eq!(
         core.view(),
-        app::ViewModel {
+        ViewModel {
             countdown: None,
-            save_status: app::SaveStatus::Saved,
+            save_status: SaveStatus::Saved,
             saved_path: Some("/tmp/selfie-42.jpg".to_string()),
         }
     );
 
     let serialized = shell.take_serialized_effects();
-    assert_only_render_effect(serialized);
+    assert_only_render_effect(&serialized);
 }
 
 // helpers
 
-fn has_render_effect(effects: &[ffi::FfiRequest]) -> bool {
+fn has_render_effect(effects: &[FfiRequest]) -> bool {
     effects
         .iter()
         .any(|request| matches!(request.effect, FfiEffect::Render(_)))
 }
 
-fn assert_only_render_effect(effects: Vec<ffi::FfiRequest>) {
+fn assert_only_render_effect(effects: &[FfiRequest]) {
     assert_eq!(effects.len(), 1);
     assert!(matches!(effects[0].effect, FfiEffect::Render(_)));
 }
 
-pub(crate) fn extract_single_time_request(effects: Vec<ffi::FfiRequest>) -> (u32, TimeRequest) {
+pub(crate) fn extract_single_time_request(effects: Vec<FfiRequest>) -> (u32, TimeRequest) {
     let mut time_effects: Vec<_> = effects
         .into_iter()
         .filter_map(|effect| match effect.effect {
-            ffi::FfiEffect::Time(request) => Some((effect.id.0, request)),
+            FfiEffect::Time(request) => Some((effect.id.0, request)),
             FfiEffect::Render(_) | FfiEffect::Permission(_) => None,
         })
         .collect();
@@ -700,12 +702,12 @@ pub(crate) fn extract_single_time_request(effects: Vec<ffi::FfiRequest>) -> (u32
 }
 
 pub(crate) fn extract_single_permission_request(
-    effects: Vec<ffi::FfiRequest>,
-) -> (u32, app::PermissionRequest) {
+    effects: Vec<FfiRequest>,
+) -> (u32, PermissionRequest) {
     let mut permission_effects: Vec<_> = effects
         .into_iter()
         .filter_map(|effect| match effect.effect {
-            ffi::FfiEffect::Permission(request) => Some((effect.id.0, request)),
+            FfiEffect::Permission(request) => Some((effect.id.0, request)),
             FfiEffect::Render(_) | FfiEffect::Time(_) => None,
         })
         .collect();

@@ -5,7 +5,7 @@ pub mod uniffi {
     use crux_core::{
         Core,
         bridge::{BincodeFfiFormat, EffectId},
-        effects::{EffectRouter, routes::Serialized},
+        effects::{EffectRouter, Routes, routes::Serialized},
         macros::effect,
         render::RenderOperation,
     };
@@ -20,8 +20,8 @@ pub mod uniffi {
         ServerSentEvents(SseRequest),
     }
 
-    impl From<crate::app::Effect> for Effect {
-        fn from(effect: crate::app::Effect) -> Self {
+    impl From<crate::Effect> for Effect {
+        fn from(effect: crate::Effect) -> Self {
             match effect {
                 crate::Effect::Render(request) => Effect::Render(request),
                 crate::Effect::Http(request) => Effect::Http(request),
@@ -53,7 +53,7 @@ pub mod uniffi {
         rng_handler: Arc<RngHandler>,
     }
 
-    impl crux_core::effects::Routes<Counter> for EffectRoutes {
+    impl Routes<Counter> for EffectRoutes {
         fn new(router: Weak<EffectRouter<Counter, Self>>) -> Self {
             Self {
                 serialized: Arc::new(Serialized::new(router.clone())),
@@ -73,7 +73,7 @@ pub mod uniffi {
 
                 // Effect routing
                 move |effect| match effect {
-                    crate::app::Effect::Random(req) => {
+                    crate::Effect::Random(req) => {
                         routes.rng_handler.process(req);
                     }
                     effect => {
@@ -121,8 +121,11 @@ pub mod uniffi {
 
 #[cfg(feature = "wasm_bindgen")]
 pub mod wasm_bindgen {
-    use crux_core::middleware::{BincodeFfiFormat, Layer as _};
-    use crux_core::{Core, bridge::EffectId};
+    use crux_core::{
+        Core,
+        bridge::EffectId,
+        middleware::{BincodeFfiFormat, Layer as _},
+    };
 
     use crate::Counter;
 

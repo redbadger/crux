@@ -1,12 +1,12 @@
-use crate::Request;
-use crate::RequestHandle;
-use crate::ResolveError;
-use crate::capability::Operation;
+use std::{
+    collections::HashMap,
+    sync::{
+        Mutex,
+        atomic::{AtomicU32, Ordering},
+    },
+};
 
-use std::collections::HashMap;
-use std::sync::Mutex;
-use std::sync::atomic::AtomicU32;
-use std::sync::atomic::Ordering;
+use crate::{Request, RequestHandle, ResolveError, capability::Operation};
 
 pub struct Registry<Op: Operation> {
     next_id: AtomicU32,

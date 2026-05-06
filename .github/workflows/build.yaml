@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           cargo fmt --all --check
-          cargo clippy -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+          cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
       - uses: pnpm/action-setup@v4
         with:

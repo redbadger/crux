@@ -14,11 +14,7 @@ pub mod routes;
 
 use std::sync::{Arc, Weak};
 
-use crate::Core;
-use crate::Request;
-use crate::Resolvable;
-use crate::ResolveError;
-use crate::capability::Operation;
+use crate::{Core, Request, Resolvable, ResolveError, capability::Operation};
 
 pub struct EffectRouter<App, RouteSet>
 where
