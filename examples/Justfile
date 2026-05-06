@@ -5,7 +5,7 @@ default: dev
 examples := "counter counter-http counter-middleware notes weather"
 
 # checks required tools across all examples
-[script('sh')]
+[script('bash')]
 doctor:
     for example in {{ examples }}; do
         echo '{{ style("command") }}'"$example"':{{ NORMAL }}'
@@ -14,16 +14,36 @@ doctor:
     done
 
 # local development workflow
-[script('sh')]
+[script('bash')]
 dev:
+    set -euo pipefail
     for example in {{ examples }}; do
         echo '{{ style("command") }}'"$example"'/dev:{{ NORMAL }}'
         just "$example/dev"
     done
 
+# clean build artefacts in all examples
+[script('bash')]
+clean:
+    set -euo pipefail
+    for example in {{ examples }}; do
+        echo '{{ style("command") }}'"$example"'/clean:{{ NORMAL }}'
+        just "$example/clean"
+    done
+
+# fix formatting in all examples
+[script('bash')]
+fix:
+    set -euo pipefail
+    for example in {{ examples }}; do
+        echo '{{ style("command") }}'"$example"'/fix:{{ NORMAL }}'
+        just "$example/fix"
+    done
+
 # CI workflow
-[script('sh')]
+[script('bash')]
 ci:
+    set -euo pipefail
     for example in {{ examples }}; do
         echo '{{ style("command") }}'"$example"'/ci:{{ NORMAL }}'
         just "$example/ci"

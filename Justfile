@@ -1,14 +1,64 @@
+# Crates published in order (dependencies before dependents)
+publish_packages := "crux_cli crux_macros crux_core crux_http crux_kv crux_platform crux_time"
+
+default: ci
+
+# Build the root workspace
 build:
-    cargo build
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    cargo build --all-features
 
+# Check formatting, types, and linting in the root workspace
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    cargo fmt --all --check
+    cargo check --all-features
+    cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dwarnings
+
+# Clean build artefacts in the root workspace and all examples
 clean:
-    cargo xtask --all clean
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    cargo clean
+    just examples/clean
 
+# Fix formatting in the root workspace and all examples
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    cargo fmt --all
+    just examples/fix
+
+# Run tests locally (with cargo-insta snapshot review)
 test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
     cargo insta test --review --test-runner nextest --all-features --lib
 
-fix:
-    cargo xtask --all format --fix
+# Run CI workflow — check, build, and test the root workspace, then all examples
+ci: check build
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    cargo nextest run --all-features
+    cargo test --doc --all-features
+    just examples/ci
 
-ci:
-    cargo xtask --all ci
+# Publish crates interactively — asks confirmation per crate, then publishes and tags
+[script('bash')]
+publish:
+    set -euo pipefail
+    packages="{{ publish_packages }}"
+    for pkg in $packages; do
+        version=$(cargo pkgid --package "$pkg" | sed 's/.*@//')
+        tag="${pkg}-v${version}"
+        printf '\nPublish %s? [y/N] ' "$tag"
+        read answer
+        case "$answer" in
+            [Yy]*)
+                echo "Publishing $tag..."
+                cargo publish --package "$pkg"
+                git push origin :refs/tags/"$tag"
+                git tag --force "$tag"
+                git push origin tag "$tag"
+                ;;
+            *)
+                echo "$pkg skipped"
+                ;;
+        esac
+    done

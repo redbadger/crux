@@ -13,8 +13,8 @@ workspace = true
 
 [dependencies]
 console_error_panic_hook = "0.1.7"
-dioxus = { version = "0.7.3", features = ["web"] }
-dioxus-logger = "0.7.3"
+dioxus = { version = "0.7.7", features = ["web"] }
+dioxus-logger = "0.7.7"
 futures-util = "0.3.32"
 shared = { path = "../shared" }
 tracing = "0.1.44"

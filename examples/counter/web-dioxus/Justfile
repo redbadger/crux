@@ -26,7 +26,7 @@ check:
 # build the project
 build:
     @echo '{{ style("command") }}build:{{ NORMAL }}'
-    dx build
+    RUSTC_WRAPPER="" dx build
 
 # run tests
 test:
@@ -48,4 +48,4 @@ ci: check build test
 # serve the app locally
 serve:
     @echo '{{ style("command") }}serve:{{ NORMAL }}'
-    dx serve
+    RUSTC_WRAPPER="" dx serve

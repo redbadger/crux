@@ -49,7 +49,9 @@ clean:
 dev: fix check build test
 
 # CI workflow
-ci: check build test
+ci: install check test
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    pnpm tauri build --no-bundle
 
 # serve the app locally
 serve: install

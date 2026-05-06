@@ -10,7 +10,6 @@ members = [
     "crux_time",
     "doctest_support",
     "examples_support/api_server",
-    "xtask",
 ]
 
 [workspace.package]
