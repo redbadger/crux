@@ -9,23 +9,23 @@
   },
   "dependencies": {
     "daisyui": "5.5.19",
-    "eslint": "^9.28.0",
-    "eslint-config-next": "16.1.7",
-    "next": "16.1.7",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "16.2.4",
+    "next": "16.2.4",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "shared": "file:generated/pkg",
     "shared_types": "file:generated/types",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.1",
-    "@types/node": "25.5.0",
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/node": "25.6.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "autoprefixer": "^10.4.27",
-    "postcss": "^8.5.8",
-    "tailwindcss": "^4.2.1"
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^4.2.4"
   },
   "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e"
 }

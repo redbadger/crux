@@ -69,7 +69,7 @@ codegen = [
 ]
 
 [dependencies]
-facet = "=0.31"
+facet = "=0.44"
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
 

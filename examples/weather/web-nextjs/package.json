@@ -10,22 +10,22 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "clsx": "^2.1.1",
-    "eslint": "^9.28.0",
-    "eslint-config-next": "16.1.7",
-    "next": "16.1.7",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "16.2.4",
+    "next": "16.2.4",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "shared": "file:generated/pkg",
     "shared_types": "file:generated/types",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.2",
-    "@types/node": "25.5.0",
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/node": "25.6.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^4.2.2"
+    "postcss": "^8.5.14",
+    "tailwindcss": "^4.2.4"
   },
   "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
 }

@@ -24,7 +24,7 @@ convert_case_extras = "0.2"
 derive_builder = "0.20"
 env_logger = "0.11"
 guppy = "0.17"
-iter_tools = "0.46"
+iter_tools = "0.50"
 lazy-regex = "3.6"
 log = "0.4"
 rustdoc-types = "=0.35"
@@ -36,6 +36,6 @@ thiserror.workspace = true
 uniffi_bindgen.workspace = true
 
 [dev-dependencies]
-insta = { version = "1.46.3" }
+insta = { version = "1.47.2" }
 pretty_assertions = "1.4.1"
 rstest = "0.26.1"

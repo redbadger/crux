@@ -48,7 +48,7 @@ clean:
 # update pnpm dependencies to latest
 update-pnpm-deps:
     @echo '{{ style("command") }}update-pnpm-deps:{{ NORMAL }}'
-    pnpm update --latest
+    pnpm update
 
 
 # local development workflow

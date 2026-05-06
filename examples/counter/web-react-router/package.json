@@ -8,20 +8,20 @@
     "start": "react-router-serve build/server/index.js"
   },
   "dependencies": {
-    "@react-router/node": "^7.7.0",
-    "@react-router/serve": "^7.7.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-router": "^7.7.0",
+    "@react-router/node": "^7.15.0",
+    "@react-router/serve": "^7.15.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-router": "^7.15.0",
     "shared": "file:generated/pkg",
     "shared_types": "file:generated/types"
   },
   "devDependencies": {
-    "@react-router/dev": "^7.7.0",
+    "@react-router/dev": "^7.15.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^5.9.3",
-    "vite": "^6.3.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10",
     "vite-plugin-wasm": "^3.6.0"
   },
   "engines": {
