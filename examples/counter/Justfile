@@ -49,3 +49,12 @@ ci:
         echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
         just "$shell/ci"
     done
+
+# update pnpm dependencies in all pnpm shells
+[script('bash')]
+update-pnpm-deps:
+    set -euo pipefail
+    for shell in web-nextjs web-react-router tauri; do
+        echo '{{ style("command") }}'"$shell"'/update-pnpm-deps:{{ NORMAL }}'
+        just "$shell/update-pnpm-deps"
+    done

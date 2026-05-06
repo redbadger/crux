@@ -39,6 +39,46 @@ ci: check build
     cargo test --doc --all-features
     just examples/ci
 
+# Run doc tests
+test-doc:
+    @echo '{{ style("command") }}test-doc:{{ NORMAL }}'
+    cargo test --doc --all-features
+
+# Generate rustdoc JSON for a crate (used by crux_cli codegen)
+# path = directory containing the crate's Cargo.toml
+[script('bash')]
+rustdoc-json path:
+    set -euo pipefail
+    echo '{{ style("command") }}rustdoc-json:{{ NORMAL }}'
+    rm -rf target/doc "{{ path }}/target/doc"
+    RUSTC_BOOTSTRAP=1 RUSTDOCFLAGS="-Z unstable-options --output-format=json --cap-lints=allow" \
+        cargo doc --no-deps --lib --manifest-path "{{ path }}/Cargo.toml"
+
+# Update Cargo lockfiles across all workspaces (safe — stays within existing constraints)
+update:
+    @echo '{{ style("command") }}update:{{ NORMAL }}'
+    cargo update
+    just examples/update
+
+# Upgrade Cargo dependency constraints and update lockfiles across all workspaces
+# Requires: cargo install cargo-edit
+[script('bash')]
+update-deps:
+    set -euo pipefail
+    echo '{{ style("command") }}update-deps:{{ NORMAL }}'
+    for dir in . crux_*/; do
+        [[ -f "$dir/Cargo.toml" ]] || continue
+        echo "  ~ ${dir%/}"
+        (cd "$dir" && cargo upgrade --incompatible allow)
+    done
+    cargo update
+    just examples/update-deps
+
+# Update pnpm dependencies to latest across all web and tauri shells
+update-pnpm-deps:
+    @echo '{{ style("command") }}update-pnpm-deps:{{ NORMAL }}'
+    just examples/update-pnpm-deps
+
 # Publish crates interactively — asks confirmation per crate, then publishes and tags
 [script('bash')]
 publish:

@@ -62,6 +62,12 @@ clean:
     cargo clean
     rm -rf generated .next node_modules
 
+# update pnpm dependencies to latest
+update-pnpm-deps:
+    @echo '{{ style("command") }}update-pnpm-deps:{{ NORMAL }}'
+    pnpm update --latest
+
+
 # local development workflow
 dev: fix check build test
 

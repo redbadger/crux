@@ -40,6 +40,33 @@ fix:
         just "$example/fix"
     done
 
+# update Cargo lockfiles in all examples
+[script('bash')]
+update:
+    set -euo pipefail
+    for example in {{ examples }}; do
+        echo '{{ style("command") }}'"$example"'/update:{{ NORMAL }}'
+        (cd "$example" && cargo update)
+    done
+
+# upgrade Cargo dependency constraints and update lockfiles in all examples
+[script('bash')]
+update-deps:
+    set -euo pipefail
+    for example in {{ examples }}; do
+        echo '{{ style("command") }}'"$example"'/update-deps:{{ NORMAL }}'
+        (cd "$example" && cargo upgrade --incompatible allow && cargo update)
+    done
+
+# update pnpm dependencies in all examples
+[script('bash')]
+update-pnpm-deps:
+    set -euo pipefail
+    for example in {{ examples }}; do
+        echo '{{ style("command") }}'"$example"'/update-pnpm-deps:{{ NORMAL }}'
+        just "$example/update-pnpm-deps"
+    done
+
 # CI workflow
 [script('bash')]
 ci:

@@ -41,6 +41,12 @@ clean:
         just "$shell/clean"
     done
 
+# update pnpm dependencies in all pnpm shells
+[script('bash')]
+update-pnpm-deps:
+    set -euo pipefail
+    just web-nextjs/update-pnpm-deps
+
 # CI workflow
 [script('bash')]
 ci:
