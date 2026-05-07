@@ -2,7 +2,7 @@
 # Import with: mod lib '../lib.just' (adjust path as needed)
 
 # Check if a tool is installed, report status (does not fail build)
-[script('sh'), no-cd]
+[script('bash'), no-cd]
 check-tool tool install_cmd:
     if command -v {{ tool }} >/dev/null 2>&1; then
         echo '  ✓ {{ tool }}'
@@ -11,7 +11,7 @@ check-tool tool install_cmd:
     fi
 
 # Check if a tool is installed, report status, and fail if missing
-[script('sh'), no-cd]
+[script('bash'), no-cd]
 require-tool tool install_cmd:
     if command -v {{ tool }} >/dev/null 2>&1; then
         echo '  ✓ {{ tool }}'
@@ -21,7 +21,7 @@ require-tool tool install_cmd:
     fi
 
 # Check if a file exists, report status (does not fail build)
-[script('sh'), no-cd]
+[script('bash'), no-cd]
 check-file file setup_cmd:
     if [ -f {{ file }} ]; then
         echo '  ✓ {{ file }}'
@@ -30,7 +30,7 @@ check-file file setup_cmd:
     fi
 
 # Check if a Rust target is installed
-[script('sh'), no-cd]
+[script('bash'), no-cd]
 check-rust-target target:
     if rustup target list --installed 2>/dev/null | grep -q '{{ target }}'; then
         echo '  ✓ {{ target }}'
@@ -39,7 +39,7 @@ check-rust-target target:
     fi
 
 # (internal) check java version is between 17 and 24
-[script('sh'), no-cd]
+[script('bash'), no-cd]
 _check-java-version:
     if ! command -v java >/dev/null 2>&1; then exit 0; fi
     ver=$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+).*/\1/')
@@ -71,7 +71,7 @@ check-windows:
     @just lib::check-rust-target x86_64-pc-windows-msvc
 
 # (internal) check for Visual Studio via vswhere at its canonical install path
-[script('sh'), no-cd]
+[script('bash'), no-cd]
 _check-vswhere:
     vswhere='/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe'
     if [ -f "$vswhere" ]; then

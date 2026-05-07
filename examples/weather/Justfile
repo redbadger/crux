@@ -6,7 +6,7 @@ common := "shared Android web-leptos web-nextjs"
 shells := if os() == "macos" { common + " apple" } else { common }
 
 # checks required tools across all shells
-[script('sh')]
+[script('bash')]
 doctor:
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
@@ -15,15 +15,38 @@ doctor:
     done
 
 # local development workflow
-[script('sh')]
+[script('bash')]
 dev:
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
         just "$shell/dev"
     done
 
+# fix formatting in all shells
+[script('bash')]
+fix:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/fix:{{ NORMAL }}'
+        just "$shell/fix"
+    done
+
+# clean build artefacts in all shells
+[script('bash')]
+clean:
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/clean:{{ NORMAL }}'
+        just "$shell/clean"
+    done
+
+# update pnpm dependencies in all pnpm shells
+[script('bash')]
+update-pnpm-deps:
+    set -euo pipefail
+    just web-nextjs/update-pnpm-deps
+
 # CI workflow
-[script('sh')]
+[script('bash')]
 ci:
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'

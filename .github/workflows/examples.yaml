@@ -134,10 +134,12 @@ jobs:
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@v2
         with:
-          tool: dioxus-cli@0.7.5
+          tool: dioxus-cli@0.7.7
 
       - name: CI
         run: just web-dioxus/ci
+        env:
+          RUSTC_WRAPPER: ""
 
   # JS/TS web shells. Needs: Rust, wasm32 target, wasm-pack, Node.js, pnpm.
   # All examples have web-nextjs; only counter has web-react-router.

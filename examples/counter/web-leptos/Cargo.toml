@@ -10,7 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 shared = { path = "../shared" }
-leptos = { version = "0.8.17", features = ["csr"] }
+leptos = { version = "0.8.19", features = ["csr"] }
 
 [lints]
 workspace = true

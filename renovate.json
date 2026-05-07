@@ -46,11 +46,7 @@
     },
     {
       "description": "Group support crate Cargo updates",
-      "matchFileNames": [
-        "doctest_support/**",
-        "examples_support/**",
-        "xtask/**"
-      ],
+      "matchFileNames": ["doctest_support/**", "examples_support/**"],
       "matchManagers": ["cargo"],
       "groupName": "support-cargo",
       "commitMessagePrefix": "chore(support):"
