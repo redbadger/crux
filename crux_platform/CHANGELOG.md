@@ -7,10 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0](https://github.com/redbadger/crux/compare/crux_platform-v0.8.0...crux_platform-v0.9.0) - 2026-05-07
+
 ### ⚙️ Miscellaneous Tasks
 
-- Align with `crux_core` 0.18.0 and update to `facet_generate` 0.16 / `facet` 0.44. No public
-  API changes.
+- Align with `crux_core` 0.18.0. No public API changes.
 
 ## [0.8.0](https://github.com/redbadger/crux/compare/crux_platform-v0.7.0...crux_platform-v0.8.0) - 2026-03-20
 

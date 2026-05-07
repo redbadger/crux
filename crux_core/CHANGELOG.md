@@ -6,31 +6,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [Unreleased]
+
+## [0.18.0](https://github.com/redbadger/crux/compare/crux_core-v0.17.0...crux_core-v0.18.0) - 2026-05-07
 
 ### 🚀 Features
 
-**This is a breaking release.**
+- **Fluent effect test assertions**: The `#[effect]` macro (from `crux_macros`) now generates a
+  `<Effect>TestExt` trait on `Command<Effect, Event>` with fluent, chainable assertion and
+  resolution methods per effect variant:
+  - `expect_<effect>(&mut self) -> &mut Self` — assert the next effect is of this type and chain
+  - `expect_<effect>_with(&mut self, |op| ...) -> &mut Self` — assert and inspect the operation
+  - `expect_only_<effect>(&mut self)` — assert this is the only remaining effect or event
+  - `expect_only_<effect>_with(&mut self, |op| ...)` — assert, inspect, and assert done
+  - `resolve_<effect>(&mut self, |op| output) -> &mut Self` — assert, resolve, and chain
+  - `then_event(&mut self, |ev| ...) -> &mut Self` — assert and inspect the next event
 
-#### Major Breaking Changes:
+  These helpers are compiled in only when the `testing` feature is enabled on `crux_core`.
 
-- **`facet_generate` 0.16 / `facet` 0.44**: Runtime installation is now automatic. Remove
-  `.add_runtimes()` from any `Config::builder(...)` chain in your `codegen.rs` — it is no longer
-  available. No other call-site changes are needed; `typegen.swift(&config)`,
-  `typegen.kotlin(&config)`, `typegen.typescript(&config)`, and `typegen.csharp(&config)` work the
-  same as before.
-- **`typegen_extensions/` is no longer read from disk**: Template files for the `serde` typegen
-  backend are now embedded into the library at compile time, so type generation works in
-  sandboxed builds (e.g. Bazel) where the source tree may not exist on the host running `codegen`.
-  If you placed a `typegen_extensions/` directory next to your `build.rs` to override templates,
-  that override no longer takes effect — fork or contribute upstream instead. If you didn't
-  customize templates, no action is required.
+- **C# typegen on `facet_generate` backend**: `CodeGenerator::csharp(&Config)` is now available
+  on the `facet_generate` typegen backend, producing an MSBuild project targeting `net10.0` with
+  a `CommunityToolkit.Mvvm` base reference and a Bincode serialization runtime.
 
-#### New Features:
+### ⚠️ Breaking Changes
 
-- **C# Typegen on `facet_generate`**: The newer `facet_generate` typegen backend now exposes
-  `CodeGenerator::csharp(&Config)`, producing an `MSBuild` project targeting `net10.0` with a
-  `CommunityToolkit.Mvvm` base reference and a Bincode runtime.
+- **`testing` feature required for cross-crate test helpers**: Testing helpers are now gated
+  behind the `testing` feature flag. If your integration tests (`tests/*.rs`) call `crux_core`
+  test helpers or use the generated `<Effect>TestExt` trait, add `features = ["testing"]` to
+  your `crux_core` dev-dependency:
+  ```toml
+  [dev-dependencies]
+  crux_core = { version = "0.18.0", features = ["testing"] }
+  ```
+
+- **`facet_generate` 0.17 — remove `.add_runtimes()`**: Runtime installation is now handled
+  automatically. Remove `.add_runtimes()` from any `Config::builder(...)` chain in your
+  `codegen.rs`. The `typegen.swift`, `typegen.kotlin`, `typegen.typescript`, and `typegen.csharp`
+  call sites are unchanged.
+
+- **`typegen_extensions/` no longer read from disk**: Templates for the `serde` typegen backend
+  are now embedded in the library at compile time, enabling codegen in sandboxed builds (e.g.
+  Bazel). Any `typegen_extensions/` directory placed next to your `build.rs` to override
+  templates is no longer honored.
+
+### ⚙️ Miscellaneous Tasks
+
+- Updated to `facet_generate` 0.17.
+- Dependency updates.
 
 ## [0.17.0](https://github.com/redbadger/crux/compare/crux_core-v0.16.2...crux_core-v0.17.0) - 2026-03-20
 
