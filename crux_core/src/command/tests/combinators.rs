@@ -743,16 +743,12 @@ fn stream_mapping_and_chaining() {
     assert_eq!(plus_one_request.operation, AnOperation::More([3, 4]));
 }
 
-// This test verifies that the order events arrive at the caller always matches
-// the written order of commands in Command::all, regardless of whether they are
-// placed into the internal channel eagerly (Command::event, which calls
-// ctx.send_event synchronously in its closure) or lazily (Command::new with an
-// async block, which only calls ctx.send_event when the future is first polled).
+// The order events arrive at the caller always matches the written order of
+// commands in Command::all. The position in the array determines the task
+// execution order, which determines the forwarding order.
 #[test]
-fn event_ordering_follows_code_order_not_channel_eagerness() {
-    // Case 1: eager (Command::event) is written first in the array.
-    // Even though its event is already in the internal channel before any task
-    // runs, it should still arrive first — matching the written order.
+fn event_ordering_follows_code_order() {
+    // Case 1: Command::event is written first.
     let mut cmd: Command<Effect, Event> = Command::all([
         Command::event(Event::First),
         Command::new(|ctx| async move {
@@ -763,10 +759,7 @@ fn event_ordering_follows_code_order_not_channel_eagerness() {
     assert_eq!(events, vec![Event::First, Event::Second]);
     assert!(cmd.is_done());
 
-    // Case 2: lazy (async block) is written first.
-    // Even though Command::event's event is eagerly in its internal channel
-    // before Command::all is even called, the lazy command is listed first so
-    // its event should still arrive first.
+    // Case 2: Command::new with an async block is written first.
     let mut cmd: Command<Effect, Event> = Command::all([
         Command::new(|ctx| async move {
             ctx.send_event(Event::First);
@@ -776,4 +769,36 @@ fn event_ordering_follows_code_order_not_channel_eagerness() {
     let events: Vec<_> = cmd.events().collect();
     assert_eq!(events, vec![Event::First, Event::Second]);
     assert!(cmd.is_done());
+}
+
+// events() always calls run_until_settled() before draining the channel, so
+// events are available on the very first call regardless of how the command
+// was constructed.
+#[test]
+fn event_is_available_on_first_events_call() {
+    let mut cmd: Command<Effect, Event> = Command::event(Event::First);
+    assert_eq!(cmd.events().next(), Some(Event::First));
+    assert!(cmd.is_done());
+
+    let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+        ctx.send_event(Event::First);
+    });
+    assert_eq!(cmd.events().next(), Some(Event::First));
+    assert!(cmd.is_done());
+}
+
+// Aborting a command before it is ever polled discards all pending work.
+// run_until_settled() short-circuits on abort, clearing tasks without running
+// them, so no events are ever placed in the channel.
+#[test]
+fn aborting_before_poll_discards_pending_events() {
+    let mut cmd: Command<Effect, Event> = Command::event(Event::First);
+    cmd.abort_handle().abort();
+    assert_eq!(cmd.events().next(), None);
+
+    let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
+        ctx.send_event(Event::First);
+    });
+    cmd.abort_handle().abort();
+    assert_eq!(cmd.events().next(), None);
 }
