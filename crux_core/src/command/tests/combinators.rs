@@ -35,6 +35,8 @@ impl From<Request<AnOperation>> for Effect {
 #[derive(Debug, PartialEq)]
 enum Event {
     Completed(AnOperationOutput),
+    First,
+    Second,
 }
 
 #[test]
@@ -739,4 +741,39 @@ fn stream_mapping_and_chaining() {
 
     let Effect::AnEffect(plus_one_request) = effect;
     assert_eq!(plus_one_request.operation, AnOperation::More([3, 4]));
+}
+
+// This test verifies that the order events arrive at the caller always matches
+// the written order of commands in Command::all, regardless of whether they are
+// placed into the internal channel eagerly (Command::event, which calls
+// ctx.send_event synchronously in its closure) or lazily (Command::new with an
+// async block, which only calls ctx.send_event when the future is first polled).
+#[test]
+fn event_ordering_follows_code_order_not_channel_eagerness() {
+    // Case 1: eager (Command::event) is written first in the array.
+    // Even though its event is already in the internal channel before any task
+    // runs, it should still arrive first — matching the written order.
+    let mut cmd: Command<Effect, Event> = Command::all([
+        Command::event(Event::First),
+        Command::new(|ctx| async move {
+            ctx.send_event(Event::Second);
+        }),
+    ]);
+    let events: Vec<_> = cmd.events().collect();
+    assert_eq!(events, vec![Event::First, Event::Second]);
+    assert!(cmd.is_done());
+
+    // Case 2: lazy (async block) is written first.
+    // Even though Command::event's event is eagerly in its internal channel
+    // before Command::all is even called, the lazy command is listed first so
+    // its event should still arrive first.
+    let mut cmd: Command<Effect, Event> = Command::all([
+        Command::new(|ctx| async move {
+            ctx.send_event(Event::First);
+        }),
+        Command::event(Event::Second),
+    ]);
+    let events: Vec<_> = cmd.events().collect();
+    assert_eq!(events, vec![Event::First, Event::Second]);
+    assert!(cmd.is_done());
 }
