@@ -384,7 +384,10 @@ where
     /// the event is not guaranteed to dispatch instantly - another `update` call which is
     /// already scheduled may happen first.
     pub fn event(event: Event) -> Self {
-        Command::new(|ctx| async move { ctx.send_event(event) })
+        Command::new(|ctx| {
+            ctx.send_event(event);
+            futures::future::ready(())
+        })
     }
 
     /// Start a creation of a Command which sends a notification to the shell with a provided
@@ -401,7 +404,10 @@ where
         Op: Operation,
         Effect: From<Request<Op>>,
     {
-        builder::NotificationBuilder::new(|ctx| async move { ctx.notify_shell(operation) })
+        builder::NotificationBuilder::new(|ctx| {
+            ctx.notify_shell(operation);
+            futures::future::ready(())
+        })
     }
 
     /// Start a creation of a Command which sends a one-time request to the shell with a provided
@@ -471,12 +477,12 @@ where
     // Combinators
 
     /// Convert the command into a future to use in an async context
-    pub async fn into_future(self, ctx: CommandContext<Effect, Event>)
+    pub fn into_future(self, ctx: CommandContext<Effect, Event>) -> impl Future<Output = ()>
     where
         Effect: Unpin + Send + 'static,
         Event: Unpin + Send + 'static,
     {
-        self.host(ctx.effects, ctx.events).await;
+        self.host(ctx.effects, ctx.events).map(|_| ())
     }
 
     /// Create a command running self and the other command in sequence
@@ -488,12 +494,11 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        Command::new(|ctx| async move {
+        Command::new(|ctx| {
             // first run self until done
-            self.into_future(ctx.clone()).await;
-
-            // then run other until done
-            other.into_future(ctx).await;
+            self.into_future(ctx.clone())
+                // then run other until done
+                .then(|()| other.into_future(ctx))
         })
     }
 
@@ -537,13 +542,13 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        Command::new(|ctx| async move {
-            let mapped = self.map(|output| match output {
+        Command::new(move |ctx| {
+            self.map(move |output| match output {
                 CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
                 CommandOutput::Event(event) => CommandOutput::Event(event),
-            });
-
-            mapped.host(ctx.effects, ctx.events).await;
+            })
+            .host(ctx.effects, ctx.events)
+            .map(|_| ())
         })
     }
 
@@ -558,13 +563,13 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        Command::new(|ctx| async move {
-            let mapped = self.map(|output| match output {
+        Command::new(move |ctx| {
+            self.map(move |output| match output {
                 CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
                 CommandOutput::Event(event) => CommandOutput::Event(map(event)),
-            });
-
-            mapped.host(ctx.effects, ctx.events).await;
+            })
+            .host(ctx.effects, ctx.events)
+            .map(|_| ())
         })
     }
 

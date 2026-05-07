@@ -6,7 +6,7 @@
 //! of the composition are unclear. If you need to compose streams, use the async
 //! API and tools from the `futures` crate.
 
-use std::{future::Future, pin::pin};
+use std::future::Future;
 
 use futures::{FutureExt, Stream, StreamExt};
 
@@ -42,9 +42,7 @@ where
 
     /// Convert the [`NotificationBuilder`] into a [`Command`] to use in an sync context
     pub fn build(self) -> Command<Effect, Event> {
-        Command::new(|ctx| async move {
-            self.into_future(ctx.clone()).await;
-        })
+        Command::new(move |ctx| self.into_future(ctx))
     }
 }
 
@@ -374,9 +372,9 @@ where
         E: FnOnce(T) -> Event + Send + 'static,
         Task: Future<Output = T> + Send + 'static,
     {
-        Command::new(|ctx| async move {
-            let out = self.into_future(ctx.clone()).await;
-            ctx.send_event(event(out));
+        Command::new(move |ctx| {
+            self.into_future(ctx.clone())
+                .map(move |out| ctx.send_event(event(out)))
         })
     }
 
@@ -390,9 +388,7 @@ where
     /// It might be useful when using a 3rd party capability and you don't
     /// care about the request's response.
     pub fn build(self) -> Command<Effect, Event> {
-        Command::new(|ctx| async move {
-            self.into_future(ctx.clone()).await;
-        })
+        Command::new(move |ctx| self.into_future(ctx).map(|_| ()))
     }
 }
 
@@ -611,12 +607,11 @@ where
     where
         E: Fn(T) -> Event + Send + 'static,
     {
-        Command::new(|ctx| async move {
-            let mut stream = pin!(self.into_stream(ctx.clone()));
-
-            while let Some(out) = stream.next().await {
+        Command::new(move |ctx| {
+            self.into_stream(ctx.clone()).for_each(move |out| {
                 ctx.send_event(event(out));
-            }
+                futures::future::ready(())
+            })
         })
     }
 
@@ -639,10 +634,9 @@ where
     /// It may be useful when using a 3rd party capability and you don't
     /// care about the stream output.
     pub fn build(self) -> Command<Effect, Event> {
-        Command::new(|ctx| async move {
-            let mut stream = pin!(self.into_stream(ctx.clone()));
-
-            while (stream.next().await).is_some() {}
+        Command::new(move |ctx| {
+            self.into_stream(ctx)
+                .for_each(|_| futures::future::ready(()))
         })
     }
 }
