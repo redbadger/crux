@@ -85,7 +85,7 @@ publish:
     set -euo pipefail
     packages="{{ publish_packages }}"
     for pkg in $packages; do
-        version=$(cargo pkgid --package "$pkg" | sed 's/.*@//')
+        version=$(cargo pkgid --package "$pkg" | sed 's/.*[#@]//')
         tag="${pkg}-v${version}"
         printf '\nPublish %s? [y/N] ' "$tag"
         read answer
