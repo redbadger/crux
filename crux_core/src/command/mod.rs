@@ -384,10 +384,7 @@ where
     /// the event is not guaranteed to dispatch instantly - another `update` call which is
     /// already scheduled may happen first.
     pub fn event(event: Event) -> Self {
-        Command::new(|ctx| {
-            ctx.send_event(event);
-            futures::future::ready(())
-        })
+        Command::new(|ctx| futures::future::lazy(move |_| ctx.send_event(event)))
     }
 
     /// Start a creation of a Command which sends a notification to the shell with a provided
@@ -405,8 +402,7 @@ where
         Effect: From<Request<Op>>,
     {
         builder::NotificationBuilder::new(|ctx| {
-            ctx.notify_shell(operation);
-            futures::future::ready(())
+            futures::future::lazy(move |_| ctx.notify_shell(operation))
         })
     }
 
