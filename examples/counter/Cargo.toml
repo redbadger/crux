@@ -1,5 +1,12 @@
 [workspace]
-members = ["shared", "tauri/src-tauri", "tui", "web-dioxus", "web-leptos", "web-yew"]
+members = [
+    "shared",
+    "tauri/src-tauri",
+    "tui",
+    "web-dioxus",
+    "web-leptos",
+    "web-yew",
+]
 resolver = "3"
 
 [workspace.package]
@@ -20,7 +27,7 @@ unsafe_code = "forbid"
 [workspace.dependencies]
 anyhow = "1.0.102"
 crux_core = { path = "../../crux_core" }
-# crux_core = "0.17.0"
+# crux_core = "0.18.0"
 serde = "1.0.228"
 
 [profile]

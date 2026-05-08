@@ -8,11 +8,29 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.9.0](https://github.com/redbadger/crux/compare/crux_macros-v0.8.0...crux_macros-v0.9.0) - 2026-05-07
+
+### 🚀 Features
+
+- **Fluent effect test assertions**: The `#[effect]` macro now generates an `<Effect>TestExt`
+  trait on `Command<Effect, Event>` with chainable, per-variant assertion and resolution methods:
+  `expect_<effect>`, `expect_<effect>_with`, `expect_only_<effect>`, `expect_only_<effect>_with`,
+  `resolve_<effect>`, and `then_event`. These allow integration tests to be written as a
+  readable chain of assertions and responses. The helpers are compiled in only when the `testing`
+  feature is enabled on `crux_core`.
+
+- **Improved assertion error messages**: Effect and event assertion failures now report how many
+  effects and events remain, making failing tests easier to diagnose.
+
+- **`Requests` type registered for facet typegen**: The generated typegen code now also registers
+  `crux_core::bridge::Requests<EffectFfi>` alongside `Request<EffectFfi>`, ensuring the batch
+  request wrapper type is included in generated bindings.
+
 ### ⚙️ Miscellaneous Tasks
 
-- Update to `facet_generate` 0.16 and `facet` 0.44. No changes to the public derive surface
-  (`#[derive(Effect)]`, `#[effect]`); no migration needed for downstream apps.
+- Updated to `facet_generate` 0.17.
 - Align with `crux_core` 0.18.0.
+- Dependency updates.
 
 ## [0.8.0](https://github.com/redbadger/crux/compare/crux_macros-v0.7.0...crux_macros-v0.8.0) - 2026-03-20
 
