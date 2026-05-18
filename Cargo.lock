@@ -544,8 +544,9 @@ dependencies = [
  "assert_matches",
  "async-channel 2.5.0",
  "bincode",
+ "camino",
+ "cargo_metadata",
  "crossbeam-channel",
- "crux_cli",
  "crux_core",
  "crux_http",
  "crux_macros",
@@ -565,6 +566,7 @@ dependencies = [
  "static_assertions",
  "tempfile",
  "thiserror 2.0.18",
+ "uniffi_bindgen",
  "url",
  "uuid",
 ]

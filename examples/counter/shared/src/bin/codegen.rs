@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 use crux_core::{
-    cli::{BindgenArgsBuilder, bindgen},
+    bindgen::bindgen_kotlin,
     type_generation::facet::{Config, TypeRegistry},
 };
 use log::info;
@@ -51,11 +51,7 @@ fn main() -> Result<()> {
             typegen_app.kotlin(&config)?;
 
             info!("Bindgen for Kotlin");
-            let bindgen_args = BindgenArgsBuilder::default()
-                .crate_name(env!("CARGO_PKG_NAME").to_string())
-                .kotlin(&args.output_dir)
-                .build()?;
-            bindgen(&bindgen_args)?;
+            bindgen_kotlin(env!("CARGO_PKG_NAME"), &args.output_dir)?;
         }
         Language::Csharp => {
             info!("Typegen for C#");
