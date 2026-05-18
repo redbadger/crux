@@ -60,7 +60,7 @@ pub enum TextCursor {
 
 impl Default for TextCursor {
     fn default() -> Self {
-        TextCursor::Position(0)
+        Self::Position(0)
     }
 }
 
@@ -79,7 +79,7 @@ pub struct ViewModel {
 
 impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
-        ViewModel {
+        Self {
             text: model.note.text(),
             cursor: model.cursor.clone(),
         }
@@ -808,6 +808,7 @@ mod sync_tests {
                     .expect("should resolve");
 
                 if let Some(cmd) = self.command.as_mut() {
+                    #[allow(clippy::needless_collect)]
                     for event in cmd.events().collect::<Vec<_>>() {
                         self.update(event);
                     }

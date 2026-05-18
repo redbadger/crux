@@ -12,16 +12,16 @@ pub struct ResponseBuilder<Body> {
 impl ResponseBuilder<Vec<u8>> {
     /// Constructs a new `ResponseBuilder` with the 200 OK status code.
     #[must_use]
-    pub fn ok() -> ResponseBuilder<Vec<u8>> {
-        ResponseBuilder::with_status(http_types::StatusCode::Ok)
+    pub fn ok() -> Self {
+        Self::with_status(http_types::StatusCode::Ok)
     }
 
     /// Constructs a new `ResponseBuilder` with the specified status code.
     #[must_use]
-    pub fn with_status(status: http_types::StatusCode) -> ResponseBuilder<Vec<u8>> {
+    pub fn with_status(status: http_types::StatusCode) -> Self {
         let response = Response::new_with_status(status);
 
-        ResponseBuilder { response }
+        Self { response }
     }
 }
 

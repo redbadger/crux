@@ -77,8 +77,8 @@ impl Redirect {
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     #[must_use]
-    pub fn new(attempts: u8) -> Self {
-        Redirect { attempts }
+    pub const fn new(attempts: u8) -> Self {
+        Self { attempts }
     }
 }
 

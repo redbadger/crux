@@ -37,7 +37,9 @@ impl Instant {
 
 impl From<SystemTime> for Instant {
     fn from(time: SystemTime) -> Self {
-        let duration = time.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+        let duration = time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("time must be after Unix epoch");
         let seconds = duration.as_secs();
         let nanos = duration.subsec_nanos();
         Self { seconds, nanos }
@@ -46,7 +48,7 @@ impl From<SystemTime> for Instant {
 
 impl From<Instant> for SystemTime {
     fn from(time: Instant) -> Self {
-        SystemTime::UNIX_EPOCH + std::time::Duration::new(time.seconds, time.nanos)
+        Self::UNIX_EPOCH + std::time::Duration::new(time.seconds, time.nanos)
     }
 }
 

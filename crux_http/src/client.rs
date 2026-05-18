@@ -321,16 +321,16 @@ impl Client {
 
     /// Get the current configuration.
     #[must_use]
-    pub fn config(&self) -> &Config {
+    pub const fn config(&self) -> &Config {
         &self.config
     }
 
     // private function to generate a url based on the base_path
     fn url(&self, uri: impl AsRef<str>) -> Url {
-        match &self.config.base_url {
-            None => uri.as_ref().parse().unwrap(),
-            Some(base) => base.join(uri.as_ref()).unwrap(),
-        }
+        self.config.base_url.as_ref().map_or_else(
+            || uri.as_ref().parse().unwrap(),
+            |base| base.join(uri.as_ref()).unwrap(),
+        )
     }
 }
 
@@ -342,7 +342,7 @@ mod client_tests {
 
     #[futures_test::test]
     async fn an_http_get() {
-        let mut shell = FakeShell::default();
+        let shell = FakeShell::default();
         shell.provide_response(HttpResponse::ok().body("Hello World!").build());
 
         let client = Client::new(shell.clone());

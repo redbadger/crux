@@ -16,12 +16,12 @@ pub enum Value {
 
 impl From<Vec<u8>> for Value {
     fn from(bytes: Vec<u8>) -> Self {
-        Value::Bytes(bytes)
+        Self::Bytes(bytes)
     }
 }
 
 impl From<Value> for Option<Vec<u8>> {
-    fn from(value: Value) -> Option<Vec<u8>> {
+    fn from(value: Value) -> Self {
         match value {
             Value::None => None,
             Value::Bytes(bytes) => Some(bytes),
@@ -31,9 +31,6 @@ impl From<Value> for Option<Vec<u8>> {
 
 impl From<Option<Vec<u8>>> for Value {
     fn from(val: Option<Vec<u8>>) -> Self {
-        match val {
-            None => Value::None,
-            Some(bytes) => Value::Bytes(bytes),
-        }
+        val.map_or(Self::None, Value::Bytes)
     }
 }

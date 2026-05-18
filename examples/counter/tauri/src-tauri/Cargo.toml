@@ -13,11 +13,11 @@ name = "tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.6.1", features = [] }
+tauri-build = { version = "2.6.2", features = [] }
 
 [dependencies]
 shared = { path = "../../shared" }
-tauri = { version = "2.11.1", features = [] }
+tauri = { version = "2.11.2", features = [] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

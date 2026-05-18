@@ -8,7 +8,7 @@ mod shared {
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
-    pub(crate) struct App;
+    pub struct App;
 
     #[derive(Serialize, Deserialize)]
     pub enum Event {
@@ -95,7 +95,7 @@ mod shell {
         Effect(Effect),
     }
 
-    pub(crate) fn run(core: &Core<App>, event: Event) -> Vec<HttpRequest> {
+    pub fn run(core: &Core<App>, event: Event) -> Vec<HttpRequest> {
         let mut queue: VecDeque<Task> = VecDeque::new();
 
         queue.push_back(Task::Event(event));

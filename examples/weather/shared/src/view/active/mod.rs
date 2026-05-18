@@ -22,8 +22,8 @@ pub enum ActiveViewModel {
 impl From<&ActiveModel> for ActiveViewModel {
     fn from(active: &ActiveModel) -> Self {
         match &active.screen {
-            Screen::Home(home) => ActiveViewModel::Home(home.into()),
-            Screen::Favorites(fav) => ActiveViewModel::Favorites(fav.into()),
+            Screen::Home(home) => Self::Home(home.into()),
+            Screen::Favorites(fav) => Self::Favorites(fav.into()),
         }
     }
 }

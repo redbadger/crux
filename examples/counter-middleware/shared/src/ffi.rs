@@ -3,11 +3,11 @@
 use std::sync::Arc;
 
 use crux_core::{
-    Core,
     bridge::EffectId,
     macros::effect,
     middleware::{BincodeFfiFormat, Bridge, Layer as _},
     render::RenderOperation,
+    Core,
 };
 use crux_http::protocol::HttpRequest;
 
@@ -16,7 +16,7 @@ use crux_core::middleware::{HandleEffectLayer, MapEffectLayer};
 
 #[cfg(not(target_family = "wasm"))]
 use crate::middleware::RngMiddleware;
-use crate::{Counter, RandomNumberRequest, sse::SseRequest};
+use crate::{sse::SseRequest, Counter, RandomNumberRequest};
 
 // ANCHOR: ffi_effect
 #[effect(facet_typegen)]

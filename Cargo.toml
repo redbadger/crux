@@ -34,6 +34,7 @@ boltffi = "=0.25.2"
 
 [workspace.lints.clippy]
 pedantic = "warn"
+nursery = "warn"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

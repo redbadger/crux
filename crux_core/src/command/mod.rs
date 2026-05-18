@@ -337,7 +337,7 @@ where
             .send(task_id)
             .expect("Could not make task ready, ready channel disconnected");
 
-        Command {
+        Self {
             effects: effect_receiver,
             events: event_receiver,
             context,
@@ -353,7 +353,7 @@ where
     /// Create an empty, completed Command. This is useful as a return value from `update` if
     /// there are no side-effects to perform.
     pub fn done() -> Self {
-        Command::new(|_ctx| futures::future::ready(()))
+        Self::new(|_ctx| futures::future::ready(()))
     }
 
     /// Create a command from another command with compatible `Effect` and `Event` types
@@ -384,7 +384,7 @@ where
     /// the event is not guaranteed to dispatch instantly - another `update` call which is
     /// already scheduled may happen first.
     pub fn event(event: Event) -> Self {
-        Command::new(|ctx| futures::future::lazy(move |_| ctx.send_event(event)))
+        Self::new(|ctx| futures::future::lazy(move |_| ctx.send_event(event)))
     }
 
     /// Start a creation of a Command which sends a notification to the shell with a provided
@@ -490,7 +490,7 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        Command::new(|ctx| {
+        Self::new(|ctx| {
             // first run self until done
             self.into_future(ctx.clone())
                 // then run other until done
@@ -516,7 +516,7 @@ where
         Effect: Unpin,
         Event: Unpin,
     {
-        let mut command = Command::done();
+        let mut command = Self::done();
 
         for c in commands {
             command.spawn(|ctx| c.into_future(ctx));
@@ -595,13 +595,13 @@ where
     }
 }
 
-impl<Effect, Event> FromIterator<Command<Effect, Event>> for Command<Effect, Event>
+impl<Effect, Event> FromIterator<Self> for Command<Effect, Event>
 where
     Effect: Send + Unpin + 'static,
     Event: Send + Unpin + 'static,
 {
-    fn from_iter<I: IntoIterator<Item = Command<Effect, Event>>>(iter: I) -> Self {
-        Command::all(iter)
+    fn from_iter<I: IntoIterator<Item = Self>>(iter: I) -> Self {
+        Self::all(iter)
     }
 }
 

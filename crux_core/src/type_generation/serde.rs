@@ -162,7 +162,7 @@ pub struct TypeGen {
 
 impl Default for TypeGen {
     fn default() -> Self {
-        TypeGen {
+        Self {
             state: State::Registering(Tracer::new(TracerConfig::default()), Samples::new()),
         }
     }

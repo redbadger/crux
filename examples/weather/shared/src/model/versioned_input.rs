@@ -26,13 +26,13 @@ impl VersionedInput {
     }
 
     /// Returns the current version number.
-    pub fn version(&self) -> usize {
+    pub const fn version(&self) -> usize {
         self.version
     }
 
     /// Whether the given version matches the current one — used to discard
     /// responses from stale inputs.
-    pub fn is_current(&self, version: usize) -> bool {
+    pub const fn is_current(&self, version: usize) -> bool {
         self.version == version
     }
 }

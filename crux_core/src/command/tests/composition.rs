@@ -22,7 +22,7 @@ enum Effect {
 
 impl From<Request<ToString>> for Effect {
     fn from(value: Request<ToString>) -> Self {
-        Effect::Convert(value)
+        Self::Convert(value)
     }
 }
 
@@ -34,7 +34,7 @@ enum ParentEffect {
 
 impl From<Request<ToString>> for ParentEffect {
     fn from(value: Request<ToString>) -> Self {
-        ParentEffect::Convert(value)
+        Self::Convert(value)
     }
 }
 

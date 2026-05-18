@@ -145,7 +145,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     // ANCHOR: spawn
     pub fn spawn<F, Fut>(&self, make_future: F) -> JoinHandle
     where
-        F: FnOnce(CommandContext<Effect, Event>) -> Fut,
+        F: FnOnce(Self) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
         let (sender, receiver) = crossbeam_channel::unbounded();
@@ -185,22 +185,21 @@ impl<T: Unpin + Send> ShellStream<T> {
         send_request: impl FnOnce() + Send + 'static,
         output_receiver: mpsc::UnboundedReceiver<T>,
     ) -> Self {
-        ShellStream::ReadyToSend(Box::new(send_request), output_receiver)
+        Self::ReadyToSend(Box::new(send_request), output_receiver)
     }
 
     fn send(&mut self) {
         // Since neither part is Clone, we'll need to do an Indiana Jones
 
         // 1. take items out of self
-        let dummy = ShellStream::Sent(mpsc::unbounded().1);
-        let ShellStream::ReadyToSend(send_request, output_receiver) =
-            std::mem::replace(self, dummy)
+        let dummy = Self::Sent(mpsc::unbounded().1);
+        let Self::ReadyToSend(send_request, output_receiver) = std::mem::replace(self, dummy)
         else {
             unreachable!("cannot send");
         };
 
         // 2. replace self with with a Sent using the original receiver
-        *self = ShellStream::Sent(output_receiver);
+        *self = Self::Sent(output_receiver);
 
         send_request();
     }
@@ -211,7 +210,7 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match *self {
-            ShellStream::ReadyToSend(_, ref mut output_receiver) => {
+            Self::ReadyToSend(_, ref mut output_receiver) => {
                 let poll = pin!(output_receiver).poll_next(cx);
                 assert!(matches!(poll, Poll::Pending)); // we have not sent the request yet
 
@@ -219,7 +218,7 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
 
                 Poll::Pending
             }
-            ShellStream::Sent(ref mut output_receiver) => pin!(output_receiver).poll_next(cx),
+            Self::Sent(ref mut output_receiver) => pin!(output_receiver).poll_next(cx),
         }
     }
 }

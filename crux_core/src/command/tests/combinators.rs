@@ -695,11 +695,11 @@ fn chaining_with_mapping() {
 fn stream_mapping_and_chaining() {
     let mut cmd = Command::stream_from_shell(AnOperation::One)
         .map(|out| {
-            let AnOperationOutput::Other([a, b]) = out else {
+            let AnOperationOutput::Other(x) = out else {
                 panic!("Bad output");
             };
 
-            (a, b)
+            x.into()
         })
         .then_request(|(a, b)| Command::request_from_shell(AnOperation::More([a + 1, b + 1])))
         .then_send(Event::Completed);

@@ -13,7 +13,7 @@ check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt --all --check
     cargo check --all-features
-    cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dwarnings
+    cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
 # Clean build artefacts in the root workspace and all examples
 clean:

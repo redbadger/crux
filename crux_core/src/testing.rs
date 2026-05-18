@@ -125,10 +125,14 @@ where
     }
 
     fn collect_update(&self) -> Update<App::Effect, App::Event> {
-        let mut root_command = self.root_command.lock().expect("AppTester mutex poisoned");
+        let (effects, events) = {
+            let mut root_command = self.root_command.lock().expect("AppTester mutex poisoned");
 
-        let effects: Vec<_> = root_command.effects().collect();
-        let events: Vec<_> = root_command.events().collect();
+            (
+                root_command.effects().collect(),
+                root_command.events().collect(),
+            )
+        };
 
         Update { effects, events }
     }

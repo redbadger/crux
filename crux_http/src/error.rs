@@ -32,7 +32,7 @@ pub enum HttpError {
 
 impl From<http_types::Error> for HttpError {
     fn from(e: http_types::Error) -> Self {
-        HttpError::Http {
+        Self::Http {
             code: e.status(),
             message: e.to_string(),
             body: None,
@@ -42,19 +42,19 @@ impl From<http_types::Error> for HttpError {
 
 impl From<serde_json::Error> for HttpError {
     fn from(e: serde_json::Error) -> Self {
-        HttpError::Json(e.to_string())
+        Self::Json(e.to_string())
     }
 }
 
 impl From<url::ParseError> for HttpError {
     fn from(e: url::ParseError) -> Self {
-        HttpError::Url(e.to_string())
+        Self::Url(e.to_string())
     }
 }
 
 impl From<serde_qs::Error> for HttpError {
     fn from(e: serde_qs::Error) -> Self {
-        HttpError::Json(e.to_string())
+        Self::Json(e.to_string())
     }
 }
 

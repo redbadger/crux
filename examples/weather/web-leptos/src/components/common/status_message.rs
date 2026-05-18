@@ -10,14 +10,14 @@ pub enum StatusTone {
 }
 
 impl StatusTone {
-    fn icon_class(self) -> &'static str {
+    const fn icon_class(self) -> &'static str {
         match self {
             Self::Neutral => "text-slate-400",
             Self::Error => "text-red-500",
         }
     }
 
-    fn text_class(self) -> &'static str {
+    const fn text_class(self) -> &'static str {
         match self {
             Self::Neutral => "text-slate-600",
             Self::Error => "text-red-600",

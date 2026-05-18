@@ -35,7 +35,7 @@ where
         (self.operation, self.handle)
     }
 
-    pub(crate) fn resolves_never(operation: Op) -> Self {
+    pub(crate) const fn resolves_never(operation: Op) -> Self {
         Self {
             operation,
             handle: RequestHandle::Never,

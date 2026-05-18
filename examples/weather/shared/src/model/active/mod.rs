@@ -45,12 +45,12 @@ pub enum ActiveEvent {
 impl ActiveEvent {
     #[must_use]
     pub fn home(event: HomeEvent) -> Self {
-        ActiveEvent::Home(Box::new(event))
+        Self::Home(Box::new(event))
     }
 
     #[must_use]
     pub fn favorites(event: FavoritesScreenEvent) -> Self {
-        ActiveEvent::Favorites(Box::new(event))
+        Self::Favorites(Box::new(event))
     }
 }
 
@@ -64,15 +64,15 @@ pub enum Screen {
 
 impl Default for Screen {
     fn default() -> Self {
-        Screen::Home(HomeScreen::default())
+        Self::Home(HomeScreen::default())
     }
 }
 
 impl Screen {
     fn into_favorites(self) -> Favorites {
         match self {
-            Screen::Home(home) => home.favorites_weather.into(),
-            Screen::Favorites(fav) => fav.favorites,
+            Self::Home(home) => home.favorites_weather.into(),
+            Self::Favorites(fav) => fav.favorites,
         }
     }
 }
@@ -102,7 +102,7 @@ impl ActiveModel {
             .map_event(ActiveEvent::home)
             .into_parts();
         Started::new(
-            ActiveModel {
+            Self {
                 api_key,
                 screen: Screen::Home(home_screen),
             },
@@ -111,13 +111,13 @@ impl ActiveModel {
     }
 
     pub(crate) fn update(self, event: ActiveEvent) -> Outcome<Self, ActiveTransition, ActiveEvent> {
-        let ActiveModel { api_key, screen } = self;
+        let Self { api_key, screen } = self;
 
         match event {
             ActiveEvent::ResetApiKey => {
                 let cmd = secret::command::delete(secret::API_KEY_NAME)
                     .then_send(ActiveEvent::SecretDeleted);
-                Outcome::continuing(ActiveModel { api_key, screen }, cmd)
+                Outcome::continuing(Self { api_key, screen }, cmd)
             }
             ActiveEvent::SecretDeleted(response) => match response {
                 SecretDeleteResponse::Deleted(_) => Outcome::complete(
@@ -125,12 +125,12 @@ impl ActiveModel {
                     render(),
                 ),
                 SecretDeleteResponse::DeleteError(_) => {
-                    Outcome::continuing(ActiveModel { api_key, screen }, Command::done())
+                    Outcome::continuing(Self { api_key, screen }, Command::done())
                 }
             },
             ActiveEvent::Home(home_event) => {
                 let Screen::Home(home) = screen else {
-                    return Outcome::continuing(ActiveModel { api_key, screen }, Command::done());
+                    return Outcome::continuing(Self { api_key, screen }, Command::done());
                 };
 
                 let (status, cmd) = home
@@ -140,7 +140,7 @@ impl ActiveModel {
 
                 match status {
                     super::outcome::Status::Continue(home) => Outcome::continuing(
-                        ActiveModel {
+                        Self {
                             api_key,
                             screen: Screen::Home(home),
                         },
@@ -148,7 +148,7 @@ impl ActiveModel {
                     ),
                     super::outcome::Status::Complete(HomeTransition::GoToFavorites(favorites)) => {
                         Outcome::continuing(
-                            ActiveModel {
+                            Self {
                                 api_key,
                                 screen: Screen::Favorites(FavoritesScreen {
                                     favorites,
@@ -168,7 +168,7 @@ impl ActiveModel {
             }
             ActiveEvent::Favorites(fav_event) => {
                 let Screen::Favorites(fav_screen) = screen else {
-                    return Outcome::continuing(ActiveModel { api_key, screen }, Command::done());
+                    return Outcome::continuing(Self { api_key, screen }, Command::done());
                 };
 
                 let (status, cmd) = fav_screen
@@ -178,7 +178,7 @@ impl ActiveModel {
 
                 match status {
                     super::outcome::Status::Continue(fav_screen) => Outcome::continuing(
-                        ActiveModel {
+                        Self {
                             api_key,
                             screen: Screen::Favorites(fav_screen),
                         },
@@ -189,7 +189,7 @@ impl ActiveModel {
                             .map_event(ActiveEvent::home)
                             .into_parts();
                         Outcome::continuing(
-                            ActiveModel {
+                            Self {
                                 api_key,
                                 screen: Screen::Home(home_screen),
                             },

@@ -198,7 +198,7 @@ mod tests {
     fn start_fetches_favorites_weather() {
         let mut favorites = Favorites::default();
         let test_fav = test_favorite();
-        favorites.insert(test_fav.clone());
+        favorites.insert(test_fav);
 
         let api_key = test_api_key();
         let (screen, mut cmd) = HomeScreen::start(&favorites, &api_key).into_parts();
@@ -210,8 +210,7 @@ mod tests {
         );
 
         // Should have two effects: location check + favorite weather fetch
-        let effects: Vec<_> = cmd.effects().collect();
-        assert_eq!(effects.len(), 2);
+        assert_eq!(cmd.effects().count(), 2);
     }
 
     #[test]
@@ -233,7 +232,6 @@ mod tests {
         assert_eq!(screen.favorites_weather.len(), 2);
 
         // location check + 2 favorite weather fetches
-        let effects: Vec<_> = cmd.effects().collect();
-        assert_eq!(effects.len(), 3);
+        assert_eq!(cmd.effects().count(), 3);
     }
 }

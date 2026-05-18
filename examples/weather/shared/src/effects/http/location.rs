@@ -4,6 +4,7 @@
 //! endpoint](https://openweathermap.org/api/geocoding-api#direct_name) at
 //! `/geo/1.0/direct`.
 
+use std::string::ToString;
 use std::{fmt, sync::LazyLock};
 
 use crux_core::{Request, command::RequestBuilder};
@@ -22,7 +23,7 @@ const GEOCODING_URL: &str = "https://api.openweathermap.org/geo/1.0/direct";
 // -- Error --
 
 /// Failures from a geocoding request.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum LocationError {
     /// Transport-level failure (connection, DNS, TLS).
     NetworkError,
@@ -81,18 +82,18 @@ where
         })
         .expect("could not serialize query string")
         .build()
-        .map(|result| match result {
-            Ok(mut response) => match response.take_body() {
-                Some(results) => {
-                    if results.is_empty() {
-                        Err(LocationError::NoResults)
-                    } else {
-                        Ok(results)
-                    }
-                }
-                None => Err(LocationError::ParseError),
-            },
-            Err(_) => Err(LocationError::NetworkError),
+        .map(|result| {
+            result.map_or(Err(LocationError::NetworkError), |mut response| {
+                response
+                    .take_body()
+                    .map_or(Err(LocationError::ParseError), |results| {
+                        if results.is_empty() {
+                            Err(LocationError::NoResults)
+                        } else {
+                            Ok(results)
+                        }
+                    })
+            })
         })
 }
 
@@ -212,7 +213,7 @@ pub struct GeocodingResponse {
 }
 
 impl GeocodingResponse {
-    pub(crate) fn location(&self) -> Location {
+    pub(crate) const fn location(&self) -> Location {
         Location {
             lat: self.lat,
             lon: self.lon,
@@ -222,7 +223,7 @@ impl GeocodingResponse {
 
 impl From<&GeocodingResponse> for Location {
     fn from(value: &GeocodingResponse) -> Self {
-        Location {
+        Self {
             lat: value.lat,
             lon: value.lon,
         }
@@ -281,8 +282,5 @@ impl fmt::Display for ZipCodeResponse {
 }
 
 fn display_option<T: fmt::Display>(option_string: Option<&T>) -> String {
-    match option_string {
-        Some(string) => string.to_string(),
-        None => "None".to_string(),
-    }
+    option_string.map_or_else(|| "None".to_string(), ToString::to_string)
 }

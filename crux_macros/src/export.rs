@@ -1,4 +1,5 @@
 #![allow(clippy::needless_continue)] // needed until https://github.com/TedDriggs/darling/issues/399 is fixed
+#![allow(clippy::option_if_let_else)]
 use darling::{FromDeriveInput, FromField, ToTokens, ast, util};
 use proc_macro_error::OptionExt;
 use proc_macro2::TokenStream;
@@ -23,13 +24,14 @@ pub struct ExportFieldReceiver {
 impl ToTokens for ExportStructReceiver {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let effect_name = self.name.clone().unwrap_or_else(|| format_ident!("Effect"));
-        let ffi_export_name = if let Some(ref name) = self.name {
-            let ffi_ef_name = format_ident!("{}Ffi", name);
+        let ffi_export_name = self.name.as_ref().map_or_else(
+            || quote!(EffectFfi),
+            |name| {
+                let ffi_ef_name = format_ident!("{}Ffi", name);
 
-            quote!(#ffi_ef_name)
-        } else {
-            quote!(EffectFfi)
-        };
+                quote!(#ffi_ef_name)
+            },
+        );
 
         let fields: Vec<&ExportFieldReceiver> = self
             .data
@@ -87,7 +89,7 @@ impl ToTokens for ExportStructReceiver {
     }
 }
 
-pub(crate) fn export_impl(input: &DeriveInput) -> TokenStream {
+pub fn export_impl(input: &DeriveInput) -> TokenStream {
     let input = match ExportStructReceiver::from_derive_input(input) {
         Ok(v) => v,
         Err(e) => {

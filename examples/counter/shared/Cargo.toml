@@ -10,6 +10,7 @@ keywords.workspace = true
 
 [lints.clippy]
 pedantic = "warn"
+nursery = "warn"
 
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]

@@ -8,13 +8,13 @@ pub mod command {
     use crux_core::{Request, capability::Operation};
     use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
     pub enum AnOperation {
         One(u8),
         Two(u8),
     }
 
-    #[derive(Debug, PartialEq, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize)]
     pub enum AnOperationOutput {
         One(u8),
         Two(u8),
@@ -48,14 +48,14 @@ pub mod command {
         }
     }
 
-    #[derive(Debug, PartialEq, Deserialize, Serialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
     pub struct Post {
         pub url: String,
         pub title: String,
         pub body: String,
     }
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Eq)]
     pub enum Event {
         Start,
         Completed(AnOperationOutput),

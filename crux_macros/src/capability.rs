@@ -49,7 +49,7 @@ impl ToTokens for CapabilityStructReceiver {
     }
 }
 
-pub(crate) fn capability_impl(input: &DeriveInput) -> TokenStream {
+pub fn capability_impl(input: &DeriveInput) -> TokenStream {
     let input = match CapabilityStructReceiver::from_derive_input(input) {
         Ok(v) => v,
         Err(e) => {

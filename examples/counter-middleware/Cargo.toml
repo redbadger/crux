@@ -12,6 +12,7 @@ keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
 empty_docs = "allow"
 
 [workspace.lints.rust]

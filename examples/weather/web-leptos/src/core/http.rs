@@ -24,6 +24,7 @@ pub(super) fn resolve(
 }
 // ANCHOR_END: resolve
 
+#[allow(clippy::future_not_send)]
 async fn send_request(
     HttpRequest {
         method,

@@ -15,7 +15,7 @@ pub struct ConfirmDeleteWorkflow {
 }
 
 /// The user's response to the confirmation dialog.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum ConfirmDeleteEvent {
     /// The user confirmed — remove the favourite.
@@ -35,7 +35,7 @@ pub(crate) enum ConfirmDeleteTransition {
 
 impl ConfirmDeleteWorkflow {
     #[must_use]
-    pub fn new(location: Location) -> Self {
+    pub const fn new(location: Location) -> Self {
         Self { location }
     }
 

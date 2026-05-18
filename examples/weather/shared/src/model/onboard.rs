@@ -16,7 +16,7 @@ use super::{
 };
 
 /// Why the user is on the onboarding screen — lets the shell adjust copy.
-#[derive(Facet, Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Copy, Clone, Default, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum OnboardReason {
     /// First run — no key has ever been stored.
@@ -37,7 +37,7 @@ pub(crate) enum OnboardTransition {
     Failed(String),
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum OnboardEvent {
     /// The user updates the API key input.
@@ -75,7 +75,7 @@ impl Default for OnboardModel {
 
 impl OnboardModel {
     #[must_use]
-    pub fn new(reason: OnboardReason, favorites: Favorites) -> Self {
+    pub const fn new(reason: OnboardReason, favorites: Favorites) -> Self {
         Self {
             reason,
             favorites,

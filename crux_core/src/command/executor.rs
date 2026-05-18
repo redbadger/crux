@@ -15,11 +15,11 @@ use futures::task::AtomicWaker;
 
 use std::sync::Arc;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct TaskId(pub(crate) usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TaskId(pub(crate) usize);
 
 // ANCHOR: task
-pub(crate) struct Task {
+pub struct Task {
     // Used to wake the join handle when the task concludes
     pub(crate) join_handle_wakers: Receiver<Waker>,
     // Set to true when the task finishes, used by the join handle
@@ -52,7 +52,7 @@ impl Task {
 // Waking a task also wakes the command itself, if it is being used as a Stream
 // inside another Command (or hosted with a CommandSink)
 // ANCHOR: command_waker
-pub(crate) struct CommandWaker {
+pub struct CommandWaker {
     pub(crate) task_id: TaskId,
     pub(crate) ready_queue: Sender<TaskId>,
     // Waker for the executor running this command as a Stream.
@@ -139,8 +139,8 @@ impl Future for JoinHandle {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub(crate) enum TaskState {
+#[derive(Debug, PartialEq, Eq)]
+pub enum TaskState {
     Missing,
     Suspended,
     Completed,

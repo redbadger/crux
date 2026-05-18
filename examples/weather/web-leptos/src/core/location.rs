@@ -18,6 +18,7 @@ pub(super) fn resolve(
     });
 }
 
+#[allow(clippy::future_not_send)]
 async fn handle(operation: &LocationOperation) -> LocationResult {
     match operation {
         LocationOperation::IsLocationEnabled => {
@@ -40,6 +41,7 @@ async fn handle(operation: &LocationOperation) -> LocationResult {
     }
 }
 
+#[allow(clippy::future_not_send)]
 async fn get_current_position() -> Result<(f64, f64), JsValue> {
     let (sender, receiver) = oneshot();
 

@@ -11,7 +11,7 @@ pub enum IconButtonVariant {
 }
 
 impl IconButtonVariant {
-    fn classes(self) -> &'static str {
+    const fn classes(self) -> &'static str {
         match self {
             Self::Default => "text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-300",
             Self::Danger => "text-red-600 hover:bg-red-50 focus-visible:ring-red-300",

@@ -53,7 +53,7 @@ impl<Body> Response<Body> {
     /// # let res = crux_http::testing::ResponseBuilder::ok().build();
     /// assert_eq!(res.status(), 200);
     /// ```
-    pub fn status(&self) -> StatusCode {
+    pub const fn status(&self) -> StatusCode {
         self.status
     }
 
@@ -66,7 +66,7 @@ impl<Body> Response<Body> {
     /// use crux_http::http::Version;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
     /// ```
-    pub fn version(&self) -> Option<Version> {
+    pub const fn version(&self) -> Option<Version> {
         self.version
     }
 
@@ -152,11 +152,11 @@ impl<Body> Response<Body> {
         self.header(CONTENT_TYPE)?.last().as_str().parse().ok()
     }
 
-    pub fn body(&self) -> Option<&Body> {
+    pub const fn body(&self) -> Option<&Body> {
         self.body.as_ref()
     }
 
-    pub fn take_body(&mut self) -> Option<Body> {
+    pub const fn take_body(&mut self) -> Option<Body> {
         self.body.take()
     }
 
@@ -190,7 +190,7 @@ impl Response<Vec<u8>> {
     pub(crate) fn new_with_status(status: http_types::StatusCode) -> Self {
         let headers = new_headers();
 
-        Response {
+        Self {
             status,
             headers,
             version: None,

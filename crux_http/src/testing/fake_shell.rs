@@ -9,7 +9,7 @@ use crate::protocol::{EffectSender, HttpRequest, HttpResponse, HttpResult};
 
 /// `FakeShell` implements `EffectSender` for use in our internal tests.
 #[derive(Clone, Default)]
-pub(crate) struct FakeShell {
+pub struct FakeShell {
     inner: Arc<Mutex<Inner>>,
 }
 
@@ -20,7 +20,7 @@ struct Inner {
 }
 
 impl FakeShell {
-    pub fn provide_response(&mut self, response: HttpResponse) {
+    pub fn provide_response(&self, response: HttpResponse) {
         self.inner
             .lock()
             .unwrap()
@@ -28,7 +28,7 @@ impl FakeShell {
             .push_front(response);
     }
 
-    pub fn take_requests_received(&mut self) -> Vec<HttpRequest> {
+    pub fn take_requests_received(&self) -> Vec<HttpRequest> {
         let mut inner = self.inner.lock().unwrap();
         std::mem::take(&mut inner.requests_received)
     }

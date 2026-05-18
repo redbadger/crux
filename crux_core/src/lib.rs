@@ -1,4 +1,3 @@
-#![deny(clippy::pedantic)]
 //! Cross-platform app development in Rust
 //!
 //! Crux helps you share your app's business logic and behavior across mobile (iOS and Android) and web,

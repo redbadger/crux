@@ -9,7 +9,7 @@ struct CatImage {
     pub href: String,
 }
 
-pub(crate) async fn get() -> impl IntoResponse {
+pub async fn get() -> impl IntoResponse {
     Json(CatImage {
         href: CATS
             .lines()

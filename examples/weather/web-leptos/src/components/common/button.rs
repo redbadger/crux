@@ -13,7 +13,7 @@ pub enum ButtonVariant {
 }
 
 impl ButtonVariant {
-    fn classes(self) -> &'static str {
+    const fn classes(self) -> &'static str {
         match self {
             Self::Primary => "bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-sky-300",
             Self::Secondary => {

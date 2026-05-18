@@ -35,15 +35,16 @@ pub struct HttpRequest {
 
 impl std::fmt::Debug for HttpRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let body_repr = if let Ok(s) = std::str::from_utf8(&self.body) {
-            if s.len() < 50 {
-                format!("\"{s}\"")
-            } else {
-                format!("\"{}\"...", s.chars().take(50).collect::<String>())
-            }
-        } else {
-            format!("<binary data - {} bytes>", self.body.len())
-        };
+        let body_repr = std::str::from_utf8(&self.body).map_or_else(
+            |_| format!("<binary data - {} bytes>", self.body.len()),
+            |s| {
+                if s.len() < 50 {
+                    format!("\"{s}\"")
+                } else {
+                    format!("\"{}\"...", s.chars().take(50).collect::<String>())
+                }
+            },
+        );
         let mut builder = f.debug_struct("HttpRequest");
         builder
             .field("method", &self.method)
@@ -141,7 +142,7 @@ pub struct HttpResponse {
 
 impl HttpResponse {
     #[must_use]
-    pub fn status(status: u16) -> HttpResponseBuilder {
+    pub const fn status(status: u16) -> HttpResponseBuilder {
         HttpResponseBuilder {
             status: Some(status),
             headers: Some(vec![]),
@@ -149,7 +150,7 @@ impl HttpResponse {
         }
     }
     #[must_use]
-    pub fn ok() -> HttpResponseBuilder {
+    pub const fn ok() -> HttpResponseBuilder {
         Self::status(200)
     }
 }
@@ -193,8 +194,8 @@ pub enum HttpResult {
 impl From<crate::Result<HttpResponse>> for HttpResult {
     fn from(result: Result<HttpResponse, HttpError>) -> Self {
         match result {
-            Ok(response) => HttpResult::Ok(response),
-            Err(err) => HttpResult::Err(err),
+            Ok(response) => Self::Ok(response),
+            Err(err) => Self::Err(err),
         }
     }
 }
@@ -257,7 +258,7 @@ impl From<HttpResponse> for crate::ResponseAsync {
             res.append_header(header.name.as_str(), header.value);
         }
 
-        crate::ResponseAsync::new(res)
+        Self::new(res)
     }
 }
 

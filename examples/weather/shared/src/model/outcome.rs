@@ -26,7 +26,7 @@ use crate::effects::Effect;
 /// Returned inside an [`Outcome`], typically constructed indirectly via
 /// [`Outcome::continuing`] or [`Outcome::complete`].
 #[derive(Debug)]
-pub(crate) enum Status<S, T> {
+pub enum Status<S, T> {
     /// The state machine is still running; this is the updated state to
     /// assign back into the parent.
     Continue(S),
@@ -46,7 +46,7 @@ pub(crate) enum Status<S, T> {
 ///
 /// Use [`Started::map_event`] to lift the inner command's event type into
 /// a wider parent event before returning it from the parent's own logic.
-pub(crate) struct Started<S, Event> {
+pub struct Started<S, Event> {
     pub state: S,
     pub command: Command<Effect, Event>,
 }
@@ -54,8 +54,8 @@ pub(crate) struct Started<S, Event> {
 impl<S, Event> Started<S, Event> {
     /// Creates a new `Started` from an initial state and its accompanying
     /// command.
-    pub fn new(state: S, command: Command<Effect, Event>) -> Self {
-        Started { state, command }
+    pub const fn new(state: S, command: Command<Effect, Event>) -> Self {
+        Self { state, command }
     }
 
     /// Destructures into the initial state and the command to run.
@@ -102,7 +102,7 @@ impl<S, Event> Started<S, Event> {
 /// Construct with [`Outcome::continuing`] or [`Outcome::complete`]. Use
 /// [`Outcome::map_event`] to lift the inner command's event type before
 /// returning it from the parent's own update.
-pub(crate) struct Outcome<S, T, Event> {
+pub struct Outcome<S, T, Event> {
     pub status: Status<S, T>,
     pub command: Command<Effect, Event>,
 }
@@ -110,8 +110,8 @@ pub(crate) struct Outcome<S, T, Event> {
 impl<S, T, Event> Outcome<S, T, Event> {
     /// Constructs an outcome that keeps the state machine running with the
     /// given updated state and command.
-    pub fn continuing(state: S, command: Command<Effect, Event>) -> Self {
-        Outcome {
+    pub const fn continuing(state: S, command: Command<Effect, Event>) -> Self {
+        Self {
             status: Status::Continue(state),
             command,
         }
@@ -119,8 +119,8 @@ impl<S, T, Event> Outcome<S, T, Event> {
 
     /// Constructs an outcome that exits the state machine with the given
     /// transition value and command.
-    pub fn complete(value: T, command: Command<Effect, Event>) -> Self {
-        Outcome {
+    pub const fn complete(value: T, command: Command<Effect, Event>) -> Self {
+        Self {
             status: Status::Complete(value),
             command,
         }
@@ -157,7 +157,7 @@ impl<S, T, Event> Outcome<S, T, Event> {
 /// after asserting the status variant. Carries the inner value alongside
 /// the command so tests can inspect either.
 #[cfg(test)]
-pub(crate) struct Asserted<V, Event> {
+pub struct Asserted<V, Event> {
     pub value: V,
     pub command: Command<Effect, Event>,
 }

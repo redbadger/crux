@@ -9,7 +9,7 @@ mod shared {
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
-    pub(crate) struct App;
+    pub struct App;
 
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
     pub enum Event {
@@ -50,7 +50,7 @@ mod shared {
                     .build()
                     .then_send(Event::Set),
                 Event::Post => Http::post("http://example.com")
-                    .body_bytes("The Body".as_bytes())
+                    .body_bytes(b"The Body")
                     .expect_string()
                     .build()
                     .then_send(Event::Set),
