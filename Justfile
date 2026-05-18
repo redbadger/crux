@@ -44,16 +44,6 @@ test-doc:
     @echo '{{ style("command") }}test-doc:{{ NORMAL }}'
     cargo test --doc --all-features
 
-# Generate rustdoc JSON for a crate (used by crux_cli codegen)
-# path = directory containing the crate's Cargo.toml
-[script('bash')]
-rustdoc-json path:
-    set -euo pipefail
-    echo '{{ style("command") }}rustdoc-json:{{ NORMAL }}'
-    rm -rf target/doc "{{ path }}/target/doc"
-    RUSTC_BOOTSTRAP=1 RUSTDOCFLAGS="-Z unstable-options --output-format=json --cap-lints=allow" \
-        cargo doc --no-deps --lib --manifest-path "{{ path }}/Cargo.toml"
-
 # Update Cargo lockfiles across all workspaces (safe — stays within existing constraints)
 update:
     @echo '{{ style("command") }}update:{{ NORMAL }}'
