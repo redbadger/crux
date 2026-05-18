@@ -1,7 +1,6 @@
 [workspace]
 resolver = "3"
 members = [
-    "crux_cli",
     "crux_core",
     "crux_http",
     "crux_kv",

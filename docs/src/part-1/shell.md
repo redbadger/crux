@@ -60,7 +60,7 @@ facet_typegen = ["crux_core/facet_typegen"]
 uniffi = ["dep:uniffi"]
 wasm_bindgen = ["dep:wasm-bindgen"]
 codegen = [
-    "crux_core/cli",
+    "crux_core/bindgen",
     "dep:clap",
     "dep:log",
     "dep:pretty_env_logger",
