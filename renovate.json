@@ -99,12 +99,6 @@
       "matchFileNames": ["crux_cli/**"],
       "matchManagers": ["cargo"],
       "allowedVersions": "0.19"
-    },
-    {
-      "description": "Pin rustdoc-types to 0.35 — tracks a specific rustdoc JSON format version",
-      "matchPackageNames": ["rustdoc-types"],
-      "matchManagers": ["cargo"],
-      "allowedVersions": "0.35"
     }
   ]
 }
