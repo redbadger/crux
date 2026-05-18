@@ -38,13 +38,6 @@
       "commitMessagePrefix": "chore(core):"
     },
     {
-      "description": "Group crux_cli Cargo updates",
-      "matchFileNames": ["crux_cli/**"],
-      "matchManagers": ["cargo"],
-      "groupName": "crux-cli-cargo",
-      "commitMessagePrefix": "chore(cli):"
-    },
-    {
       "description": "Group support crate Cargo updates",
       "matchFileNames": ["doctest_support/**", "examples_support/**"],
       "matchManagers": ["cargo"],

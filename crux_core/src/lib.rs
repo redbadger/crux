@@ -183,8 +183,8 @@ mod core;
 pub use capabilities::*;
 pub use command::Command;
 pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
-#[cfg(feature = "cli")]
-pub use crux_cli as cli;
+#[cfg(feature = "bindgen")]
+pub mod bindgen;
 #[cfg(feature = "default")]
 pub use crux_macros as macros;
 #[cfg(feature = "typegen")]

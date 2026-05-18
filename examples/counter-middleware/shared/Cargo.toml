@@ -20,7 +20,7 @@ uniffi = ["dep:uniffi", "dep:rand", "dep:getrandom"]
 wasm_bindgen = ["dep:wasm-bindgen", "getrandom/wasm_js", "dep:js-sys"]
 wit_bindgen = ["dep:wit-bindgen", "facet_typegen"]
 codegen = [
-    "crux_core/cli",
+    "crux_core/bindgen",
     "dep:clap",
     "dep:log",
     "dep:pretty_env_logger",
