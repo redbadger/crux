@@ -808,8 +808,8 @@ mod sync_tests {
                     .expect("should resolve");
 
                 if let Some(cmd) = self.command.as_mut() {
-                    #[allow(clippy::needless_collect)]
-                    for event in cmd.events().collect::<Vec<_>>() {
+                    let events: Vec<_> = cmd.events().collect();
+                    for event in events {
                         self.update(event);
                     }
                 }
