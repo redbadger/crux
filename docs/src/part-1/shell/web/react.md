@@ -42,6 +42,7 @@ To do this, we'll use BoltFFI, which you can install like this:
 
 ```sh
 cargo install boltffi_cli --version '=0.25.0'
+brew install binaryen # provides wasm-opt
 ```
 
 Now that we have `boltffi` installed, we can build

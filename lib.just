@@ -99,6 +99,7 @@ check-android:
 check-web-wasm:
     @just lib::check-tool cargo "https://rustup.rs"
     @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.25.0'"
+    @just lib::check-tool wasm-opt "install Binaryen: brew install binaryen"
     @just lib::check-tool node "https://nodejs.org"
     @just lib::check-tool pnpm "npm install -g pnpm"
     @just lib::check-rust-target wasm32-unknown-unknown

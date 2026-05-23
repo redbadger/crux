@@ -179,6 +179,11 @@ jobs:
         env:
           RUSTFLAGS: ""
 
+      - name: Install wasm-opt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binaryen
+
       - uses: actions/setup-node@v6
         with:
           node-version: lts/*
