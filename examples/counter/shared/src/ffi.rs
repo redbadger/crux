@@ -1,3 +1,5 @@
+#![allow(clippy::used_underscore_items)]
+
 use crux_core::{
     Core,
     bridge::{Bridge, EffectId},
@@ -65,6 +67,7 @@ impl CoreFFI {
     /// If the event cannot be deserialized.
     /// In production you should handle the error properly.
     #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn update_bytes(&self, data: Vec<u8>) -> Vec<u8> {
         self.update(&data)
     }
@@ -74,6 +77,7 @@ impl CoreFFI {
     /// If the `data` cannot be deserialized into an effect or the `effect_id` is invalid.
     /// In production you should handle the error properly.
     #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn resolve_bytes(&self, id: u32, data: Vec<u8>) -> Vec<u8> {
         self.resolve(id, &data)
     }

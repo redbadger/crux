@@ -141,7 +141,7 @@ jobs:
         env:
           RUSTC_WRAPPER: ""
 
-  # JS/TS web shells. Needs: Rust, wasm32 target, wasm-pack, Node.js, pnpm.
+  # JS/TS web shells. Needs: Rust, wasm32 target, BoltFFI, Node.js, pnpm.
   # All examples have web-nextjs; only counter has web-react-router.
   web-js:
     runs-on: ubuntu-latest
@@ -173,7 +173,11 @@ jobs:
 
       - uses: mozilla-actions/sccache-action@v0.0.9
       - uses: taiki-e/install-action@just
-      - uses: taiki-e/install-action@wasm-pack
+
+      - name: Install BoltFFI CLI
+        run: cargo install boltffi_cli --version '=0.25.0'
+        env:
+          RUSTFLAGS: ""
 
       - uses: actions/setup-node@v6
         with:
@@ -253,11 +257,16 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Install BoltFFI CLI
+        run: cargo install boltffi_cli --version '=0.25.0'
+        env:
+          RUSTFLAGS: ""
+
       - name: CI
         run: just windows/ci
 
   # Apple (iOS/macOS) shells. Needs: macOS runner, Rust with Apple targets,
-  # cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
+  # BoltFFI, cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
   # so the matrix is just the example name — the shell is always "apple".
   apple:
     runs-on: macos-26
@@ -294,10 +303,15 @@ jobs:
       - name: Install cargo-swift
         run: cargo install cargo-swift --version '=0.9'
 
+      - name: Install BoltFFI CLI
+        run: cargo install boltffi_cli --version '=0.25.0'
+        env:
+          RUSTFLAGS: ""
+
       - name: CI
         run: just apple/ci
 
-  # Android shells. Needs: Rust with Android NDK targets, JDK 17, Android SDK.
+  # Android shells. Needs: Rust with Android NDK targets, BoltFFI, JDK 17, Android SDK.
   # All examples have an "Android" shell (capital A matches the directory name),
   # so the matrix is just the example name — the shell is always "Android".
   android:
@@ -335,6 +349,11 @@ jobs:
           java-version: 17
 
       - uses: android-actions/setup-android@v3
+
+      - name: Install BoltFFI CLI
+        run: cargo install boltffi_cli --version '=0.25.0'
+        env:
+          RUSTFLAGS: ""
 
       - name: CI
         run: just Android/ci

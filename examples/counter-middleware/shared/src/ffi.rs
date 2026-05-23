@@ -1,3 +1,5 @@
+#![allow(clippy::used_underscore_items)]
+
 use std::sync::Arc;
 
 use crux_core::{

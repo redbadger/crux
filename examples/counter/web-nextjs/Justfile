@@ -37,6 +37,7 @@ typegen:
 wasm:
     @echo '{{ style("command") }}wasm:{{ NORMAL }}'
     boltffi pack wasm
+    @just lib::fix-boltffi-wasm-package ../web-nextjs/generated/pkg/package.json
 
 # install npm dependencies
 install:

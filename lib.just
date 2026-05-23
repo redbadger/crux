@@ -126,3 +126,8 @@ open-android-studio:
 check-shared:
     @just lib::check-tool cargo "https://rustup.rs"
     @just lib::check-tool cargo-nextest "cargo install cargo-nextest"
+
+# Include BoltFFI's Node entrypoint files when pnpm packs the generated local package.
+[no-cd]
+fix-boltffi-wasm-package package_json:
+    node -e "const fs = require('node:fs'); const path = process.argv[1]; const pkg = JSON.parse(fs.readFileSync(path, 'utf8')); const files = new Set(pkg.files ?? []); for (const file of ['shared_node.js', 'shared_node.d.ts', 'shared_node.js.map']) files.add(file); pkg.files = [...files]; fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');" {{ package_json }}

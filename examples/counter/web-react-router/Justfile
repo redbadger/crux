@@ -37,6 +37,7 @@ typegen:
 wasm:
     @echo '{{ style("command") }}wasm:{{ NORMAL }}'
     boltffi --overlay boltffi.web-react-router.toml pack wasm
+    @just lib::fix-boltffi-wasm-package ../web-react-router/generated/pkg/package.json
 
 # install npm dependencies
 install:
