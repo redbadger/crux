@@ -18,6 +18,7 @@ impl Default for CoreFFI {
     }
 }
 
+#[boltffi::export]
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 #[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
 impl CoreFFI {

@@ -1,0 +1,46 @@
+[package]
+name = "shared"
+crate = "shared"
+version = "0.1.0"
+repository = "https://github.com/redbadger/crux/"
+license = "Apache-2.0"
+
+[targets.apple]
+output = "../apple/generated/Shared"
+include_macos = true
+
+[targets.apple.swift]
+module_name = "Shared"
+
+[targets.apple.spm]
+package_name = "Shared"
+layout = "ffi-only"
+
+[targets.android]
+output = "../Android/generated"
+min_sdk = 34
+
+[targets.android.kotlin]
+package = "com.crux.examples.counter"
+output = "../Android/generated/kotlin"
+
+[targets.android.pack]
+output = "../Android/generated/jniLibs"
+
+[targets.wasm]
+output = "../web-nextjs/generated"
+profile = "release"
+artifact_path = "../target/wasm32-unknown-unknown/release/shared.wasm"
+
+[targets.wasm.typescript]
+output = "../web-nextjs/generated/pkg"
+
+[targets.wasm.npm]
+package_name = "shared"
+
+[targets.csharp]
+enabled = true
+output = "../windows/generated/boltffi"
+package_id = "CounterApp.Shared.Ffi"
+target_framework = "net10.0"
+runtime_identifiers = ["win-x64"]

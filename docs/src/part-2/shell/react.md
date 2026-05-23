@@ -75,7 +75,7 @@ The FFI bridge is a single class:
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:core_base}}
 ```
 
-`update` serialises an event with `BincodeSerializer`, calls `CoreFfi.update` (the WASM export), and deserialises the returned bytes into `Request` objects. Each request carries an `id` and an `effect`; we walk them and dispatch each to a per-capability branch.
+`update` serialises an event with `BincodeSerializer`, calls `CoreFFI.update` (the WASM export), and deserialises the returned bytes into `Request` objects. Each request carries an `id` and an `effect`; we walk them and dispatch each to a per-capability branch.
 
 HTTP looks like this:
 
@@ -89,7 +89,7 @@ The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:respond}}
 ```
 
-Same recursion as the other shells: serialise the response, call `CoreFfi.resolve`, and loop through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
+Same recursion as the other shells: serialise the response, call `CoreFFI.resolve`, and loop through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
 
 The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape.
 

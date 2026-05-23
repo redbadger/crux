@@ -262,6 +262,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "boltffi"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7bd250a0080034a708868b1e04e83f5b3f384729659b9db55737025fe88219b"
+dependencies = [
+ "boltffi_core",
+ "boltffi_macros",
+]
+
+[[package]]
+name = "boltffi_core"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5eb7cb64abbc11b9c789d612b34e7d9fffb38d7e956b0df719ef5bf9b5d1f344"
+dependencies = [
+ "boltffi_macros",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "boltffi_ffi_rules"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e422ca03859cbcc95043a6711cf399cec235015b3571d988f6ce33b7f9ee2d3"
+
+[[package]]
+name = "boltffi_macros"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79369485494bb46714f2d0582fdc72e36b2473e36ac3e076d91bffe08eb83923"
+dependencies = [
+ "boltffi_ffi_rules",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -567,8 +606,6 @@ version = "0.18.0"
 dependencies = [
  "anyhow",
  "bincode",
- "camino",
- "cargo_metadata",
  "crossbeam-channel",
  "crux_macros",
  "facet 0.44.5",
@@ -579,7 +616,6 @@ dependencies = [
  "serde_json",
  "slab",
  "thiserror 2.0.18",
- "uniffi_bindgen",
 ]
 
 [[package]]
@@ -2623,7 +2659,9 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "assert_let_bind",
+ "boltffi",
  "clap",
  "crux_core",
  "crux_http",

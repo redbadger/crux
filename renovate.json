@@ -69,10 +69,16 @@
       "rangeStrategy": "update-lockfile"
     },
     {
-      "description": "Pin uniffi to 0.29.4 — waiting on NordSecurity/uniffi-bindgen-cs#163 for C# support",
+      "description": "Pin UniFFI compatibility dependencies during the BoltFFI migration window",
       "matchPackageNames": ["uniffi", "uniffi_bindgen"],
       "matchManagers": ["cargo"],
       "allowedVersions": "0.29.4"
+    },
+    {
+      "description": "Pin BoltFFI while generated shell artifacts are migrated together",
+      "matchPackageNames": ["boltffi", "boltffi_cli"],
+      "matchManagers": ["cargo"],
+      "allowedVersions": "0.25.0"
     },
     {
       "description": "Pin facet to 0.44 — aligns with facet_generate 0.17",

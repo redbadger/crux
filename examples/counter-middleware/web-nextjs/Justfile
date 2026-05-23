@@ -33,13 +33,10 @@ typegen:
             --output-dir generated/types
 
 # build wasm package
+[working-directory('../shared')]
 wasm:
     @echo '{{ style("command") }}wasm:{{ NORMAL }}'
-    wasm-pack build \
-        --target web \
-        --out-dir ../web-nextjs/generated/pkg \
-        ../shared \
-        --features wasm_bindgen
+    boltffi pack wasm
 
 # install npm dependencies
 install:

@@ -38,27 +38,18 @@ When we build our app, we also want to compile the
 Rust core to WebAssembly so that it can be referenced
 from our code.
 
-To do this, we'll use
-[`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/),
-which you can install like this:
+To do this, we'll use BoltFFI, which you can install like this:
 
 ```sh
-# with homebrew
-brew install wasm-pack
-
-# or directly
-curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+cargo install boltffi_cli --version '=0.25.0'
 ```
 
-Now that we have `wasm-pack` installed, we can build
+Now that we have `boltffi` installed, we can build
 our `shared` library to WebAssembly for the browser.
 
 ```sh
-wasm-pack build \
-    --target web \
-    --out-dir ../web-nextjs/generated/pkg \
-    ../shared \
-    --features wasm_bindgen
+cd ../shared
+boltffi pack wasm
 ```
 
 ## Generate the Shared Types

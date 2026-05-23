@@ -1,0 +1,17 @@
+[package]
+name = "shared"
+crate = "shared"
+version = "0.1.0"
+repository = "https://github.com/redbadger/crux/"
+license = "Apache-2.0"
+
+[targets.wasm]
+output = "../web-nextjs/generated"
+profile = "release"
+artifact_path = "../target/wasm32-unknown-unknown/release/shared.wasm"
+
+[targets.wasm.typescript]
+output = "../web-nextjs/generated/pkg"
+
+[targets.wasm.npm]
+package_name = "shared"

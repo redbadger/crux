@@ -33,10 +33,12 @@ most likely don't need to worry about it, at least not for now.
 
 ## Preparing the core
 
-We will prepare the core for both kinds of supported shells - native ones and WebAssembly ones.
+We will prepare the core for native, WebAssembly, and C# shells.
 
-To help with the native setup, Crux uses Mozilla's [Uniffi](https://mozilla.github.io/uniffi-rs/)
-to generate the bindings. For WebAssembly, it uses [wasm-bingen](https://wasm-bindgen.github.io/wasm-bindgen/).
+Crux uses [BoltFFI](https://www.boltffi.dev/) for the small byte-oriented FFI
+surface. Crux's type generation remains separate: Facet-generated Swift,
+Kotlin, TypeScript, and C# types handle the app's serialized
+`Event`/`Effect`/`ViewModel` data.
 
 First, lets update our `Cargo.toml`:
 
@@ -57,34 +59,37 @@ required-features = ["codegen"]
 
 [features]
 facet_typegen = ["crux_core/facet_typegen"]
+# Temporary migration-window compatibility features for the old binding paths.
 uniffi = ["dep:uniffi"]
 wasm_bindgen = ["dep:wasm-bindgen"]
 codegen = [
-    "crux_core/bindgen",
+    "dep:anyhow",
     "dep:clap",
     "dep:log",
     "dep:pretty_env_logger",
-    "uniffi",
     "facet_typegen"
 ]
 
 [dependencies]
+boltffi = "=0.25.0"
 facet = "=0.44"
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
 
 # optional dependencies
+anyhow = { workspace = true, optional = true }
 clap = { version = "4.6.1", optional = true, features = ["derive"] }
 log = { version = "0.4.29", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
 uniffi = { version = "=0.29.4", optional = true }
-wasm-bindgen = { version = "0.2.118", optional = true }
+wasm-bindgen = { version = "0.2.121", optional = true }
 ```
 
 A lot has changed! The key things we added are:
 
 1. a `bin` target called `codegen`, which is how we're going to run all the code generation
-2. feature flags to optionally enable `uniffi` and `wasm_bindgen`, and grouped those under `codegen` alongside some dependencies which are optional depending on that feature flag being enabled
+2. a `boltffi` dependency for the default binding surface, with old `uniffi` and
+   `wasm_bindgen` features kept only as temporary compatibility flags
 3. dependencies we need for the code generation
 
 And since we've declared the `codegen` target, we need to add the code for it.
@@ -108,7 +113,7 @@ We will call this CLI from the shell projects shortly.
 You'll here these terms thrown around here and there in the docs, so it's worth clarifying what we mean
 
 **bindgen** – "bindings generation" – provides APIs in the foreign language to call the core's Rust FFI APIs.
-For most platforms we use UniFFI, except for WebAssembly, where we use `wasm_bindgen`
+Crux uses BoltFFI for native, web, and C# bindings.
 
 **typegen** – "type generation" – The core's FFI interface operates on bytes, but both Rust and the languages we're targeting are generally strongly typed. To facilitate the serialization / deserialization, we generate type definition reflecting the Rust types from the core in the foreign language (Swift, Kotlin, TypeScript, ...), which all serialize consistently.
 
@@ -156,10 +161,8 @@ Now we need to add the Rust side of the bindings into our code. Update your `lib
 {{#include ../../../examples/counter/shared/src/lib.rs}}
 ```
 
-This code uses our feature flags to conditionally initialize the UniFFI bindings and check the version
-in use.
-
-More importantly, it introduced a new `ffi.rs` module. Let's look at it closer:
+This code exposes the `ffi.rs` module, where BoltFFI sees the byte-oriented
+`CoreFFI` class. Let's look at it closer:
 
 ```rust,noplayground
 // shared/src/ffi.rs
@@ -176,11 +179,11 @@ effect, but more on that later).
 Notice the Shell is in charge of creating the instance of this type, so in theory your Shell can have
 several instances of the app if it wants to.
 
-There are many attribute macros annotating the FFI type for `uniffi` and `wasm_bindgen`, which generate
-the actual code making them available as FFIs. We recommend the respective documentation if you're
-interested in the detail of how this works. The notable part is that both libraries have a level of support for
-various basic and structured data types which we don't use, and instead we serialize the data with Serde,
-and generate types with `facet_generate` to make the support consistent.
+The `#[boltffi::export]` attribute marks the Rust class and methods that should
+be made available to shell languages. BoltFFI can support richer shapes, but Crux
+keeps this layer deliberately tiny: app data is serialized with Serde/Bincode,
+and `facet_generate` creates matching host-language types so behavior stays
+consistent across platforms.
 
 It's not essential for you to understand the detail of the above code now. You won't need to change it, unless you're
 doing something fairly advanced, by which time you'll understand it.

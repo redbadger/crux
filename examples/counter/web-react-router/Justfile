@@ -33,13 +33,10 @@ typegen:
             --output-dir generated/types
 
 # build wasm package
+[working-directory('../shared')]
 wasm:
     @echo '{{ style("command") }}wasm:{{ NORMAL }}'
-    wasm-pack build \
-        --target web \
-        --out-dir ../web-react-router/generated/pkg \
-        ../shared \
-        --features wasm_bindgen
+    boltffi --overlay boltffi.web-react-router.toml pack wasm
 
 # install npm dependencies
 install:

@@ -10,7 +10,7 @@ import Textarea, {
   SelectEvent,
 } from "../components/Textarea/Textarea";
 
-import init_core from "shared";
+import * as sharedWasm from "shared";
 import { SyncMessage, Timers, Core } from "./core";
 import {
   TextCursor,
@@ -25,6 +25,9 @@ import {
 } from "shared_types/app";
 
 const LOG_EDITS = false;
+
+const wasmInitialized = (sharedWasm as unknown as { initialized: Promise<void> })
+  .initialized;
 
 type Selection = {
   start: number;
@@ -96,7 +99,7 @@ const Home: NextPage = () => {
 
         (async () => {
           try {
-            await init_core();
+            await wasmInitialized;
 
             // Initialize the Core with WASM after module is loaded
             core.current.initialize();

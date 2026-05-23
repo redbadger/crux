@@ -102,7 +102,7 @@ A few things to note:
 ## Wiring it up
 
 The middleware is composed with the Core in the FFI module, where you build the bridge
-between the core and the shell. Here's the key part from the uniffi (native) FFI setup:
+between the core and the shell. Here's the key part from the BoltFFI-backed setup:
 
 ```rust,no_run,noplayground
         pub fn new(shell: Arc<dyn CruxShell>) -> Self {

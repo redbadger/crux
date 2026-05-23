@@ -1,96 +1,117 @@
-#[cfg(feature = "uniffi")]
-pub mod uniffi {
-    use std::sync::Arc;
+use std::sync::Arc;
 
-    use crux_core::{
-        Core,
-        bridge::EffectId,
-        macros::effect,
-        middleware::{BincodeFfiFormat, Bridge, HandleEffectLayer, Layer as _, MapEffectLayer},
-        render::RenderOperation,
-    };
-    use crux_http::protocol::HttpRequest;
+use crux_core::{
+    Core,
+    bridge::EffectId,
+    macros::effect,
+    middleware::{BincodeFfiFormat, Bridge, Layer as _},
+    render::RenderOperation,
+};
+use crux_http::protocol::HttpRequest;
 
-    use crate::{Counter, middleware::RngMiddleware, sse::SseRequest};
+#[cfg(not(target_family = "wasm"))]
+use crux_core::middleware::{HandleEffectLayer, MapEffectLayer};
 
-    #[effect(facet_typegen)]
-    pub enum Effect {
-        Render(RenderOperation),
-        Http(HttpRequest),
-        ServerSentEvents(SseRequest),
-    }
+#[cfg(not(target_family = "wasm"))]
+use crate::middleware::RngMiddleware;
+use crate::{Counter, RandomNumberRequest, sse::SseRequest};
 
-    impl From<crate::app::Effect> for Effect {
-        fn from(effect: crate::app::Effect) -> Self {
-            match effect {
-                crate::Effect::Render(request) => Effect::Render(request),
-                crate::Effect::Http(request) => Effect::Http(request),
-                crate::Effect::ServerSentEvents(request) => Effect::ServerSentEvents(request),
-                crate::Effect::Random(_) => panic!("Encountered a Random effect"),
-            }
+#[effect(facet_typegen)]
+pub enum Effect {
+    Render(RenderOperation),
+    Http(HttpRequest),
+    ServerSentEvents(SseRequest),
+    Random(RandomNumberRequest),
+}
+
+impl From<crate::app::Effect> for Effect {
+    fn from(effect: crate::app::Effect) -> Self {
+        match effect {
+            crate::Effect::Render(request) => Effect::Render(request),
+            crate::Effect::Http(request) => Effect::Http(request),
+            crate::Effect::ServerSentEvents(request) => Effect::ServerSentEvents(request),
+            crate::Effect::Random(request) => Effect::Random(request),
         }
     }
+}
 
-    /// For the Shell to provide
-    #[uniffi::export(with_foreign)]
-    pub trait CruxShell: Send + Sync {
-        /// Called when any effects resulting from an asynchronous process
-        /// need processing by the shell.
-        ///
-        /// The bytes are a serialized vector of requests
-        fn process_effects(&self, bytes: Vec<u8>);
-    }
+#[cfg(not(target_family = "wasm"))]
+type CoreBridge = Bridge<
+    MapEffectLayer<HandleEffectLayer<Core<Counter>, RngMiddleware>, Effect>,
+    BincodeFfiFormat,
+>;
 
-    /// The main interface used by the shell
-    #[derive(uniffi::Object)]
-    pub struct CoreFFI {
-        core: Bridge<
-            MapEffectLayer<HandleEffectLayer<Core<Counter>, RngMiddleware>, Effect>,
-            BincodeFfiFormat,
-        >,
-    }
+#[cfg(target_family = "wasm")]
+type CoreBridge = Bridge<Core<Counter>, BincodeFfiFormat>;
 
-    #[uniffi::export]
-    #[allow(clippy::missing_panics_doc)]
-    impl CoreFFI {
-        #[uniffi::constructor]
-        pub fn new(shell: Arc<dyn CruxShell>) -> Self {
-            let core = Core::<Counter>::new()
-                .handle_effects_using(RngMiddleware::new())
-                .map_effect::<Effect>()
-                .bridge::<BincodeFfiFormat>(move |effect_bytes| match effect_bytes {
+/// For the Shell to provide.
+#[boltffi::export]
+#[cfg_attr(feature = "uniffi", uniffi::export(with_foreign))]
+pub trait CruxShell: Send + Sync {
+    /// Called when any effects resulting from an asynchronous process
+    /// need processing by the shell.
+    ///
+    /// The bytes are a serialized vector of requests.
+    fn process_effects(&self, bytes: Vec<u8>);
+}
+
+/// The main interface used by the shell.
+#[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
+pub struct CoreFFI {
+    core: CoreBridge,
+}
+
+#[boltffi::export]
+#[cfg_attr(feature = "uniffi", uniffi::export)]
+#[allow(clippy::missing_panics_doc)]
+impl CoreFFI {
+    #[cfg_attr(feature = "uniffi", uniffi::constructor)]
+    pub fn new(shell: Arc<dyn CruxShell>) -> Self {
+        #[cfg(not(target_family = "wasm"))]
+        let core = Core::<Counter>::new()
+            .handle_effects_using(RngMiddleware::new())
+            .map_effect::<Effect>()
+            .bridge::<BincodeFfiFormat>(move |effect_bytes| match effect_bytes {
+                Ok(effect) => shell.process_effects(effect),
+                Err(e) => panic!("{e}"),
+            });
+
+        #[cfg(target_family = "wasm")]
+        let core =
+            Core::<Counter>::new().bridge::<BincodeFfiFormat>(
+                move |effect_bytes| match effect_bytes {
                     Ok(effect) => shell.process_effects(effect),
                     Err(e) => panic!("{e}"),
-                });
+                },
+            );
 
-            Self { core }
+        Self { core }
+    }
+
+    #[must_use]
+    pub fn update(&self, data: &[u8]) -> Vec<u8> {
+        let mut effects = Vec::new();
+        match self.core.update(data, &mut effects) {
+            Ok(()) => effects,
+            Err(e) => panic!("{e}"),
         }
+    }
 
-        #[must_use]
-        pub fn update(&self, data: &[u8]) -> Vec<u8> {
-            let mut effects = Vec::new();
-            match self.core.update(data, &mut effects) {
-                Ok(()) => effects,
-                Err(e) => panic!("{e}"),
-            }
+    #[must_use]
+    pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
+        let mut effects = Vec::new();
+        match self.core.resolve(EffectId(effect_id), data, &mut effects) {
+            Ok(()) => effects,
+            Err(e) => panic!("{e}"),
         }
+    }
 
-        #[must_use]
-        pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {
-            let mut effects = Vec::new();
-            match self.core.resolve(EffectId(effect_id), data, &mut effects) {
-                Ok(()) => effects,
-                Err(e) => panic!("{e}"),
-            }
-        }
-
-        #[must_use]
-        pub fn view(&self) -> Vec<u8> {
-            let mut view_model = Vec::new();
-            match self.core.view(&mut view_model) {
-                Ok(()) => view_model,
-                Err(e) => panic!("{e}"),
-            }
+    #[must_use]
+    pub fn view(&self) -> Vec<u8> {
+        let mut view_model = Vec::new();
+        match self.core.view(&mut view_model) {
+            Ok(()) => view_model,
+            Err(e) => panic!("{e}"),
         }
     }
 }
@@ -102,7 +123,7 @@ pub mod wasm_bindgen {
 
     use crate::Counter;
 
-    /// The main interface used by the shell
+    /// Deprecated wasm-bindgen compatibility surface used during the BoltFFI migration.
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub struct CoreFFI {
         core: crux_core::middleware::Bridge<Core<Counter>, BincodeFfiFormat>,
@@ -207,14 +228,14 @@ pub mod wit_bindgen {
         type Instance = CoreFFI;
     }
 
-    /// The main interface used by the shell
+    /// The main interface used by the shell.
     pub struct CoreFFI {
-        core: Bridge<Core<App>, JsonFfiFormat>,
+        core: Bridge<Core<Counter>, JsonFfiFormat>,
     }
 
     impl GuestInstance for CoreFFI {
         fn new() -> Self {
-            let core = Core::<App>::new().bridge::<JsonFfiFormat>(|_| {});
+            let core = Core::<Counter>::new().bridge::<JsonFfiFormat>(|_| {});
 
             Self { core }
         }
@@ -245,7 +266,7 @@ pub mod wit_bindgen {
 
         fn schema(&self) -> String {
             let registry = TypeRegistry::new()
-                .register_app::<App>()
+                .register_app::<Counter>()
                 .expect("to be able to register app")
                 .build()
                 .expect("to be able to build registry")

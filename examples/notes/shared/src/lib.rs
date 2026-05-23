@@ -1,14 +1,12 @@
 #![allow(clippy::unsafe_derive_deserialize)]
 pub mod app;
 pub mod capabilities;
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 mod ffi;
 
 pub use app::*;
 pub use crux_core::Core;
 pub use crux_kv as kv;
 
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 pub use ffi::CoreFFI;
 
 #[cfg(feature = "uniffi")]

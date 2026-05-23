@@ -33,11 +33,11 @@ Five lines: construct the bridge, build the `Core`, bind it to SwiftUI state, wi
 
 Three responsibilities:
 
-- `processEvent(_:)` serialises a Swift `Event` with bincode, calls `CoreFfi.update(_:)`, and deserialises the returned effect requests.
+- `processEvent(_:)` serialises a Swift `Event` with bincode, calls `CoreFFI.update(data:)`, and deserialises the returned effect requests.
 - `resolve(requestId:responseBytes:)` does the same for effect responses — and, importantly, can return further effect requests (async commands produce more effects after each resolve).
 - `currentView()` deserialises the current view model.
 
-This is the only place that knows about bincode or `CoreFfi`. Everything else in the Swift code works with Swift types.
+This is the only place that knows about bincode or `CoreFFI`. Everything else in the Swift code works with Swift types.
 
 ## Handling effects
 

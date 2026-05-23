@@ -3,9 +3,9 @@
 ## Why type generation?
 
 Declaring every type across an FFI boundary is painful. Complex types
-like nested enums, generics, and rich view models are difficult or
-impossible to represent directly in tools like UniFFI or
-`wasm-bindgen`. And even when you _can_ declare them, maintaining the
+like nested enums, generics, and rich view models are awkward to expose
+directly through general-purpose FFI binding tools. And even when you
+_can_ declare them, maintaining the
 declarations by hand as your app evolves is tedious and error-prone.
 
 Crux sidesteps this problem by keeping the FFI surface as small as
@@ -115,16 +115,14 @@ The key steps are:
    The `name` parameter is the package/module name (e.g. `"App"` for
    Swift, `"com.crux.examples.counter"` for Kotlin, `"app"` for
    TypeScript).
-4. **`.add_extensions()`** — includes helper code like `Requests.swift`
-   that makes it easier to work with the generated types.
-5. **`.add_runtimes()`** — includes the serialization runtime (Serde
+4. **`.add_runtimes()`** — includes the serialization runtime (Serde
    and Bincode implementations in the target language).
-6. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
+5. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
    **`.typescript(&config)?`** — generates the code.
 
-The binary also handles UniFFI binding generation for Kotlin (the
-`bindgen` call), which produces the Kotlin bindings for the Rust FFI
-layer.
+BoltFFI binding generation is run separately by the shell build recipes with
+`boltffi pack ...`. The codegen binary is intentionally focused on Crux app
+types.
 
 ### Cargo.toml setup
 
@@ -206,6 +204,5 @@ For each target language, the codegen produces:
 - **Helper extensions** — like `Requests.swift`, which provides
   convenience methods for working with effect requests.
 
-For Swift, the output is a Swift Package. For Kotlin, it's a set of
-source files alongside UniFFI bindings. For TypeScript, it's an npm
-package.
+For Swift, Kotlin, TypeScript, and C#, this typegen output sits beside the
+BoltFFI-generated binding package for the byte-oriented core API.

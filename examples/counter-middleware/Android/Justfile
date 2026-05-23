@@ -32,13 +32,14 @@ check: typegen
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     ./gradlew --no-daemon :app:lintDebug
 
-# build the shared library so uniffi-bindgen can inspect it
-build-shared:
-    @echo '{{ style("command") }}build-shared:{{ NORMAL }}'
-    cargo build --features uniffi
+# package the shared library and BoltFFI Kotlin bindings
+[working-directory('../shared')]
+package: install-targets
+    @echo '{{ style("command") }}package:{{ NORMAL }}'
+    boltffi pack android
 
-# generate Kotlin types and uniffi bindings
-typegen: build-shared
+# generate Kotlin app types
+typegen: package
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
         --package shared \

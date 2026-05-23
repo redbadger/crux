@@ -2,7 +2,7 @@
 pub mod app;
 mod capabilities;
 mod ffi;
-#[cfg(feature = "uniffi")]
+#[cfg(not(target_family = "wasm"))]
 mod middleware;
 
 pub use crux_http as http;
@@ -19,8 +19,7 @@ const _: () = assert!(
 #[cfg(feature = "uniffi")]
 uniffi::setup_scaffolding!();
 
-#[cfg(feature = "uniffi")]
-pub use ffi::uniffi::CoreFFI;
+pub use ffi::CoreFFI;
 
 #[cfg(feature = "wasm_bindgen")]
 pub use ffi::wasm_bindgen::CoreFFI as WasmCoreFFI;

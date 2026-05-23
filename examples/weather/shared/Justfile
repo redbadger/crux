@@ -21,7 +21,7 @@ check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt -- --check
     cargo clippy -p shared -- -D warnings
-    cargo clippy -p shared --target wasm32-unknown-unknown --features wasm_bindgen -- -D warnings
+    cargo clippy -p shared --target wasm32-unknown-unknown -- -D warnings
 
 # build the shared library
 build:

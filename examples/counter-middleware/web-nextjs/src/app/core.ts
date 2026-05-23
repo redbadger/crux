@@ -24,8 +24,10 @@ export class Core {
 
   constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
     this.callback = callback;
-    this.core = new CoreFFI((bytes: Uint8Array) => {
-      this.processEffects(bytes);
+    this.core = CoreFFI.new({
+      processEffects: (bytes: Uint8Array) => {
+        this.processEffects(bytes);
+      },
     });
   }
 
@@ -93,8 +95,8 @@ export class Core {
   }
 }
 
-function deserializeRequests(bytes: Uint8Array) {
-  const deserializer = new BincodeDeserializer(bytes);
+function deserializeRequests(bytes: Uint8Array | number[]) {
+  const deserializer = new BincodeDeserializer(asBytes(bytes));
   const len = deserializer.deserializeLen();
   const requests: Request[] = [];
   for (let i = 0; i < len; i++) {
@@ -104,6 +106,10 @@ function deserializeRequests(bytes: Uint8Array) {
   return requests;
 }
 
-function deserializeView(bytes: Uint8Array) {
-  return ViewModel.deserialize(new BincodeDeserializer(bytes));
+function deserializeView(bytes: Uint8Array | number[]) {
+  return ViewModel.deserialize(new BincodeDeserializer(asBytes(bytes)));
+}
+
+function asBytes(bytes: Uint8Array | number[]): Uint8Array {
+  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
 }

@@ -2,8 +2,6 @@
 
 mod app;
 pub mod ffi;
-#[cfg(feature = "csharp")]
-pub mod ffi_csharp;
 
 pub use app::*;
 pub use crux_core::Core;

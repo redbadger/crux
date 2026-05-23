@@ -18,6 +18,7 @@ impl Default for CoreFFI {
     }
 }
 
+#[boltffi::export]
 #[cfg_attr(feature = "uniffi", uniffi::export)]
 #[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
 impl CoreFFI {
@@ -57,6 +58,24 @@ impl CoreFFI {
             Ok(()) => effects,
             Err(e) => panic!("{e}"),
         }
+    }
+
+    /// Send an event to the app using owned bytes for generated C# bindings.
+    /// # Panics
+    /// If the event cannot be deserialized.
+    /// In production you should handle the error properly.
+    #[must_use]
+    pub fn update_bytes(&self, data: Vec<u8>) -> Vec<u8> {
+        self.update(&data)
+    }
+
+    /// Resolve an effect using owned bytes for generated C# bindings.
+    /// # Panics
+    /// If the `data` cannot be deserialized into an effect or the `effect_id` is invalid.
+    /// In production you should handle the error properly.
+    #[must_use]
+    pub fn resolve_bytes(&self, id: u32, data: Vec<u8>) -> Vec<u8> {
+        self.resolve(id, &data)
     }
 
     /// Get the current `ViewModel`.

@@ -29,23 +29,17 @@ pnpm create react-router@latest
 When we build our app, we also want to compile the Rust core to WebAssembly so
 that it can be referenced from our code.
 
-To do this, we'll use
-[`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/), which you can
-install like this:
+To do this, we'll use BoltFFI, which you can install like this:
 
 ```sh
-# with homebrew
-brew install wasm-pack
-
-# or directly
-curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+cargo install boltffi_cli --version '=0.25.0'
 ```
 
-Now that we have `wasm-pack` installed, we can build our `shared` library to
+Now that we have `boltffi` installed, we can build our `shared` library to
 WebAssembly for the browser.
 
 ```sh
-(cd shared && wasm-pack build --target web)
+(cd shared && boltffi pack wasm)
 ```
 
 ````admonish tip
@@ -57,7 +51,7 @@ WebAssembly for the browser.
     "scripts": {
       "build": "pnpm run wasm:build && react-router build",
       "dev": "pnpm run wasm:build && react-router dev",
-      "wasm:build": "cd ../shared && wasm-pack build --target web"
+      "wasm:build": "cd ../shared && boltffi pack wasm"
     }
   }
   ```
