@@ -21,8 +21,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <!-- Required by BoltFFI's generated buffer helpers. -->
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -54,10 +52,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\generated\CounterApp.Shared.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\generated\boltffi\*.cs" Link="Generated\BoltFFI\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
