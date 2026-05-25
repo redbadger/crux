@@ -13,6 +13,7 @@ mod app {
     use crux_core::{
         App, Command,
         capability::Operation,
+        command::RequestBuilder,
         render::{RenderOperation, render},
     };
     use crux_macros::effect;
@@ -74,11 +75,14 @@ mod app {
         Trigger,
         TriggerWithTimer,
 
-        PermissionForTrigger(PermissionResponse),
-        PermissionForTimer(PermissionResponse),
         TimerFired(TimerOutcome),
-        CameraCaptured(OpaqueImageRef),
+        CameraCaptured(Result<OpaqueImageRef, CameraCaptureError>),
         FileStored(StoredImage),
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum CameraCaptureError {
+        PermissionDenied,
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -116,18 +120,19 @@ mod app {
             timer.then_send(Event::TimerFired)
         }
 
-        pub(crate) fn request_permission_for_trigger() -> Command<Effect, Event> {
-            Command::request_from_shell(PermissionRequest::Camera)
-                .then_send(Event::PermissionForTrigger)
-        }
-
-        pub(crate) fn request_permission_for_timer() -> Command<Effect, Event> {
-            Command::request_from_shell(PermissionRequest::Camera)
-                .then_send(Event::PermissionForTimer)
-        }
-
         pub(crate) fn request_camera() -> Command<Effect, Event> {
-            Command::request_from_shell(CaptureImageOp).then_send(Event::CameraCaptured)
+            Command::request_from_shell(PermissionRequest::Camera)
+                .then_request(|permission| {
+                    RequestBuilder::new(move |ctx| async move {
+                        match permission {
+                            PermissionResponse::Granted => {
+                                Ok(ctx.request_from_shell(CaptureImageOp).await)
+                            }
+                            PermissionResponse::Denied => Err(CameraCaptureError::PermissionDenied),
+                        }
+                    })
+                })
+                .then_send(Event::CameraCaptured)
         }
     }
 
@@ -147,30 +152,13 @@ mod app {
                     model.countdown = None;
                     model.save_status = SaveStatus::WaitingForPermission;
 
-                    Command::all([Self::request_permission_for_trigger(), render()])
-                }
-                Event::TriggerWithTimer => {
-                    model.countdown = None;
-                    model.save_status = SaveStatus::WaitingForPermission;
-
-                    Command::all([Self::request_permission_for_timer(), render()])
-                }
-                Event::PermissionForTrigger(PermissionResponse::Granted) => {
-                    model.save_status = SaveStatus::WaitingForCapture;
-
                     Command::all([Self::request_camera(), render()])
                 }
-                Event::PermissionForTimer(PermissionResponse::Granted) => {
+                Event::TriggerWithTimer => {
                     model.countdown = Some(3);
                     model.save_status = SaveStatus::WaitingForCapture;
 
                     Command::all([Self::one_second_timer(), render()])
-                }
-                Event::PermissionForTrigger(PermissionResponse::Denied)
-                | Event::PermissionForTimer(PermissionResponse::Denied) => {
-                    model.save_status = SaveStatus::PermissionDenied;
-
-                    render()
                 }
                 Event::TimerFired(TimerOutcome::Completed(_)) => {
                     let Some(countdown) = model.countdown else {
@@ -188,13 +176,18 @@ mod app {
                     }
                 }
                 Event::TimerFired(TimerOutcome::Cleared) => Command::done(),
-                Event::CameraCaptured(image) => {
+                Event::CameraCaptured(Ok(image)) => {
                     model.save_status = SaveStatus::Saving;
 
                     let store = Command::request_from_shell(StoreFile { image })
                         .then_send(Event::FileStored);
 
                     Command::all([store, render()])
+                }
+                Event::CameraCaptured(Err(CameraCaptureError::PermissionDenied)) => {
+                    model.save_status = SaveStatus::PermissionDenied;
+
+                    render()
                 }
                 Event::FileStored(stored) => {
                     model.save_status = SaveStatus::Saved;
@@ -527,13 +520,13 @@ fn trigger_takes_a_picture() {
     assert_eq!(camera_effects[0].operation, CaptureImageOp);
 
     let serialized = shell.take_serialized_effects();
-    assert_only_render_effect(&serialized);
+    assert!(serialized.is_empty());
 
     assert_eq!(
         core.view(),
         ViewModel {
             countdown: None,
-            save_status: SaveStatus::WaitingForCapture,
+            save_status: SaveStatus::WaitingForPermission,
             saved_path: None,
         }
     );
@@ -549,32 +542,13 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert_eq!(
         core.view(),
         ViewModel {
-            countdown: None,
-            save_status: SaveStatus::WaitingForPermission,
-            saved_path: None,
-        }
-    );
-
-    let mut serialized = shell.take_serialized_effects();
-    assert!(has_render_effect(&serialized));
-    let (permission_id, permission_request) = extract_single_permission_request(serialized);
-    assert_eq!(permission_request, PermissionRequest::Camera);
-
-    let permission_response = PermissionResponse::Granted;
-    let permission_bytes =
-        serde_json::to_vec(&permission_response).expect("permission response should serialize");
-    core.resolve_serialized(permission_id, &permission_bytes);
-
-    assert_eq!(
-        core.view(),
-        ViewModel {
             countdown: Some(3),
             save_status: SaveStatus::WaitingForCapture,
             saved_path: None,
         }
     );
 
-    serialized = shell.take_serialized_effects();
+    let mut serialized = shell.take_serialized_effects();
     assert!(has_render_effect(&serialized));
 
     // 3 -> 2
@@ -603,7 +577,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     serialized = shell.take_serialized_effects();
     assert!(has_render_effect(&serialized));
 
-    // 1 -> camera capture
+    // 1 -> camera permission
     let (request_id, request) = extract_single_time_request(serialized);
     let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
         panic!("expected NotifyAfter request")
@@ -614,12 +588,22 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
 
     assert_eq!(core.view().countdown, None);
 
+    let serialized = shell.take_serialized_effects();
+    assert!(has_render_effect(&serialized));
+    let (permission_id, permission_request) = extract_single_permission_request(serialized);
+    assert_eq!(permission_request, PermissionRequest::Camera);
+
+    let permission_response = PermissionResponse::Granted;
+    let permission_bytes =
+        serde_json::to_vec(&permission_response).expect("permission response should serialize");
+    core.resolve_serialized(permission_id, &permission_bytes);
+
     let camera_effects = shell.take_camera_effects();
     assert_eq!(camera_effects.len(), 1);
     assert_eq!(camera_effects[0].operation, CaptureImageOp);
 
     let serialized = shell.take_serialized_effects();
-    assert_only_render_effect(&serialized);
+    assert!(serialized.is_empty());
 }
 
 #[test]
@@ -640,8 +624,7 @@ fn pictures_are_saved_to_file_system() {
 
     let camera_effect = shell.take_camera_effects().remove(0);
 
-    // Drain render from permission resolution; focus assertions on the save flow.
-    let _ = shell.take_serialized_effects();
+    assert!(shell.take_serialized_effects().is_empty());
 
     core.resolve_camera(camera_effect.id, OpaqueImageRef(42));
 
