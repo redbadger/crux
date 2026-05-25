@@ -68,7 +68,7 @@ where
 
         request.resolve(output)?;
 
-        if !matches!(request.handle, RequestHandle::Never) {
+        if matches!(request.handle, RequestHandle::Many(_))  {
             self.requests
                 .lock()
                 .expect("registry lock poisoned")
