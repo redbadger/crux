@@ -32,17 +32,24 @@ mod app {
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct StoreFile {
+    pub struct StoreImageAssets {
         pub(crate) image: OpaqueImageRef,
     }
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum StoredImageAssetKind {
+        Original,
+        Thumbnail,
+    }
+
     #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct StoredImage {
+    pub struct StoredImageAsset {
+        pub(crate) kind: StoredImageAssetKind,
         pub(crate) path: String,
     }
 
-    impl Operation for StoreFile {
-        type Output = StoredImage;
+    impl Operation for StoreImageAssets {
+        type Output = StoredImageAsset;
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -67,7 +74,7 @@ mod app {
         Time(TimeRequest),
         Permission(PermissionRequest),
         Camera(CaptureImageOp),
-        FileStore(StoreFile),
+        ImageAssets(StoreImageAssets),
     }
 
     #[derive(Debug)]
@@ -77,7 +84,7 @@ mod app {
 
         TimerFired(TimerOutcome),
         CameraCaptured(Result<OpaqueImageRef, CameraCaptureError>),
-        FileStored(StoredImage),
+        ImageAssetStored(StoredImageAsset),
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -101,6 +108,7 @@ mod app {
         pub(crate) countdown: Option<u8>,
         pub(crate) save_status: SaveStatus,
         pub(crate) saved_path: Option<String>,
+        pub(crate) thumbnail_path: Option<String>,
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -108,6 +116,7 @@ mod app {
         pub(crate) countdown: Option<u8>,
         pub(crate) save_status: SaveStatus,
         pub(crate) saved_path: Option<String>,
+        pub(crate) thumbnail_path: Option<String>,
     }
 
     #[derive(Default)]
@@ -179,8 +188,8 @@ mod app {
                 Event::CameraCaptured(Ok(image)) => {
                     model.save_status = SaveStatus::Saving;
 
-                    let store = Command::request_from_shell(StoreFile { image })
-                        .then_send(Event::FileStored);
+                    let store = Command::stream_from_shell(StoreImageAssets { image })
+                        .then_send(Event::ImageAssetStored);
 
                     Command::all([store, render()])
                 }
@@ -189,9 +198,17 @@ mod app {
 
                     render()
                 }
-                Event::FileStored(stored) => {
-                    model.save_status = SaveStatus::Saved;
-                    model.saved_path = Some(stored.path);
+                Event::ImageAssetStored(stored) => {
+                    match stored.kind {
+                        StoredImageAssetKind::Original => model.saved_path = Some(stored.path),
+                        StoredImageAssetKind::Thumbnail => {
+                            model.thumbnail_path = Some(stored.path);
+                        }
+                    }
+
+                    if model.saved_path.is_some() && model.thumbnail_path.is_some() {
+                        model.save_status = SaveStatus::Saved;
+                    }
 
                     render()
                 }
@@ -203,6 +220,7 @@ mod app {
                 countdown: model.countdown,
                 save_status: model.save_status.clone(),
                 saved_path: model.saved_path.clone(),
+                thumbnail_path: model.thumbnail_path.clone(),
             }
         }
     }
@@ -224,7 +242,7 @@ mod ffi {
 
     use crate::{
         app::{CaptureImageOp, Effect, Event, OpaqueImageRef, PermissionRequest, SelfieApp},
-        ffi::file_store::FileStoreHandler,
+        ffi::image_store::ImageStoreHandler,
     };
 
     use super::app;
@@ -276,7 +294,7 @@ mod ffi {
     struct EffectRoutes<Format: FfiFormat> {
         serialized: Arc<Serialized<SelfieApp, Self, Format>>,
         camera: Arc<Parked<SelfieApp, Self, CaptureImageOp>>,
-        file_store: Arc<FileStoreHandler>,
+        image_store: Arc<ImageStoreHandler>,
     }
 
     impl<Format: FfiFormat> Clone for EffectRoutes<Format> {
@@ -284,7 +302,7 @@ mod ffi {
             Self {
                 serialized: self.serialized.clone(),
                 camera: self.camera.clone(),
-                file_store: self.file_store.clone(),
+                image_store: self.image_store.clone(),
             }
         }
     }
@@ -294,7 +312,7 @@ mod ffi {
             Self {
                 serialized: Arc::new(Serialized::new(router.clone())),
                 camera: Arc::new(Parked::new(router.clone())),
-                file_store: Arc::new(FileStoreHandler::new(router)),
+                image_store: Arc::new(ImageStoreHandler::new(router)),
             }
         }
     }
@@ -316,8 +334,8 @@ mod ffi {
 
                 move |effect| match effect {
                     // Core-side effect, processed in Rust
-                    Effect::FileStore(request) => {
-                        routes.file_store.process_file_store(request);
+                    Effect::ImageAssets(request) => {
+                        routes.image_store.process_image(request);
                     }
                     // Shell-side effect, but with a custom FFI to allow for opaque types, pointers, etc.
                     // this doesn't necessarily need to rely on the shell instance either, could be another
@@ -377,57 +395,117 @@ mod ffi {
     }
 
     // Example core-side effect handler implementation
-    mod file_store {
+    mod image_store {
         use std::{sync::Weak, thread, time::Duration};
 
         use crossbeam_channel::{Receiver, Sender, unbounded};
         use crux_core::{Request, effects::ResolveSink};
 
-        use crate::app::StoreFile;
+        use crate::app::{StoreImageAssets, StoredImageAsset, StoredImageAssetKind};
 
-        use super::app;
-
-        pub(crate) struct FileStoreHandler {
-            jobs_tx: Sender<Request<StoreFile>>,
+        pub(crate) struct ImageStoreHandler {
+            originals: Sender<ImageStoreJob>,
+            thumbnails: Sender<ImageStoreJob>,
+            resolvers: Sender<ImageStoreResolveJob>,
         }
 
-        impl FileStoreHandler {
+        impl ImageStoreHandler {
             pub(crate) fn new<S>(sink: Weak<S>) -> Self
             where
-                S: ResolveSink<StoreFile> + Send + Sync + 'static,
+                S: ResolveSink<StoreImageAssets> + Send + Sync + 'static,
             {
-                let (jobs_tx, jobs_rx) = unbounded();
+                let (originals, original_jobs_rx) = unbounded();
+                let (thumbnails, thumbnail_jobs_rx) = unbounded();
+                let (resolvers, resolver_jobs_rx) = unbounded();
 
-                thread::spawn(move || worker(&jobs_rx, &sink));
+                thread::spawn(move || worker(&original_jobs_rx, StoredImageAssetKind::Original));
+                thread::spawn(move || worker(&thumbnail_jobs_rx, StoredImageAssetKind::Thumbnail));
+                thread::spawn(move || resolver(&resolver_jobs_rx, &sink));
 
-                Self { jobs_tx }
+                Self {
+                    originals,
+                    thumbnails,
+                    resolvers,
+                }
             }
 
-            pub(crate) fn process_file_store(&self, request: Request<StoreFile>) {
-                self.jobs_tx
-                    .send(request)
-                    .expect("file store worker queue disconnected");
+            pub(crate) fn process_image(&self, request: Request<StoreImageAssets>) {
+                let image_id = request.operation.image.0;
+                let (results_tx, results_rx) = unbounded();
+                let job = ImageStoreJob {
+                    image_id,
+                    results_tx,
+                };
+
+                self.originals
+                    .send(job.clone())
+                    .expect("original image store worker queue disconnected");
+                self.thumbnails
+                    .send(job)
+                    .expect("thumbnail image store worker queue disconnected");
+                self.resolvers
+                    .send(ImageStoreResolveJob {
+                        request,
+                        results_rx,
+                        expected_results: 2,
+                    })
+                    .expect("image store resolver queue disconnected");
             }
         }
 
-        fn worker<S>(jobs_rx: &Receiver<Request<StoreFile>>, sink: &Weak<S>)
-        where
-            S: ResolveSink<StoreFile> + Send + Sync + 'static,
-        {
-            while let Ok(mut request) = jobs_rx.recv() {
-                // Ensure async behavior so this path models background work.
-                thread::sleep(Duration::from_millis(1));
+        #[derive(Clone)]
+        struct ImageStoreJob {
+            image_id: usize,
+            results_tx: Sender<StoredImageAsset>,
+        }
 
-                let image_id = request.operation.image.0;
-                let stored = app::StoredImage {
-                    path: format!("/tmp/selfie-{image_id}.jpg"),
-                };
+        struct ImageStoreResolveJob {
+            request: Request<StoreImageAssets>,
+            results_rx: Receiver<StoredImageAsset>,
+            expected_results: usize,
+        }
 
-                if let Some(sink) = sink.upgrade() {
-                    sink.resolve_request(&mut request, stored)
-                        .expect("background file store resolve should succeed");
+        fn worker(jobs_rx: &Receiver<ImageStoreJob>, kind: StoredImageAssetKind) {
+            while let Ok(job) = jobs_rx.recv() {
+                let asset = store_image(job.image_id, kind);
+
+                if job.results_tx.send(asset).is_err() {
+                    return;
                 }
             }
+        }
+
+        fn resolver<S>(jobs_rx: &Receiver<ImageStoreResolveJob>, sink: &Weak<S>)
+        where
+            S: ResolveSink<StoreImageAssets> + Send + Sync + 'static,
+        {
+            while let Ok(mut job) = jobs_rx.recv() {
+                for _ in 0..job.expected_results {
+                    let Ok(asset) = job.results_rx.recv() else {
+                        return;
+                    };
+
+                    if let Some(sink) = sink.upgrade() {
+                        sink.resolve_request(&mut job.request, asset)
+                            .expect("background image store resolve should succeed");
+                    } else {
+                        return;
+                    }
+                }
+            }
+        }
+
+        fn store_image(image_id: usize, kind: StoredImageAssetKind) -> StoredImageAsset {
+            thread::sleep(Duration::from_millis(1));
+
+            let path = match kind {
+                StoredImageAssetKind::Original => format!("/tmp/selfie-{image_id}.jpg"),
+                StoredImageAssetKind::Thumbnail => {
+                    format!("/tmp/selfie-{image_id}-thumb.jpg")
+                }
+            };
+
+            StoredImageAsset { kind, path }
         }
     }
 }
@@ -499,6 +577,7 @@ fn trigger_takes_a_picture() {
             countdown: None,
             save_status: SaveStatus::WaitingForPermission,
             saved_path: None,
+            thumbnail_path: None,
         }
     );
 
@@ -528,6 +607,7 @@ fn trigger_takes_a_picture() {
             countdown: None,
             save_status: SaveStatus::WaitingForPermission,
             saved_path: None,
+            thumbnail_path: None,
         }
     );
 }
@@ -545,6 +625,7 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
             countdown: Some(3),
             save_status: SaveStatus::WaitingForCapture,
             saved_path: None,
+            thumbnail_path: None,
         }
     );
 
@@ -634,6 +715,7 @@ fn pictures_are_saved_to_file_system() {
             countdown: None,
             save_status: SaveStatus::Saving,
             saved_path: None,
+            thumbnail_path: None,
         }
     );
 
@@ -653,11 +735,17 @@ fn pictures_are_saved_to_file_system() {
             countdown: None,
             save_status: SaveStatus::Saved,
             saved_path: Some("/tmp/selfie-42.jpg".to_string()),
+            thumbnail_path: Some("/tmp/selfie-42-thumb.jpg".to_string()),
         }
     );
 
     let serialized = shell.take_serialized_effects();
-    assert_only_render_effect(&serialized);
+    assert_eq!(serialized.len(), 2);
+    assert!(
+        serialized
+            .iter()
+            .all(|request| matches!(request.effect, FfiEffect::Render(_)))
+    );
 }
 
 // helpers
