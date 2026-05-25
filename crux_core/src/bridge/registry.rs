@@ -70,7 +70,9 @@ impl<T: FfiFormat> ResolveRegistry<T> {
         let entry = registry_lock.get_mut(id.0 as usize);
 
         let Some(entry) = entry else {
-            return Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)));
+            return Err(BridgeError::ProcessResponse(ResolveError::NotFound(
+                id.0.into(),
+            )));
         };
 
         let resolved = entry.resolve(response);

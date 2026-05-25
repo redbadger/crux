@@ -218,9 +218,9 @@ mod app {
 mod ffi {
     use crux_core::{
         Core,
-        bridge::{EffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest},
+        bridge::{EffectId as BridgeEffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest},
         effects::{
-            EffectRouter, Routes,
+            EffectId, EffectRouter, Routes,
             routes::{Parked, Serialized},
         },
         render::RenderOperation,
@@ -266,7 +266,7 @@ mod ffi {
     /// A specific typed effect with opaque (e.g. pointer based) payload
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub(crate) struct CameraEffect {
-        pub(crate) id: u32,
+        pub(crate) id: u64,
         pub(crate) operation: CaptureImageOp,
     }
 
@@ -331,7 +331,10 @@ mod ffi {
                     // form of callback to the shell
                     Effect::Camera(request) => {
                         let (id, operation) = routes.camera.park(request);
-                        shell.process_camera_effect(CameraEffect { id, operation });
+                        shell.process_camera_effect(CameraEffect {
+                            id: id.into_raw(),
+                            operation,
+                        });
                     }
                     // Original serialized FFI
                     effect => {
@@ -362,16 +365,16 @@ mod ffi {
             self.router
                 .routes
                 .serialized
-                .resolve(EffectId(id), data)
+                .resolve(BridgeEffectId(id), data)
                 .expect("serialized resolve should work");
         }
 
         /// Specific effect FFI for opaque data types
-        pub(crate) fn resolve_camera(&self, id: u32, output: OpaqueImageRef) {
+        pub(crate) fn resolve_camera(&self, id: u64, output: OpaqueImageRef) {
             self.router
                 .routes
                 .camera
-                .resolve(id, output)
+                .resolve(EffectId::from_raw(id), output)
                 .expect("camera resolve should work");
         }
 

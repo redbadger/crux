@@ -1,10 +1,9 @@
 use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
-use crux_core::{
-    cli::{BindgenArgsBuilder, bindgen},
-    type_generation::facet::{Config, TypeRegistry},
-};
+
+use crux_core::bindgen::bindgen_kotlin;
+use crux_core::type_generation::facet::{Config, TypeRegistry};
 use log::info;
 use uniffi::deps::anyhow::Result;
 
@@ -49,11 +48,7 @@ fn main() -> Result<()> {
             typegen_app.kotlin(&config)?;
 
             info!("Bindgen for Kotlin");
-            let bindgen_args = BindgenArgsBuilder::default()
-                .crate_name(env!("CARGO_PKG_NAME").to_string())
-                .kotlin(&args.output_dir)
-                .build()?;
-            bindgen(&bindgen_args)?;
+            bindgen_kotlin(env!("CARGO_PKG_NAME"), &args.output_dir)?;
         }
         Language::Typescript => {
             info!("Typegen for TypeScript");

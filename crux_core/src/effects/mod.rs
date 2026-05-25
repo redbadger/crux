@@ -16,6 +16,8 @@ use std::sync::{Arc, Weak};
 
 use crate::{Core, Request, Resolvable, ResolveError, capability::Operation};
 
+pub use registry::EffectId;
+
 pub struct EffectRouter<App, RouteSet>
 where
     App: crate::App,

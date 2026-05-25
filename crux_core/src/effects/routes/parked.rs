@@ -3,7 +3,7 @@ use std::sync::{Arc, Weak};
 use crate::{
     Request, ResolveError,
     capability::Operation,
-    effects::{EffectRouter, Routes, registry::Registry},
+    effects::{EffectId, EffectRouter, Routes, registry::Registry},
 };
 
 pub struct Parked<A, RouteSet, Op>
@@ -40,7 +40,11 @@ where
     ///
     /// Panics if the router has been dropped, or the internal registry lock has
     /// been poisoned.
-    pub fn resolve(&self, id: u32, output: Op::Output) -> Result<(), ResolveError> {
+    pub fn resolve(
+        &self,
+        id: EffectId<Op::Output>,
+        output: Op::Output,
+    ) -> Result<(), ResolveError> {
         self.registry.resolve(id, output)?;
         self.router().process();
 
@@ -56,7 +60,7 @@ impl<App, RouteSet, Op> Parked<App, RouteSet, Op>
 where
     App: crate::App,
     RouteSet: Routes<App>,
-    Op: Operation + Clone,
+    Op: Operation,
 {
     /// Park a request under an ID for a custom FFI to resume later.
     ///
@@ -64,7 +68,7 @@ where
     ///
     /// Panics if the internal registry lock has been poisoned.
     #[must_use]
-    pub fn park(&self, request: Request<Op>) -> (u32, Op) {
+    pub fn park(&self, request: Request<Op>) -> (EffectId<Op::Output>, Op) {
         let (id, operation) = self.registry.register(request);
 
         (id, operation)
