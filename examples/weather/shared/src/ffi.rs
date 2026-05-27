@@ -8,8 +8,6 @@ use crux_core::{
 use crate::app::Weather;
 
 /// The main interface used by the shell
-#[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
-#[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct CoreFFI {
     core: Bridge<Weather>,
 }
@@ -21,14 +19,7 @@ impl Default for CoreFFI {
 }
 
 #[boltffi::export]
-#[cfg_attr(feature = "uniffi", uniffi::export)]
-#[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
 impl CoreFFI {
-    #[cfg_attr(feature = "uniffi", uniffi::constructor)]
-    #[cfg_attr(
-        feature = "wasm_bindgen",
-        wasm_bindgen::prelude::wasm_bindgen(constructor)
-    )]
     #[must_use]
     pub fn new() -> Self {
         Self {

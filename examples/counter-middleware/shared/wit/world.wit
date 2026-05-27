@@ -1,5 +1,0 @@
-package crux:shared-lib;
-
-world shared {
-    export core;
-}
