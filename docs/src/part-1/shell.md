@@ -119,6 +119,26 @@ TypeScript, ...), all with consistent serialization behavior.
 
 **codegen** – you guessed it, "code generation" – combines the two.
 
+### The BoltFFI config file
+
+One more file is worth calling out before we move on:
+[`shared/boltffi.toml`](https://www.boltffi.dev/docs/configuration).
+
+```toml,ignore
+# shared/boltffi.toml
+{{#include ../../../examples/counter/shared/boltffi.toml}}
+```
+
+BoltFFI reads this file when the shell recipes package Apple, Android, and wasm
+targets, or generate C# bindings. The `[package]` table identifies the Rust
+crate being packaged. The `[targets.*]` tables describe each shell package:
+where to write generated artifacts, what Swift module or Kotlin package to use,
+where to put the wasm/npm output, and how to configure the C# bindings.
+
+These paths are relative to `shared/`, because the BoltFFI commands run from
+that directory. If you rename the crate or move a shell, update this file and
+the matching shell project together.
+
 ## Updating our `app.rs`
 
 There's a few things we need to do to our `app.rs` module to support typegen.

@@ -57,7 +57,7 @@ graph TB
 shared/src/
 ├── app.rs                          # App trait impl — delegates to Model
 ├── lib.rs                          # Module root & re-exports
-├── ffi.rs                          # CoreFFI bridge (BoltFFI, with legacy compatibility attrs)
+├── ffi.rs                          # Byte-oriented CoreFFI bridge exported with BoltFFI
 ├── bin/codegen.rs                  # Type generation binary (facet_typegen)
 ├── model/
 │   ├── mod.rs                      # Top-level Model enum & Event enum, master dispatcher
