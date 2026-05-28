@@ -53,7 +53,9 @@ package: install-targets
     for slice in ios-arm64 ios-arm64_x86_64-simulator macos-arm64_x86_64; do \
         target="../apple/generated/Shared/Shared.xcframework/$slice/Headers"; \
         if [ -d "$target" ]; then \
-            printf 'module SharedFFI {\n    header "shared/shared.h"\n    export *\n}\n' > "$target/module.modulemap"; \
+            cp "$target/shared/shared.h" "$target/shared.h"; \
+            rm -f "$target/shared/module.modulemap"; \
+            printf 'module SharedFFI {\n    header "shared.h"\n    export *\n}\n' > "$target/module.modulemap"; \
         fi \
     done
 
