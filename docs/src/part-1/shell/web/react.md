@@ -18,6 +18,29 @@ because it is simple and popular. However, a similar
 setup would work for other frameworks.
 ```
 
+```mermaid
+flowchart TD
+    subgraph shared["shared/ (Rust crate)"]
+        app_rs["`app.rs
+Event · Effect · ViewModel
+#[derive(Facet)]
+#[effect(facet_typegen)]`"]
+
+        ffi_rs["`ffi.rs
+CoreFfi · #[boltffi::export]`"]
+    end
+
+    app_rs --> tg[/"cargo run --bin codegen --language typescript"/]
+    ffi_rs --> bg[/"boltffi pack wasm"/]
+
+    tg -->|typegen| ts_t[TypeScript types]
+    bg -->|bindgen| wasm_b[WASM package and JS bindings]
+
+    ts_t --> webts["Web / TypeScript
+React · Next.js"]
+    wasm_b --> webts
+```
+
 ## Create a Next.js App
 
 For this walk-through, we'll use the
