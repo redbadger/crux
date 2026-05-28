@@ -36,6 +36,10 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UILaunchScreen: {}
+    settings:
+      # Xcode 26 enables explicit module builds by default; disable until
+      # boltffi's namespaced xcframework header layout is supported.
+      SWIFT_ENABLE_EXPLICIT_MODULES: NO
 
   CounterApp-macOS:
     templates: [app]
@@ -48,3 +52,6 @@ targets:
     settings:
       OTHER_LDFLAGS: [-w]
       ENABLE_USER_SCRIPT_SANDBOXING: NO
+      # Xcode 26 enables explicit module builds by default; disable until
+      # boltffi's namespaced xcframework header layout is supported.
+      SWIFT_ENABLE_EXPLICIT_MODULES: NO

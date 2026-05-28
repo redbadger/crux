@@ -49,6 +49,13 @@ package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
     rm -rf ../apple/generated/Shared
     boltffi pack apple
+    @echo '  Patching xcframework module maps for Xcode 26 explicit module build compatibility'
+    for slice in ios-arm64 ios-arm64_x86_64-simulator macos-arm64_x86_64; do \
+        target="../apple/generated/Shared/Shared.xcframework/$slice/Headers"; \
+        if [ -d "$target" ]; then \
+            printf 'module SharedFFI {\n    header "shared/shared.h"\n    export *\n}\n' > "$target/module.modulemap"; \
+        fi \
+    done
 
 # rebuilds the Xcode project from project.yml
 generate-project:
