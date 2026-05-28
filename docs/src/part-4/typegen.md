@@ -14,13 +14,32 @@ possible. The entire core-shell interface is just three methods —
 serialized byte arrays (using [`bincode`](https://docs.rs/bincode)). The
 shell doesn't need to know the Rust types at the FFI level at all.
 
-But the shell _does_ need to serialize events and deserialize effects
-and view models on its side of the boundary. For that, it needs
-equivalent type definitions in Swift, Kotlin, TypeScript, or C# — along
-with the matching serialization code. This is what type generation
-provides: it inspects your Rust types and generates the corresponding
-foreign types and their `bincode` serialization implementations
-automatically.
+BoltFFI gives Crux the bindings for that byte-oriented API, but it
+doesn't remove the need for generated shell types. Two constraints
+matter here:
+
+- Shell types should be immutable value types. Rust-backed FFI objects
+  can make ownership and mutation part of the UI boundary; immutability
+  is still being worked through in
+  [boltffi#292](https://github.com/boltffi/boltffi/issues/292).
+- Shells need to connect view models to UI-native state mechanisms:
+  Swift `@Observable`, Kotlin `StateFlow`, TypeScript framework state
+  such as React `useState`, and C#
+  `INotifyPropertyChanged`/`ObservableObject`. Those APIs expect native
+  values or native observable wrappers, not Rust-backed objects.
+
+Crux is still exploring where those responsibilities should sit, and
+whether [`difficient`](https://github.com/redbadger/difficient/tree/main)
+can reduce the payload over the wire by sending changes instead of
+whole values. For now, type generation is the stable layer that gives
+shells native value types while the FFI stays small.
+
+That generated layer has a concrete job: the shell must serialize
+events and deserialize effects and view models on its side of the
+boundary. To do that, it needs equivalent type definitions in Swift,
+Kotlin, TypeScript, or C#, along with the matching serialization code.
+Type generation inspects your Rust types and generates those foreign
+types and their `bincode` serialization implementations automatically.
 
 ## How it works
 
