@@ -1,13 +1,5 @@
 # Android
 
-```admonish warning
-This section has not been updated to match the rest of the documentation and some parts
-may not match how Crux works any more.
-
-Bear with us while we update and use the [Apple](../apple/index.md) section as the template
-to follow.
-```
-
 When we use Crux to build Android apps, the Core API bindings and native
 library assets are generated with [BoltFFI](https://www.boltffi.dev/) and
 packaged for Gradle to consume.

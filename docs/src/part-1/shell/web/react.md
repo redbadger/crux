@@ -45,6 +45,8 @@ cargo install boltffi_cli --version '=0.25.0'
 brew install binaryen # provides wasm-opt
 ```
 
+The crate is `boltffi_cli`; it installs the `boltffi` binary used below.
+
 Now that we have `boltffi` installed, we can build
 our `shared` library to WebAssembly for the browser.
 

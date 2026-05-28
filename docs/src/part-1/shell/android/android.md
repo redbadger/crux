@@ -1,14 +1,5 @@
 # Android — Kotlin and Jetpack Compose
 
-```admonish warning
-This section has not been fully updated to match the rest of the
-documentation and some parts may not match how Crux works any more.
-
-Bear with us while we update — use the
-[iOS/macOS](../apple/index.md) section as the most up-to-date
-template to follow.
-```
-
 When we use Crux to build Android apps, the Core API bindings and native
 library assets are generated with [BoltFFI](https://www.boltffi.dev/).
 
@@ -40,7 +31,7 @@ Open Android Studio and create a new project, for "Phone and Tablet", of type
 "Empty Activity". In this walk-through, we'll call it "SimpleCounter"
 
 - "Name": `SimpleCounter`
-- "Package name": `com.example.counter`
+- "Package name": `com.crux.examples.counter`
 - "Save Location": a directory called `Android` at the root of our monorepo
 - "Minimum SDK" `API 34`
 - "Build configuration language": `Kotlin DSL (build.gradle.kts)`
@@ -116,14 +107,16 @@ Android library added above. This includes compiling and linking the Rust
 dynamic library and generating the runtime bindings and the shared types.
 
 - The [Android NDK](https://developer.android.com/ndk)
-- [BoltFFI](https://www.boltffi.dev/) to generate Kotlin bindings and `jniLibs`
-- Crux/Facet type generation for the app data types
+- [BoltFFI](https://www.boltffi.dev/) — `boltffi pack android` builds the native
+  libraries, generates the Kotlin bindings, and writes the `jniLibs`
+- The `codegen` binary (with the `facet_typegen` feature) generates the Kotlin
+  app data types
 
 The NDK can be installed from "**Tools, SDK Manager, SDK Tools**" in Android Studio.
 
 Let's get started.
 
-Add the four rust android toolchains to your system:
+Add the four Rust Android toolchains to your system:
 
 ```sh
 $ rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
@@ -151,47 +144,49 @@ You will need to set the `ndkVersion` to one you have installed, go to "**Tools,
 When you have edited the Gradle files, don't forget to click "sync now".
 ```
 
-If you now build your project you should see the newly built shared library
-object file.
-
-```sh
-$ ls --tree Android/shared/build/rustJniLibs
-Android/shared/build/rustJniLibs
-└── android
-   └── arm64-v8a
-      └── libshared.so
-   └── armeabi-v7a
-      └── libshared.so
-   └── x86
-      └── libshared.so
-   └── x86_64
-      └── libshared.so
-```
-
-You should also see the generated types in the `Android/generated`
-folder — note that the `sourceSets` directive in the shared library
-gradle file (above) allows us to build our shared library against
-these generated types.
+If you now build your project, BoltFFI and the type generator populate the
+`Android/generated` folder. It holds the native libraries (`jniLibs`), the JNI
+glue and Kotlin bindings, and the generated app types. The `sourceSets`
+directive in the shared library Gradle file (above) points both
+`kotlin.srcDirs` and `jniLibs.srcDirs` at this folder.
 
 ```sh
 $ ls --tree Android/generated
 Android/generated
-└── com
-   ├── crux
-   │  └── examples
-   │     └── simplecounter
-   │        ├── Requests.kt
-   │        ├── shared.kt
-   │        └── Simplecounter.kt
-   └── novi
-      ├── bincode
-      │  ├── BincodeDeserializer.kt
-      │  └── BincodeSerializer.kt
-      └── serde
-         ├── BinaryDeserializer.kt
-         ├── BinarySerializer.kt
-         ├── ...
-         └── Unsigned.kt
+├── build.gradle.kts
+├── com
+│  ├── crux
+│  │  └── examples
+│  │     └── counter
+│  │        └── Counter.kt
+│  └── novi
+│     ├── bincode
+│     │  ├── BincodeDeserializer.kt
+│     │  └── BincodeSerializer.kt
+│     └── serde
+│        ├── BinaryDeserializer.kt
+│        ├── BinarySerializer.kt
+│        ├── ...
+│        └── UInt128.kt
+├── include
+│  └── shared.h
+├── jniLibs
+│  ├── arm64-v8a
+│  │  └── libshared.so
+│  ├── armeabi-v7a
+│  │  └── libshared.so
+│  ├── x86
+│  │  └── libshared.so
+│  └── x86_64
+│     └── libshared.so
+└── kotlin
+   ├── com
+   │  └── crux
+   │     └── examples
+   │        └── counter
+   │           └── Shared.kt
+   └── jni
+      └── jni_glue.c
 ```
 
 ## Create some UI and run in the Simulator

@@ -11,9 +11,9 @@ basically the `update` and `view` methods. There's one more for resolving
 effects (called `resolve`), but that really is it. We need to make those three methods available
 to the Shell, but once that's done, we don't have to touch it again.
 
-Let's briefly talk about what we want from this interface. Ideally, in our language of choice we would:
+Let's briefly talk about what we want from this interface. Ideally, in our shell language we would:
 
-- have a native equivalent of the `update`, `view` and `resolve` function
+- have native equivalents of the `update`, `view` and `resolve` functions
 - have an equivalent for our `Event`, `Effect` and `ViewModel` types
 - not have to worry about what black magic is happening behind the scenes to make that work
 
@@ -40,7 +40,7 @@ surface. Crux's type generation remains separate: Facet-generated Swift,
 Kotlin, TypeScript, and C# types handle the app's serialized
 `Event`/`Effect`/`ViewModel` data.
 
-First, lets update our `Cargo.toml`:
+First, let's update our `Cargo.toml`:
 
 ```toml,ignore
 # shared/Cargo.toml
@@ -59,9 +59,6 @@ required-features = ["codegen"]
 
 [features]
 facet_typegen = ["crux_core/facet_typegen"]
-# Temporary migration-window compatibility features for the old binding paths.
-uniffi = ["dep:uniffi"]
-wasm_bindgen = ["dep:wasm-bindgen"]
 codegen = [
     "dep:anyhow",
     "dep:clap",
@@ -81,15 +78,12 @@ anyhow = { workspace = true, optional = true }
 clap = { version = "4.6.1", optional = true, features = ["derive"] }
 log = { version = "0.4.29", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
-uniffi = { version = "=0.29.4", optional = true }
-wasm-bindgen = { version = "0.2.121", optional = true }
 ```
 
 A lot has changed! The key things we added are:
 
 1. a `bin` target called `codegen`, which is how we're going to run all the code generation
-2. a `boltffi` dependency for the default binding surface, with old `uniffi` and
-   `wasm_bindgen` features kept only as temporary compatibility flags
+2. a `boltffi` dependency for the binding surface
 3. dependencies we need for the code generation
 
 And since we've declared the `codegen` target, we need to add the code for it.
@@ -99,29 +93,37 @@ And since we've declared the `codegen` target, we need to add the code for it.
 {{#include ../../../examples/counter/shared/src/bin/codegen.rs}}
 ```
 
-This is essentially boilerplate for a CLI we can use to run the binding generation and type generation.
-But it's also a place where you can customize how they work if you have some more advanced needs.
+This is essentially boilerplate for a CLI we can use to run type generation.
+But it's also a place where you can customize type generation if you have more
+advanced needs.
 
-It uses the `facet` based type generation from `crux_core` to scan the `App` for types which will cross
-the FFI boundary, collect them and then, depending on what language should be generated builds the code
-for it and places it into a specified `output_dir` directory.
+It uses the Facet-based type generation from `crux_core` to scan the `App` for
+types that cross the FFI boundary, collect them, and write the requested
+language output into the specified `output_dir` directory.
 
 We will call this CLI from the shell projects shortly.
 
 ### Codegen, typegen, bindgen, which is it?
 
-You'll here these terms thrown around here and there in the docs, so it's worth clarifying what we mean
+You'll hear these terms thrown around here and there in the docs, so let's
+clarify what we mean:
 
 **bindgen** – "bindings generation" – provides APIs in the foreign language to call the core's Rust FFI APIs.
 Crux uses BoltFFI for native, web, and C# bindings.
 
-**typegen** – "type generation" – The core's FFI interface operates on bytes, but both Rust and the languages we're targeting are generally strongly typed. To facilitate the serialization / deserialization, we generate type definition reflecting the Rust types from the core in the foreign language (Swift, Kotlin, TypeScript, ...), which all serialize consistently.
+**typegen** – "type generation" – The core's FFI interface operates on bytes,
+but both Rust and the languages we're targeting are generally strongly typed.
+To support serialization and deserialization, we generate foreign type
+definitions that reflect the Rust types from the core (Swift, Kotlin,
+TypeScript, ...), all with consistent serialization behavior.
 
-**codegen** – you guessed it, "code generation" – is the two things above combined.
+**codegen** – you guessed it, "code generation" – combines the two.
 
 ## Updating our `app.rs`
 
-There's a few things we need to do to our `app.rs` module to support typegen. The first thing we need to do is update the annotation of the `Effect` type to tell our `effect` attribute macro that we want to use the Facet-based typegen.
+There's a few things we need to do to our `app.rs` module to support typegen.
+The first thing we need to do is update the annotation of the `Effect` type to
+tell our `effect` attribute macro to use the Facet-based typegen path.
 
 ```rust,noplayground
 #[derive(Debug)]
@@ -131,7 +133,9 @@ pub enum Effect {
 }
 ```
 
-We also need to annotate the other types that cross the FFI boundary with the `Facet` derive macro. Note that we are using Facet v0.31 (with `crux_core` v0.17), and so we also need to specify a layout for enums, e.g. `repr(C)` or `repr(u8)`.
+We also need to annotate the other types that cross the FFI boundary with the
+`Facet` derive macro. We are using Facet v0.44 (with `crux_core` v0.17), and so
+we also need to specify a layout for enums, e.g. `repr(C)` or `repr(u8)`.
 
 ```rust,noplayground
 use facet::Facet;
@@ -169,29 +173,31 @@ This code exposes the `ffi.rs` module, where BoltFFI sees the byte-oriented
 {{#include ../../../examples/counter/shared/src/ffi.rs}}
 ```
 
-Broad strokes: we define a type for core with FFI, which holds a `Bridge` wrapping our `Counter`, and
-provide implementations of the three API methods taking and returning byte buffers.
+Broad strokes: `CoreFFI` holds a `Bridge` wrapping `Counter` and exposes the
+core API as methods taking and returning byte buffers.
 
-The translation between rust types and the byte buffers is the job of the bridge (it also holds the
-effect requests inside the core under an id, which can be sent out to the Shell and used to resolve the
-effect, but more on that later).
+The translation between Rust types and byte buffers is the bridge's job. It
+also holds the effect requests inside the core under an id, which can be sent
+out to the Shell and used to resolve the effect, but more on that later.
 
 Notice the Shell is in charge of creating the instance of this type, so in theory your Shell can have
 several instances of the app if it wants to.
 
 The `#[boltffi::export]` attribute marks the Rust class and methods that should
 be made available to shell languages. BoltFFI can support richer shapes, but Crux
-keeps this layer deliberately tiny: app data is serialized with Serde/Bincode,
-and `facet_generate` creates matching host-language types so behavior stays
+keeps this layer deliberately tiny: app data is serialized with Serde and
+`bincode`, and `facet_generate` creates matching host-language types so behavior stays
 consistent across platforms.
 
-It's not essential for you to understand the detail of the above code now. You won't need to change it, unless you're
-doing something fairly advanced, by which time you'll understand it.
+It's not essential for you to understand the detail of the above code now. You
+won't need to change it unless you're doing something fairly advanced, by which
+time you'll understand it.
 
 ## Platform native part
 
-Okay, with that plumbing, the Core part of adding a shell is complete. It's not a one liner, but you will only
-set this up once, and most likely won't touch it again, but having the ability, should you need to, is important.
+Okay, with that plumbing in place, the Core side of adding a shell is complete.
+It's not a one-liner, but you will only set it up once, and most likely won't
+touch it again.
 
 Now we can proceed to the actual shell for your platform of choice:
 

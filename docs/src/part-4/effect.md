@@ -1,1 +1,0 @@
-# The Effect type

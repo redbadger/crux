@@ -318,6 +318,6 @@ receiving end, the `ShellRequest` future is waiting — when the value
 arrives, the channel wakes the future's waker, which schedules the
 task on the executor to continue.
 
-In the next chapter, we will look at how this process changes when
-Crux is used via an FFI interface where requests and responses need
-to be serialised in order to pass across the language boundary.
+In the [next chapter](./typegen.md) we look at how Crux generates the
+foreign types so that requests and responses can be serialised in order
+to pass across the language boundary via the FFI interface.

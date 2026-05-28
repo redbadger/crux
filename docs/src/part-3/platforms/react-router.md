@@ -4,7 +4,7 @@ These are the steps to set up and run a simple TypeScript Web app that calls
 into a shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../../part-1/shell.md).
+This walk-through assumes you have already set up the `shared` library and codegen as described in [Shared core and types](../../part-1/shell.md).
 ```
 
 ```admonish info
@@ -36,6 +36,8 @@ cargo install boltffi_cli --version '=0.25.0'
 brew install binaryen # provides wasm-opt
 ```
 
+The crate is `boltffi_cli`; it installs the `boltffi` binary used below.
+
 Now that we have `boltffi` installed, we can build our `shared` library to
 WebAssembly for the browser.
 
@@ -44,8 +46,8 @@ WebAssembly for the browser.
 ```
 
 ````admonish tip
-  You might want to add a `wasm:build` script to your `package.json`
-  file, and call it when you build your React Router project.
+  You might want to add a `wasm:build` script to your `package.json` file, and
+  call it when you build your React Router project.
 
   ```json
   {
@@ -58,11 +60,11 @@ WebAssembly for the browser.
   ```
 ````
 
-Add the `shared` library as a Wasm package to your `web-react-router` project
+Add the `shared` library as a Wasm package to your `web-react-router` project:
 
 ```sh
 cd web-react-router
-pnpm add ../shared/pkg
+pnpm add ./generated/pkg
 ```
 
 We want Vite to bundle our `shared` Wasm package, so we register the wasm and
@@ -74,70 +76,49 @@ React Router plugins in `vite.config.ts`:
 
 ## Add the Shared Types
 
-To generate the shared types for TypeScript, we can just run `cargo build` from
-the root of our repository. You can check that they have been generated
-correctly:
+To generate the shared types for TypeScript, run the `codegen` binary, telling
+it which language to emit and where to put the output:
 
 ```sh
-ls --tree shared_types/generated/typescript
-shared_types/generated/typescript
+cargo run --package shared --bin codegen --features codegen,facet_typegen -- \
+    --language typescript --output-dir generated/types
+```
+
+You can check that they have been generated correctly:
+
+```sh
+ls --tree generated/types
+generated/types
+├── app.ts          # your app's Event / Effect / ViewModel types
+├── app.d.ts
 ├── bincode
-│  ├── bincodeDeserializer.d.ts
-│  ├── bincodeDeserializer.js
 │  ├── bincodeDeserializer.ts
-│  ├── bincodeSerializer.d.ts
-│  ├── bincodeSerializer.js
 │  ├── bincodeSerializer.ts
-│  ├── mod.d.ts
-│  ├── mod.js
-│  └── mod.ts
-├── node_modules
-│  └── typescript -> .pnpm/typescript@4.8.4/node_modules/typescript
-├── package.json
-├── pnpm-lock.yaml
+│  └── index.ts
 ├── serde
-│  ├── binaryDeserializer.d.ts
-│  ├── binaryDeserializer.js
 │  ├── binaryDeserializer.ts
-│  ├── binarySerializer.d.ts
-│  ├── binarySerializer.js
 │  ├── binarySerializer.ts
-│  ├── deserializer.d.ts
-│  ├── deserializer.js
 │  ├── deserializer.ts
-│  ├── mod.d.ts
-│  ├── mod.js
-│  ├── mod.ts
-│  ├── serializer.d.ts
-│  ├── serializer.js
 │  ├── serializer.ts
-│  ├── types.d.ts
-│  ├── types.js
-│  └── types.ts
-├── tsconfig.json
-└── types
-   ├── shared_types.d.ts
-   ├── shared_types.js
-   └── shared_types.ts
+│  ├── types.ts
+│  └── index.ts
+├── package.json
+└── tsconfig.json
 ```
 
 You can see that it also generates an `npm` package that we can add directly to
 our project.
 
 ```sh
-pnpm add ../shared_types/generated/typescript
+pnpm add ./generated/types
 ```
 
 ## Load the Wasm binary when our React Router app starts
 
-The `app/entry.client.tsx` file is where we can load our Wasm binary. We can
-import the `shared` package and then call the `init` function to load the Wasm
-binary.
-
-```admonish
-Note that we `import` the wasm binary as well — Vite will automatically bundle
-it for us, giving it a cache-friendly hash-based name.
-```
+The `app/entry.client.tsx` file is where we load our Wasm binary. We import the
+`shared` package and wait for its `initialized` promise to resolve before
+hydrating the app, so the WASM module is ready before any event reaches the
+core.
 
 ```ts
 {{#include ../../../../examples/counter/web-react-router/app/entry.client.tsx}}
@@ -146,7 +127,7 @@ it for us, giving it a cache-friendly hash-based name.
 ## Create some UI
 
 ```admonish example
-We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+We will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter), which has a `shared` library and generated TypeScript types that will work with the following example code.
 ```
 
 ### Simple counter example

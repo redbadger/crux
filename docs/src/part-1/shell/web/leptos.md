@@ -40,7 +40,7 @@ members = ["shared", "web-leptos"]
 
 Now we can `cd` into the `web-leptos` directory and
 start fleshing out our project. Let's add some
-dependencies to `shared/Cargo.toml`.
+dependencies to `web-leptos/Cargo.toml`.
 
 ```toml
 {{#include ../../../../../examples/counter/web-leptos/Cargo.toml}}

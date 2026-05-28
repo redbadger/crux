@@ -11,15 +11,15 @@ declarations by hand as your app evolves is tedious and error-prone.
 Crux sidesteps this problem by keeping the FFI surface as small as
 possible. The entire core-shell interface is just three methods —
 `update`, `resolve`, and `view` — and all data crosses the boundary as
-serialized byte arrays (using [Bincode](https://docs.rs/bincode)). The
+serialized byte arrays (using [`bincode`](https://docs.rs/bincode)). The
 shell doesn't need to know the Rust types at the FFI level at all.
 
 But the shell _does_ need to serialize events and deserialize effects
 and view models on its side of the boundary. For that, it needs
-equivalent type definitions in Swift, Kotlin, or TypeScript — along
+equivalent type definitions in Swift, Kotlin, TypeScript, or C# — along
 with the matching serialization code. This is what type generation
 provides: it inspects your Rust types and generates the corresponding
-foreign types and their Bincode serialization implementations
+foreign types and their `bincode` serialization implementations
 automatically.
 
 ## How it works
@@ -30,7 +30,7 @@ introspected at build time to discover their shape — fields, variants,
 generic parameters. The
 [facet-generate](https://github.com/redbadger/facet-generate) crate
 uses that reflection data to generate equivalent types (and their
-serialization code) in Swift, Kotlin, and TypeScript.
+serialization code) in Swift, Kotlin, TypeScript, and C#.
 
 The process has three parts:
 
@@ -114,11 +114,11 @@ The key steps are:
 3. **`Config::builder(name, &output_dir)`** — configures the output.
    The `name` parameter is the package/module name (e.g. `"App"` for
    Swift, `"com.crux.examples.counter"` for Kotlin, `"app"` for
-   TypeScript).
-4. **`.add_runtimes()`** — includes the serialization runtime (Serde
-   and Bincode implementations in the target language).
-5. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
-   **`.typescript(&config)?`** — generates the code.
+   TypeScript, `"CounterApp.Shared"` for C#).
+4. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
+   **`.typescript(&config)?`** / **`.csharp(&config)?`** — generates
+   the code, including the target-language serialization runtime for
+   `bincode`.
 
 BoltFFI binding generation is run separately by the shell build recipes with
 `boltffi pack ...`. The codegen binary is intentionally focused on Crux app
@@ -198,7 +198,7 @@ For each target language, the codegen produces:
 - **Type definitions** — enums, structs, and their serialization code,
   matching the shape of your Rust types. For example, `Event`,
   `Effect`, `ViewModel`, and any operation types.
-- **Serialization runtime** — Serde and Bincode implementations in the
+- **Serialization runtime** — Serde and `bincode` implementations in the
   target language, so the shell can serialize events and deserialize
   effects and view models.
 - **Helper extensions** — like `Requests.swift`, which provides

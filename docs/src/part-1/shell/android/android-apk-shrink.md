@@ -1,66 +1,55 @@
 # Reduce APK size on Android
 
-## Enable cargo release
+## Build the native library in release mode
 
-The biggest reduction in the APK size comes from changing the `profile = "debug"`
-to `profile = "release"` in the `shared/build.gradle` file
+The biggest reduction in the APK size comes from building the native library in
+release mode. With BoltFFI, pass `--release` when you package the Android
+artifacts:
 
-There is no need to set a release profile on the `typeGen` or `bindGen`
+```sh
+boltffi pack android --release
+```
 
+This produces an optimized `libshared.so` for each ABI. The type generation step
+(the `codegen` binary) doesn't need a release profile.
 
 ## Android minify
-
 
 The following is more experimental and may take some trial and error to work.
 
 [Enable minify](https://developer.android.com/studio/build/shrink-code)
-in release mode in `app/build.gradle`
+in release mode in `app/build.gradle.kts`:
+
 ```diff
 buildTypes {
     release {
--        minifyEnabled false
-+        minifyEnabled true
-        proguardFiles {
-            getDefaultProguardFile('proguard-android-optimize.txt')
-            'proguard-rules.pro'
-        }
+-        isMinifyEnabled = false
++        isMinifyEnabled = true
+        proguardFiles(
+            getDefaultProguardFile("proguard-android-optimize.txt"),
+            "proguard-rules.pro"
+        )
     }
 }
 ```
 
-Just enabling this feature will break your app as it will remove a lot of the
-shared lib we depend on, to prevent this amend the `proguard-rules.pro` file to contain
-the following
+Minification can remove generated bridge code. Add a keep rule for the shared
+package in `proguard-rules.pro`:
 
 ```
-# There were a number of methods found in com.sun.jna that glued the android to
-# the Rust the below is the most simplified way I could keep everything in
--keep class com.sun.**{
-    static *; # put this in the below and the app breaks :D
-}
--keep public class com.sun.jna.** {
-    public final *;
-    private protected *;
-}
--keep class com.sun.jna.* {
-  public protected *;
-  public void read();
-  public final *;
-  * getTypeInfo() ;
-}
-
-
-# we want to keep all the shared library for conveiance.
-# if you have some ios/other non android shared lib functions you may find it
-# beneficial to exclude them here
+# BoltFFI generates JNI bindings (a `jni_glue.c` plus Kotlin classes in your
+# shared package). Keep those generated classes so R8/ProGuard doesn't strip the
+# code that bridges into the native library.
+#
+# If you have some iOS/other non-Android functions in the shared package, you may
+# want to exclude them here.
 -keep class <shared app package name>.** {
   public protected *;
 }
 ```
 
-If the above results in a crash at runtime you will need to expand the rules to
-include more functions/classes, below is a set of links that can help with
-understanding these rules.
+If this still crashes at runtime, expand the rules to include more functions or
+classes. These references cover the rule syntax and common Android/Rust cases:
 
 <https://developer.android.com/build/shrink-code#keep-code>
 <https://www.guardsquare.com/manual/configuration/examples>
