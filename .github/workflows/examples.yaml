@@ -262,12 +262,12 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      # TEMP (draft): pin to the branch carrying the C# namespace fix
-      # (boltffi/boltffi#371). Revert to:
+      # TEMP: pin to main until the C# namespace fix
+      # (boltffi/boltffi#371) is released. Revert to:
       #   cargo install boltffi_cli --version '=0.25.2'
       # once that release is out.
       - name: Install BoltFFI CLI
-        run: cargo install --git https://github.com/boltffi/boltffi --branch michael/csharp-namespace-override boltffi_cli
+        run: cargo install --git https://github.com/boltffi/boltffi --branch main boltffi_cli
         env:
           RUSTFLAGS: ""
 
