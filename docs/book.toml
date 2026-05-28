@@ -8,6 +8,9 @@ title = "Crux: Cross-platform app development in Rust"
 command = "mdbook-admonish"
 assets_version = "3.1.0" # do not edit: managed by `mdbook-admonish install`
 
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
 [output]
 
 [output.html]
@@ -16,6 +19,7 @@ mathjax-support = true
 site-url = "/crux/"
 git-repository-url = "https://github.com/redbadger/crux/"
 edit-url-template = "https://github.com/redbadger/crux/edit/master/docs/{path}"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 [output.html.redirect]
 "getting_started/android.html" = "./Android/android.html"
