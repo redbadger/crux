@@ -46,30 +46,28 @@ fix: assert-windows
 
 # validate formatting of the WinUI3 shell (requires generated types and
 # BoltFFI bindings to resolve)
-check: assert-windows typegen bindings
+check: assert-windows typegen pack
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     dotnet format CounterApp/CounterApp.csproj --verify-no-changes --verbosity minimal
 
 # generate C# types via the codegen binary
 typegen: assert-windows
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
-    $env:RUST_LOG='info'; cargo run --package shared --bin codegen --features codegen,facet_typegen -- --language csharp --output-dir generated
+    $env:RUST_LOG='info'; cargo run --package shared --bin codegen --features codegen,facet_typegen -- --language csharp --output-dir generated/types
 
-# generate C# FFI bindings via BoltFFI
+# pack the C# FFI bindings + native dll into a local NuGet via BoltFFI
 [working-directory('../shared')]
-bindings: assert-windows
-    @echo '{{ style("command") }}bindings:{{ NORMAL }}'
+pack: assert-windows
+    @echo '{{ style("command") }}pack:{{ NORMAL }}'
     if (Test-Path '../windows/generated/boltffi') { Remove-Item '../windows/generated/boltffi' -Recurse -Force }
-    boltffi generate csharp
+    if (Test-Path '../windows/generated/nuget') { Remove-Item '../windows/generated/nuget' -Recurse -Force }
+    boltffi pack csharp --release
 
-# build the x64 shared Rust library so MSBuild can copy shared.dll into the app output
-build-shared: assert-windows bindings
-    @echo '{{ style("command") }}build-shared:{{ NORMAL }}'
-    cargo build -p shared --target {{ rust_target }}
-
-# build the x64 WinUI3 app (generates types and shared.dll first)
-build: assert-windows typegen build-shared
+# build the x64 WinUI3 app (generates types and the FFI NuGet first)
+build: assert-windows typegen pack
     @echo '{{ style("command") }}build:{{ NORMAL }}'
+    # the local NuGet is always version 0.1.0; drop any cached copy so the freshly packed build is restored
+    $cached = Join-Path $env:USERPROFILE '.nuget/packages/counterapp.shared.ffi'; if (Test-Path $cached) { Remove-Item $cached -Recurse -Force }
     $msbuild = & {{ vswhere }} -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1; if (-not $msbuild) { throw 'Could not locate MSBuild via vswhere.' }; & $msbuild CounterApp.sln "-p:Platform={{ platform }}" -nologo -verbosity:minimal -restore -target:Build
 
 # run tests

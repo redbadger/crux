@@ -18,6 +18,7 @@ use crux_core::middleware::{HandleEffectLayer, MapEffectLayer};
 use crate::middleware::RngMiddleware;
 use crate::{Counter, RandomNumberRequest, sse::SseRequest};
 
+// ANCHOR: ffi_effect
 #[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
@@ -25,7 +26,9 @@ pub enum Effect {
     ServerSentEvents(SseRequest),
     Random(RandomNumberRequest),
 }
+// ANCHOR_END: ffi_effect
 
+// ANCHOR: ffi_from
 impl From<crate::app::Effect> for Effect {
     fn from(effect: crate::app::Effect) -> Self {
         match effect {
@@ -36,6 +39,7 @@ impl From<crate::app::Effect> for Effect {
         }
     }
 }
+// ANCHOR_END: ffi_from
 
 #[cfg(not(target_family = "wasm"))]
 type CoreBridge = Bridge<
@@ -64,6 +68,7 @@ pub struct CoreFFI {
 #[boltffi::export]
 #[allow(clippy::missing_panics_doc)]
 impl CoreFFI {
+    // ANCHOR: ffi_new
     pub fn new(shell: Arc<dyn CruxShell>) -> Self {
         #[cfg(not(target_family = "wasm"))]
         let core = Core::<Counter>::new()
@@ -85,6 +90,7 @@ impl CoreFFI {
 
         Self { core }
     }
+    // ANCHOR_END: ffi_new
 
     #[must_use]
     pub fn update(&self, data: &[u8]) -> Vec<u8> {

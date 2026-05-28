@@ -40,7 +40,9 @@ package_name = "shared"
 
 [targets.csharp]
 enabled = true
+namespace = "CounterApp.Shared"
 output = "../windows/generated/boltffi"
+package_output = "../windows/generated/nuget"
 package_id = "CounterApp.Shared.Ffi"
 target_framework = "net10.0"
 runtime_identifiers = ["win-x64"]

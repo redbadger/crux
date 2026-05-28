@@ -30,6 +30,8 @@ clean:
         echo '{{ style("command") }}'"$example"'/clean:{{ NORMAL }}'
         just "$example/clean"
     done
+    rm -rf */target */*/target
+    rm -rf */*/build */*/dist */*/.next */*/.react-router */*/node_modules */*/.gradle
 
 # fix formatting in all examples
 [script('bash')]

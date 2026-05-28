@@ -4,6 +4,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Local NuGet built by `boltffi pack csharp` (version pinned in shared/boltffi.toml). -->
+    <PackageVersion Include="CounterApp.Shared.Ffi" Version="0.1.0" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />

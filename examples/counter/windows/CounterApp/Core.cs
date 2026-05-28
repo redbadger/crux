@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using CounterApp.Shared;
-using BoltCoreFFI = Shared.CoreFFI;
 
 namespace CounterApp;
 
@@ -9,7 +8,7 @@ namespace CounterApp;
 // no observable state (see CounterViewModel).
 public sealed class Core : IDisposable
 {
-    private readonly BoltCoreFFI ffi = new();
+    private readonly CoreFFI ffi = new();
 
     public ViewModel View() =>
         ViewModel.BincodeDeserialize(ffi.View());
