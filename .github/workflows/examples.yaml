@@ -175,7 +175,7 @@ jobs:
       - uses: taiki-e/install-action@just
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.0'
+        run: cargo install boltffi_cli --version '=0.25.0' --locked
         env:
           RUSTFLAGS: ""
 
@@ -262,8 +262,12 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      # TEMP (draft): pin to the branch carrying the C# namespace fix
+      # (boltffi/boltffi#371). Revert to:
+      #   cargo install boltffi_cli --version '=0.25.2'
+      # once that release is out.
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.0'
+        run: cargo install --git https://github.com/boltffi/boltffi --branch michael/csharp-namespace-override boltffi_cli
         env:
           RUSTFLAGS: ""
 
@@ -309,7 +313,7 @@ jobs:
         run: cargo install cargo-swift --version '=0.9'
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.0'
+        run: cargo install boltffi_cli --version '=0.25.0' --locked
         env:
           RUSTFLAGS: ""
 
@@ -356,7 +360,7 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.0'
+        run: cargo install boltffi_cli --version '=0.25.0' --locked
         env:
           RUSTFLAGS: ""
 
