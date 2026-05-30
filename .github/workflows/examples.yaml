@@ -174,8 +174,12 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - uses: taiki-e/install-action@just
 
+      # TEMP: install from main until boltffi 0.25.2 — which bundles the Apple
+      # modulemap fix (boltffi/boltffi#375) and the C# namespace fix
+      # (boltffi/boltffi#372) — is released. Then revert to:
+      #   cargo install boltffi_cli --version '=0.25.2' --locked
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.0' --locked
+        run: cargo install --git https://github.com/boltffi/boltffi --branch main boltffi_cli
         env:
           RUSTFLAGS: ""
 
@@ -306,14 +310,23 @@ jobs:
 
       - uses: mozilla-actions/sccache-action@v0.0.9
 
+      # macos-26 ships Xcode 26.5 but defaults to 26.4.1; use the latest stable.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: Install tools
         run: brew install just xcodegen swiftlint
 
       - name: Install cargo-swift
         run: cargo install cargo-swift --version '=0.9'
 
+      # TEMP: install from main until boltffi 0.25.2 — which bundles the Apple
+      # modulemap fix (boltffi/boltffi#375) and the C# namespace fix
+      # (boltffi/boltffi#372) — is released. Then revert to:
+      #   cargo install boltffi_cli --version '=0.25.2' --locked
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.0' --locked
+        run: cargo install --git https://github.com/boltffi/boltffi --branch main boltffi_cli
         env:
           RUSTFLAGS: ""
 
@@ -359,8 +372,12 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      # TEMP: install from main until boltffi 0.25.2 — which bundles the Apple
+      # modulemap fix (boltffi/boltffi#375) and the C# namespace fix
+      # (boltffi/boltffi#372) — is released. Then revert to:
+      #   cargo install boltffi_cli --version '=0.25.2' --locked
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.0' --locked
+        run: cargo install --git https://github.com/boltffi/boltffi --branch main boltffi_cli
         env:
           RUSTFLAGS: ""
 
