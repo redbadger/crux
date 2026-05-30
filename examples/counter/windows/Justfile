@@ -61,7 +61,7 @@ pack: assert-windows
     @echo '{{ style("command") }}pack:{{ NORMAL }}'
     if (Test-Path '../windows/generated/boltffi') { Remove-Item '../windows/generated/boltffi' -Recurse -Force }
     if (Test-Path '../windows/generated/nuget') { Remove-Item '../windows/generated/nuget' -Recurse -Force }
-    boltffi pack csharp --release
+    boltffi -v pack csharp --release
 
 # build the x64 WinUI3 app (generates types and the FFI NuGet first)
 build: assert-windows typegen pack
