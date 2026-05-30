@@ -275,11 +275,6 @@ jobs:
         env:
           RUSTFLAGS: ""
 
-      - name: DEBUG raw win-x64 build
-        run: cargo build --release --target x86_64-pc-windows-msvc -p shared
-        env:
-          RUST_BACKTRACE: "1"
-
       - name: CI
         run: just windows/ci
 

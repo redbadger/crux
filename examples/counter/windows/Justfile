@@ -61,7 +61,8 @@ pack: assert-windows
     @echo '{{ style("command") }}pack:{{ NORMAL }}'
     if (Test-Path '../windows/generated/boltffi') { Remove-Item '../windows/generated/boltffi' -Recurse -Force }
     if (Test-Path '../windows/generated/nuget') { Remove-Item '../windows/generated/nuget' -Recurse -Force }
-    boltffi -v pack csharp --release
+    # Select the workspace manifest explicitly; BoltFFI's Windows-canonicalized member manifest path trips Cargo workspace inheritance.
+    boltffi pack csharp --release --cargo-arg=--manifest-path=../Cargo.toml --cargo-arg=--package=shared
 
 # build the x64 WinUI3 app (generates types and the FFI NuGet first)
 build: assert-windows typegen pack
