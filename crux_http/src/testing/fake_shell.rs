@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 use std::{
     collections::VecDeque,
     sync::{Arc, Mutex},
@@ -9,7 +10,7 @@ use crate::protocol::{EffectSender, HttpRequest, HttpResponse, HttpResult};
 
 /// `FakeShell` implements `EffectSender` for use in our internal tests.
 #[derive(Clone, Default)]
-pub struct FakeShell {
+pub(crate) struct FakeShell {
     inner: Arc<Mutex<Inner>>,
 }
 

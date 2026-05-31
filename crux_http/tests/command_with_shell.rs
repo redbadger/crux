@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 mod shared {
     use crux_core::{
         Command,
@@ -8,7 +9,7 @@ mod shared {
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
-    pub struct App;
+    pub(crate) struct App;
 
     #[derive(Serialize, Deserialize)]
     pub enum Event {
@@ -95,7 +96,7 @@ mod shell {
         Effect(Effect),
     }
 
-    pub fn run(core: &Core<App>, event: Event) -> Vec<HttpRequest> {
+    pub(crate) fn run(core: &Core<App>, event: Event) -> Vec<HttpRequest> {
         let mut queue: VecDeque<Task> = VecDeque::new();
 
         queue.push_back(Task::Event(event));

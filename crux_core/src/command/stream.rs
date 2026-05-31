@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 // Command is an async Stream
 
 use std::future::Future;
@@ -53,19 +54,19 @@ where
 }
 
 /// A sink for a Command stream, sending all emitted effects and events into a pair of channels
-pub struct CommandSink<Effect, Event> {
+pub(crate) struct CommandSink<Effect, Event> {
     pub(crate) effects: Sender<Effect>,
     pub(crate) events: Sender<Event>,
 }
 
 impl<Effect, Event> CommandSink<Effect, Event> {
-    pub const fn new(effects: Sender<Effect>, events: Sender<Event>) -> Self {
+    pub(crate) const fn new(effects: Sender<Effect>, events: Sender<Event>) -> Self {
         Self { effects, events }
     }
 }
 
 #[derive(Debug, Error)]
-pub enum HostedCommandError {
+pub(crate) enum HostedCommandError {
     #[error("Cannot send effect to host")]
     CannotSendEffect,
     #[error("Cannot send event to host")]
@@ -104,7 +105,9 @@ impl<Effect, Event> Sink<CommandOutput<Effect, Event>> for CommandSink<Effect, E
     }
 }
 
-pub trait CommandStreamExt<Effect, Event>: Stream<Item = CommandOutput<Effect, Event>> {
+pub(crate) trait CommandStreamExt<Effect, Event>:
+    Stream<Item = CommandOutput<Effect, Event>>
+{
     /// Connect this command to a pair of effect and event channels
     ///
     /// This is useful if you need to multiplex several commands into the same stream of

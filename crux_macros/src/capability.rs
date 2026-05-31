@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 use darling::{FromDeriveInput, FromField, ToTokens, ast, util};
 use proc_macro_error::{OptionExt, abort};
 use proc_macro2::TokenStream;
@@ -49,7 +50,7 @@ impl ToTokens for CapabilityStructReceiver {
     }
 }
 
-pub fn capability_impl(input: &DeriveInput) -> TokenStream {
+pub(crate) fn capability_impl(input: &DeriveInput) -> TokenStream {
     let input = match CapabilityStructReceiver::from_derive_input(input) {
         Ok(v) => v,
         Err(e) => {

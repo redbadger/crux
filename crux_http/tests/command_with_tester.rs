@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 mod shared {
 
     use std::{cmp::max, collections::HashMap};
@@ -9,7 +10,7 @@ mod shared {
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
-    pub struct App;
+    pub(crate) struct App;
 
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
     pub enum Event {

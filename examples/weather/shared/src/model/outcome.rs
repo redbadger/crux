@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 //! State-machine plumbing shared by every nested model in the weather app.
 //!
 //! Each stage — `InitializingModel`, `OnboardModel`, `ActiveModel`, and the
@@ -26,7 +27,7 @@ use crate::effects::Effect;
 /// Returned inside an [`Outcome`], typically constructed indirectly via
 /// [`Outcome::continuing`] or [`Outcome::complete`].
 #[derive(Debug)]
-pub enum Status<S, T> {
+pub(crate) enum Status<S, T> {
     /// The state machine is still running; this is the updated state to
     /// assign back into the parent.
     Continue(S),
@@ -46,7 +47,7 @@ pub enum Status<S, T> {
 ///
 /// Use [`Started::map_event`] to lift the inner command's event type into
 /// a wider parent event before returning it from the parent's own logic.
-pub struct Started<S, Event> {
+pub(crate) struct Started<S, Event> {
     pub state: S,
     pub command: Command<Effect, Event>,
 }
@@ -102,7 +103,7 @@ impl<S, Event> Started<S, Event> {
 /// Construct with [`Outcome::continuing`] or [`Outcome::complete`]. Use
 /// [`Outcome::map_event`] to lift the inner command's event type before
 /// returning it from the parent's own update.
-pub struct Outcome<S, T, Event> {
+pub(crate) struct Outcome<S, T, Event> {
     pub status: Status<S, T>,
     pub command: Command<Effect, Event>,
 }
@@ -157,7 +158,7 @@ impl<S, T, Event> Outcome<S, T, Event> {
 /// after asserting the status variant. Carries the inner value alongside
 /// the command so tests can inspect either.
 #[cfg(test)]
-pub struct Asserted<V, Event> {
+pub(crate) struct Asserted<V, Event> {
     pub value: V,
     pub command: Command<Effect, Event>,
 }

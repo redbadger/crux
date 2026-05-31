@@ -1,3 +1,5 @@
+#![deny(clippy::pedantic)]
+
 mod capability;
 mod effect;
 mod export;

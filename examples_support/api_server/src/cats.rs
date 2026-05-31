@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 use axum::{Json, response::IntoResponse};
 use rand::seq::IteratorRandom;
 use serde::Serialize;
@@ -9,7 +10,7 @@ struct CatImage {
     pub href: String,
 }
 
-pub async fn get() -> impl IntoResponse {
+pub(crate) async fn get() -> impl IntoResponse {
     Json(CatImage {
         href: CATS
             .lines()

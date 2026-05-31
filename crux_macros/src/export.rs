@@ -1,5 +1,6 @@
 #![allow(clippy::needless_continue)] // needed until https://github.com/TedDriggs/darling/issues/399 is fixed
 #![allow(clippy::option_if_let_else)]
+#![allow(clippy::redundant_pub_crate)]
 use darling::{FromDeriveInput, FromField, ToTokens, ast, util};
 use proc_macro_error::OptionExt;
 use proc_macro2::TokenStream;
@@ -89,7 +90,7 @@ impl ToTokens for ExportStructReceiver {
     }
 }
 
-pub fn export_impl(input: &DeriveInput) -> TokenStream {
+pub(crate) fn export_impl(input: &DeriveInput) -> TokenStream {
     let input = match ExportStructReceiver::from_derive_input(input) {
         Ok(v) => v,
         Err(e) => {
