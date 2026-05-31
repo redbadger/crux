@@ -337,7 +337,8 @@ dependencies = [
 [[package]]
 name = "boltffi"
 version = "0.25.2"
-source = "git+https://github.com/boltffi/boltffi?tag=v0.25.2#7b15e969f180095ca0c8ab7083a65bd2ceff1dfa"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5662bb1904d8a0791e1e9c61610d1529b47c107b71d7f56a11d71c9de8bfff06"
 dependencies = [
  "boltffi_core",
  "boltffi_macros",
@@ -346,7 +347,8 @@ dependencies = [
 [[package]]
 name = "boltffi_core"
 version = "0.25.2"
-source = "git+https://github.com/boltffi/boltffi?tag=v0.25.2#7b15e969f180095ca0c8ab7083a65bd2ceff1dfa"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bffbb19cfaadaa61c77d8bd41eeafca02428706a16c624ad0c3debf300cd0cb3"
 dependencies = [
  "boltffi_macros",
  "url",
@@ -356,12 +358,14 @@ dependencies = [
 [[package]]
 name = "boltffi_ffi_rules"
 version = "0.25.2"
-source = "git+https://github.com/boltffi/boltffi?tag=v0.25.2#7b15e969f180095ca0c8ab7083a65bd2ceff1dfa"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d6063a40071db98255f369887c9927b09423709771fb8b4def5ff02c99394ae"
 
 [[package]]
 name = "boltffi_macros"
 version = "0.25.2"
-source = "git+https://github.com/boltffi/boltffi?tag=v0.25.2#7b15e969f180095ca0c8ab7083a65bd2ceff1dfa"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33e78b79cf977f97ebc3f7f2b0ae3526fe366851848f5e11781e10324a9939cc"
 dependencies = [
  "boltffi_ffi_rules",
  "proc-macro2",
@@ -2875,7 +2879,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand 2.4.1",
- "getrandom 0.4.2",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys",

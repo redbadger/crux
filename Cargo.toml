@@ -30,7 +30,7 @@ serde = "1.0"
 thiserror = "2.0"
 uniffi = "=0.29.4"
 uniffi_bindgen = "=0.29.4"
-boltffi = { git = "https://github.com/boltffi/boltffi", tag = "v0.25.2" }
+boltffi = "=0.25.2"
 
 [workspace.lints.clippy]
 pedantic = "warn"
