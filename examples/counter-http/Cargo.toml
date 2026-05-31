@@ -19,7 +19,7 @@ unsafe_code = "forbid"
 
 [workspace.dependencies]
 anyhow = "1.0.102"
-boltffi = "=0.25.0"
+boltffi = { git = "https://github.com/boltffi/boltffi", tag = "v0.25.2" }
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 # crux_core = "0.18.0"

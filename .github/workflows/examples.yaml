@@ -174,12 +174,8 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - uses: taiki-e/install-action@just
 
-      # TEMP: install from main until boltffi 0.25.2 — which bundles the Apple
-      # modulemap fix (boltffi/boltffi#375) and the C# namespace fix
-      # (boltffi/boltffi#372) — is released. Then revert to:
-      #   cargo install boltffi_cli --version '=0.25.2' --locked
       - name: Install BoltFFI CLI
-        run: cargo install --git https://github.com/boltffi/boltffi --branch main boltffi_cli
+        run: cargo install --git https://github.com/boltffi/boltffi --tag v0.25.2 --locked boltffi_cli
         env:
           RUSTFLAGS: ""
 
@@ -266,12 +262,8 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      # TEMP: pin to main until the C# namespace fix
-      # (boltffi/boltffi#371) is released. Revert to:
-      #   cargo install boltffi_cli --version '=0.25.2'
-      # once that release is out.
       - name: Install BoltFFI CLI
-        run: cargo install --git https://github.com/boltffi/boltffi --branch main boltffi_cli
+        run: cargo install --git https://github.com/boltffi/boltffi --tag v0.25.2 --locked boltffi_cli
         env:
           RUSTFLAGS: ""
 
@@ -321,12 +313,8 @@ jobs:
       - name: Install cargo-swift
         run: cargo install cargo-swift --version '=0.9'
 
-      # TEMP: install from main until boltffi 0.25.2 — which bundles the Apple
-      # modulemap fix (boltffi/boltffi#375) and the C# namespace fix
-      # (boltffi/boltffi#372) — is released. Then revert to:
-      #   cargo install boltffi_cli --version '=0.25.2' --locked
       - name: Install BoltFFI CLI
-        run: cargo install --git https://github.com/boltffi/boltffi --branch main boltffi_cli
+        run: cargo install --git https://github.com/boltffi/boltffi --tag v0.25.2 --locked boltffi_cli
         env:
           RUSTFLAGS: ""
 
@@ -372,12 +360,8 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      # TEMP: install from main until boltffi 0.25.2 — which bundles the Apple
-      # modulemap fix (boltffi/boltffi#375) and the C# namespace fix
-      # (boltffi/boltffi#372) — is released. Then revert to:
-      #   cargo install boltffi_cli --version '=0.25.2' --locked
       - name: Install BoltFFI CLI
-        run: cargo install --git https://github.com/boltffi/boltffi --branch main boltffi_cli
+        run: cargo install --git https://github.com/boltffi/boltffi --tag v0.25.2 --locked boltffi_cli
         env:
           RUSTFLAGS: ""
 

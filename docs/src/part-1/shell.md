@@ -68,7 +68,7 @@ codegen = [
 ]
 
 [dependencies]
-boltffi = "=0.25.0"
+boltffi = { git = "https://github.com/boltffi/boltffi", tag = "v0.25.2" }
 facet = "=0.44"
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }

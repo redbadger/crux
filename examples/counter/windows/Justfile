@@ -28,7 +28,7 @@ assert-windows:
 doctor: assert-windows
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     if (Get-Command cargo -ErrorAction SilentlyContinue) { Write-Host '  ✓ cargo' } else { Write-Host '  {{ style("error") }}✗ cargo{{ NORMAL }} — install with: https://rustup.rs'; exit 1 }
-    if (Get-Command boltffi -ErrorAction SilentlyContinue) { Write-Host '  ✓ boltffi' } else { Write-Host '  {{ style("error") }}✗ boltffi{{ NORMAL }} — install with: cargo install boltffi_cli --version ''=0.25.0'''; exit 1 }
+    if (Get-Command boltffi -ErrorAction SilentlyContinue) { Write-Host '  ✓ boltffi' } else { Write-Host '  {{ style("error") }}✗ boltffi{{ NORMAL }} — install with: cargo install --git https://github.com/boltffi/boltffi --tag v0.25.2 --locked boltffi_cli'; exit 1 }
     if (Get-Command dotnet -ErrorAction SilentlyContinue) { Write-Host '  ✓ dotnet' } else { Write-Host '  {{ style("error") }}✗ dotnet{{ NORMAL }} — install the .NET 10 SDK: https://dotnet.microsoft.com/download'; exit 1 }
     if (Test-Path {{ vswhere }}) { Write-Host '  ✓ Visual Studio (vswhere)' } else { Write-Host '  {{ style("error") }}✗ Visual Studio vswhere{{ NORMAL }} — install Visual Studio 2022+ with the Windows App SDK workload'; exit 1 }
     if ((rustup target list --installed) -match '^{{ rust_target }}$') { Write-Host '  ✓ {{ rust_target }}' } else { Write-Host '  {{ style("error") }}✗ {{ rust_target }}{{ NORMAL }} — install with: rustup target add {{ rust_target }}'; exit 1 }
