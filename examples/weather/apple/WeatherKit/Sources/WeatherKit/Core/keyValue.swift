@@ -1,7 +1,7 @@
 import App
 import Foundation
 
-private let logger = Log.kv
+private let logger = Log.keyValue
 
 extension Core {
     func resolveKeyValue(request: KeyValueOperation, requestId: UInt32) {

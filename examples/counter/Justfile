@@ -32,6 +32,15 @@ fix:
         just "$shell/fix"
     done
 
+# check formatting and lint in all shells
+[script('bash')]
+check:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/check:{{ NORMAL }}'
+        just "$shell/check"
+    done
+
 # clean build artefacts in all shells
 [script('bash')]
 clean:

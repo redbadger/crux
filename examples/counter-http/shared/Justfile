@@ -20,8 +20,8 @@ fix:
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt -- --check
-    cargo clippy -p shared -- -D warnings
-    cargo clippy -p shared --target wasm32-unknown-unknown -- -D warnings
+    cargo clippy -p shared -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+    cargo clippy -p shared --target wasm32-unknown-unknown -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
 # build the shared library
 build:

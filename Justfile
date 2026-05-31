@@ -8,12 +8,13 @@ build:
     @echo '{{ style("command") }}build:{{ NORMAL }}'
     cargo build --all-features
 
-# Check formatting, types, and linting in the root workspace
+# Check formatting, types, and linting in the root workspace and all examples
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt --all --check
     cargo check --all-features
     cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+    just examples/check
 
 # Clean build artefacts in the root workspace and all examples
 clean:

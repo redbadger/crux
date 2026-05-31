@@ -61,7 +61,7 @@ struct HomeView: View {
         switch selection {
         case .current:
             currentLocationDetail
-        case let .favorite(location):
+        case .favorite(let location):
             if let favorite = model.favorites.first(where: { $0.location == location }) {
                 favoriteDetail(favorite)
             } else {
@@ -83,7 +83,7 @@ struct HomeView: View {
             StatusCard(message: "Getting your location...")
         case .fetchingWeather:
             LoadingCard()
-        case let .fetched(weatherData):
+        case .fetched(let weatherData):
             ScrollView {
                 WeatherCard(weatherData: weatherData)
             }
@@ -99,7 +99,7 @@ struct HomeView: View {
         case .fetching:
             LoadingCard()
                 .navigationTitle(favorite.name)
-            case let .fetched(weatherData):
+        case .fetched(let weatherData):
             ScrollView {
                 WeatherCard(weatherData: weatherData)
             }
@@ -107,21 +107,23 @@ struct HomeView: View {
         case .failed:
             StatusCard(message: "Failed to load weather", icon: "exclamationmark.triangle")
                 .navigationTitle(favorite.name)
-            }
+        }
     }
 }
 // ANCHOR_END: home_view
 
 #Preview {
-    HomeView(model: HomeViewModel(
-        localWeather: .fetched(previewWeatherResponse),
-        favorites: [
-            FavoriteWeatherViewModel(
-                name: "Paris",
-                location: Location(lat: 48.8566, lon: 2.3522),
-                weather: .fetched(previewWeatherResponse)
-            )
-        ]
-    ))
+    HomeView(
+        model: HomeViewModel(
+            localWeather: .fetched(previewWeatherResponse),
+            favorites: [
+                FavoriteWeatherViewModel(
+                    name: "Paris",
+                    location: Location(lat: 48.8566, lon: 2.3522),
+                    weather: .fetched(previewWeatherResponse)
+                )
+            ]
+        )
+    )
     .previewEnvironment()
 }

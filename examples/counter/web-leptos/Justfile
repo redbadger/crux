@@ -20,7 +20,7 @@ fix:
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt -- --check
-    cargo clippy --target wasm32-unknown-unknown -- -D warnings
+    cargo clippy --target wasm32-unknown-unknown -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
 # build the project
 build:
