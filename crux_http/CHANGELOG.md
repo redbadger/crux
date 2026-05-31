@@ -8,6 +8,20 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.18.0](https://github.com/redbadger/crux/compare/crux_http-v0.17.0...crux_http-v0.18.0) - 2026-05-31
+
+### 🚀 Features
+
+- **Improved testing ergonomics**: `FakeShell::provide_response` and
+  `FakeShell::take_requests_received` now take `&self` instead of `&mut self`,
+  making test setup less fiddly.
+
+### ⚙️ Miscellaneous Tasks
+
+- Align with `crux_core` 0.19.0.
+- Internal clippy nursery improvements.
+- Dependency updates (`web-sys` 0.3.99).
+
 ## [0.17.0](https://github.com/redbadger/crux/compare/crux_http-v0.16.0...crux_http-v0.17.0) - 2026-05-07
 
 ### ⚙️ Miscellaneous Tasks

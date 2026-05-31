@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.0](https://github.com/redbadger/crux/compare/crux_macros-v0.9.0...crux_macros-v0.10.0) - 2026-05-31
+
+### ⚙️ Miscellaneous Tasks
+
+- Align with `crux_core` 0.19.0. No public API changes.
+- Internal clippy nursery improvements.
+
 ## [0.9.0](https://github.com/redbadger/crux/compare/crux_macros-v0.8.0...crux_macros-v0.9.0) - 2026-05-07
 
 ### 🚀 Features

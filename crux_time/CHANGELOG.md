@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.17.0](https://github.com/redbadger/crux/compare/crux_time-v0.16.0...crux_time-v0.17.0) - 2026-05-31
+
+### ⚙️ Miscellaneous Tasks
+
+- Align with `crux_core` 0.19.0. No public API changes.
+- Internal clippy nursery improvements.
+- Dependency updates.
+
 ## [0.16.0](https://github.com/redbadger/crux/compare/crux_time-v0.15.0...crux_time-v0.16.0) - 2026-05-07
 
 ### ⚙️ Miscellaneous Tasks

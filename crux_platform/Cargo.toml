@@ -11,6 +11,6 @@ keywords.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-crux_core = { version = "0.18.0", path = "../crux_core" }
+crux_core = { version = "0.19.0", path = "../crux_core" }
 facet.workspace = true
 serde = { workspace = true, features = ["derive"] }
