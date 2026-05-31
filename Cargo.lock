@@ -528,7 +528,7 @@ dependencies = [
 
 [[package]]
 name = "crux_platform"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "crux_core",
  "facet 0.44.5",

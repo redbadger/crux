@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0](https://github.com/redbadger/crux/compare/crux_platform-v0.9.0...crux_platform-v0.10.0) - 2026-05-31
+
+### ⚠️ Deprecated
+
+- **This crate is deprecated and will no longer be maintained.**
+  The `Platform` capability never did much, and it is straightforward to copy the
+  small amount of code into your own project as a custom capability. See the README
+  for a drop-in migration snippet.
+- All public items (`Platform`, `PlatformRequest`, `PlatformResponse`) are now
+  marked `#[deprecated]` so you will receive compiler warnings when using this crate.
+
 ## [0.9.0](https://github.com/redbadger/crux/compare/crux_platform-v0.8.0...crux_platform-v0.9.0) - 2026-05-07
 
 ### ⚙️ Miscellaneous Tasks
