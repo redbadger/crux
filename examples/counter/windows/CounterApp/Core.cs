@@ -4,20 +4,20 @@ using CounterApp.Shared;
 
 namespace CounterApp;
 
-// Thin, disposable wrapper over the Rust core's FFI surface. Owns the native
-// handle via CounterCoreHandle; holds no observable state (see CounterViewModel).
+// Thin, disposable wrapper over BoltFFI's generated Rust core bindings. Holds
+// no observable state (see CounterViewModel).
 public sealed class Core : IDisposable
 {
-    private readonly CounterCoreHandle handle = CounterCoreHandle.Create();
+    private readonly CoreFFI ffi = new();
 
     public ViewModel View() =>
-        ViewModel.BincodeDeserialize(CoreFfi.View(handle));
+        ViewModel.BincodeDeserialize(ffi.View());
 
     public IReadOnlyList<Request> Update(Event @event) =>
-        Requests.BincodeDeserialize(CoreFfi.Update(handle, EventBincode.BincodeSerialize(@event))).Value;
+        Requests.BincodeDeserialize(ffi.UpdateBytes(EventBincode.BincodeSerialize(@event))).Value;
 
     public IReadOnlyList<Request> Resolve(uint id, byte[] data) =>
-        Requests.BincodeDeserialize(CoreFfi.Resolve(handle, id, data)).Value;
+        Requests.BincodeDeserialize(ffi.ResolveBytes(id, data)).Value;
 
-    public void Dispose() => handle.Dispose();
+    public void Dispose() => ffi.Dispose();
 }

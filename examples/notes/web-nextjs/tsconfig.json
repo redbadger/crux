@@ -7,6 +7,7 @@
       "esnext"
     ],
     "allowJs": true,
+    "ignoreDeprecations": "6.0",
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
@@ -37,6 +38,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "generated/pkg/**/*.ts"
   ]
 }

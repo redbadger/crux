@@ -50,7 +50,8 @@ uuid = { version = "1.23.1", features = ["serde", "v4"] }
 
 [features]
 default = ["crux_macros"]
-bindgen = ["dep:camino", "dep:cargo_metadata", "dep:uniffi_bindgen"]
+# Deprecated compatibility alias. New binding generation should use BoltFFI directly.
+bindgen = ["uniffi_compat_bindgen"]
 facet_typegen = ["crux_macros/facet_typegen", "dep:facet_generate", "dep:log"]
 testing = []
 typegen = [
@@ -59,3 +60,4 @@ typegen = [
     "dep:serde-reflection",
     "dep:include_dir",
 ]
+uniffi_compat_bindgen = ["dep:camino", "dep:cargo_metadata", "dep:uniffi_bindgen"]

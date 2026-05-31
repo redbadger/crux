@@ -5,7 +5,7 @@ import Shared
 private class EffectHandler: CruxShell, @unchecked Sendable {
     public var handler: ((Data) -> Void)?
 
-    func processEffects(_ bytes: Data) {
+    func processEffects(bytes: Data) {
         handler?(bytes)
     }
 }
@@ -15,11 +15,11 @@ class Core: ObservableObject {
     @Published var view: ViewModel
 
     private var handler: EffectHandler
-    private var core: CoreFfi
+    private var core: CoreFFI
 
     init() {
         self.handler = EffectHandler()
-        self.core = CoreFfi(handler)
+        self.core = CoreFFI(shell: handler)
         // swiftlint:disable:next force_try
         self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
 
@@ -34,7 +34,7 @@ class Core: ObservableObject {
 
     func update(_ event: Event) {
         // swiftlint:disable:next force_try
-        let effects = [UInt8](core.update(Data(try! event.bincodeSerialize())))
+        let effects = [UInt8](core.update(data: Data(try! event.bincodeSerialize())))
 
         // swiftlint:disable:next force_try
         let requests = try! Requests.bincodeDeserialize(input: effects).value
@@ -56,8 +56,8 @@ class Core: ObservableObject {
                 // swiftlint:disable force_try
                 let effects = [UInt8](
                     self.core.resolve(
-                        request.id,
-                        Data(try! result.bincodeSerialize())
+                        effectId: request.id,
+                        data: Data(try! result.bincodeSerialize())
                     ))
                 let requests = try! Requests.bincodeDeserialize(input: effects).value
                 // swiftlint:enable force_try
@@ -120,8 +120,8 @@ class Core: ObservableObject {
                     // swiftlint:disable force_try
                     let effects = [UInt8](
                         self.core.resolve(
-                            requestId,
-                            Data(try! response.bincodeSerialize())
+                            effectId: requestId,
+                            data: Data(try! response.bincodeSerialize())
                         ))
                     let requests = try! Requests.bincodeDeserialize(input: effects).value
                     // swiftlint:enable force_try
@@ -135,8 +135,8 @@ class Core: ObservableObject {
             // swiftlint:disable force_try
             let effects = [UInt8](
                 self.core.resolve(
-                    requestId,
-                    Data(try! done.bincodeSerialize())
+                    effectId: requestId,
+                    data: Data(try! done.bincodeSerialize())
                 ))
             let requests = try! Requests.bincodeDeserialize(input: effects).value
             // swiftlint:enable force_try

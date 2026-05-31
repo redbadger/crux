@@ -1,0 +1,5 @@
+[targets.wasm]
+output = "../web-react-router/generated"
+
+[targets.wasm.typescript]
+output = "../web-react-router/generated/pkg"

@@ -6,22 +6,22 @@ import os
 
 private let logger = Logger(subsystem: "com.crux.examples.weather", category: "live-bridge")
 
-/// Wraps `CoreFfi` to communicate with the Rust core. Handles bincode
+/// Wraps `CoreFFI` to communicate with the Rust core. Handles bincode
 /// serialization/deserialization so that `Core` works with Swift types only.
 /// This lives in the app target (not WeatherKit) so that SwiftUI previews
 /// don't need to load the Rust framework.
 struct LiveBridge: CoreBridge {
-    private let ffi: CoreFfi
+    private let ffi: CoreFFI
 
     init() {
-        ffi = CoreFfi()
+        ffi = CoreFFI()
     }
 
     func processEvent(_ event: Event) -> [Request] {
         let eventBytes = try! event.bincodeSerialize()  // swiftlint:disable:this force_try
         logger.debug("sending \(eventBytes.count) event bytes")
 
-        let effects = [UInt8](ffi.update(Data(eventBytes)))
+        let effects = [UInt8](ffi.update(data: Data(eventBytes)))
         logger.debug("received \(effects.count) effect bytes")
 
         return deserializeRequests(effects)
@@ -30,7 +30,7 @@ struct LiveBridge: CoreBridge {
     func resolve(requestId: UInt32, responseBytes: [UInt8]) -> [Request] {
         logger.debug("resolve: id=\(requestId) sending \(responseBytes.count) bytes")
 
-        let effects = [UInt8](ffi.resolve(requestId, Data(responseBytes)))
+        let effects = [UInt8](ffi.resolve(id: requestId, data: Data(responseBytes)))
         return deserializeRequests(effects)
     }
 

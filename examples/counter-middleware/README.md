@@ -22,9 +22,9 @@ This demonstrates:
 
 This example has two FFI bridges that wire up the core differently:
 
-- **Native (uniffi)** — The `RngMiddleware` intercepts `Random` effects and
+- **BoltFFI native shells** — The `RngMiddleware` intercepts `Random` effects and
   handles them entirely in Rust. The shell never sees them.
-- **Web (wasm_bindgen)** — Middleware can't run in wasm (it uses
+- **Web compatibility shell** — Middleware can't run in the current wasm path (it uses
   `std::thread::spawn`), so `Random` effects pass through to the shell, which
   handles them in JavaScript. This demonstrates the app working, but not the
   middleware feature itself.

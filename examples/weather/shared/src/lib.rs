@@ -2,9 +2,8 @@
 //!
 //! This crate is the portable core of the app: a pure `update`/`view` pipeline
 //! built on [Crux](https://crux-rs.github.io/). The native and web shells
-//! (`apple/`, `android/`, `web-leptos/`, `web-nextjs/`) drive it through
-//! `CoreFFI` (behind `uniffi` or `wasm_bindgen` features) and render the
-//! resulting [`ViewModel`].
+//! (`apple/`, `android/`, `web-leptos/`, `web-nextjs/`) drive it through the
+//! BoltFFI-generated `CoreFFI` bindings and render the resulting [`ViewModel`].
 //!
 //! # Where to start
 //!
@@ -29,7 +28,6 @@
 #![allow(clippy::missing_panics_doc)]
 pub mod app;
 pub mod effects;
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 mod ffi;
 pub mod model;
 pub mod view;
@@ -42,13 +40,4 @@ pub use effects::Effect;
 pub use model::Event;
 pub use view::ViewModel;
 
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
 pub use ffi::CoreFFI;
-
-#[cfg(feature = "uniffi")]
-const _: () = assert!(
-    uniffi::check_compatible_version("0.29.4"),
-    "please use uniffi v0.29.4"
-);
-#[cfg(feature = "uniffi")]
-uniffi::setup_scaffolding!();

@@ -3,24 +3,43 @@
 ## Why type generation?
 
 Declaring every type across an FFI boundary is painful. Complex types
-like nested enums, generics, and rich view models are difficult or
-impossible to represent directly in tools like UniFFI or
-`wasm-bindgen`. And even when you _can_ declare them, maintaining the
+like nested enums, generics, and rich view models are awkward to expose
+directly through general-purpose FFI binding tools. And even when you
+_can_ declare them, maintaining the
 declarations by hand as your app evolves is tedious and error-prone.
 
 Crux sidesteps this problem by keeping the FFI surface as small as
 possible. The entire core-shell interface is just three methods —
 `update`, `resolve`, and `view` — and all data crosses the boundary as
-serialized byte arrays (using [Bincode](https://docs.rs/bincode)). The
+serialized byte arrays (using [`bincode`](https://docs.rs/bincode)). The
 shell doesn't need to know the Rust types at the FFI level at all.
 
-But the shell _does_ need to serialize events and deserialize effects
-and view models on its side of the boundary. For that, it needs
-equivalent type definitions in Swift, Kotlin, or TypeScript — along
-with the matching serialization code. This is what type generation
-provides: it inspects your Rust types and generates the corresponding
-foreign types and their Bincode serialization implementations
-automatically.
+BoltFFI gives Crux the bindings for that byte-oriented API, but it
+doesn't remove the need for generated shell types. Two constraints
+matter here:
+
+- Shell types should be immutable value types. Rust-backed FFI objects
+  can make ownership and mutation part of the UI boundary; immutability
+  is still being worked through in
+  [boltffi#292](https://github.com/boltffi/boltffi/issues/292).
+- Shells need to connect view models to UI-native state mechanisms:
+  Swift `@Observable`, Kotlin `StateFlow`, TypeScript framework state
+  such as React `useState`, and C#
+  `INotifyPropertyChanged`/`ObservableObject`. Those APIs expect native
+  values or native observable wrappers, not Rust-backed objects.
+
+Crux is still exploring where those responsibilities should sit, and
+whether [`difficient`](https://github.com/redbadger/difficient/tree/main)
+can reduce the payload over the wire by sending changes instead of
+whole values. For now, type generation is the stable layer that gives
+shells native value types while the FFI stays small.
+
+That generated layer has a concrete job: the shell must serialize
+events and deserialize effects and view models on its side of the
+boundary. To do that, it needs equivalent type definitions in Swift,
+Kotlin, TypeScript, or C#, along with the matching serialization code.
+Type generation inspects your Rust types and generates those foreign
+types and their `bincode` serialization implementations automatically.
 
 ## How it works
 
@@ -30,7 +49,7 @@ introspected at build time to discover their shape — fields, variants,
 generic parameters. The
 [facet-generate](https://github.com/redbadger/facet-generate) crate
 uses that reflection data to generate equivalent types (and their
-serialization code) in Swift, Kotlin, and TypeScript.
+serialization code) in Swift, Kotlin, TypeScript, and C#.
 
 The process has three parts:
 
@@ -114,17 +133,15 @@ The key steps are:
 3. **`Config::builder(name, &output_dir)`** — configures the output.
    The `name` parameter is the package/module name (e.g. `"App"` for
    Swift, `"com.crux.examples.counter"` for Kotlin, `"app"` for
-   TypeScript).
-4. **`.add_extensions()`** — includes helper code like `Requests.swift`
-   that makes it easier to work with the generated types.
-5. **`.add_runtimes()`** — includes the serialization runtime (Serde
-   and Bincode implementations in the target language).
-6. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
-   **`.typescript(&config)?`** — generates the code.
+   TypeScript, `"CounterApp.Shared"` for C#).
+4. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
+   **`.typescript(&config)?`** / **`.csharp(&config)?`** — generates
+   the code, including the target-language serialization runtime for
+   `bincode`.
 
-The binary also handles UniFFI binding generation for Kotlin (the
-`bindgen` call), which produces the Kotlin bindings for the Rust FFI
-layer.
+BoltFFI binding generation is run separately by the shell build recipes with
+`boltffi pack ...`. The codegen binary is intentionally focused on Crux app
+types.
 
 ### Cargo.toml setup
 
@@ -200,12 +217,11 @@ For each target language, the codegen produces:
 - **Type definitions** — enums, structs, and their serialization code,
   matching the shape of your Rust types. For example, `Event`,
   `Effect`, `ViewModel`, and any operation types.
-- **Serialization runtime** — Serde and Bincode implementations in the
+- **Serialization runtime** — Serde and `bincode` implementations in the
   target language, so the shell can serialize events and deserialize
   effects and view models.
 - **Helper extensions** — like `Requests.swift`, which provides
   convenience methods for working with effect requests.
 
-For Swift, the output is a Swift Package. For Kotlin, it's a set of
-source files alongside UniFFI bindings. For TypeScript, it's an npm
-package.
+For Swift, Kotlin, TypeScript, and C#, this typegen output sits beside the
+BoltFFI-generated binding package for the byte-oriented core API.

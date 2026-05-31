@@ -55,6 +55,8 @@ jobs:
           mdbook-version: "0.4.52"
           use-linkcheck: true
           use-admonish: true
+          use-mermaid: true
+          mermaid-version: "~0.14.0"
 
       - name: Show mdbook version
         run: mdbook --version
@@ -64,6 +66,9 @@ jobs:
 
       - name: Show admonish version
         run: mdbook-admonish --version
+
+      - name: Show mermaid version
+        run: mdbook-mermaid --version
 
       - name: Setup Pages
         id: pages

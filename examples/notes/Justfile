@@ -33,10 +33,13 @@ fix:
 # clean build artefacts in all shells
 [script('bash')]
 clean:
+    set -euo pipefail
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/clean:{{ NORMAL }}'
         just "$shell/clean"
     done
+    cargo clean
+    rm -rf target
 
 # update pnpm dependencies in all pnpm shells
 [script('bash')]

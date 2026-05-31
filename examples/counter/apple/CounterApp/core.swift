@@ -6,10 +6,10 @@ import Shared
 class Core: ObservableObject {
     @Published var view: ViewModel
 
-    private var core: CoreFfi
+    private var core: CoreFFI
 
     init() {
-        self.core = CoreFfi()
+        self.core = CoreFFI()
         // swiftlint:disable:next force_try
         self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
     }

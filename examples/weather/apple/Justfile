@@ -11,7 +11,7 @@ doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-apple
 
-# installs Rust targets required for Apple packaging with cargo-swift
+# installs Rust targets required for Apple packaging with BoltFFI
 install-targets:
     @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
     TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(rustup show active-toolchain | awk '{print $1}')}" ; \
@@ -43,26 +43,12 @@ typegen:
             --language swift \
             --output-dir generated
 
-# builds the shared library as a Swift package using cargo-swift
+# builds the shared library as a Swift package using BoltFFI
 [working-directory('../shared')]
 package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
-    cargo swift --version | grep -q '0.9.0'
-    cargo swift package \
-        --name Shared \
-        --platforms ios macos \
-        --lib-type static \
-        --features uniffi
-    rm -rf generated
-    mkdir -p ../apple/generated/Shared
-    cp -r Shared/* ../apple/generated/Shared/
-    rm -rf Shared
-    # Work around cargo-swift 0.9.0 placing headers one level too deep
-    # (Info.plist declares HeadersPath = Headers, but cargo-swift puts them in Headers/RustFramework/)
-    for slice in ../apple/generated/Shared/RustFramework.xcframework/ios-arm64 ../apple/generated/Shared/RustFramework.xcframework/ios-arm64_x86_64-simulator ../apple/generated/Shared/RustFramework.xcframework/macos-arm64_x86_64; do \
-        mv "$slice"/Headers/RustFramework/* "$slice"/Headers/; \
-        rmdir "$slice"/Headers/RustFramework; \
-    done
+    rm -rf ../apple/generated/Shared
+    boltffi pack apple
 
 # rebuilds the Xcode project from project.yml
 generate-project:

@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CounterApp", "CounterApp\Co
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "generated", "generated", "{10872A52-0024-0064-E5E9-275657532B83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CounterApp.Shared", "generated\CounterApp.Shared.csproj", "{16CEB229-6C13-45D1-B286-647E80C653B6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CounterApp.Shared", "generated\types\CounterApp.Shared.csproj", "{16CEB229-6C13-45D1-B286-647E80C653B6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

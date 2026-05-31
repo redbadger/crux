@@ -44,6 +44,8 @@ the Core's public API.
 In our case it will look as follows:
 
 ```rust,noplayground
+use serde::{Deserialize, Serialize};
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Event {
     Increment,

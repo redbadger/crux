@@ -96,8 +96,8 @@ Note the `crate-type` in the `[lib]` section. This is in preparation for linking
 shells:
 
 - `lib` is the default rust library when linking into a rust binary
-- `staticlib` is a static library (`libshared.a`) for use with iOS apps
-- `cdylib` is a C-ABI dynamic library (`libshared.so`) for use with JNA in an Android app
+- `staticlib` is a static library (`libshared.a`) for use with Apple apps
+- `cdylib` is a C-ABI dynamic library (`libshared.so`) for use with Android and other native shells
 
 ### The basic files
 

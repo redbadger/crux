@@ -57,7 +57,7 @@ graph TB
 shared/src/
 ├── app.rs                          # App trait impl — delegates to Model
 ├── lib.rs                          # Module root & re-exports
-├── ffi.rs                          # CoreFFI bridge (uniffi + wasm_bindgen)
+├── ffi.rs                          # Byte-oriented CoreFFI bridge exported with BoltFFI
 ├── bin/codegen.rs                  # Type generation binary (facet_typegen)
 ├── model/
 │   ├── mod.rs                      # Top-level Model enum & Event enum, master dispatcher
@@ -107,7 +107,7 @@ apple/
 ├── WeatherApp/
 │   ├── WeatherApp.swift            # @main entry point — inits Core, sends Start event
 │   ├── ContentView.swift           # Root view — switches on ViewModel state
-│   ├── LiveBridge.swift            # CoreFfi wrapper — bincode serialization boundary
+│   ├── LiveBridge.swift            # CoreFFI wrapper — bincode serialization boundary
 │   ├── Info-iOS.plist
 │   └── Info-macOS.plist
 └── WeatherKit/                     # Swift package with all views + effect handlers

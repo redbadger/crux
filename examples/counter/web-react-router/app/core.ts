@@ -1,9 +1,12 @@
 import type { Dispatch, SetStateAction } from "react";
 import { CoreFFI } from "shared";
+import * as sharedWasm from "shared";
 import type { Effect, Event } from "shared_types/app";
 import { EffectVariantRender, Request, ViewModel } from "shared_types/app";
 import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
-import init_core from "shared/shared";
+
+const wasmInitialized = (sharedWasm as unknown as { initialized: Promise<void> })
+  .initialized;
 
 export class Core {
   core: CoreFFI | null = null;
@@ -21,11 +24,11 @@ export class Core {
     }
 
     if (!this.initializing) {
-      const load = shouldLoad ? init_core() : Promise.resolve();
+      const load = shouldLoad ? wasmInitialized : Promise.resolve();
 
       this.initializing = load
         .then(() => {
-          this.core = new CoreFFI();
+          this.core = CoreFFI.new();
           this.setState(this.view());
         })
         .catch((error) => {
@@ -69,8 +72,8 @@ export class Core {
   }
 }
 
-function deserializeRequests(bytes: Uint8Array): Request[] {
-  const deserializer = new BincodeDeserializer(bytes);
+function deserializeRequests(bytes: Uint8Array | number[]): Request[] {
+  const deserializer = new BincodeDeserializer(asBytes(bytes));
   const len = deserializer.deserializeLen();
   const requests: Request[] = [];
   for (let i = 0; i < len; i++) {
@@ -80,6 +83,10 @@ function deserializeRequests(bytes: Uint8Array): Request[] {
   return requests;
 }
 
-function deserializeView(bytes: Uint8Array): ViewModel {
-  return ViewModel.deserialize(new BincodeDeserializer(bytes));
+function deserializeView(bytes: Uint8Array | number[]): ViewModel {
+  return ViewModel.deserialize(new BincodeDeserializer(asBytes(bytes)));
+}
+
+function asBytes(bytes: Uint8Array | number[]): Uint8Array {
+  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
 }

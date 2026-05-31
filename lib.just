@@ -53,7 +53,7 @@ _check-java-version:
 [no-cd]
 check-apple:
     @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool cargo-swift "cargo install cargo-swift --version '=0.9'"
+    @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.25.2' --locked"
     @just lib::check-tool xcodegen "brew install xcodegen"
     @just lib::check-tool xcodebuild "install Xcode from the App Store"
     @just lib::check-tool xcrun "xcode-select --install"
@@ -66,6 +66,7 @@ check-apple:
 [no-cd]
 check-windows:
     @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.25.2' --locked"
     @just lib::check-tool dotnet "install the .NET 10 SDK: https://dotnet.microsoft.com/download"
     @just lib::_check-vswhere
     @just lib::check-rust-target x86_64-pc-windows-msvc
@@ -84,6 +85,7 @@ _check-vswhere:
 [no-cd]
 check-android:
     @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.25.2' --locked"
     @just lib::check-tool rustup "https://rustup.rs"
     @just lib::check-tool java "install JDK 17+"
     @just lib::_check-java-version
@@ -92,11 +94,12 @@ check-android:
     @just lib::check-rust-target aarch64-linux-android
     @just lib::check-rust-target x86_64-linux-android
 
-# Check tools for web shells using wasm-pack (nextjs, react-router)
+# Check tools for web shells using BoltFFI WASM packages (nextjs, react-router)
 [no-cd]
 check-web-wasm:
     @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool wasm-pack "cargo install wasm-pack"
+    @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.25.2' --locked"
+    @just lib::check-tool wasm-opt "install Binaryen: brew install binaryen"
     @just lib::check-tool node "https://nodejs.org"
     @just lib::check-tool pnpm "npm install -g pnpm"
     @just lib::check-rust-target wasm32-unknown-unknown
@@ -124,3 +127,8 @@ open-android-studio:
 check-shared:
     @just lib::check-tool cargo "https://rustup.rs"
     @just lib::check-tool cargo-nextest "cargo install cargo-nextest"
+
+# Include BoltFFI's Node entrypoint files when pnpm packs the generated local package.
+[no-cd]
+fix-boltffi-wasm-package package_json:
+    node -e "const fs = require('node:fs'); const path = process.argv[1]; const pkg = JSON.parse(fs.readFileSync(path, 'utf8')); const files = new Set(pkg.files ?? []); for (const file of ['shared_node.js', 'shared_node.d.ts', 'shared_node.js.map']) files.add(file); pkg.files = [...files]; fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');" {{ package_json }}

@@ -1,3 +1,5 @@
+#![allow(clippy::used_underscore_items)]
+
 use crux_core::{
     Core,
     bridge::{Bridge, EffectId},
@@ -6,8 +8,6 @@ use crux_core::{
 use crate::Counter;
 
 /// The main interface used by the shell
-#[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
-#[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct CoreFFI {
     core: Bridge<Counter>,
 }
@@ -18,14 +18,8 @@ impl Default for CoreFFI {
     }
 }
 
-#[cfg_attr(feature = "uniffi", uniffi::export)]
-#[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
+#[boltffi::export]
 impl CoreFFI {
-    #[cfg_attr(feature = "uniffi", uniffi::constructor)]
-    #[cfg_attr(
-        feature = "wasm_bindgen",
-        wasm_bindgen::prelude::wasm_bindgen(constructor)
-    )]
     #[must_use]
     pub fn new() -> Self {
         Self {

@@ -4,7 +4,7 @@ These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
 
 ```admonish
-This walk-through assumes you have already added the `shared` and `shared_types` libraries to your repo, as described in [Shared core and types](../../part-1/shell.md).
+This walk-through assumes you have already added the `shared` library to your repo, as described in [Shared core and types](../../part-1/shell.md).
 ```
 
 ```admonish info
@@ -58,7 +58,7 @@ project's `Cargo.toml`.
 ```admonish example
 There is slightly more advanced [example](https://github.com/redbadger/crux/tree/master/examples/counter) of a Dioxus app in the Crux repository.
 
-However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter), which has `shared` and `shared_types` libraries that will work with the following example code.
+However, we will use the [simple counter example](https://github.com/redbadger/crux/tree/master/examples/counter), which has a `shared` library that will work with the following example code.
 ```
 
 ### Simple counter example

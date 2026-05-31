@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### ⚠️ Deprecated
+
+- **UniFFI compatibility bindgen**: `crux_core::bindgen` and the `bindgen` /
+  `uniffi_compat_bindgen` features are deprecated from `0.19.0`. Use BoltFFI's
+  package and generate commands instead.
+
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_core-v0.17.0...crux_core-v0.18.0) - 2026-05-07
 
 ### 🚀 Features

@@ -479,6 +479,7 @@ mod tests {
         );
     }
 
+    // ANCHOR: random_test
     #[test]
     fn random_change() {
         let app = Counter;
@@ -496,6 +497,7 @@ mod tests {
 
         let event = cmd.events().next().unwrap();
         assert_eq!(event, Event::UpdateBy(-2));
+        // ANCHOR_END: random_test
 
         let mut cmd = app.update(event, &mut model);
 

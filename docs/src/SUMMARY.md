@@ -10,7 +10,7 @@
 1. [Testing](./part-1/testing.md)
 1. [The shell](./part-1/shell.md)
    1. [iOS/macOS](./part-1/shell/apple/index.md)
-   1. [Android](./part-1/shell/android/android.md)
+   1. [Android](./part-1/shell/android/index.md)
    1. [React](./part-1/shell/web/react.md)
    1. [Leptos](./part-1/shell/web/leptos.md)
 

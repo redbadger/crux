@@ -115,8 +115,8 @@ excellent DX expected from a mature framework.
 
 Below is a list of some of the things we know we want to do before 1.0:
 
-- Better code generation with additional features, and support for more languages (e.g. C#, Dart, even C++...)
-  and in turn more Shells (e.g. .NET, Flutter) which will also enable Desktop apps for Windows
+- Better code generation with additional features, support for more languages
+  (e.g. Dart or C++), and in turn more Shells (e.g. Flutter)
 - Improved documentation, code examples, and example apps for newcomers
 - Improved onboarding experience, with less boilerplate code that end users have
   to write or copy from an example

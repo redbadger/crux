@@ -1,4 +1,4 @@
-target
+target/
 .vscode
 .bacon-locations
 *.xcodeproj

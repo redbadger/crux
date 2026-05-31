@@ -183,7 +183,11 @@ mod core;
 pub use capabilities::*;
 pub use command::Command;
 pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
-#[cfg(feature = "bindgen")]
+#[cfg(feature = "uniffi_compat_bindgen")]
+#[deprecated(
+    since = "0.19.0",
+    note = "UniFFI bindgen support is deprecated; use BoltFFI package/generate commands instead"
+)]
 pub mod bindgen;
 #[cfg(feature = "default")]
 pub use crux_macros as macros;

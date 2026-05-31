@@ -2,7 +2,7 @@ mod lib '../../lib.just'
 
 default: dev
 
-common := "shared Android web-leptos web-nextjs"
+common := "shared android web-leptos web-nextjs"
 shells := if os() == "macos" { common + " apple" } else { common }
 
 # checks required tools across all shells
@@ -34,10 +34,13 @@ fix:
 # clean build artefacts in all shells
 [script('bash')]
 clean:
+    set -euo pipefail
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/clean:{{ NORMAL }}'
         just "$shell/clean"
     done
+    cargo clean
+    rm -rf target
 
 # update pnpm dependencies in all pnpm shells
 [script('bash')]

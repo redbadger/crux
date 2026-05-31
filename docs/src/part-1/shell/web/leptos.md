@@ -20,6 +20,23 @@ However, a similar setup would work for other
 frameworks that compile to WebAssembly.
 ```
 
+```mermaid
+flowchart TD
+    subgraph shared["shared/ (Rust crate)"]
+        app_rs["`app.rs
+App · Event · Effect · ViewModel`"]
+    end
+
+    shared -->|"Cargo.toml dependency (no codegen)"| shell
+
+    subgraph shell["Rust web shell crate"]
+        src_rs["uses shared types natively (no FFI or serialization needed)"]
+    end
+
+    shell -->|"trunk build → WASM"| dist["`dist/
+browser-ready app`"]
+```
+
 ## Create a Leptos App
 
 Our Leptos app is just a new Rust project, which we
@@ -40,7 +57,7 @@ members = ["shared", "web-leptos"]
 
 Now we can `cd` into the `web-leptos` directory and
 start fleshing out our project. Let's add some
-dependencies to `shared/Cargo.toml`.
+dependencies to `web-leptos/Cargo.toml`.
 
 ```toml
 {{#include ../../../../../examples/counter/web-leptos/Cargo.toml}}

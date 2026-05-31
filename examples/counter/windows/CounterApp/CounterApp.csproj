@@ -21,8 +21,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <!-- Required by the LibraryImport source generator used in CoreFfi.cs -->
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -35,12 +33,11 @@
     <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <CargoProfile Condition="'$(Configuration)' == 'Debug'">debug</CargoProfile>
-    <CargoProfile Condition="'$(Configuration)' == 'Release'">release</CargoProfile>
-  </PropertyGroup>
-
   <ItemGroup>
+    <!-- CounterApp.Shared.Ffi is the local NuGet produced by `boltffi pack csharp`
+         in the windows/Justfile; it carries the FFI bindings and the native
+         shared.dll under runtimes/win-x64/native. -->
+    <PackageReference Include="CounterApp.Shared.Ffi" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
@@ -53,13 +50,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\generated\CounterApp.Shared.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\..\target\x86_64-pc-windows-msvc\$(CargoProfile)\shared.dll" Visible="false">
-      <Link>shared.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <ProjectReference Include="..\generated\types\CounterApp.Shared.csproj" />
   </ItemGroup>
 </Project>

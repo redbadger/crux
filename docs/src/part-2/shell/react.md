@@ -26,7 +26,7 @@ Three things happen in this component.
 
 The `useRef` holds the `Core` across renders. `coreRef.current` points at the same instance every time the function runs; assigning once inside the init effect locks it in.
 
-The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It calls `init_core()` to download and instantiate the WASM module, constructs the `Core`, then fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for StrictMode (on by default in Next.js), which double-invokes effects in development to surface resource-leak bugs.
+The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It awaits the WASM module's `initialized` promise, then constructs the `Core` and fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for StrictMode (on by default in Next.js), which double-invokes effects in development to surface resource-leak bugs.
 
 The `dispatch` callback is wrapped in `useCallback(_, [])` so its reference is stable. Consumers of `useDispatch()` get the same function every render, which matters when passing it into handlers — otherwise every view update would invalidate every handler and trigger spurious re-renders of memoised children.
 
@@ -75,7 +75,7 @@ The FFI bridge is a single class:
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:core_base}}
 ```
 
-`update` serialises an event with `BincodeSerializer`, calls `CoreFfi.update` (the WASM export), and deserialises the returned bytes into `Request` objects. Each request carries an `id` and an `effect`; we walk them and dispatch each to a per-capability branch.
+`update` serialises an event with `BincodeSerializer`, calls `CoreFFI.update` (the WASM export), and deserialises the returned bytes into `Request` objects. Each request carries an `id` and an `effect`; we walk them and dispatch each to a per-capability branch.
 
 HTTP looks like this:
 
@@ -89,7 +89,7 @@ The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:respond}}
 ```
 
-Same recursion as the other shells: serialise the response, call `CoreFfi.resolve`, and loop through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
+Same recursion as the other shells: serialise the response, call `CoreFFI.resolve`, and loop through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
 
 The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape.
 

@@ -62,7 +62,7 @@ export class Core {
 
   initialize() {
     if (!this.core) {
-      this.core = new CoreFFI();
+      this.core = CoreFFI.new();
     }
   }
 
@@ -224,8 +224,8 @@ export class Core {
   }
 }
 
-function deserializeRequests(bytes: Uint8Array): Request[] {
-  const deserializer = new BincodeDeserializer(bytes);
+function deserializeRequests(bytes: Uint8Array | number[]): Request[] {
+  const deserializer = new BincodeDeserializer(asBytes(bytes));
   const len = deserializer.deserializeLen();
   const requests: Request[] = [];
   for (let i = 0; i < len; i++) {
@@ -235,6 +235,10 @@ function deserializeRequests(bytes: Uint8Array): Request[] {
   return requests;
 }
 
-function deserializeView(bytes: Uint8Array): ViewModel {
-  return ViewModel.deserialize(new BincodeDeserializer(bytes));
+function deserializeView(bytes: Uint8Array | number[]): ViewModel {
+  return ViewModel.deserialize(new BincodeDeserializer(asBytes(bytes)));
+}
+
+function asBytes(bytes: Uint8Array | number[]): Uint8Array {
+  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
 }

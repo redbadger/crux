@@ -101,51 +101,52 @@ A few things to note:
 
 ## Wiring it up
 
-The middleware is composed with the Core in the FFI module, where you build the bridge
-between the core and the shell. Here's the key part from the uniffi (native) FFI setup:
+The middleware is composed with the Core in the FFI module, where you build the
+bridge between the core and the shell. The example splits the wiring by target:
+native runs the middleware on a background thread; WebAssembly skips it because
+this middleware is `thread::spawn` based.
 
 ```rust,no_run,noplayground
-        pub fn new(shell: Arc<dyn CruxShell>) -> Self {
-            let core = Core::<Counter>::new()
-                .handle_effects_using(RngMiddleware::new())
-                .map_effect::<Effect>()
-                .bridge::<BincodeFfiFormat>(move |effect_bytes| match effect_bytes {
-                    Ok(effect) => shell.process_effects(effect),
-                    Err(e) => panic!("{e}"),
-                });
-
-            Self { core }
-        }
+{{#include ../../../examples/counter-middleware/shared/src/ffi.rs:ffi_new}}
 ```
 
-This reads bottom-to-top as a pipeline:
+The native branch reads bottom-to-top as a pipeline:
 
 1. **`Core::<Counter>::new()`** — creates the core, which produces the app's full `Effect`
    enum (including the `Random` variant).
 2. **`.handle_effects_using(RngMiddleware::new())`** — wraps the core with the RNG middleware.
-   Any `Random` effects are intercepted and handled here; all other effects pass through.
-3. **`.map_effect::<Effect>()`** — narrows the effect type. Since the middleware has consumed
-   all `Random` effects, the shell will never see them. This step converts to a _new_ `Effect`
-   enum that doesn't include the `Random` variant, so your shell code doesn't need an
-   unreachable branch.
+   `Random` effects are intercepted and resolved here; everything else passes through.
+3. **`.map_effect::<Effect>()`** — remaps to the FFI-facing `Effect` enum used
+   by typegen and the bridge. In this example the FFI `Effect` mirrors the app's,
+   so this is a 1:1 remap. This is also where you can _narrow_ the effect type:
+   drop variants that middleware fully consumes from the FFI enum and panic on
+   them in `From`, so the shell never sees them. The counter example doesn't
+   narrow `Random` because the WebAssembly shells handle it themselves.
 4. **`.bridge::<BincodeFfiFormat>(...)`** — creates the FFI bridge as usual.
 
-### The narrowed effect type
+On WebAssembly there is no middleware: the bridge wraps `Core` directly, so
+`Random` effects flow straight through to the shell, which fulfills them itself.
 
-The FFI module defines its own `Effect` enum without the `Random` variant:
+### The FFI effect type
 
-```rust,no_run,noplayground
-{{#include ../../../examples/counter-middleware/shared/src/ffi.rs:16:21}}
-```
-
-And a `From` implementation to convert from the app's full effect type:
+The FFI module declares its own `Effect` enum. This is the enum typegen turns
+into shell types, and the bridge serializes it:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/counter-middleware/shared/src/ffi.rs:23:32}}
+{{#include ../../../examples/counter-middleware/shared/src/ffi.rs:ffi_effect}}
 ```
 
-The `Random` arm panics because it should never be reached — the middleware handles all
-`Random` effects before they get here.
+A `From` implementation converts from the app's full effect type. In this example the
+two enums have the same variants, so every arm remaps 1:1:
+
+```rust,no_run,noplayground
+{{#include ../../../examples/counter-middleware/shared/src/ffi.rs:ffi_from}}
+```
+
+If a middleware fully consumes a variant on every target you build, you can
+remove that variant from this enum and `panic!` on it in `From` — the shell then
+sees a narrower set of effects. The counter example keeps `Random` here because
+the WebAssembly shells trigger it themselves and need it in the typegen.
 
 ## Testing
 
@@ -154,7 +155,7 @@ involved in unit tests. You test the app's `update` function directly, treating 
 as a normal effect:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/counter-middleware/shared/src/app.rs:509:525}}
+{{#include ../../../examples/counter-middleware/shared/src/app.rs:random_test}}
 ```
 
 This is one of the nice properties of middleware: the app logic remains pure and testable,

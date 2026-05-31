@@ -18,6 +18,29 @@ because it is simple and popular. However, a similar
 setup would work for other frameworks.
 ```
 
+```mermaid
+flowchart TD
+    subgraph shared["shared/ (Rust crate)"]
+        app_rs["`app.rs
+Event · Effect · ViewModel
+#[derive(Facet)]
+#[effect(facet_typegen)]`"]
+
+        ffi_rs["`ffi.rs
+CoreFfi · #[boltffi::export]`"]
+    end
+
+    app_rs --> tg[/"cargo run --bin codegen --language typescript"/]
+    ffi_rs --> bg[/"boltffi pack wasm"/]
+
+    tg -->|typegen| ts_t[TypeScript types]
+    bg -->|bindgen| wasm_b[WASM package and JS bindings]
+
+    ts_t --> webts["Web / TypeScript
+React · Next.js"]
+    wasm_b --> webts
+```
+
 ## Create a Next.js App
 
 For this walk-through, we'll use the
@@ -38,27 +61,21 @@ When we build our app, we also want to compile the
 Rust core to WebAssembly so that it can be referenced
 from our code.
 
-To do this, we'll use
-[`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/),
-which you can install like this:
+To do this, we'll use BoltFFI, which you can install like this:
 
 ```sh
-# with homebrew
-brew install wasm-pack
-
-# or directly
-curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+cargo install boltffi_cli --version '=0.25.2' --locked
+brew install binaryen # provides wasm-opt
 ```
 
-Now that we have `wasm-pack` installed, we can build
+The crate is `boltffi_cli`; it installs the `boltffi` binary used below.
+
+Now that we have `boltffi` installed, we can build
 our `shared` library to WebAssembly for the browser.
 
 ```sh
-wasm-pack build \
-    --target web \
-    --out-dir ../web-nextjs/generated/pkg \
-    ../shared \
-    --features wasm_bindgen
+cd ../shared
+boltffi pack wasm
 ```
 
 ## Generate the Shared Types
