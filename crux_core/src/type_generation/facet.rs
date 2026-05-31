@@ -114,7 +114,7 @@ pub enum TypeGenError {
 
 impl From<facet_generate::generation::Error> for TypeGenError {
     fn from(e: facet_generate::generation::Error) -> Self {
-        TypeGenError::Generation(e.to_string())
+        Self::Generation(e.to_string())
     }
 }
 

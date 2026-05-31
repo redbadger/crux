@@ -41,7 +41,7 @@ impl TryFrom<crate::Duration> for TimeDelta {
             .nanos
             .try_into()
             .map_err(|_| TimeError::InvalidDuration)?;
-        Ok(TimeDelta::nanoseconds(nanos))
+        Ok(Self::nanoseconds(nanos))
     }
 }
 
@@ -50,7 +50,7 @@ impl TryFrom<crate::Instant> for DateTime<Utc> {
 
     fn try_from(time: crate::Instant) -> Result<Self, Self::Error> {
         let seconds = i64::try_from(time.seconds).map_err(|_| TimeError::InvalidInstant)?;
-        DateTime::<Utc>::from_timestamp(seconds, time.nanos).ok_or(TimeError::InvalidInstant)
+        Self::from_timestamp(seconds, time.nanos).ok_or(TimeError::InvalidInstant)
     }
 }
 
@@ -63,7 +63,7 @@ impl TryFrom<DateTime<Utc>> for crate::Instant {
             .try_into()
             .map_err(|_| TimeError::InvalidTime)?;
         let nanos = time.timestamp_subsec_nanos();
-        Ok(crate::Instant { seconds, nanos })
+        Ok(Self { seconds, nanos })
     }
 }
 

@@ -12,6 +12,7 @@ rust-version = "1.88"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
 empty_docs = "allow"
 
 [workspace.lints.rust]

@@ -1,3 +1,4 @@
+#![allow(clippy::significant_drop_in_scrutinee)]
 use leptos::callback::UnsyncCallback;
 use leptos::prelude::*;
 use phosphor_leptos::{ARROW_COUNTER_CLOCKWISE, CHECK, KEY, WARNING};
@@ -61,7 +62,7 @@ pub fn onboard_view(#[prop(into)] vm: Signal<OnboardViewModel>) -> impl IntoView
 }
 // ANCHOR_END: onboard_view
 
-fn reason_title(reason: OnboardReason) -> &'static str {
+const fn reason_title(reason: OnboardReason) -> &'static str {
     match reason {
         OnboardReason::Welcome => "Setup",
         OnboardReason::Unauthorized => "Rejected",
@@ -69,7 +70,7 @@ fn reason_title(reason: OnboardReason) -> &'static str {
     }
 }
 
-fn reason_copy(reason: OnboardReason) -> (phosphor_leptos::IconData, &'static str) {
+const fn reason_copy(reason: OnboardReason) -> (phosphor_leptos::IconData, &'static str) {
     match reason {
         OnboardReason::Welcome => (
             KEY,

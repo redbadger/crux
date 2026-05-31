@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 use axum::{Json, response::IntoResponse};
 use rand::seq::IteratorRandom;
 use serde::Serialize;

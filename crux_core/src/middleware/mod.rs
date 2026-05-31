@@ -142,9 +142,9 @@ pub trait Layer: Send + Sync + Sized {
 // Core is a valid Layer, but only for thread-safe Apps, because
 // middlewares need to be able to run background tasks and therefore
 // be thread-safe (they may get called from different threads)
-impl<A: App> Layer for Core<A>
+impl<A> Layer for Core<A>
 where
-    A: Send + Sync + 'static,
+    A: App + Send + Sync + 'static,
     A::Model: Send + Sync + 'static,
 {
     type Event = A::Event;

@@ -18,7 +18,7 @@ use crate::model::ApiKey;
 use self::model::current_response::{CurrentWeatherResponse, WEATHER_URL};
 
 /// Failures from a current-weather request.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum WeatherError {
     /// The API rejected the API key (401 or 403). Callers bubble this up
     /// to reset the user's credentials.
@@ -78,10 +78,11 @@ where
         .expect("could not serialize query string")
         .build()
         .map(|result| match result {
-            Ok(mut response) => match response.take_body() {
-                Some(weather_data) => Ok(weather_data),
-                None => Err(WeatherError::ParseError),
-            },
+            Ok(mut response) => response
+                .take_body()
+                .map_or(Err(WeatherError::ParseError), |weather_data| {
+                    Ok(weather_data)
+                }),
             Err(crux_http::HttpError::Http { code, .. })
                 if code == crux_http::http::StatusCode::Unauthorized
                     || code == crux_http::http::StatusCode::Forbidden =>

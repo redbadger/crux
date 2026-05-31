@@ -65,7 +65,6 @@ update-pnpm-deps: typegen wasm
     @echo '{{ style("command") }}update-pnpm-deps:{{ NORMAL }}'
     pnpm update
 
-
 # local development workflow
 dev: fix check build test
 

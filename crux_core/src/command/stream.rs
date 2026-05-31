@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 // Command is an async Stream
 
 use std::future::Future;
@@ -59,7 +60,7 @@ pub(crate) struct CommandSink<Effect, Event> {
 }
 
 impl<Effect, Event> CommandSink<Effect, Event> {
-    pub(crate) fn new(effects: Sender<Effect>, events: Sender<Event>) -> Self {
+    pub(crate) const fn new(effects: Sender<Effect>, events: Sender<Event>) -> Self {
         Self { effects, events }
     }
 }

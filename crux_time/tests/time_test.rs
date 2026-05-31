@@ -35,12 +35,12 @@ mod shared {
     }
 
     impl Debounce {
-        fn start(&mut self) -> usize {
+        const fn start(&mut self) -> usize {
             self.pending = self.pending.wrapping_add(1);
             self.pending
         }
 
-        fn resolve(&mut self, pending: usize) -> bool {
+        const fn resolve(&self, pending: usize) -> bool {
             self.pending == pending
         }
     }

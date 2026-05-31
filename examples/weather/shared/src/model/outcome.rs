@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 //! State-machine plumbing shared by every nested model in the weather app.
 //!
 //! Each stage — `InitializingModel`, `OnboardModel`, `ActiveModel`, and the
@@ -54,8 +55,8 @@ pub(crate) struct Started<S, Event> {
 impl<S, Event> Started<S, Event> {
     /// Creates a new `Started` from an initial state and its accompanying
     /// command.
-    pub fn new(state: S, command: Command<Effect, Event>) -> Self {
-        Started { state, command }
+    pub const fn new(state: S, command: Command<Effect, Event>) -> Self {
+        Self { state, command }
     }
 
     /// Destructures into the initial state and the command to run.
@@ -110,8 +111,8 @@ pub(crate) struct Outcome<S, T, Event> {
 impl<S, T, Event> Outcome<S, T, Event> {
     /// Constructs an outcome that keeps the state machine running with the
     /// given updated state and command.
-    pub fn continuing(state: S, command: Command<Effect, Event>) -> Self {
-        Outcome {
+    pub const fn continuing(state: S, command: Command<Effect, Event>) -> Self {
+        Self {
             status: Status::Continue(state),
             command,
         }
@@ -119,8 +120,8 @@ impl<S, T, Event> Outcome<S, T, Event> {
 
     /// Constructs an outcome that exits the state machine with the given
     /// transition value and command.
-    pub fn complete(value: T, command: Command<Effect, Event>) -> Self {
-        Outcome {
+    pub const fn complete(value: T, command: Command<Effect, Event>) -> Self {
+        Self {
             status: Status::Complete(value),
             command,
         }

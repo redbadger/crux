@@ -38,8 +38,9 @@ pub trait FfiFormat: Debug + 'static {
     fn deserialize<'de, T: Deserialize<'de>>(bytes: &'de [u8]) -> Result<T, Self::Error>;
 }
 
-/// Request for a side-effect passed from the Core to the Shell. The `EffectId` links
-/// the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
+/// Request for a side-effect passed from the Core to the Shell.
+///
+/// The `EffectId` links the `Request` with the corresponding call to [`Core::resolve`] to pass the data back
 /// to the [`App::update`] function (wrapped in the event provided to the capability originating the effect).
 // used in docs/internals/bridge.md
 // ANCHOR: request

@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 use super::super::Command;
 
 use std::future::Future;
@@ -15,7 +16,7 @@ use futures::task::AtomicWaker;
 
 use std::sync::Arc;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct TaskId(pub(crate) usize);
 
 // ANCHOR: task
@@ -139,7 +140,7 @@ impl Future for JoinHandle {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum TaskState {
     Missing,
     Suspended,

@@ -14,13 +14,14 @@ enum TypegenKind {
     None,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<Option<Ident>> for TypegenKind {
     fn from(value: Option<Ident>) -> Self {
         match value {
-            Some(x) if x == format_ident!("typegen") => TypegenKind::Serde,
-            Some(x) if x == format_ident!("facet_typegen") => TypegenKind::Facet,
+            Some(x) if x == format_ident!("typegen") => Self::Serde,
+            Some(x) if x == format_ident!("facet_typegen") => Self::Facet,
             Some(x) => panic!("Unexpected attribute: {x}, did you mean typegen or facet_typegen?"),
-            None => TypegenKind::None,
+            None => Self::None,
         }
     }
 }
@@ -392,7 +393,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         TypegenKind::None => quote! {},
     };
 
-    let effect_ffi_derive = if let TypegenKind::None = typegen_kind {
+    let effect_ffi_derive = if matches!(typegen_kind, TypegenKind::None) {
         quote! {}
     } else {
         quote! {

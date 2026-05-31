@@ -39,7 +39,7 @@ impl std::error::Error for DecodeError {}
 
 /// Check if an encoding label refers to the UTF-8 encoding.
 #[allow(dead_code)]
-fn is_utf8_encoding(encoding_label: &str) -> bool {
+const fn is_utf8_encoding(encoding_label: &str) -> bool {
     encoding_label.eq_ignore_ascii_case("utf-8")
         || encoding_label.eq_ignore_ascii_case("utf8")
         || encoding_label.eq_ignore_ascii_case("unicode-1-1-utf-8")

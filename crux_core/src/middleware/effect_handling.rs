@@ -131,10 +131,11 @@ where
     middleware: EM,
 }
 
-/// Middleware layer able to process some of the effects. This implements the
-/// general behaviour making sure all follow-up effects are processed and routed
-/// to the right place and delegates to the generic parameter `EM`, which
-/// implements [`EffectMiddleware`].
+/// Middleware layer able to process some of the effects.
+///
+/// This implements the general behaviour making sure all follow-up effects are
+/// processed and routed to the right place and delegates to the generic parameter `EM`,
+/// which implements [`EffectMiddleware`].
 pub struct HandleEffectLayer<Next, EM>
 where
     Next: Layer + Sync + Send + 'static,

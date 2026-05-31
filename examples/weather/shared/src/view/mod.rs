@@ -38,10 +38,10 @@ pub enum ViewModel {
 impl From<&Model> for ViewModel {
     fn from(model: &Model) -> Self {
         match model {
-            Model::Uninitialized | Model::Initializing(_) => ViewModel::Loading,
-            Model::Onboard(onboard) => ViewModel::Onboard(onboard.into()),
-            Model::Active(active) => ViewModel::Active(active.into()),
-            Model::Failed(message) => ViewModel::Failed {
+            Model::Uninitialized | Model::Initializing(_) => Self::Loading,
+            Model::Onboard(onboard) => Self::Onboard(onboard.into()),
+            Model::Active(active) => Self::Active(active.into()),
+            Model::Failed(message) => Self::Failed {
                 message: message.clone(),
             },
         }

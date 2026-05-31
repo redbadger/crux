@@ -406,7 +406,7 @@ impl<B: Into<Body>> TryFrom<http::Request<B>> for Request {
 
     fn try_from(req: http::Request<B>) -> Result<Self, Self::Error> {
         use std::str::FromStr;
-        let mut o = Request::new(
+        let mut o = Self::new(
             Method::from_str(req.method().as_str()).map_err(|e| anyhow::anyhow!(e))?,
             req.uri().to_string().parse()?,
         );

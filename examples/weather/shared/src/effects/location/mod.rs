@@ -19,7 +19,7 @@ pub struct Location {
 }
 
 /// Operations the core can ask the shell to perform.
-#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum LocationOperation {
     /// Ask whether location services are currently enabled and authorised.

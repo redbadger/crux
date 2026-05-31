@@ -12,6 +12,7 @@ pub trait Effect: Send + 'static {}
 // ANCHOR_END: effect
 
 /// Implemented automatically with the effect macro from `crux_macros`.
+///
 /// This is used by the [`Bridge`](crate::bridge::Bridge) to serialize effects going across the
 /// FFI boundary. If you don't need serialization and FFI, use [`Effect`].
 ///

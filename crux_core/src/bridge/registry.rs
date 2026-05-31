@@ -62,7 +62,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 
         let resolved = entry.resolve(response);
 
-        if let ResolveSerialized::Never = entry {
+        if matches!(entry, ResolveSerialized::Never) {
             registry_lock.remove(id.0 as usize);
         }
 

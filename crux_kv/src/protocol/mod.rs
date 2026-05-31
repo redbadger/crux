@@ -41,29 +41,26 @@ pub enum KeyValueOperation {
 impl std::fmt::Debug for KeyValueOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            KeyValueOperation::Get { key } => f.debug_struct("Get").field("key", key).finish(),
-            KeyValueOperation::Set { key, value } => {
-                let body_repr = if let Ok(s) = std::str::from_utf8(value) {
-                    if s.len() < 50 {
-                        format!("\"{s}\"")
-                    } else {
-                        format!("\"{}\"...", s.chars().take(50).collect::<String>())
-                    }
-                } else {
-                    format!("<binary data - {} bytes>", value.len())
-                };
+            Self::Get { key } => f.debug_struct("Get").field("key", key).finish(),
+            Self::Set { key, value } => {
+                let body_repr = std::str::from_utf8(value).map_or_else(
+                    |_| format!("<binary data - {} bytes>", value.len()),
+                    |s| {
+                        if s.len() < 50 {
+                            format!("\"{s}\"")
+                        } else {
+                            format!("\"{}\"...", s.chars().take(50).collect::<String>())
+                        }
+                    },
+                );
                 f.debug_struct("Set")
                     .field("key", key)
                     .field("value", &format_args!("{body_repr}"))
                     .finish()
             }
-            KeyValueOperation::Delete { key } => {
-                f.debug_struct("Delete").field("key", key).finish()
-            }
-            KeyValueOperation::Exists { key } => {
-                f.debug_struct("Exists").field("key", key).finish()
-            }
-            KeyValueOperation::ListKeys { prefix, cursor } => f
+            Self::Delete { key } => f.debug_struct("Delete").field("key", key).finish(),
+            Self::Exists { key } => f.debug_struct("Exists").field("key", key).finish(),
+            Self::ListKeys { prefix, cursor } => f
                 .debug_struct("ListKeys")
                 .field("prefix", prefix)
                 .field("cursor", cursor)
@@ -136,13 +133,13 @@ impl KeyValueResult {
     /// Panics if the [`KeyValueResult`] is not a [`KeyValueResponse::Get`].
     pub fn unwrap_get(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
+            Self::Ok { response } => match response {
                 KeyValueResponse::Get { value } => Ok(value.into()),
                 _ => {
                     panic!("attempt to convert KeyValueResponse other than Get to Option<Vec<u8>>")
                 }
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            Self::Err { error } => Err(error),
         }
     }
 
@@ -153,13 +150,13 @@ impl KeyValueResult {
     /// Panics if the [`KeyValueResult`] is not a [`KeyValueResponse::Set`].
     pub fn unwrap_set(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
+            Self::Ok { response } => match response {
                 KeyValueResponse::Set { previous } => Ok(previous.into()),
                 _ => {
                     panic!("attempt to convert KeyValueResponse other than Set to Option<Vec<u8>>")
                 }
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            Self::Err { error } => Err(error),
         }
     }
 
@@ -170,13 +167,13 @@ impl KeyValueResult {
     /// Panics if the [`KeyValueResult`] is not a [`KeyValueResponse::Delete`].
     pub fn unwrap_delete(self) -> Result<Option<Vec<u8>>, KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
+            Self::Ok { response } => match response {
                 KeyValueResponse::Delete { previous } => Ok(previous.into()),
                 _ => panic!(
                     "attempt to convert KeyValueResponse other than Delete to Option<Vec<u8>>"
                 ),
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            Self::Err { error } => Err(error),
         }
     }
 
@@ -187,11 +184,11 @@ impl KeyValueResult {
     /// Panics if the [`KeyValueResult`] is not a [`KeyValueResponse::Exists`].
     pub fn unwrap_exists(self) -> Result<bool, KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
+            Self::Ok { response } => match response {
                 KeyValueResponse::Exists { is_present } => Ok(is_present),
                 _ => panic!("attempt to convert KeyValueResponse other than Exists to bool"),
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            Self::Err { error } => Err(error),
         }
     }
 
@@ -202,7 +199,7 @@ impl KeyValueResult {
     /// Panics if the [`KeyValueResult`] is not a [`KeyValueResponse::ListKeys`].
     pub fn unwrap_list_keys(self) -> Result<(Vec<String>, u64), KeyValueError> {
         match self {
-            KeyValueResult::Ok { response } => match response {
+            Self::Ok { response } => match response {
                 KeyValueResponse::ListKeys {
                     keys,
                     next_cursor: cursor,
@@ -211,7 +208,7 @@ impl KeyValueResult {
                     "attempt to convert KeyValueResponse other than ListKeys to (Vec<String>, u64)"
                 ),
             },
-            KeyValueResult::Err { error } => Err(error.clone()),
+            Self::Err { error } => Err(error),
         }
     }
 }

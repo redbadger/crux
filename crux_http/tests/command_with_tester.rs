@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 mod shared {
 
     use std::{cmp::max, collections::HashMap};
@@ -50,7 +51,7 @@ mod shared {
                     .build()
                     .then_send(Event::Set),
                 Event::Post => Http::post("http://example.com")
-                    .body_bytes("The Body".as_bytes())
+                    .body_bytes(b"The Body")
                     .expect_string()
                     .build()
                     .then_send(Event::Set),

@@ -27,12 +27,11 @@ pub enum ResolveSerialized<T: FfiFormat> {
 impl<T: FfiFormat> ResolveSerialized<T> {
     pub(crate) fn resolve(&mut self, response: &[u8]) -> Result<(), BridgeError<T>> {
         match self {
-            ResolveSerialized::Never => Err(BridgeError::ProcessResponse(ResolveError::Never)),
-            ResolveSerialized::Many(f) => f(response),
-            ResolveSerialized::Once(_) => {
+            Self::Never => Err(BridgeError::ProcessResponse(ResolveError::Never)),
+            Self::Many(f) => f(response),
+            Self::Once(_) => {
                 // The resolve has been used, turn it into a Never
-                let ResolveSerialized::Once(f) = std::mem::replace(self, ResolveSerialized::Never)
-                else {
+                let Self::Once(f) = std::mem::replace(self, Self::Never) else {
                     unreachable!("already resolved");
                 };
 
@@ -77,13 +76,13 @@ impl<Out> RequestHandle<Out> {
         Out: 'static,
     {
         match self {
-            RequestHandle::Never => ResolveSerialized::Never,
-            RequestHandle::Once(resolve) => ResolveSerialized::Once(Box::new(move |response| {
+            Self::Never => ResolveSerialized::Never,
+            Self::Once(resolve) => ResolveSerialized::Once(Box::new(move |response| {
                 let out = func(response)?;
                 resolve(out);
                 Ok(())
             })),
-            RequestHandle::Many(resolve) => ResolveSerialized::Many(Box::new(move |response| {
+            Self::Many(resolve) => ResolveSerialized::Many(Box::new(move |response| {
                 let out = func(response)?;
                 resolve(out).map_err(|()| BridgeError::ProcessResponse(ResolveError::FinishedMany))
             })),

@@ -67,7 +67,7 @@ fn favorites_list(#[prop(into)] vm: Signal<FavoritesViewModel>) -> impl IntoView
                         <div class="grid gap-2">
                             {favorites.into_iter().map(|fav| {
                                 let loc = fav.location;
-                                let name = fav.name.clone();
+                                let name = fav.name;
                                 view! {
                                     <div class="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
                                         <span class="font-semibold text-slate-900 flex items-center gap-1">

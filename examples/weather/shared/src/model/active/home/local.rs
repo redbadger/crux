@@ -121,15 +121,15 @@ impl LocalWeather {
             }
             LocalWeatherEvent::LocationFetched(location) => {
                 tracing::debug!("received location: {location:?}");
-                match location {
-                    Some(loc) => {
+                location.map_or_else(
+                    || Outcome::continuing(Self::LocationDisabled, render()),
+                    |loc| {
                         let cmd = weather_api::fetch(loc, api_key.clone()).then_send(|result| {
                             LocalWeatherEvent::WeatherFetched(Box::new(result))
                         });
                         Outcome::continuing(Self::FetchingWeather(loc), cmd)
-                    }
-                    None => Outcome::continuing(Self::LocationDisabled, render()),
-                }
+                    },
+                )
             }
             LocalWeatherEvent::WeatherFetched(result) => {
                 let Self::FetchingWeather(location) = self else {

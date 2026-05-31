@@ -59,12 +59,12 @@ pub enum FavoritesWorkflowEvent {
 
 impl FavoritesScreenEvent {
     #[must_use]
-    pub fn add(event: AddFavoriteEvent) -> Self {
+    pub const fn add(event: AddFavoriteEvent) -> Self {
         Self::Workflow(FavoritesWorkflowEvent::Add(event))
     }
 
     #[must_use]
-    pub fn confirm_delete(event: ConfirmDeleteEvent) -> Self {
+    pub const fn confirm_delete(event: ConfirmDeleteEvent) -> Self {
         Self::Workflow(FavoritesWorkflowEvent::ConfirmDelete(event))
     }
 }
@@ -334,8 +334,7 @@ mod tests {
         assert!(screen.workflow.is_none());
 
         // should have a render and a KV set
-        let effects: Vec<_> = cmd.effects().collect();
-        assert_eq!(effects.len(), 2);
+        assert_eq!(cmd.effects().count(), 2);
     }
 
     #[test]
@@ -396,8 +395,7 @@ mod tests {
         assert!(screen.workflow.is_none());
 
         // render from the workflow + KV set from persist
-        let effects: Vec<_> = cmd.effects().collect();
-        assert_eq!(effects.len(), 2);
+        assert_eq!(cmd.effects().count(), 2);
     }
 
     #[test]

@@ -16,6 +16,7 @@ pub struct Duration {
 impl Duration {
     /// Create a new `Duration` from the given number of nanoseconds.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn new(nanos: u64) -> Self {
         Self { nanos }
     }
@@ -47,7 +48,7 @@ impl Duration {
 
 impl From<std::time::Duration> for Duration {
     fn from(duration: std::time::Duration) -> Self {
-        Duration {
+        Self {
             // Safe because we don't expect durations to exceed u64::MAX nanoseconds in practice
             #[allow(clippy::cast_possible_truncation)]
             nanos: duration.as_nanos() as u64,
@@ -57,7 +58,7 @@ impl From<std::time::Duration> for Duration {
 
 impl From<Duration> for std::time::Duration {
     fn from(duration: Duration) -> Self {
-        std::time::Duration::from_nanos(duration.nanos)
+        Self::from_nanos(duration.nanos)
     }
 }
 

@@ -50,7 +50,7 @@ mod app {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct PingOperation;
 
 impl crux_core::capability::Operation for PingOperation {

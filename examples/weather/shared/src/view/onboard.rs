@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::onboard::{OnboardModel, OnboardReason, OnboardState};
 
 /// View model for the onboarding screen where the user enters their API key.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct OnboardViewModel {
     /// Why the user is here — drives the copy shown at the top of the screen.
     pub reason: OnboardReason,
@@ -13,7 +13,7 @@ pub struct OnboardViewModel {
 }
 
 /// The onboarding screen's current state.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum OnboardStateViewModel {
     /// The user is typing their key. `can_submit` is precomputed so the
@@ -30,7 +30,7 @@ pub enum OnboardStateViewModel {
 // ANCHOR: onboard_default
 impl Default for OnboardStateViewModel {
     fn default() -> Self {
-        OnboardStateViewModel::Input {
+        Self::Input {
             api_key: String::new(),
             can_submit: false,
         }
@@ -47,7 +47,7 @@ impl From<&OnboardModel> for OnboardViewModel {
             },
             OnboardState::Saving { .. } => OnboardStateViewModel::Saving,
         };
-        OnboardViewModel {
+        Self {
             reason: onboard.reason,
             state,
         }

@@ -29,7 +29,8 @@ pub fn home_view(#[prop(into)] vm: Signal<HomeViewModel>) -> impl IntoView {
                 // Read the current `local_weather` slice. `.read()` returns
                 // a guard that derefs to `&HomeViewModel`; clone the inner
                 // variant so we can match it outside the borrow.
-                match vm.read().local_weather.clone() {
+                let value = vm.read().local_weather.clone();
+                match value {
                     LocalWeatherViewModel::CheckingPermission => view! {
                         <StatusMessage icon=MAP_PIN_LINE message="Checking location permission..." />
                     }.into_any(),

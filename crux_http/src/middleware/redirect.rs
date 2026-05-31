@@ -77,8 +77,9 @@ impl Redirect {
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn new(attempts: u8) -> Self {
-        Redirect { attempts }
+        Self { attempts }
     }
 }
 

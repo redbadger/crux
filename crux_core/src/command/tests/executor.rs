@@ -46,7 +46,7 @@ enum Effect {
 
 impl From<Request<Op>> for Effect {
     fn from(value: Request<Op>) -> Self {
-        Effect::Effect(value)
+        Self::Effect(value)
     }
 }
 

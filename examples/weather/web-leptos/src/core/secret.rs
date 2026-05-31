@@ -25,13 +25,18 @@ fn handle(operation: &SecretRequest) -> SecretResponse {
     match operation {
         SecretRequest::Fetch(key) => {
             log::debug!("secret fetch: {key}");
-            if let Some(value) = local_storage().and_then(|s| s.get_item(key).ok().flatten()) {
-                log::debug!("secret found: {key}");
-                SecretResponse::Fetched(key.clone(), value)
-            } else {
-                log::debug!("secret not found: {key}");
-                SecretResponse::Missing(key.clone())
-            }
+            local_storage()
+                .and_then(|s| s.get_item(key).ok().flatten())
+                .map_or_else(
+                    || {
+                        log::debug!("secret not found: {key}");
+                        SecretResponse::Missing(key.clone())
+                    },
+                    |value| {
+                        log::debug!("secret found: {key}");
+                        SecretResponse::Fetched(key.clone(), value)
+                    },
+                )
         }
         SecretRequest::Store(key, value) => {
             log::debug!("secret store: {key}");

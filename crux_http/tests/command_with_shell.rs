@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 mod shared {
     use crux_core::{
         Command,

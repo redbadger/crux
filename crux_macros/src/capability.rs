@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 use darling::{FromDeriveInput, FromField, ToTokens, ast, util};
 use proc_macro_error::{OptionExt, abort};
 use proc_macro2::TokenStream;

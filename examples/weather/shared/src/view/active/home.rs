@@ -63,7 +63,7 @@ pub enum FavoriteWeatherStateViewModel {
 
 impl From<&HomeScreen> for HomeViewModel {
     fn from(home: &HomeScreen) -> Self {
-        HomeViewModel {
+        Self {
             local_weather: (&home.current_weather).into(),
             favorites: home.favorites_weather.iter().map(From::from).collect(),
         }
@@ -73,19 +73,19 @@ impl From<&HomeScreen> for HomeViewModel {
 impl From<&LocalWeather> for LocalWeatherViewModel {
     fn from(lw: &LocalWeather) -> Self {
         match lw {
-            LocalWeather::CheckingPermission => LocalWeatherViewModel::CheckingPermission,
-            LocalWeather::LocationDisabled => LocalWeatherViewModel::LocationDisabled,
-            LocalWeather::FetchingLocation => LocalWeatherViewModel::FetchingLocation,
-            LocalWeather::FetchingWeather(_) => LocalWeatherViewModel::FetchingWeather,
-            LocalWeather::Fetched(_, data) => LocalWeatherViewModel::Fetched(data.clone()),
-            LocalWeather::Failed(_) => LocalWeatherViewModel::Failed,
+            LocalWeather::CheckingPermission => Self::CheckingPermission,
+            LocalWeather::LocationDisabled => Self::LocationDisabled,
+            LocalWeather::FetchingLocation => Self::FetchingLocation,
+            LocalWeather::FetchingWeather(_) => Self::FetchingWeather,
+            LocalWeather::Fetched(_, data) => Self::Fetched(data.clone()),
+            LocalWeather::Failed(_) => Self::Failed,
         }
     }
 }
 
 impl From<&FavoriteWeather> for FavoriteWeatherViewModel {
     fn from(fw: &FavoriteWeather) -> Self {
-        FavoriteWeatherViewModel {
+        Self {
             name: fw.favorite.name().to_string(),
             location: fw.favorite.location(),
             weather: (&fw.weather).into(),
@@ -96,11 +96,9 @@ impl From<&FavoriteWeather> for FavoriteWeatherViewModel {
 impl From<&FavoriteWeatherState> for FavoriteWeatherStateViewModel {
     fn from(state: &FavoriteWeatherState) -> Self {
         match state {
-            FavoriteWeatherState::Fetching => FavoriteWeatherStateViewModel::Fetching,
-            FavoriteWeatherState::Fetched(data) => {
-                FavoriteWeatherStateViewModel::Fetched(data.clone())
-            }
-            FavoriteWeatherState::Failed => FavoriteWeatherStateViewModel::Failed,
+            FavoriteWeatherState::Fetching => Self::Fetching,
+            FavoriteWeatherState::Fetched(data) => Self::Fetched(data.clone()),
+            FavoriteWeatherState::Failed => Self::Failed,
         }
     }
 }

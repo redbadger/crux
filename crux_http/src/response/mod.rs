@@ -1,3 +1,4 @@
+#![allow(clippy::redundant_pub_crate)]
 mod decode;
 #[allow(clippy::module_inception)]
 mod response;

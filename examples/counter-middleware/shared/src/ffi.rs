@@ -32,10 +32,10 @@ pub enum Effect {
 impl From<crate::app::Effect> for Effect {
     fn from(effect: crate::app::Effect) -> Self {
         match effect {
-            crate::Effect::Render(request) => Effect::Render(request),
-            crate::Effect::Http(request) => Effect::Http(request),
-            crate::Effect::ServerSentEvents(request) => Effect::ServerSentEvents(request),
-            crate::Effect::Random(request) => Effect::Random(request),
+            crate::Effect::Render(request) => Self::Render(request),
+            crate::Effect::Http(request) => Self::Http(request),
+            crate::Effect::ServerSentEvents(request) => Self::ServerSentEvents(request),
+            crate::Effect::Random(request) => Self::Random(request),
         }
     }
 }

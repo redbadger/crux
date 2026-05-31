@@ -35,11 +35,11 @@ impl<Output> RequestHandle<Output> {
     /// Returns an error if the request is not expected to be resolved.
     pub fn resolve(&mut self, output: Output) -> Result<(), ResolveError> {
         match self {
-            RequestHandle::Never => Err(ResolveError::Never),
-            RequestHandle::Many(f) => f(output).map_err(|()| ResolveError::FinishedMany),
-            RequestHandle::Once(_) => {
+            Self::Never => Err(ResolveError::Never),
+            Self::Many(f) => f(output).map_err(|()| ResolveError::FinishedMany),
+            Self::Once(_) => {
                 // The resolve has been used, turn it into a Never
-                if let RequestHandle::Once(f) = std::mem::replace(self, RequestHandle::Never) {
+                if let Self::Once(f) = std::mem::replace(self, Self::Never) {
                     f(output);
                 }
 

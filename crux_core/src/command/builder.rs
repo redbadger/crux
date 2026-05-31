@@ -30,7 +30,7 @@ where
     {
         let make_task = Box::new(make_task);
 
-        NotificationBuilder { make_task }
+        Self { make_task }
     }
 
     /// Convert the [`NotificationBuilder`] into a future to use in an async context
@@ -53,7 +53,7 @@ where
     Task: Future<Output = ()> + Send + 'static,
 {
     fn from(value: NotificationBuilder<Effect, Event, Task>) -> Self {
-        Command::new(|ctx| value.into_future(ctx))
+        Self::new(|ctx| value.into_future(ctx))
     }
 }
 
@@ -75,14 +75,14 @@ where
     {
         let make_task = Box::new(make_task);
 
-        RequestBuilder { make_task }
+        Self { make_task }
     }
 
     pub fn map<F, U>(self, map: F) -> RequestBuilder<Effect, Event, impl Future<Output = U>>
     where
         F: FnOnce(T) -> U + Send + 'static,
     {
-        RequestBuilder::new(|ctx| self.into_future(ctx.clone()).map(map))
+        RequestBuilder::new(|ctx| self.into_future(ctx).map(map))
     }
 
     /// Chain a [`NotificationBuilder`] to run after completion of this one,
@@ -409,7 +409,7 @@ where
     {
         let make_task = Box::new(make_task);
 
-        StreamBuilder {
+        Self {
             make_stream: make_task,
         }
     }
@@ -418,7 +418,7 @@ where
     where
         F: FnMut(T) -> U + Send + 'static,
     {
-        StreamBuilder::new(|ctx| self.into_stream(ctx.clone()).map(map))
+        StreamBuilder::new(|ctx| self.into_stream(ctx).map(map))
     }
 
     /// Chain a [`RequestBuilder`] to run after completion of this [`StreamBuilder`],

@@ -21,7 +21,7 @@ enum Effect {
 
 impl From<Request<Op>> for Effect {
     fn from(value: Request<Op>) -> Self {
-        Effect::Op(value)
+        Self::Op(value)
     }
 }
 
@@ -74,8 +74,6 @@ fn all_join_handles_get_notified() {
         });
 
         ctx.spawn({
-            let task_join = task_join.clone();
-
             |ctx| async move {
                 task_join.await;
                 ctx.send_event(Event::OpDone(2));

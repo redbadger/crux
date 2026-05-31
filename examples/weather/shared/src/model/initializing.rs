@@ -22,7 +22,7 @@ use super::{
 
 // ANCHOR: event
 /// Events emitted as the parallel initialisation fetches resolve.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum InitializingEvent {
     /// The API key fetch has resolved — either a key was stored or it wasn't.

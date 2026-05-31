@@ -47,7 +47,7 @@ pub struct AddFavoriteViewModel {
 
 impl From<&FavoritesScreen> for FavoritesViewModel {
     fn from(fav: &FavoritesScreen) -> Self {
-        FavoritesViewModel {
+        Self {
             favorites: fav.favorites.iter().map(From::from).collect(),
             workflow: fav.workflow.as_ref().map(From::from),
         }
@@ -56,7 +56,7 @@ impl From<&FavoritesScreen> for FavoritesViewModel {
 
 impl From<&Favorite> for FavoriteViewModel {
     fn from(fav: &Favorite) -> Self {
-        FavoriteViewModel {
+        Self {
             name: fav.name().to_string(),
             location: fav.location(),
         }
@@ -66,17 +66,17 @@ impl From<&Favorite> for FavoriteViewModel {
 impl From<&FavoritesWorkflow> for FavoritesWorkflowViewModel {
     fn from(wf: &FavoritesWorkflow) -> Self {
         match wf {
-            FavoritesWorkflow::ConfirmDelete(cd) => FavoritesWorkflowViewModel::ConfirmDelete {
+            FavoritesWorkflow::ConfirmDelete(cd) => Self::ConfirmDelete {
                 location: cd.location,
             },
-            FavoritesWorkflow::Add(add) => FavoritesWorkflowViewModel::Add(add.into()),
+            FavoritesWorkflow::Add(add) => Self::Add(add.into()),
         }
     }
 }
 
 impl From<&AddFavoriteWorkflow> for AddFavoriteViewModel {
     fn from(add: &AddFavoriteWorkflow) -> Self {
-        AddFavoriteViewModel {
+        Self {
             search_input: add.input.value().to_string(),
             search_results: add.search_results.clone(),
             searching: add.searching,

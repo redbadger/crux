@@ -25,7 +25,7 @@ pin_project_lite::pin_project! {
 
 impl ResponseAsync {
     /// Create a new instance.
-    pub(crate) fn new(res: http_types::Response) -> Self {
+    pub(crate) const fn new(res: http_types::Response) -> Self {
         Self { res }
     }
 

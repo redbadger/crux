@@ -29,7 +29,7 @@ mod http {
 
     pub struct Http;
 
-    #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
     pub struct Request {
         pub method: String,
         pub url: String,
@@ -102,7 +102,7 @@ enum Effect {
 
 impl From<Request<http::Request>> for Effect {
     fn from(value: Request<http::Request>) -> Self {
-        Effect::Http(value)
+        Self::Http(value)
     }
 }
 

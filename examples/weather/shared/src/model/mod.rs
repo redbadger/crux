@@ -72,7 +72,7 @@ impl Model {
         match event {
             Event::Start => {
                 let (initializing, cmd) = InitializingModel::start().into_parts();
-                *self = Model::Initializing(initializing);
+                *self = Self::Initializing(initializing);
                 cmd
             }
             Event::Initializing(event) => self.update_initializing(event),
@@ -85,7 +85,7 @@ impl Model {
     // ANCHOR: lifecycle_transition
     fn update_initializing(&mut self, event: InitializingEvent) -> Command<Effect, Event> {
         let owned = std::mem::take(self);
-        let Model::Initializing(initializing) = owned else {
+        let Self::Initializing(initializing) = owned else {
             *self = owned;
             return Command::done();
         };
@@ -95,7 +95,7 @@ impl Model {
             .into_parts();
         match status {
             outcome::Status::Continue(initializing) => {
-                *self = Model::Initializing(initializing);
+                *self = Self::Initializing(initializing);
                 command
             }
             outcome::Status::Complete(initializing::InitializingTransition::Onboard(favorites)) => {
@@ -103,7 +103,7 @@ impl Model {
                     OnboardModel::start(onboard::OnboardReason::default(), favorites)
                         .map_event(Event::Onboard)
                         .into_parts();
-                *self = Model::Onboard(onboard);
+                *self = Self::Onboard(onboard);
                 command.and(start_cmd)
             }
             outcome::Status::Complete(initializing::InitializingTransition::Active(
@@ -113,7 +113,7 @@ impl Model {
                 let (active, start_cmd) = ActiveModel::start(api_key, &favorites)
                     .map_event(Event::Active)
                     .into_parts();
-                *self = Model::Active(active);
+                *self = Self::Active(active);
                 command.and(start_cmd)
             }
         }
@@ -122,25 +122,25 @@ impl Model {
 
     fn update_onboard(&mut self, event: OnboardEvent) -> Command<Effect, Event> {
         let owned = std::mem::take(self);
-        let Model::Onboard(config) = owned else {
+        let Self::Onboard(config) = owned else {
             *self = owned;
             return Command::done();
         };
         let (status, command) = config.update(event).map_event(Event::Onboard).into_parts();
         match status {
             outcome::Status::Continue(config) => {
-                *self = Model::Onboard(config);
+                *self = Self::Onboard(config);
                 command
             }
             outcome::Status::Complete(onboard::OnboardTransition::Active(api_key, favorites)) => {
                 let (active, start_cmd) = ActiveModel::start(api_key, &favorites)
                     .map_event(Event::Active)
                     .into_parts();
-                *self = Model::Active(active);
+                *self = Self::Active(active);
                 command.and(start_cmd)
             }
             outcome::Status::Complete(onboard::OnboardTransition::Failed(msg)) => {
-                *self = Model::Failed(msg);
+                *self = Self::Failed(msg);
                 command
             }
         }
@@ -148,7 +148,7 @@ impl Model {
 
     fn update_active(&mut self, event: ActiveEvent) -> Command<Effect, Event> {
         let owned = std::mem::take(self);
-        let Model::Active(active_model) = owned else {
+        let Self::Active(active_model) = owned else {
             *self = owned;
             return Command::done();
         };
@@ -158,7 +158,7 @@ impl Model {
             .into_parts();
         match status {
             outcome::Status::Continue(active_model) => {
-                *self = Model::Active(active_model);
+                *self = Self::Active(active_model);
                 command
             }
             outcome::Status::Complete(active::ActiveTransition::ResetApiKey(favorites)) => {
@@ -166,7 +166,7 @@ impl Model {
                     OnboardModel::start(onboard::OnboardReason::Reset, favorites)
                         .map_event(Event::Onboard)
                         .into_parts();
-                *self = Model::Onboard(onboard);
+                *self = Self::Onboard(onboard);
                 command.and(start_cmd)
             }
             outcome::Status::Complete(active::ActiveTransition::Unauthorized(favorites)) => {
@@ -174,7 +174,7 @@ impl Model {
                     OnboardModel::start(onboard::OnboardReason::Unauthorized, favorites)
                         .map_event(Event::Onboard)
                         .into_parts();
-                *self = Model::Onboard(onboard);
+                *self = Self::Onboard(onboard);
                 command.and(start_cmd)
             }
         }
@@ -182,7 +182,7 @@ impl Model {
 }
 
 /// The API key used to authenticate to the weather service.
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct ApiKey(String);
 
 impl From<String> for ApiKey {

@@ -243,7 +243,7 @@ mod middleware {
     }
 
     impl RemoteTriggerHttp {
-        pub fn new(remote: Receiver<()>) -> Self {
+        pub const fn new(remote: Receiver<()>) -> Self {
             Self { remote }
         }
     }
@@ -265,7 +265,7 @@ mod middleware {
 
                 eprintln!("HTTP thread awaiting remote trigger");
 
-                if let Ok(()) = remote.recv() {
+                if remote.recv() == Ok(()) {
                     eprintln!("Trigger received, resolving HTTP request");
 
                     resolver.resolve(response);
@@ -418,10 +418,11 @@ mod tests {
         Render(RenderOperation),
     }
 
+    #[allow(clippy::fallible_impl_from)]
     impl From<Effect> for NarrowEffect {
         fn from(effect: Effect) -> Self {
             match effect {
-                Effect::Render(render_operation) => NarrowEffect::Render(render_operation),
+                Effect::Render(render_operation) => Self::Render(render_operation),
                 Effect::Random(_) => panic!("Attempted to convert Effect::Random to NarrowEffect"),
                 Effect::Http(_) => panic!("Attempted to convert Effect::Http to NarrowEffect"),
             }
@@ -458,11 +459,12 @@ mod tests {
         Render(RenderOperation),
     }
 
+    #[allow(clippy::fallible_impl_from)]
     impl From<Effect> for BridgeEffect {
         fn from(effect: Effect) -> Self {
             match effect {
-                Effect::Render(render_operation) => BridgeEffect::Render(render_operation),
-                Effect::Http(http_request) => BridgeEffect::Http(http_request),
+                Effect::Render(render_operation) => Self::Render(render_operation),
+                Effect::Http(http_request) => Self::Http(http_request),
                 Effect::Random(_) => panic!("Attempted to convert Effect::Random to NarrowEffect"),
             }
         }

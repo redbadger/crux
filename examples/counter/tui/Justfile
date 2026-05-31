@@ -20,7 +20,7 @@ fix:
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt -- --check
-    cargo clippy -- -D warnings
+    cargo clippy -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
 # build the project
 build:

@@ -23,7 +23,7 @@ pub struct Favorite(pub GeocodingResponse);
 
 impl From<GeocodingResponse> for Favorite {
     fn from(geo: GeocodingResponse) -> Self {
-        Favorite(geo)
+        Self(geo)
     }
 }
 
@@ -34,7 +34,7 @@ impl Favorite {
         &self.0.name
     }
 
-    pub(crate) fn location(&self) -> Location {
+    pub(crate) const fn location(&self) -> Location {
         self.0.location()
     }
 }
@@ -49,12 +49,12 @@ impl Favorites {
         self.0.iter()
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub(crate) const fn len(&self) -> usize {
         self.0.len()
     }
 
     #[cfg(test)]
-    pub(crate) fn is_empty(&self) -> bool {
+    pub(crate) const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
@@ -69,7 +69,7 @@ impl Favorites {
             .map(|idx| self.0.remove(idx))
     }
 
-    pub(crate) fn from_vec(vec: Vec<Favorite>) -> Self {
+    pub(crate) const fn from_vec(vec: Vec<Favorite>) -> Self {
         Self(vec)
     }
 

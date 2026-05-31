@@ -12,9 +12,9 @@ doctor:
     @just lib::check-web-wasm
 
 # auto-fix formatting issues
-fix:
+fix: build
     @echo '{{ style("command") }}fix:{{ NORMAL }}'
-    @echo "  No auto-fix configured"
+    pnpm exec eslint --fix .
 
 # validate lint
 check:
@@ -64,7 +64,6 @@ clean:
 update-pnpm-deps: typegen wasm
     @echo '{{ style("command") }}update-pnpm-deps:{{ NORMAL }}'
     pnpm update
-
 
 # local development workflow
 dev: fix check build test
