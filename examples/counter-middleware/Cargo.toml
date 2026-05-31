@@ -26,7 +26,7 @@ crux_http = { path = "../../crux_http" }
 # crux_core = "0.18.0"
 # crux_http = "0.17.0"
 serde = "1.0.228"
-js-sys = "0.3.98" # FIXME: bring into crux_core, make conditional
+js-sys = "0.3.99" # FIXME: bring into crux_core, make conditional
 
 [profile]
 

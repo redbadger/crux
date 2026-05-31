@@ -36,7 +36,7 @@ crux_time.workspace = true
 derive_builder = "0.20.2"
 facet = { version = "=0.44", features = ["chrono"] }
 anyhow = { workspace = true, optional = true }
-log = { version = "0.4.29", optional = true }
+log = { version = "0.4.30", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = "0.1"

@@ -17,12 +17,12 @@ crux_time.workspace = true
 futures-util = "0.3.32"
 gloo-net = { version = "0.7.0", features = ["http"] }
 gloo-timers = { version = "0.4", features = ["futures"] }
-js-sys = "0.3.98"
-log = "0.4.29"
+js-sys = "0.3.99"
+log = "0.4.30"
 shared = { path = "../shared" }
-wasm-bindgen = "0.2.121"
-wasm-bindgen-futures = "0.4.71"
-web-sys = { version = "0.3.98", features = ["Geolocation", "Navigator", "Position", "Coordinates", "Storage", "Window"] }
+wasm-bindgen = "0.2.122"
+wasm-bindgen-futures = "0.4.72"
+web-sys = { version = "0.3.99", features = ["Geolocation", "Navigator", "Position", "Coordinates", "Storage", "Window"] }
 
 leptos = { version = "0.8.19", features = ["csr"] }
 phosphor-leptos = "0.8.0"
