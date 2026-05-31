@@ -16,7 +16,8 @@ pub struct Duration {
 impl Duration {
     /// Create a new `Duration` from the given number of nanoseconds.
     #[must_use]
-    pub const fn new(nanos: u64) -> Self {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn new(nanos: u64) -> Self {
         Self { nanos }
     }
 

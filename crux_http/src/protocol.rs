@@ -142,7 +142,8 @@ pub struct HttpResponse {
 
 impl HttpResponse {
     #[must_use]
-    pub const fn status(status: u16) -> HttpResponseBuilder {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn status(status: u16) -> HttpResponseBuilder {
         HttpResponseBuilder {
             status: Some(status),
             headers: Some(vec![]),
@@ -150,7 +151,7 @@ impl HttpResponse {
         }
     }
     #[must_use]
-    pub const fn ok() -> HttpResponseBuilder {
+    pub fn ok() -> HttpResponseBuilder {
         Self::status(200)
     }
 }

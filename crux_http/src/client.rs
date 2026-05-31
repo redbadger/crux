@@ -321,7 +321,8 @@ impl Client {
 
     /// Get the current configuration.
     #[must_use]
-    pub const fn config(&self) -> &Config {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn config(&self) -> &Config {
         &self.config
     }
 

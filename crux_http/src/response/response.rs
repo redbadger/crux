@@ -53,7 +53,8 @@ impl<Body> Response<Body> {
     /// # let res = crux_http::testing::ResponseBuilder::ok().build();
     /// assert_eq!(res.status(), 200);
     /// ```
-    pub const fn status(&self) -> StatusCode {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn status(&self) -> StatusCode {
         self.status
     }
 
@@ -66,7 +67,8 @@ impl<Body> Response<Body> {
     /// use crux_http::http::Version;
     /// assert_eq!(res.version(), Some(Version::Http1_1));
     /// ```
-    pub const fn version(&self) -> Option<Version> {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn version(&self) -> Option<Version> {
         self.version
     }
 
@@ -152,11 +154,13 @@ impl<Body> Response<Body> {
         self.header(CONTENT_TYPE)?.last().as_str().parse().ok()
     }
 
-    pub const fn body(&self) -> Option<&Body> {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn body(&self) -> Option<&Body> {
         self.body.as_ref()
     }
 
-    pub const fn take_body(&mut self) -> Option<Body> {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn take_body(&mut self) -> Option<Body> {
         self.body.take()
     }
 
