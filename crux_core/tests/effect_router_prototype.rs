@@ -78,7 +78,7 @@ mod app {
     }
 
     #[derive(Debug)]
-    pub(crate) enum Event {
+    pub enum Event {
         Trigger,
         TriggerWithTimer,
 
@@ -88,12 +88,12 @@ mod app {
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub(crate) enum CameraCaptureError {
+    pub enum CameraCaptureError {
         PermissionDenied,
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Default)]
-    pub(crate) enum SaveStatus {
+    pub enum SaveStatus {
         #[default]
         Idle,
         WaitingForPermission,
@@ -104,7 +104,7 @@ mod app {
     }
 
     #[derive(Debug, Clone, Default)]
-    pub(crate) struct Model {
+    pub struct Model {
         pub(crate) countdown: Option<u8>,
         pub(crate) save_status: SaveStatus,
         pub(crate) saved_path: Option<String>,
@@ -112,7 +112,7 @@ mod app {
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
-    pub(crate) struct ViewModel {
+    pub struct ViewModel {
         pub(crate) countdown: Option<u8>,
         pub(crate) save_status: SaveStatus,
         pub(crate) saved_path: Option<String>,
@@ -120,7 +120,7 @@ mod app {
     }
 
     #[derive(Default)]
-    pub(crate) struct SelfieApp;
+    pub struct SelfieApp;
 
     impl SelfieApp {
         pub(crate) fn one_second_timer() -> Command<Effect, Event> {
@@ -271,23 +271,23 @@ mod ffi {
         }
     }
 
-    pub(crate) type FfiEffect = SerializedEffectFfi;
-    pub(crate) type FfiRequest = BridgeRequest<SerializedEffectFfi>;
+    pub type FfiEffect = SerializedEffectFfi;
+    pub type FfiRequest = BridgeRequest<SerializedEffectFfi>;
 
     /// A specific typed effect with opaque (e.g. pointer based) payload
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub(crate) struct CameraEffect {
+    pub struct CameraEffect {
         pub(crate) id: u64,
         pub(crate) operation: CaptureImageOp,
     }
 
     // Trait implemented by the shells, e.g with UniFFI of wasm_bindgen
-    pub(crate) trait CameraShell: Send + Sync {
+    pub trait CameraShell: Send + Sync {
         fn process_serialized_effects(&self, bytes: Vec<u8>);
         fn process_camera_effect(&self, effect: CameraEffect);
     }
 
-    pub(crate) struct CameraFFI<Format: FfiFormat = JsonFfiFormat> {
+    pub struct CameraFFI<Format: FfiFormat = JsonFfiFormat> {
         router: Arc<EffectRouter<SelfieApp, EffectRoutes<Format>>>,
     }
 
@@ -329,7 +329,6 @@ mod ffi {
             let core = Core::new();
 
             let router = EffectRouter::new(core, move |routes: EffectRoutes<Format>| {
-                let routes = routes.clone();
                 let shell = shell.clone();
 
                 move |effect| match effect {
@@ -403,7 +402,7 @@ mod ffi {
 
         use crate::app::{StoreImageAssets, StoredImageAsset, StoredImageAssetKind};
 
-        pub(crate) struct ImageStoreHandler {
+        pub struct ImageStoreHandler {
             originals: Sender<ImageStoreJob>,
             thumbnails: Sender<ImageStoreJob>,
             resolvers: Sender<ImageStoreResolveJob>,
@@ -538,15 +537,10 @@ impl ffi::CameraShell for TestShell {
 impl TestShell {
     /// Test-only helper: take serialized effects emitted from the core
     pub(crate) fn take_serialized_effects(&self) -> Vec<FfiRequest> {
-        let payloads = self
-            .serialized
+        self.serialized
             .lock()
             .expect("fake shell serialized lock poisoned")
             .drain(..)
-            .collect::<Vec<_>>();
-
-        payloads
-            .into_iter()
             .flat_map(|bytes| {
                 serde_json::from_slice::<Vec<FfiRequest>>(&bytes)
                     .expect("serialized shell payload should decode")

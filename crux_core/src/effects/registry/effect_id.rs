@@ -5,8 +5,8 @@ use std::marker::PhantomData;
 // the slots in the registry slab and still recognise a stale
 // id if we are given one.
 
-pub(crate) const INDEX_BITS: u32 = 32;
-pub(crate) const INDEX_MASK: u64 = u32::MAX as u64;
+const INDEX_BITS: u32 = 32;
+const INDEX_MASK: u64 = u32::MAX as u64;
 
 /// Opaque ID for a parked effect request.
 ///
@@ -46,11 +46,11 @@ impl<T> EffectId<T> {
         Self::from_raw((u64::from(generation) << INDEX_BITS) | u64::from(index))
     }
 
-    pub(crate) fn index(self) -> usize {
+    pub(crate) const fn index(self) -> usize {
         (self.raw & INDEX_MASK) as usize
     }
 
-    pub(crate) fn generation(self) -> u32 {
+    pub(crate) const fn generation(self) -> u32 {
         (self.raw >> INDEX_BITS) as u32
     }
 }

@@ -3,7 +3,7 @@ use slab::Slab;
 use super::effect_id;
 use crate::RequestHandle;
 
-pub(crate) struct Storage<Out> {
+pub struct Storage<Out> {
     pub(crate) handles: Slab<Option<RequestHandle<Out>>>,
     pub(crate) generations: Vec<u32>,
 }
