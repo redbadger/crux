@@ -3,7 +3,7 @@
 import type { NextPage } from "next";
 import { useEffect, useRef, useState } from "react";
 
-import init_core from "shared/shared";
+import * as sharedWasm from "shared";
 import {
   ViewModel,
   EventVariantStartWatch,
@@ -13,6 +13,10 @@ import {
 } from "shared_types/app";
 
 import { Core } from "./core";
+
+const wasmInitialized = (
+  sharedWasm as unknown as { initialized: Promise<void> }
+).initialized;
 
 const Home: NextPage = () => {
   const [view, setView] = useState(new ViewModel("", true));
@@ -24,7 +28,7 @@ const Home: NextPage = () => {
       if (!initialized.current) {
         initialized.current = true;
 
-        init_core().then(() => {
+        wasmInitialized.then(() => {
           if (core.current === null) {
             core.current = new Core(setView);
           }
@@ -33,7 +37,6 @@ const Home: NextPage = () => {
         });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     /*once*/ [],
   );
 

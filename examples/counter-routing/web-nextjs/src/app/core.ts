@@ -24,8 +24,10 @@ export class Core {
 
   constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
     this.callback = callback;
-    this.core = new CoreFFI((bytes: Uint8Array) => {
-      this.processEffects(bytes);
+    this.core = CoreFFI.new({
+      processEffects: (bytes: Uint8Array) => {
+        this.processEffects(bytes);
+      },
     });
   }
 
@@ -39,10 +41,8 @@ export class Core {
   update(event: Event) {
     const serializer = new BincodeSerializer();
     event.serialize(serializer);
-
     const effects = this.core.update(serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
+    const requests = deserializeRequests(new Uint8Array(effects));
     for (const { id, effect } of requests) {
       this.resolve(id, effect);
     }
@@ -51,7 +51,7 @@ export class Core {
   async resolve(id: number, effect: Effect) {
     switch (effect.constructor) {
       case EffectVariantRender: {
-        this.callback(deserializeView(this.core.view()));
+        this.callback(deserializeView(new Uint8Array(this.core.view())));
         break;
       }
       case EffectVariantHttp: {
@@ -83,10 +83,8 @@ export class Core {
   respond(id: number, response: Response) {
     const serializer = new BincodeSerializer();
     response.serialize(serializer);
-
     const effects = this.core.resolve(id, serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
+    const requests = deserializeRequests(new Uint8Array(effects));
     for (const { id, effect } of requests) {
       this.resolve(id, effect);
     }
