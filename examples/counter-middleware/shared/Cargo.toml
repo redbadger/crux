@@ -16,6 +16,13 @@ name = "codegen"
 required-features = ["codegen"]
 
 [features]
+default = ["ffi"]
+# The BoltFFI surface (CoreFFI + CruxShell callback trait). Enabled by default
+# for the native (Android/Apple) and web-nextjs builds. The Leptos shell links
+# `shared` directly into its own wasm binary and must build with this feature
+# disabled, because `#[boltffi::export]` on the callback trait emits `"env"`
+# wasm imports that neither trunk nor the Leptos runtime provides.
+ffi = ["dep:boltffi"]
 codegen = [
     "dep:anyhow",
     "dep:clap",
@@ -27,7 +34,7 @@ facet_typegen = ["crux_core/facet_typegen"]
 
 [dependencies]
 async-sse = "5.1.0"
-boltffi.workspace = true
+boltffi = { workspace = true, optional = true }
 chrono = { version = "0.4.44", features = ["serde"] }
 crux_core.workspace = true
 crux_http.workspace = true
