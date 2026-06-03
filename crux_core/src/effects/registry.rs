@@ -6,6 +6,18 @@ use std::sync::Mutex;
 use crate::{Request, RequestHandle, ResolveError, capability::Operation};
 pub use effect_id::EffectId;
 
+/// Stores parked effect requests under an [`EffectId`] so they can be resolved
+/// later, possibly after the request handle has crossed a custom FFI boundary.
+///
+/// A [`Request`] holds a [`RequestHandle`] continuation that cannot itself cross
+/// an FFI boundary. The registry keeps that continuation on the Rust side and
+/// hands out an opaque [`EffectId`] in its place; the shell passes the id back
+/// when it has a result, and [`Registry::resolve`] reconnects it with the parked
+/// handle.
+///
+/// Ids are generational, so resolving with a stale id (one whose slot has since
+/// been reused) is detected and reported as [`ResolveError::NotFound`] rather
+/// than resolving the wrong request.
 pub struct Registry<Op: Operation> {
     requests: Mutex<storage::Storage<Op::Output>>,
 }

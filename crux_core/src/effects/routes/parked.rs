@@ -6,6 +6,17 @@ use crate::{
     effects::{EffectId, EffectRouter, Routes, registry::Registry},
 };
 
+/// A route for effects handled over a custom, user-owned FFI.
+///
+/// The "opaque typed" lane is for operations whose payloads or results are
+/// awkward or undesirable to serialize, such as pointer-style handles or large
+/// non-serializable buffers. Instead of bytes, the request is *parked* under an
+/// [`EffectId`] with [`Parked::park`], and the shell receives that id together
+/// with the (typed) operation. When the shell has a result, it calls
+/// [`Parked::resolve`] with the id and the typed output.
+///
+/// `Parked` keeps a [`Weak`] reference to its [`EffectRouter`] so that resolving
+/// a request can advance the runtime and route any follow-up effects.
 pub struct Parked<A, RouteSet, Op>
 where
     A: crate::App,
@@ -22,6 +33,10 @@ where
     RouteSet: Routes<App> + Send + Sync + 'static,
     Op: Operation,
 {
+    /// Create a parked route attached to `router`.
+    ///
+    /// Called from your [`Routes::new`] implementation with the [`Weak`] router
+    /// handle the trait provides.
     #[must_use]
     pub fn new(router: Weak<EffectRouter<App, RouteSet>>) -> Self {
         Self {

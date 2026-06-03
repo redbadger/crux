@@ -28,6 +28,12 @@ impl<T> Clone for EffectId<T> {
 impl<T> Copy for EffectId<T> {}
 
 impl<T> EffectId<T> {
+    /// Reconstruct an `EffectId` from its raw integer representation.
+    ///
+    /// Use this on the resolve path to turn an id received back from a custom
+    /// FFI (as a plain integer) into a typed `EffectId`. The `raw` value must be
+    /// one previously produced by [`EffectId::into_raw`]; arbitrary integers may
+    /// refer to no request, or to a stale slot.
     #[must_use]
     pub const fn from_raw(raw: u64) -> Self {
         Self {
@@ -36,6 +42,11 @@ impl<T> EffectId<T> {
         }
     }
 
+    /// Unpack the id into its raw integer representation for passing across a
+    /// custom FFI boundary.
+    ///
+    /// The returned value packs both the slab index and the generation, and can
+    /// be turned back into an `EffectId` with [`EffectId::from_raw`].
     #[must_use]
     pub const fn into_raw(self) -> u64 {
         self.raw

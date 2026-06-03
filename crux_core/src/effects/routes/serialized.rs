@@ -8,6 +8,22 @@ use crate::{
     effects::{EffectRouter, Routes},
 };
 
+/// The default route, reproducing the standard [`Bridge`](crate::bridge::Bridge)
+/// behaviour on top of the [`EffectRouter`].
+///
+/// Effects on this lane are serialized to bytes using `Format`, registered under
+/// an [`EffectId`](crate::bridge::EffectId), and sent to the shell. The shell
+/// later calls [`Serialized::resolve`] with the id and the serialized response.
+/// Events and the view model are likewise exchanged as bytes via
+/// [`Serialized::update`] and [`Serialized::view`].
+///
+/// This is the primary onboarding path and typically acts as the fall-through
+/// arm of the routing closure, handling every effect that isn't claimed by a
+/// more specialised lane.
+///
+/// `Serialized` keeps a [`Weak`] reference to its [`EffectRouter`] so that
+/// resolving a request and processing an event can advance the runtime and
+/// route follow-up effects.
 pub struct Serialized<App, RouteSet, Format>
 where
     App: crate::App,
@@ -24,6 +40,10 @@ where
     RouteSet: Routes<App> + Send + Sync + 'static,
     Format: FfiFormat,
 {
+    /// Create a serialized route attached to `router`.
+    ///
+    /// Called from your [`Routes::new`] implementation with the [`Weak`] router
+    /// handle the trait provides.
     #[must_use]
     pub fn new(router: Weak<EffectRouter<App, RouteSet>>) -> Self {
         Self {

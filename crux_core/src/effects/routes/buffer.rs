@@ -2,6 +2,13 @@ use std::sync::Mutex;
 
 use crate::{Request, capability::Operation};
 
+/// A route that simply collects requests for the caller to drain and handle.
+///
+/// Unlike [`Serialized`](super::Serialized) and [`Parked`](super::Parked), this
+/// lane does no FFI or id bookkeeping: the routing closure pushes each request
+/// with [`Buffer::push`], and the surrounding code later calls
+/// [`Buffer::drain`] to take and handle them. This is convenient for tests and
+/// for simple, synchronous in-process handlers.
 pub struct Buffer<Op: Operation> {
     requests: Mutex<Vec<Request<Op>>>,
 }
