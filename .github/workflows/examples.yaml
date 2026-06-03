@@ -48,6 +48,7 @@ jobs:
           - { example: counter, shell: tui }
           - { example: counter-http, shell: shared }
           - { example: counter-middleware, shell: shared }
+          - { example: counter-routing, shell: shared }
           - { example: notes, shell: shared }
           - { example: weather, shell: shared }
 
@@ -86,6 +87,7 @@ jobs:
           - { example: counter, shell: web-yew }
           - { example: counter-http, shell: web-leptos }
           - { example: counter-middleware, shell: web-leptos }
+          - { example: counter-routing, shell: web-leptos }
           - { example: weather, shell: web-leptos }
 
     defaults:
@@ -154,6 +156,7 @@ jobs:
           - { example: counter, shell: web-react-router }
           - { example: counter-http, shell: web-nextjs }
           - { example: counter-middleware, shell: web-nextjs }
+          - { example: counter-routing, shell: web-nextjs }
           - { example: notes, shell: web-nextjs }
           - { example: weather, shell: web-nextjs }
 
@@ -283,6 +286,7 @@ jobs:
           - counter
           - counter-http
           - counter-middleware
+          - counter-routing
           - weather
 
     defaults:
@@ -334,6 +338,7 @@ jobs:
           - counter
           - counter-http
           - counter-middleware
+          - counter-routing
           - weather
 
     defaults:

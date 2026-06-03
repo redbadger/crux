@@ -2,7 +2,7 @@ mod lib '../../lib.just'
 
 default: dev
 
-common := "shared web-leptos web-nextjs Android"
+common := "shared web-leptos web-nextjs android"
 shells := if os() == "macos" { common + " apple" } else { common }
 
 # checks required tools across all shells
@@ -22,6 +22,41 @@ dev:
         echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
         just "$shell/dev"
     done
+
+# fix formatting in all shells
+[script('bash')]
+fix:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/fix:{{ NORMAL }}'
+        just "$shell/fix"
+    done
+
+# check formatting and lint in all shells
+[script('bash')]
+check:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/check:{{ NORMAL }}'
+        just "$shell/check"
+    done
+
+# clean build artefacts in all shells
+[script('bash')]
+clean:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/clean:{{ NORMAL }}'
+        just "$shell/clean"
+    done
+    cargo clean
+    rm -rf target
+
+# update pnpm dependencies in all pnpm shells
+[script('bash')]
+update-pnpm-deps:
+    set -euo pipefail
+    just web-nextjs/update-pnpm-deps
 
 # CI workflow
 [script('bash')]

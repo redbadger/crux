@@ -17,6 +17,7 @@ doctor:
 # local development workflow
 [script('bash')]
 dev:
+    set -euo pipefail
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
         just "$shell/dev"
@@ -60,6 +61,7 @@ update-pnpm-deps:
 # CI workflow
 [script('bash')]
 ci:
+    set -euo pipefail
     for shell in {{ shells }}; do
         echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
         just "$shell/ci"
