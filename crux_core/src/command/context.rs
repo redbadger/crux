@@ -58,7 +58,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     ///
     /// # Cancellation behaviour
     ///
-    /// `ShellRequest` futures may never resolve, if the corresponding [`RequestHandle`]
+    /// `ShellRequest` futures may never resolve, if the corresponding [`crate::RequestHandle`]
     /// is dropped by the shell. Such cases are detected by the Command and the owning task is aborted.
     /// That is to say - any `.await` point on a `ShellRequest` is a potential abort point for the
     /// enclosing future.
@@ -95,7 +95,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     ///
     /// # Cancellation behaviour
     ///
-    /// `ShellStream` futures may never resolve, if the corresponding [`RequestHandle`]
+    /// `ShellStream` futures may never resolve, if the corresponding [`crate::RequestHandle`]
     /// is dropped by the shell. Such cases are detected by the Command and the owning task is aborted.
     /// That is to say - any `.await` point on a `ShellRequest` is a potential abort point for the
     /// enclosing future.

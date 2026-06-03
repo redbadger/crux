@@ -59,7 +59,7 @@ pub use registry::EffectId;
 
 /// Wraps a [`Core`] and routes each emitted effect to a type-specific handler.
 ///
-/// The router owns the set of routes (`RouteSet`) and a routing closure which
+/// The router owns the set of routes ([`RouteSet`](Routes)) and a routing closure which
 /// decides, per effect, which handler should process it. Any follow-up effects
 /// produced while resolving a request are passed back through the same closure,
 /// so routing decisions stay consistent across an entire chain of effects.

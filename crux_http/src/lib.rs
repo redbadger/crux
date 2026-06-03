@@ -51,7 +51,7 @@ where
     /// Instruct the Shell to perform a HTTP GET request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -80,7 +80,7 @@ where
     /// Instruct the Shell to perform a HTTP HEAD request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -107,7 +107,7 @@ where
     /// Instruct the Shell to perform a HTTP POST request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -135,7 +135,7 @@ where
     /// Instruct the Shell to perform a HTTP PUT request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -163,7 +163,7 @@ where
     /// Instruct the Shell to perform a HTTP DELETE request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -190,7 +190,7 @@ where
     /// Instruct the Shell to perform a HTTP PATCH request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -218,7 +218,7 @@ where
     /// Instruct the Shell to perform a HTTP OPTIONS request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -245,7 +245,7 @@ where
     /// Instruct the Shell to perform a HTTP TRACE request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -272,7 +272,7 @@ where
     /// Instruct the Shell to perform a HTTP CONNECT request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
@@ -299,7 +299,7 @@ where
     /// Instruct the Shell to perform an HTTP request to the provided `url`.
     ///
     /// The request can be configured via associated functions on the returned
-    /// [`RequestBuilder`] and then converted to a [`Command`]
+    /// [`RequestBuilder`] and then converted to a [`Command`](crux_core::Command)
     /// with [`RequestBuilder::build`].
     ///
     /// # Panics
