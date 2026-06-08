@@ -8,7 +8,25 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-05-31
+## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-06-08
+
+### 🚀 Features
+
+- **Effect Routing** ([#514](https://github.com/redbadger/crux/pull/514)): A new
+  `EffectRouter` type replaces effect middleware, enabling type-based, per-effect dispatching
+  without requiring every effect to pass through the serialisation bridge. You implement the
+  `Routes<App>` trait to wire up one or more *lanes*, then wrap your `Core` with
+  `EffectRouter::new`. Three built-in lane types are provided:
+  - `Serialized` — the standard serialised FFI lane, equivalent to the existing bridge
+  - `Parked` — parks requests by `EffectId` for effects that are awkward to serialise
+    (e.g. opaque pointer handles passed across the FFI boundary)
+  - `Buffer` — accumulates requests in a buffer for synchronous drain-and-handle; useful
+    in tests and for in-process Rust handlers
+
+  Follow-up effects produced when a request is resolved are automatically re-routed through
+  the same closure, keeping routing policy consistent across the full effect chain. A new
+  `counter-routing` example demonstrates the API end-to-end, including a `Random` effect
+  handled entirely in Rust without crossing the FFI boundary.
 
 ### ⚠️ Breaking Changes
 
