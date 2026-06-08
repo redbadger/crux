@@ -17,7 +17,7 @@ pub use request_serde::ResolveSerialized;
 
 /// A serialization format for the bridge FFI.
 ///
-/// **Note**: While you can implement your own format for use with the [`BridgeWithSerializer`],
+/// **Note**: While you can implement your own format for use with the [`Bridge`],
 /// the type generation system doesn't yet support automatically generating the shell-side support
 /// for different formats, and you'll need to bring your own solution for this.
 pub trait FfiFormat: Debug + 'static {

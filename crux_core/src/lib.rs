@@ -154,6 +154,7 @@
 pub mod bridge;
 pub mod capability;
 pub mod command;
+pub mod effects;
 pub mod middleware;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
@@ -220,7 +221,7 @@ pub trait App {
     /// effects captured by the returned `Command`. Capability calls don't return anything, but may
     /// take a `callback` event which should be dispatched when the effect completes.
     ///
-    /// Typically, `update` should call at least [`Render::render`](crate::render::Render::render).
+    /// Typically, `update` should call at least [`render`](crate::render::render).
     fn update(
         &self,
         event: Self::Event,

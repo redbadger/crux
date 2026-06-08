@@ -74,7 +74,7 @@ where
     }
 
     /// Ask to receive a notification when the specified
-    /// [`SystemTime`] has arrived. Returns the `RequestBuilder` alongside a [`TimerHandle`],
+    /// [`SystemTime`](std::time::SystemTime) has arrived. Returns the `RequestBuilder` alongside a [`TimerHandle`],
     /// which can be stored and used to clear the timer.
     ///
     /// # Panics

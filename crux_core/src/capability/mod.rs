@@ -3,7 +3,7 @@ use crate::type_generation::facet::TypeGenError;
 
 /// Operation trait links together input and output of a side-effect.
 ///
-/// You implement `Operation` on the payload sent by the capability to the shell using [`CapabilityContext::request_from_shell`].
+/// You implement `Operation` on the payload sent by the capability to the shell using [`CommandContext::request_from_shell`](crate::command::CommandContext::request_from_shell).
 ///
 /// For example (from `crux_http`):
 ///

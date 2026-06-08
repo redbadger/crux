@@ -50,7 +50,7 @@ where
     /// for a serializable Effect `Eff`
     ///
     /// You should never need to call this method yourself, it will be called
-    /// by the generated implementation of [`Effect::serialize`](crate::Effect::serialize),
+    /// by the generated implementation of [`EffectFFI::serialize`](crate::EffectFFI::serialize),
     /// which is used by the Bridge implementation.
     pub fn serialize<F, Eff, T>(self, effect: F) -> (Eff, ResolveSerialized<T>)
     where

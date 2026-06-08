@@ -146,7 +146,7 @@ impl TypeRegistry {
 
     /// Register all the types used in app `A` to be shared with the Shell.
     ///
-    /// Do this before calling [`CodeGenerator::swift`], [`CodeGenerator::java`] or [`CodeGenerator::typescript`].
+    /// Do this before calling [`CodeGenerator::swift`] or [`CodeGenerator::typescript`].
     /// This method would normally be called in a build.rs file of a sister crate responsible for
     /// creating "foreign language" type definitions for the FFI boundary.
     /// See the section on
