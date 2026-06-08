@@ -102,6 +102,7 @@ accordingly, and potentially request some side-effects.
 > 1. [Weather](./examples/weather) — see how a real app works
 > 1. [Notes](./examples/notes) — real-time collaboration
 > 1. [Counter (Middleware)](./examples/counter-middleware) — use middleware for Rust-side effects
+> 1. [Counter (Routing)](./examples/counter-routing) — use effect routing for type-based, per-effect dispatching
 
 ### Application Shell
 
