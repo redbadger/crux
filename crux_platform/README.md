@@ -1,15 +1,48 @@
-# Crux Platform capability
+# crux_platform (deprecated)
 
-This crate contains the `Platform` capability, which can be used to ask the Shell what platform it is running on.
+> **⚠️ This crate is deprecated and will no longer be maintained.**
 
-For an example of how to use the capability, see the [integration test](./tests/platform_test.rs).
+The `crux_platform` capability was provided as a convenience for querying the current platform
+(iOS, Android, Web, etc.) from the shell. In practice it never did much, and with the
+[Command API](https://docs.rs/crux_core/latest/crux_core/command/index.html) it is
+straightforward to create your own platform capability tailored to your app's needs.
 
-## About Crux Capabilities
+## Migration
 
-Crux capabilities teach Crux how to interact with the shell when performing side effects. They do the following:
+Copy the handful of types below into your own project and adjust them however you like.
+The shell-side implementation (responding to `PlatformRequest` with a `PlatformResponse`)
+remains exactly the same.
 
-1. define a `Request` struct to instruct the Shell how to perform the side effect on behalf of the Core
-1. define a `Response` struct to hold the data returned by the Shell after the side effect has completed
-1. declare one or more convenience methods for invoking the Shell's capability, each of which creates a `Command` (describing the effect and its continuation) that Crux can "execute"
+```rust
+use crux_core::{Command, Request, command::RequestBuilder, capability::Operation};
+use facet::Facet;
+use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 
-> Note that because Swift has no namespacing, there is currently a requirement to ensure that `Request` and `Response` are unambiguously named (e.g. `HttpRequest` and `HttpResponse`).
+#[derive(Facet, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlatformRequest;
+
+#[derive(Facet, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlatformResponse(pub String);
+
+impl Operation for PlatformRequest {
+    type Output = PlatformResponse;
+}
+
+pub struct Platform<Effect, Event> {
+    _marker: PhantomData<(Effect, Event)>,
+}
+
+impl<Effect, Event> Platform<Effect, Event>
+where
+    Effect: From<Request<PlatformRequest>> + Send + 'static,
+    Event: Send + 'static,
+{
+    pub fn get() -> RequestBuilder<Effect, Event, impl Future<Output = PlatformResponse>> {
+        Command::request_from_shell(PlatformRequest)
+    }
+}
+```
+
+For more information on building custom capabilities, see
+[Managed Effects](https://redbadger.github.io/crux/guide/effects.html) in the Crux book.

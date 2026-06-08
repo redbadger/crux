@@ -211,9 +211,9 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
-version = "2.11.1"
+version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
+checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 
 [[package]]
 name = "block-buffer"
@@ -235,10 +235,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "boltffi_core"
-version = "0.25.2"
+name = "boltffi_ast"
+version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bffbb19cfaadaa61c77d8bd41eeafca02428706a16c624ad0c3debf300cd0cb3"
+checksum = "ce0e403c40b5c46c1e42730b8b68bf88198a7e9f37b266c5e28a6cbc55ea6e45"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "boltffi_binding"
+version = "0.25.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "253d160c9254d385c67f02bac0d9f6faeb8b2d6afc28927e1ad31d2777e3d309"
+dependencies = [
+ "boltffi_ast",
+ "serde",
+]
+
+[[package]]
+name = "boltffi_core"
+version = "0.25.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b41dc30e77af405dbdb856b9abd1c291beb5f5bfeab6d8d2eb59a42a10d62653"
 dependencies = [
  "boltffi_macros",
  "url",
@@ -247,16 +266,18 @@ dependencies = [
 
 [[package]]
 name = "boltffi_ffi_rules"
-version = "0.25.2"
+version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d6063a40071db98255f369887c9927b09423709771fb8b4def5ff02c99394ae"
+checksum = "6f760cf0530af25beb03c40fbb07c7d7c2609dea7373b24671dae326a38c9f54"
 
 [[package]]
 name = "boltffi_macros"
-version = "0.25.2"
+version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33e78b79cf977f97ebc3f7f2b0ae3526fe366851848f5e11781e10324a9939cc"
+checksum = "e5c6574f277e9f8622bd87be2ad12d5f472e936191f4fa33f859008094d6c8fc"
 dependencies = [
+ "boltffi_ast",
+ "boltffi_binding",
  "boltffi_ffi_rules",
  "proc-macro2",
  "quote",
@@ -327,9 +348,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.44"
+version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
  "js-sys",
@@ -562,7 +583,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crux_core"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -580,7 +601,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -603,7 +624,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "darling 0.23.0",
  "heck",
@@ -1340,9 +1361,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.4.1"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8be7462df143984c4598a256ef469b251d7d7f9e271135073e78fc535414f3d0"
+checksum = "6970f50e31d6fc17d3fa27329444bfa74e196cf62e95052a3f6fee181dba6425"
 dependencies = [
  "bytes",
  "itoa",
@@ -1871,9 +1892,9 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
 name = "log"
-version = "0.4.30"
+version = "0.4.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "616ec5685824bcc94416c6d4a7a446eea774a31efd7062c8480ba6fd06d7a6e5"
+checksum = "953f07c43838f8e6f9758cab68bf5bed85465e7587ebe0b823f1bcd81978ad3a"
 
 [[package]]
 name = "manyhow"
@@ -2908,9 +2929,9 @@ checksum = "3b09c83c3c29d37506a3e260c08c03743a6bb66a9cd432c6934ab501a190571f"
 
 [[package]]
 name = "unicode-segmentation"
-version = "1.13.2"
+version = "1.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9629274872b2bfaf8d66f5f15725007f635594914870f65218920345aa11aa8c"
+checksum = "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
 
 [[package]]
 name = "unicode-width"
@@ -3374,9 +3395,9 @@ checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
 name = "yoke"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abe8c5fda708d9ca3df187cae8bfb9ceda00dd96231bed36e445a1a48e66f9ca"
+checksum = "709fe23a0424b6a435d82152b1bd3fdfb0833487d5fa90d05d42762a9891fef5"
 dependencies = [
  "stable_deref_trait",
  "yoke-derive",

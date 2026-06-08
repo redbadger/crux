@@ -8,11 +8,60 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-06-08
+
+### 🚀 Features
+
+- **Effect Routing** ([#514](https://github.com/redbadger/crux/pull/514)): A new
+  `EffectRouter` type replaces effect middleware, enabling type-based, per-effect dispatching
+  without requiring every effect to pass through the serialisation bridge. You implement the
+  `Routes<App>` trait to wire up one or more *lanes*, then wrap your `Core` with
+  `EffectRouter::new`. Three built-in lane types are provided:
+  - `Serialized` — the standard serialised FFI lane, equivalent to the existing bridge
+  - `Parked` — parks requests by `EffectId` for effects that are awkward to serialise
+    (e.g. opaque pointer handles passed across the FFI boundary)
+  - `Buffer` — accumulates requests in a buffer for synchronous drain-and-handle; useful
+    in tests and for in-process Rust handlers
+
+  Follow-up effects produced when a request is resolved are automatically re-routed through
+  the same closure, keeping routing policy consistent across the full effect chain. A new
+  `counter-routing` example demonstrates the API end-to-end, including a `Random` effect
+  handled entirely in Rust without crossing the FFI boundary.
+
+### ⚠️ Breaking Changes
+
+- **BoltFFI replaces UniFFI for FFI binding generation**: All examples and shell
+  templates have been migrated from UniFFI to [BoltFFI](https://www.boltffi.dev/).
+  If you are currently generating cross-language FFI bindings with UniFFI, you will
+  need to migrate:
+  1. Install the CLI: `cargo install boltffi_cli`
+  2. Add a `boltffi.toml` to your shared crate describing your targets
+  3. Replace your `uniffi-bindgen` calls with `boltffi pack <target>` (e.g.
+     `boltffi pack apple`, `boltffi pack android`, `boltffi pack wasm`)
+
+  App-type generation (Swift/Kotlin/TypeScript structs for `Event`, `ViewModel`,
+  etc.) remains a separate step via `cargo run --bin codegen --features facet_typegen`.
+
+- **`cli` feature and `crux_core::cli` removed**: The `cli` feature (which
+  re-exported `crux_cli`) is no longer available. The `crux_cli` crate itself
+  has been removed from the workspace. Use BoltFFI for binding generation and
+  `facet_typegen` for type generation instead.
+
+- **Rustdoc-based type generation removed**: The `crux codegen` command (which
+  used rustdoc JSON to derive types) has been removed along with `crux_cli`. The
+  facet-based typegen (`facet_typegen` feature) remains the supported path.
+
 ### ⚠️ Deprecated
 
 - **UniFFI compatibility bindgen**: `crux_core::bindgen` and the `bindgen` /
-  `uniffi_compat_bindgen` features are deprecated from `0.19.0`. Use BoltFFI's
-  package and generate commands instead.
+  `uniffi_compat_bindgen` features are deprecated. Kotlin bindgen functionality
+  has been moved from `crux_cli` into `crux_core` behind these features solely as
+  a migration aid. Use `boltffi pack android` instead.
+
+### ⚙️ Miscellaneous Tasks
+
+- Internal clippy nursery improvements.
+- Dependency updates.
 
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_core-v0.17.0...crux_core-v0.18.0) - 2026-05-07
 

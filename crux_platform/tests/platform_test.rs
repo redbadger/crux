@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 mod shared {
     use crux_core::macros::effect;
     use crux_core::render::RenderOperation;

@@ -21,12 +21,12 @@
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.4",
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "25.6.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "postcss": "^8.5.14",
-    "tailwindcss": "^4.2.4"
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0"
   },
   "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
 }
