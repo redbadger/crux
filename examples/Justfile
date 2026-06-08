@@ -2,7 +2,7 @@ mod lib '../lib.just'
 
 default: dev
 
-examples := "counter counter-http counter-middleware notes weather"
+examples := "counter counter-http counter-middleware counter-routing notes weather"
 
 # checks required tools across all examples
 [script('bash')]

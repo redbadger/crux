@@ -5,7 +5,7 @@ import Shared
 private class EffectHandler: CruxShell, @unchecked Sendable {
     public var handler: ((Data) -> Void)?
 
-    func processEffects(_ bytes: Data) {
+    func processEffects(bytes: Data) {
         handler?(bytes)
     }
 }
@@ -15,11 +15,11 @@ class Core: ObservableObject {
     @Published var view: ViewModel
 
     private var handler: EffectHandler
-    private var core: CoreFfi
+    private var core: CoreFFI
 
     init() {
         self.handler = EffectHandler()
-        self.core = CoreFfi(handler)
+        self.core = CoreFFI(shell: handler)
         // swiftlint:disable:next force_try
         self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
 
@@ -34,7 +34,7 @@ class Core: ObservableObject {
 
     func update(_ event: Event) {
         // swiftlint:disable:next force_try
-        core.update(Data(try! event.bincodeSerialize()))
+        core.update(data: Data(try! event.bincodeSerialize()))
     }
 
     func processEffect(_ request: Request) {
@@ -48,7 +48,7 @@ class Core: ObservableObject {
             Task {
                 let result = await performHttpRequest(httpRequest)
                 // swiftlint:disable force_try
-                self.core.resolve(request.id, Data(try! result.bincodeSerialize()))
+                self.core.resolve(effectId: request.id, data: Data(try! result.bincodeSerialize()))
             }
         case .serverSentEvents(let sseRequest):
             Task {
@@ -103,13 +103,14 @@ class Core: ObservableObject {
                     let response = SseResponse.chunk([UInt8](buffer))
                     buffer = Data()
                     // swiftlint:disable force_try
-                    self.core.resolve(requestId, Data(try! response.bincodeSerialize()))
+                    self.core.resolve(
+                        effectId: requestId, data: Data(try! response.bincodeSerialize()))
                 }
             }
 
             let done = SseResponse.done
             // swiftlint:disable force_try
-            self.core.resolve(requestId, Data(try! done.bincodeSerialize()))
+            self.core.resolve(effectId: requestId, data: Data(try! done.bincodeSerialize()))
         } catch {
             print("SSE error: \(error)")
         }
