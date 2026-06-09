@@ -4,7 +4,8 @@ use std::sync::Arc;
 use crate::middleware::{Middleware, Next};
 use crate::protocol::{EffectSender, HttpResult, ProtocolRequestBuilder};
 use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
-use http_types::{Method, Url};
+use http::Method;
+use url::Url;
 
 /// An HTTP client, capable of sending `Request`s
 ///
@@ -138,7 +139,7 @@ impl Client {
         };
 
         let response = next.run(request, client).await?;
-        Ok(ResponseAsync::new(response.into()))
+        Ok(response)
     }
 
     /// Submit a `Request` and get the response body as bytes.
@@ -198,7 +199,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn get(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Get, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::GET, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `HEAD` request using the `Client` connection.
@@ -211,7 +212,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn head(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Head, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::HEAD, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `POST` request using the `Client` connection.
@@ -224,7 +225,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn post(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Post, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::POST, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `PUT` request using the `Client` connection.
@@ -237,7 +238,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn put(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Put, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::PUT, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `DELETE` request using the `Client` connection.
@@ -250,7 +251,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn delete(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Delete, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::DELETE, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `CONNECT` request using the `Client` connection.
@@ -263,7 +264,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn connect(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Connect, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::CONNECT, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `OPTIONS` request using the `Client` connection.
@@ -276,7 +277,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn options(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Options, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::OPTIONS, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `TRACE` request using the `Client` connection.
@@ -289,7 +290,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn trace(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Trace, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::TRACE, self.url(uri), self.clone())
     }
 
     /// Perform an HTTP `PATCH` request using the `Client` connection.
@@ -302,7 +303,7 @@ impl Client {
     ///
     /// Returns errors from the middleware, http backend, and network sockets.
     pub fn patch(&self, uri: impl AsRef<str>) -> RequestBuilder<()> {
-        RequestBuilder::new_for_middleware(Method::Patch, self.url(uri), self.clone())
+        RequestBuilder::new_for_middleware(Method::PATCH, self.url(uri), self.clone())
     }
 
     /// Perform a HTTP request with the given verb using the `Client` connection.

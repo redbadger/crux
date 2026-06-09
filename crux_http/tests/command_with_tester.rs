@@ -6,7 +6,7 @@ mod shared {
     use crux_core::{Command, macros::effect};
     use crux_http::{command::Http, protocol::HttpRequest};
     use futures_util::join;
-    use http_types::StatusCode;
+
     use serde::{Deserialize, Serialize};
 
     #[derive(Default)]
@@ -19,7 +19,7 @@ mod shared {
         PostForm,
         GetPostChain,
         ConcurrentGets,
-        ComposeComplete(StatusCode),
+        ComposeComplete(u16),
 
         // events local to the core
         Set(crux_http::Result<crux_http::Response<String>>),
@@ -78,7 +78,7 @@ mod shared {
                         .await
                         .unwrap();
 
-                    ctx.send_event(Event::ComposeComplete(response.status()));
+                    ctx.send_event(Event::ComposeComplete(response.status().as_u16()));
                 }),
                 Event::ConcurrentGets => Command::new(|ctx| async move {
                     let one = Http::get("http://example.com/one")
@@ -93,10 +93,7 @@ mod shared {
                     let one = response_one.unwrap();
                     let two = response_two.unwrap();
 
-                    let status =
-                        StatusCode::try_from(max::<u16>(one.status().into(), two.status().into()))
-                            .unwrap();
-
+                    let status = max(one.status().as_u16(), two.status().as_u16());
                     ctx.send_event(Event::ComposeComplete(status));
                 }),
                 Event::ComposeComplete(status) => {
@@ -106,10 +103,9 @@ mod shared {
                 Event::Set(Ok(mut response)) => {
                     model.body = response.take_body().unwrap();
                     model.values = response
-                        .header("my_header")
-                        .unwrap()
+                        .header_all("my_header")
                         .iter()
-                        .map(std::string::ToString::to_string)
+                        .map(|v| v.to_str().unwrap_or("").to_string())
                         .collect();
                     Command::done()
                 }
@@ -171,9 +167,12 @@ mod tests {
 
         assert_matches!(actual.clone(), Event::Set(Ok(response)) => {
             assert_eq!(response.body().unwrap(), "\"hello\"");
-            assert_eq!(response.header("my_header").unwrap().iter()
-            .map(std::string::ToString::to_string)
-            .collect::<Vec<_>>(), vec!["my_value1", "my_value2"]);
+            assert_eq!(
+                response.header_all("my_header").iter()
+                    .map(|v| v.to_str().unwrap_or("").to_string())
+                    .collect::<Vec<_>>(),
+                vec!["my_value1", "my_value2"]
+            );
         });
 
         app.update(actual, &mut model).assert_empty();

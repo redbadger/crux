@@ -16,18 +16,22 @@ mod response;
 mod body;
 pub mod client;
 pub mod command;
+#[cfg(feature = "http-types")]
+mod compat;
 pub mod middleware;
 pub mod protocol;
 pub mod testing;
 
 use std::marker::PhantomData;
 
-pub use http_types as http;
-
 pub use crate::body::Body;
-pub use http_types::Method;
+pub use http;
+pub use http::Method;
 pub use mime;
 pub use url::Url;
+
+#[cfg(feature = "http-types")]
+pub use http_types;
 
 pub use crate::protocol::{HttpRequest, HttpResponse};
 
@@ -77,7 +81,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn get(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Get, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::GET, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP HEAD request to the provided `url`.
@@ -104,7 +108,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn head(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Head, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::HEAD, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP POST request to the provided `url`.
@@ -132,7 +136,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn post(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Post, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::POST, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP PUT request to the provided `url`.
@@ -160,7 +164,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn put(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Put, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::PUT, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP DELETE request to the provided `url`.
@@ -187,7 +191,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn delete(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Delete, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::DELETE, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP PATCH request to the provided `url`.
@@ -215,7 +219,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn patch(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Patch, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::PATCH, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP OPTIONS request to the provided `url`.
@@ -242,7 +246,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn options(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Options, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::OPTIONS, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP TRACE request to the provided `url`.
@@ -269,7 +273,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn trace(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Trace, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::TRACE, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform a HTTP CONNECT request to the provided `url`.
@@ -296,7 +300,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     pub fn connect(url: impl AsRef<str>) -> command::RequestBuilder<Effect, Event> {
-        command::RequestBuilder::new(Method::Connect, url.as_ref().parse().unwrap())
+        command::RequestBuilder::new(Method::CONNECT, url.as_ref().parse().unwrap())
     }
 
     /// Instruct the Shell to perform an HTTP request to the provided `url`.
@@ -312,7 +316,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use http_types::Method;
+    /// # use crux_http::Method;
     /// # use crux_core::macros::effect;
     /// # use crux_http::HttpRequest;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
@@ -320,7 +324,7 @@ where
     /// # #[allow(unused)]
     /// # enum Effect { Http(HttpRequest) }
     /// # type Http = crux_http::command::Http<Effect, Event>;
-    /// Http::request(Method::Post, "https://httpbin.org/post".parse().unwrap())
+    /// Http::request(Method::POST, "https://httpbin.org/post".parse().unwrap())
     ///     .body_form(&[("name", "Alice")]).unwrap()
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);

@@ -233,27 +233,13 @@ impl ProtocolRequestBuilder for crate::Request {
             url: self.url().to_string(),
             headers: self
                 .iter()
-                .flat_map(|(name, values)| {
-                    values.iter().map(|value| HttpHeader {
-                        name: name.to_string(),
-                        value: value.to_string(),
-                    })
+                .map(|(name, value)| HttpHeader {
+                    name: name.to_string(),
+                    value: value.to_str().unwrap_or("").to_string(),
                 })
                 .collect(),
             body,
         })
-    }
-}
-
-impl From<HttpResponse> for crate::ResponseAsync {
-    fn from(effect_response: HttpResponse) -> Self {
-        let mut res = http_types::Response::new(effect_response.status);
-        res.set_body(effect_response.body);
-        for header in effect_response.headers {
-            res.append_header(header.name.as_str(), header.value);
-        }
-
-        Self::new(res)
     }
 }
 
@@ -535,9 +521,9 @@ mod tests {
     #[test]
     fn into_protocol_request_is_synchronous_and_carries_body() {
         use crate::{Request, Url, protocol::ProtocolRequestBuilder};
-        use http_types::Method;
+        use http::Method;
 
-        let mut req = Request::new(Method::Post, Url::parse("https://example.com").unwrap());
+        let mut req = Request::new(Method::POST, Url::parse("https://example.com").unwrap());
         req.body_json(&serde_json::json!({"x": 1})).unwrap();
 
         // into_protocol_request is now a plain (sync) fn — no .await needed.

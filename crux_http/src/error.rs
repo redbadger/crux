@@ -29,6 +29,7 @@ pub enum HttpError {
     Json(String),
 }
 
+#[cfg(feature = "http-types")]
 impl From<http_types::Error> for HttpError {
     fn from(e: http_types::Error) -> Self {
         Self::Http {

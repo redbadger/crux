@@ -16,7 +16,8 @@ default = ["encoding"]
 encoding = ["encoding_rs", "web-sys"]
 typegen = ["crux_core/typegen"]
 facet_typegen = ["crux_core/facet_typegen"]
-http-compat = ["dep:http"]
+# Enable this feature to interoperate with the legacy `http-types` crate.
+http-types = ["dep:http-types"]
 
 [dependencies]
 anyhow.workspace = true
@@ -27,8 +28,8 @@ encoding_rs = { version = "0.8", optional = true }
 facet.workspace = true
 facet-generate-attrs.workspace = true
 futures-util = "0.3"
-http = { version = "1.4", optional = true }
-http-types = { package = "http-types-red-badger-temporary-fork", version = "6.0", default-features = false }
+http = "1.4"
+http-types = { package = "http-types-red-badger-temporary-fork", version = "6.0", default-features = false, optional = true }
 mime = "0.3"
 pin-project-lite = "0.2"
 serde = { workspace = true, features = ["derive"] }
