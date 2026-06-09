@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::middleware::{Middleware, Next};
 use crate::protocol::{EffectSender, HttpResult, ProtocolRequestBuilder};
-use crate::{Config, Request, RequestBuilder, ResponseAsync, Result};
+use crate::{Config, RawResponse, Request, RequestBuilder, Result};
 use http::Method;
 use url::Url;
 
@@ -17,12 +17,12 @@ use url::Url;
 /// ```no_run
 /// use futures_util::future::BoxFuture;
 /// use crux_http::middleware::{Next, Middleware};
-/// use crux_http::{client::Client, Request, RequestBuilder, ResponseAsync, Result};
+/// use crux_http::{client::Client, Request, RequestBuilder, RawResponse, Result};
 /// use std::time;
 /// use std::sync::Arc;
 ///
 /// // Fetches an authorization token prior to making a request
-/// fn fetch_auth<'a>(mut req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<ResponseAsync>> {
+/// fn fetch_auth<'a>(mut req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<RawResponse>> {
 ///     Box::pin(async move {
 ///         let auth_token = client.get("https://httpbin.org/get")
 ///             .await?
@@ -103,7 +103,7 @@ impl Client {
     ///
     /// # Panics
     /// Panics if we can't create an HTTP request.
-    pub async fn send(&self, request: impl Into<Request>) -> Result<ResponseAsync> {
+    pub async fn send(&self, request: impl Into<Request>) -> Result<RawResponse> {
         let mut request: Request = request.into();
         let middleware = self.middleware.clone();
 

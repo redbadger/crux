@@ -39,7 +39,7 @@ pub use self::{config::Config, error::HttpError, request::Request};
 pub use response::Response;
 
 pub use request_builder::RequestBuilder;
-pub use response::ResponseAsync;
+pub use response::RawResponse;
 
 use client::Client;
 

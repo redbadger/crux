@@ -18,7 +18,7 @@ pub struct Response<Body> {
 
 impl<Body> Response<Body> {
     /// Create a new instance.
-    pub(crate) fn new(mut res: super::ResponseAsync) -> crate::Result<Response<Vec<u8>>> {
+    pub(crate) fn new(mut res: super::RawResponse) -> crate::Result<Response<Vec<u8>>> {
         let body = res.body_bytes()?;
         let status = res.status();
 
@@ -414,10 +414,10 @@ mod tests {
             .json(serde_json::json!({"data": 42}))
             .build();
 
-        // Step 1: HttpResponse → ResponseAsync (via From impl in response_async.rs)
-        let response_async = crate::ResponseAsync::from(http_response);
+        // Step 1: HttpResponse → RawResponse (via From impl in response_async.rs)
+        let response_async = crate::RawResponse::from(http_response);
 
-        // Step 2: ResponseAsync → Response<Vec<u8>> (the path the command executor takes)
+        // Step 2: RawResponse → Response<Vec<u8>> (the path the command executor takes)
         let response = Response::<Vec<u8>>::new(response_async).expect("should decode");
 
         assert_eq!(response.status().as_u16(), 200);

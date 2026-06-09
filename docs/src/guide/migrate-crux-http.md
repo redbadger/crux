@@ -102,7 +102,7 @@ The new `crux_http::Body` is always in-memory (`Vec<u8>` backed). The
 streaming / `AsyncRead` interface of `http_types::Body` is not carried over.
 
 **If you need to stream a large or chunked HTTP response**, the correct Crux
-pattern is a dedicated streaming capability — not `AsyncRead` on `ResponseAsync`.
+pattern is a dedicated streaming capability — not `AsyncRead` on `RawResponse`.
 `AsyncRead` was a leaky abstraction that pushed network I/O mechanics into the
 core; the streaming capability pattern keeps the boundary clean.
 
@@ -227,16 +227,52 @@ For a single value `response.header("name")` still works and returns
 
 ---
 
-## `ResponseAsync` body methods are now synchronous
+## `ResponseAsync` renamed to `RawResponse`
+
+The intermediate response type that flows through the middleware chain has been
+renamed. `ResponseAsync` was misleading because nothing about the type is
+asynchronous — it holds a plain `(StatusCode, HeaderMap, Vec<u8>)`. `RawResponse`
+describes its actual role: the unvalidated response from the shell, before the
+4xx/5xx error check that happens inside `Response::new()`.
+
+```rust
+// Before
+use crux_http::ResponseAsync;
+
+async fn my_middleware(
+    req: Request, client: Client, next: Next<'_>,
+) -> Result<ResponseAsync> {
+    let res: ResponseAsync = next.run(req, client).await?;
+    // …
+    Ok(res)
+}
+
+// After
+use crux_http::RawResponse;
+
+async fn my_middleware(
+    req: Request, client: Client, next: Next<'_>,
+) -> Result<RawResponse> {
+    let res: RawResponse = next.run(req, client).await?;
+    // …
+    Ok(res)
+}
+```
+
+`Client::send()` also now returns `Result<RawResponse>`.
+
+---
+
+## `RawResponse` body methods are now synchronous
 
 `body_bytes()`, `body_string()`, `body_json()`, and `body_form()` on
-`ResponseAsync` no longer return a future. Since `crux_http` bodies are
+`RawResponse` no longer return a future. Since `crux_http` bodies are
 always fully buffered in memory before they reach the core, there was
 never any real async work to do.
 
 ```rust
 // Before
-let mut res: ResponseAsync = …;
+let mut res: RawResponse = …;
 let bytes  = res.body_bytes().await?;
 let text   = res.body_string().await?;
 let value  = res.body_json::<MyType>().await?;

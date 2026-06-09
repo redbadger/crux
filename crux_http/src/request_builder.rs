@@ -1,5 +1,5 @@
 use crate::middleware::Middleware;
-use crate::{Client, HttpError, Request, ResponseAsync, Result};
+use crate::{Client, HttpError, RawResponse, Request, Result};
 
 use futures_util::future::BoxFuture;
 use http::Method;
@@ -385,7 +385,7 @@ where
         }
     }
 
-    /// Sends the constructed `Request` and returns a future that resolves to [`ResponseAsync`].
+    /// Sends the constructed `Request` and returns a future that resolves to [`RawResponse`].
     /// but does not consume it or convert the body to an expected format.
     ///
     /// Note that this is equivalent to calling `.into_future()` on the `RequestBuilder`, which
@@ -395,15 +395,15 @@ where
     /// Not all code working with futures (such as the `join` macro) works with `IntoFuture` (yet?), so this
     /// method is provided as a more discoverable `.into_future` alias, and may be deprecated later.
     #[must_use]
-    pub fn send_async(self) -> BoxFuture<'static, Result<ResponseAsync>> {
+    pub fn send_async(self) -> BoxFuture<'static, Result<RawResponse>> {
         <Self as std::future::IntoFuture>::into_future(self)
     }
 }
 
 impl<T, Eb> std::future::IntoFuture for RequestBuilder<T, Eb> {
-    type Output = Result<ResponseAsync>;
+    type Output = Result<RawResponse>;
 
-    type IntoFuture = BoxFuture<'static, Result<ResponseAsync>>;
+    type IntoFuture = BoxFuture<'static, Result<RawResponse>>;
 
     /// Sends the constructed `Request` and returns a future that resolves to the response
     fn into_future(self) -> Self::IntoFuture {

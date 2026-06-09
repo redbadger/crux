@@ -4,7 +4,7 @@
 
 use http::{HeaderName, HeaderValue};
 
-use crate::{Request, ResponseAsync};
+use crate::{RawResponse, Request};
 
 // ── Request ──────────────────────────────────────────────────────────────────
 
@@ -55,10 +55,10 @@ impl From<Request> for http_types::Request {
     }
 }
 
-// ── ResponseAsync ─────────────────────────────────────────────────────────────
+// ── RawResponse ─────────────────────────────────────────────────────────────
 
-impl From<http_types::Response> for ResponseAsync {
-    /// Convert an `http_types::Response` into a `crux_http::ResponseAsync`.
+impl From<http_types::Response> for RawResponse {
+    /// Convert an `http_types::Response` into a `crux_http::RawResponse`.
     ///
     /// The body is left empty because `http_types::Body::into_bytes()` is async.
     fn from(res: http_types::Response) -> Self {
@@ -76,6 +76,6 @@ impl From<http_types::Response> for ResponseAsync {
             }
         }
 
-        ResponseAsync::new(status, headers, vec![])
+        Self::new(status, headers, vec![])
     }
 }

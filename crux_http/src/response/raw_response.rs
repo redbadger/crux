@@ -7,14 +7,14 @@ use super::decode::decode_body;
 use crate::protocol::HttpResponse;
 
 /// An HTTP response that exposes async methods for use in middleware.
-pub struct ResponseAsync {
+pub struct RawResponse {
     status: StatusCode,
     version: Option<Version>,
     headers: HeaderMap,
     body: Vec<u8>,
 }
 
-impl ResponseAsync {
+impl RawResponse {
     /// Create a new instance directly from parts.
     pub(crate) const fn new(status: StatusCode, headers: HeaderMap, body: Vec<u8>) -> Self {
         Self {
@@ -268,19 +268,19 @@ impl ResponseAsync {
     }
 }
 
-impl AsRef<HeaderMap> for ResponseAsync {
+impl AsRef<HeaderMap> for RawResponse {
     fn as_ref(&self) -> &HeaderMap {
         &self.headers
     }
 }
 
-impl AsMut<HeaderMap> for ResponseAsync {
+impl AsMut<HeaderMap> for RawResponse {
     fn as_mut(&mut self) -> &mut HeaderMap {
         &mut self.headers
     }
 }
 
-impl From<HttpResponse> for ResponseAsync {
+impl From<HttpResponse> for RawResponse {
     fn from(r: HttpResponse) -> Self {
         let mut headers = HeaderMap::new();
         for header in r.headers {
@@ -299,7 +299,7 @@ impl From<HttpResponse> for ResponseAsync {
     }
 }
 
-impl<'a> IntoIterator for &'a ResponseAsync {
+impl<'a> IntoIterator for &'a RawResponse {
     type Item = (&'a HeaderName, &'a HeaderValue);
     type IntoIter = http::header::Iter<'a, HeaderValue>;
     fn into_iter(self) -> Self::IntoIter {
@@ -307,7 +307,7 @@ impl<'a> IntoIterator for &'a ResponseAsync {
     }
 }
 
-impl<'a> IntoIterator for &'a mut ResponseAsync {
+impl<'a> IntoIterator for &'a mut RawResponse {
     type Item = (&'a HeaderName, &'a mut HeaderValue);
     type IntoIter = http::header::IterMut<'a, HeaderValue>;
     fn into_iter(self) -> Self::IntoIter {
@@ -315,23 +315,23 @@ impl<'a> IntoIterator for &'a mut ResponseAsync {
     }
 }
 
-impl fmt::Debug for ResponseAsync {
+impl fmt::Debug for RawResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ResponseAsync")
+        f.debug_struct("RawResponse")
             .field("status", &self.status)
             .field("headers", &self.headers)
             .finish_non_exhaustive()
     }
 }
 
-impl Index<&str> for ResponseAsync {
+impl Index<&str> for RawResponse {
     type Output = HeaderValue;
 
     /// Returns a reference to the first header value for the given name.
     ///
     /// # Panics
     ///
-    /// Panics if the name is not present in `ResponseAsync`.
+    /// Panics if the name is not present in `RawResponse`.
     #[inline]
     fn index(&self, name: &str) -> &HeaderValue {
         &self.headers[name]

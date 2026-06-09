@@ -18,7 +18,7 @@
 //! ```
 
 use crate::middleware::{Middleware, Next, Request};
-use crate::{Client, ResponseAsync, Result};
+use crate::{Client, RawResponse, Result};
 use http::StatusCode;
 use url::ParseError;
 
@@ -70,14 +70,14 @@ impl Middleware for Redirect {
         mut request: Request,
         client: Client,
         next: Next<'_>,
-    ) -> Result<ResponseAsync> {
+    ) -> Result<RawResponse> {
         let mut redirect_count: u8 = 0;
         let mut base_url = request.url().clone();
 
         while redirect_count < self.attempts {
             redirect_count += 1;
             let r: Request = request.clone();
-            let res: ResponseAsync = client.send(r).await?;
+            let res: RawResponse = client.send(r).await?;
             if REDIRECT_CODES.contains(&res.status()) {
                 if let Some(location) = res.header(http::header::LOCATION) {
                     let location_str = location.to_str().unwrap_or("");

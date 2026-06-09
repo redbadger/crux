@@ -10,10 +10,30 @@ and this project adheres to
 
 ### 💥 Breaking Changes
 
-**`ResponseAsync` body-reading methods are now synchronous.**
+**`ResponseAsync` renamed to `RawResponse`.**
+
+The type that flows through the middleware chain has been renamed from
+`ResponseAsync` to `RawResponse`. The old name was misleading: the struct
+holds a plain `(StatusCode, HeaderMap, Vec<u8>)` and nothing about it is
+asynchronous. `RawResponse` accurately describes its role — the unvalidated
+response from the shell before the 4xx/5xx error check in `Response::new()`.
+
+Update all imports and type annotations:
+
+```rust
+// Before
+use crux_http::ResponseAsync;
+async fn handle(…) -> Result<ResponseAsync> { … }
+
+// After
+use crux_http::RawResponse;
+async fn handle(…) -> Result<RawResponse> { … }
+```
+
+**`RawResponse` body-reading methods are now synchronous.**
 
 `body_bytes()`, `body_string()`, `body_json()`, and `body_form()` on
-`ResponseAsync` no longer return a future — they return `Result<T>` directly.
+`RawResponse` no longer return a future — they return `Result<T>` directly.
 Remove `.await` at every call site. All body data in `crux_http` is
 already in memory, so the `async` was superfluous.
 
@@ -55,7 +75,7 @@ The most common impacts:
 | Imports `crux_http::http::Body` / `Headers` / `Version` | Use `crux_http::Body` (new crux-owned type) or `http::HeaderMap` / `http::Version` directly. |
 | Used the `http-compat` feature | The feature is **removed**. Native lossless conversions (`From`/`TryFrom`) between `crux_http` types and `http::Request<Body>` / `http::Response<Body>` are now provided unconditionally — no feature flag required. |
 | Has code that builds or consumes `http_types::Request`/`Response` | Enable the new **`http-types`** feature; it provides `From`/`Into` conversion impls between `crux_http` and `http_types` types. |
-| Relied on streaming `http_types::Body` / `AsyncRead` on `ResponseAsync` | The streaming body model is not carried over. Refactor to use the synchronous in-memory `crux_http::Body`. |
+| Relied on streaming `http_types::Body` / `AsyncRead` on `ResponseAsync` | The streaming body model is not carried over. The type is now called `RawResponse`; refactor streaming to use the `Chunk`/`Done` capability pattern. |
 
 ### 🚀 Features
 
@@ -83,6 +103,8 @@ The most common impacts:
   only when the `http-types` feature is enabled, reducing the default dependency footprint.
 - `into_protocol_request` is now a synchronous function (was `async`); the previous
   `await` on `http_types::Body::into_bytes()` is gone.
+- `ResponseAsync` renamed to `RawResponse` throughout (file remains `response_async.rs`
+  internally; the public name is what changed).
 
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_http-v0.17.0...crux_http-v0.18.0) - 2026-05-31
 
