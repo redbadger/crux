@@ -48,3 +48,5 @@
 
 1. [Command API](./rfcs/command.md)
 1. [Typegen](./rfcs/typegen.md)
+1. [Effect Router](./rfcs/effect-router.md)
+1. [Decouple crux_http from http-types](./rfcs/decouple-from-http-types.md)
