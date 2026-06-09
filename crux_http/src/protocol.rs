@@ -542,4 +542,33 @@ mod tests {
             "Content-Type: application/json header expected"
         );
     }
+
+    /// Round-trip: `http::Request<Body>` → `crux_http::Request` → `HttpRequest`
+    #[test]
+    fn http_request_body_round_trip_to_protocol() {
+        use crate::{Body, Request, protocol::ProtocolRequestBuilder};
+
+        let http_req = http::Request::builder()
+            .method(http::Method::POST)
+            .uri("https://api.example.com/items")
+            .header("content-type", "application/json")
+            .body(Body::from_json(&serde_json::json!({"name": "widget"})).unwrap())
+            .unwrap();
+
+        let req: Request = http_req.into();
+        let protocol_req = req.into_protocol_request().expect("should convert");
+
+        assert_eq!(protocol_req.method, "POST");
+        assert_eq!(protocol_req.url, "https://api.example.com/items");
+        assert!(!protocol_req.body.is_empty(), "body bytes must be present");
+        assert!(
+            protocol_req.headers.iter().any(|h| {
+                h.name.to_lowercase() == "content-type" && h.value.contains("application/json")
+            }),
+            "Content-Type: application/json must be in headers"
+        );
+        // Deserialise the body back to confirm bytes are correct.
+        let parsed: serde_json::Value = serde_json::from_slice(&protocol_req.body).unwrap();
+        assert_eq!(parsed["name"], "widget");
+    }
 }

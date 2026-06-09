@@ -396,6 +396,36 @@ mod tests {
         assert_eq!(http_res.body(), b"hello");
     }
 
+    /// Round-trip: `HttpResponse` → `crux_http::Response<Vec<u8>>` → `http::Response<Vec<u8>>`
+    #[futures_test::test]
+    async fn http_response_round_trip() {
+        use crate::protocol::HttpResponse;
+        use std::convert::TryFrom;
+
+        let http_response = HttpResponse::ok()
+            .header("content-type", "application/json")
+            .json(serde_json::json!({"data": 42}))
+            .build();
+
+        // Step 1: HttpResponse → ResponseAsync (via From impl in response_async.rs)
+        let response_async = crate::ResponseAsync::from(http_response);
+
+        // Step 2: ResponseAsync → Response<Vec<u8>> (the path the command executor takes)
+        let response = Response::<Vec<u8>>::new(response_async)
+            .await
+            .expect("should decode");
+
+        assert_eq!(response.status().as_u16(), 200);
+        assert_eq!(response.content_type(), Some(mime::APPLICATION_JSON));
+
+        // Step 3: Response<Vec<u8>> → http::Response<Vec<u8>> (native lossless conversion)
+        let http_resp = http::Response::<Vec<u8>>::try_from(response).unwrap();
+        assert_eq!(http_resp.status(), 200);
+        assert_eq!(http_resp.headers()["content-type"], "application/json");
+        let parsed: serde_json::Value = serde_json::from_slice(http_resp.body()).unwrap();
+        assert_eq!(parsed["data"], 42);
+    }
+
     #[test]
     fn response_status_serde_roundtrip() {
         let res: Response<Vec<u8>> = ResponseBuilder::ok().body(vec![42u8]).build();

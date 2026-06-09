@@ -6,8 +6,8 @@
 
 pub mod model;
 
-use crux_core::Request;
 use crux_core::command::RequestBuilder;
+use crux_core::Request;
 use crux_http::command::Http;
 use crux_http::protocol::HttpRequest;
 use serde::{Deserialize, Serialize};
@@ -83,10 +83,7 @@ where
                 .map_or(Err(WeatherError::ParseError), |weather_data| {
                     Ok(weather_data)
                 }),
-            Err(crux_http::HttpError::Http { code, .. })
-                if code == crux_http::http::StatusCode::Unauthorized
-                    || code == crux_http::http::StatusCode::Forbidden =>
-            {
+            Err(crux_http::HttpError::Http { code, .. }) if code == 401 || code == 403 => {
                 Err(WeatherError::Unauthorized)
             }
             Err(_) => Err(WeatherError::NetworkError),
