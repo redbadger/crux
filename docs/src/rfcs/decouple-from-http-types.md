@@ -395,21 +395,108 @@ We should ship:
 - A short migration section (in the book / crate docs) with before/after
   snippets, including how to turn on `http-types`.
 
-## Rollout plan
+## Implementation plan
 
-1. Land the crux-owned `Body` + `mime` plumbing behind the *current* (default,
-   `http-types`-backed) build first, so the builder API no longer leaks
-   `http_types::Body` in signatures. This shrinks the eventual `#[cfg]` surface.
-2. Introduce the `http-types` feature and `#[cfg]`-gate the representation in the
-   boundary modules (`request.rs`, `response/*.rs`, `error.rs`,
-   `middleware/redirect.rs`, `protocol.rs`, `lib.rs`).
-3. Flip the default to the `http` path; make `http-types` opt-in; remove
-   `http-compat`.
-4. Run the full test matrix in **both** feature configurations in CI
-   (`--no-default-features`-style and `--features http-types`), plus the existing
-   examples (`counter-http`, `counter-middleware`, `weather`, `notes`).
-5. Update docs/changelog; cut a minor (breaking) release aligned with the 0.19
-   milestone referenced in #285.
+Resolve the remaining open questions first, then work through the tasks below in
+order. The groupings reflect natural logical dependencies, not separate releases —
+everything lands together.
+
+### Before starting
+
+Resolve open questions 1, 2, 3, and 5 before writing any code:
+
+- **Q1 (feature name)** — agree on `http-types`.
+- **Q2 (Body backing store)** — decide between `Vec<u8>` and `bytes::Bytes`.
+- **Q3 (`crux_http::http` aliasing)** — decide whether `http-types` feature keeps
+  `crux_http::http` pointing at `http-types`, or whether `http` is always the
+  real crate and `http-types` is exposed under a separate path.
+- **Q5 (emscripten / #195)** — confirm that a build without `http-types` is
+  emscripten-clean, so the fork can be dropped from the default path.
+
+Q4 (deprecation timeline) can be deferred.
+
+### 1. Pre-flight cleanup
+
+Small, isolated changes. Good to do first to keep the diff clean.
+
+- `error.rs` — `HttpError::Http.code: u16`, drop `#[facet(opaque)]`, remove
+  `From<http_types::Error>`, update `test_error_display`.
+- `expect.rs` — `http_types::convert::DeserializeOwned` →
+  `serde::de::DeserializeOwned`.
+- `response/decode.rs` — drop the unused `http_types::Error` import.
+
+### 2. Introduce `crux_http::Body`; remove `http_types::Body`/`Mime` from public API
+
+Still entirely backed by `http-types` internally — no feature-flag forking yet.
+This step removes `http_types::Body` and `http_types::Mime` from all public
+signatures, which shrinks what needs `#[cfg]`-gating in the next step.
+
+- Add `src/body.rs` — `pub struct Body { bytes: Vec<u8>, mime:
+  Option<mime::Mime> }` with `Into<Body>` impls for `String`, `&str`, `Vec<u8>`,
+  `&[u8]`, `serde_json::Value`; plus `into_bytes()`, `mime()`, `len()`,
+  `is_empty()`.
+- Add `mime = "0.3"` to `[dependencies]`.
+- `crux_http::Request` — store body as `crux_http::Body` alongside the wrapped
+  `http_types::Request` (not inside it); `set_body`/`take_body` operate on the
+  wrapper field. The `http_types::Request` is retained only for method, URL,
+  headers, and query helpers.
+- `request_builder.rs` / `command.rs` — `body(impl Into<Body>)` and
+  `content_type(impl Into<mime::Mime>)` use our types; `http_types::Body` and
+  `http_types::Mime` no longer appear in any public signature.
+- `protocol.rs` — `into_protocol_request` takes body bytes from the wrapper
+  directly (synchronous); the `async http_types::Body::into_bytes()` call is
+  removed.
+- `lib.rs` — `pub use crate::body::Body`; `pub use mime`.
+
+### 3. Add `http-types` feature; implement native `http` path; remove `http-compat`
+
+After step 2, the remaining `http-types` surface is the "frame" types: headers,
+method, status, version, and the `http_types::Request`/`Response` wrappers.
+
+- `Cargo.toml` — `http = "1.4"` becomes a default dependency; `http-types` becomes
+  `optional = true` behind the new feature; remove `http-compat` and its gated
+  `dep:http`.
+- `lib.rs` — conditional re-exports (`pub use http` vs `pub use http_types as http`,
+  `http::Method` vs `http_types::Method`).
+- `response/mod.rs` — `http::HeaderMap::new()` replaces the throwaway-`Request`
+  hack.
+- `response/response.rs` — `http::StatusCode`, `http::Version`,
+  `http::HeaderMap`; update `header_serde`; replace `http-compat` `TryInto` with
+  a native lossless conversion.
+- `response/response_async.rs` — hold `status: http::StatusCode`,
+  `headers: http::HeaderMap`, `body: Body` directly on the default path instead
+  of wrapping `http_types::Response`.
+- `request.rs` — replace the wrapped `http_types::Request` with
+  `method: http::Method`, `url: url::Url`, `headers: http::HeaderMap`;
+  re-implement header methods and `query`/`set_query` over `serde_qs`; update
+  `AsRef`/`AsMut`/`From`/`Into` impls to target `http::Request<Body>` and
+  `http::HeaderMap`.
+- `config.rs` — header types.
+- `client.rs` — `Method`/`Url` types.
+- `middleware/redirect.rs` — `http::StatusCode`, `http::header::LOCATION`,
+  `url::ParseError`.
+- `protocol.rs` — `From<HttpResponse> for ResponseAsync` constructs native
+  `ResponseAsync` fields directly on the default path.
+
+### 4. Tests and CI
+
+- Confirm all existing tests pass on the default (`http`) path. The `protocol.rs`
+  insta snapshots must be byte-for-byte unchanged — the primary guard that the
+  migration is bridge-invisible.
+- Add a CI job: `cargo test --features http-types` for `crux_http`.
+- Add round-trip integration tests:
+  - `http::Request<Body>` → `crux_http::Request` → `HttpRequest`
+  - `HttpResponse` → `crux_http::Response<Vec<u8>>` → `http::Response<Vec<u8>>`
+- Build the `counter-http`, `counter-middleware`, `weather`, and `notes` examples
+  on both feature configurations.
+
+### 5. Docs and release
+
+- `CHANGELOG.md` — `crux_http::http` now re-exports the `http` crate (not
+  `http-types`); `http-compat` feature removed; how to enable `http-types` for
+  backwards compatibility.
+- Book migration section — before/after snippets for the common cases in the
+  "Migration impact" table above.
 
 ## Testing strategy
 
