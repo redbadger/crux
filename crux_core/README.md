@@ -144,8 +144,6 @@ you want to:
 1. `Time` (get current time, notify after duration, notify at instant) —
    [source](https://github.com/redbadger/crux/tree/master/crux_time), [crate](https://crates.io/crates/crux_time),
    request/response
-1. `Platform` (get the current platform) — [source](https://github.com/redbadger/crux/tree/master/crux_platform),
-   [crate](https://crates.io/crates/crux_platform), request/response (**deprecated** — copy the types into your own project instead)
 
 ### Example custom capabilities
 

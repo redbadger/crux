@@ -203,7 +203,6 @@ mod tests {
             pub struct MyCapabilities {
                 pub http: crux_http::Http<MyEvent>,
                 pub key_value: KeyValue<MyEvent>,
-                pub platform: Platform<MyEvent>,
                 pub render: Render<MyEvent>,
                 #[effect(skip)]
                 pub time: Time<MyEvent>,
@@ -227,9 +226,6 @@ mod tests {
                 <KeyValue<
                     MyEvent,
                 > as Capability<MyEvent>>::Operation::register_types(generator)?;
-                <Platform<
-                    MyEvent,
-                > as Capability<MyEvent>>::Operation::register_types(generator)?;
                 <Render<MyEvent> as Capability<MyEvent>>::Operation::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
                 generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
@@ -247,9 +243,6 @@ mod tests {
                     MyEvent,
                 > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
                 <KeyValue<
-                    MyEvent,
-                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
-                <Platform<
                     MyEvent,
                 > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
                 <Render<
@@ -271,7 +264,6 @@ mod tests {
             pub struct MyCapabilities {
                 pub http: crux_http::Http<MyEvent>,
                 pub key_value: KeyValue<MyEvent>,
-                pub platform: Platform<MyEvent>,
                 pub render: Render<MyEvent>,
                 pub time: Time<MyEvent>,
             }
@@ -294,9 +286,6 @@ mod tests {
                 <KeyValue<
                     MyEvent,
                 > as Capability<MyEvent>>::Operation::register_types(generator)?;
-                <Platform<
-                    MyEvent,
-                > as Capability<MyEvent>>::Operation::register_types(generator)?;
                 <Render<MyEvent> as Capability<MyEvent>>::Operation::register_types(generator)?;
                 <Time<MyEvent> as Capability<MyEvent>>::Operation::register_types(generator)?;
                 generator.register_type::<EffectFfi>()?;
@@ -315,9 +304,6 @@ mod tests {
                     MyEvent,
                 > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
                 <KeyValue<
-                    MyEvent,
-                > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
-                <Platform<
                     MyEvent,
                 > as Capability<MyEvent>>::Operation::register_types_facet(generator)?;
                 <Render<

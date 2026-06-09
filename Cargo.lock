@@ -527,15 +527,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crux_platform"
-version = "0.10.0"
-dependencies = [
- "crux_core",
- "facet 0.44.5",
- "serde",
-]
-
-[[package]]
 name = "crux_time"
 version = "0.17.0"
 dependencies = [
