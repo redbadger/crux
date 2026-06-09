@@ -28,7 +28,7 @@ impl<Body> Response<Body> {
 
         if status.is_client_error() || status.is_server_error() {
             return Err(crate::HttpError::Http {
-                code: status,
+                code: status.into(),
                 message: status.to_string(),
                 body: Some(body),
             });
@@ -225,7 +225,7 @@ impl Response<Vec<u8>> {
     /// ```
     pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
         self.body.take().ok_or_else(|| crate::HttpError::Http {
-            code: self.status(),
+            code: self.status().into(),
             message: "Body had no bytes".to_string(),
             body: None,
         })

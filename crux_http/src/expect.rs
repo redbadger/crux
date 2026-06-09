@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use http_types::convert::DeserializeOwned;
+use serde::de::DeserializeOwned;
 
 use crate::{Response, Result};
 
