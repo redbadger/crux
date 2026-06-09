@@ -44,6 +44,10 @@
 1. [Command runtime](./part-4/runtime.md)
 1. [Type generation](./part-4/typegen.md)
 
+# Guides
+
+1. [Migrating crux_http to native http types](./guide/migrate-crux-http.md)
+
 # RFCs
 
 1. [Command API](./rfcs/command.md)

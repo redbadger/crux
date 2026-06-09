@@ -3,10 +3,10 @@ use crate::{Client, HttpError, Request, ResponseAsync, Result};
 
 use futures_util::future::BoxFuture;
 use http::Method;
-use url::Url;
 use mime::Mime;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use url::Url;
 
 use std::{fmt, marker::PhantomData};
 
@@ -75,7 +75,11 @@ where
     /// ```
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
-    pub fn header(mut self, key: impl http::header::IntoHeaderName, value: impl AsRef<str>) -> Self {
+    pub fn header(
+        mut self,
+        key: impl http::header::IntoHeaderName,
+        value: impl AsRef<str>,
+    ) -> Self {
         self.req.as_mut().unwrap().insert_header(key, value);
         self
     }
@@ -99,7 +103,10 @@ where
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
     pub fn content_type(mut self, content_type: impl Into<Mime>) -> Self {
-        self.req.as_mut().unwrap().set_content_type(content_type.into());
+        self.req
+            .as_mut()
+            .unwrap()
+            .set_content_type(content_type.into());
         self
     }
 

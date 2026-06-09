@@ -22,10 +22,10 @@ use std::{fmt, future::Future, marker::PhantomData};
 
 use crux_core::{Command, command};
 use http::Method;
-use url::Url;
 use mime::Mime;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use url::Url;
 
 use crate::{
     HttpError, Request, Response,
@@ -110,7 +110,11 @@ where
     /// ```
     ///
     #[allow(clippy::missing_panics_doc)]
-    pub fn header(mut self, key: impl http::header::IntoHeaderName, value: impl AsRef<str>) -> Self {
+    pub fn header(
+        mut self,
+        key: impl http::header::IntoHeaderName,
+        value: impl AsRef<str>,
+    ) -> Self {
         self.req.as_mut().unwrap().insert_header(key, value);
         self
     }

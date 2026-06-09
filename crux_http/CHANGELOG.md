@@ -8,6 +8,52 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 💥 Breaking Changes
+
+**`crux_http::http` now re-exports the real [`http`](https://docs.rs/http) crate (v1.4), not `http-types`.**
+
+This is the main breaking change. `crux_http::http` used to be a re-export of the
+`http-types-red-badger-temporary-fork` crate. It is now always the upstream `http` crate.
+The most common impacts:
+
+| Scenario | Action |
+| --- | --- |
+| App only uses `crux_http::{Http, RequestBuilder, Response, …}` and `crux_http::Method` | Likely **compiles unchanged**. `Method` is now `http::Method`; its API is compatible for common uses (`Method::GET`, `Method::POST`, …). |
+| Code references `Method::Get`, `Method::Post`, … (UpperCamelCase variants) | Rename to `Method::GET`, `Method::POST`, … (associated constants on `http::Method`). |
+| `crux_http::http::StatusCode::Unauthorized` etc. | Rename to `http::StatusCode::UNAUTHORIZED` etc. `HttpError::Http { code, .. }` now stores the code as a plain `u16`; compare with `401u16` or `StatusCode::UNAUTHORIZED.as_u16()`. |
+| Imports `crux_http::http::mime::HTML` etc. | Use `crux_http::mime::TEXT_HTML` (or any constant from the `mime` crate, now re-exported as `crux_http::mime`). |
+| Imports `crux_http::http::Body` / `Headers` / `Version` | Use `crux_http::Body` (new crux-owned type) or `http::HeaderMap` / `http::Version` directly. |
+| Used the `http-compat` feature | The feature is **removed**. Native lossless conversions (`From`/`TryFrom`) between `crux_http` types and `http::Request<Body>` / `http::Response<Body>` are now provided unconditionally — no feature flag required. |
+| Has code that builds or consumes `http_types::Request`/`Response` | Enable the new **`http-types`** feature; it provides `From`/`Into` conversion impls between `crux_http` and `http_types` types. |
+| Relied on streaming `http_types::Body` / `AsyncRead` on `ResponseAsync` | The streaming body model is not carried over. Refactor to use the synchronous in-memory `crux_http::Body`. |
+
+### 🚀 Features
+
+- **New `crux_http::Body` type** — a simple, synchronous, in-memory request body with
+  an optional MIME type.  Replaces the async `http_types::Body`.  Provides `Into<Body>`
+  conversions from `String`, `&str`, `Vec<u8>`, `&[u8]`, and `serde_json::Value`, plus
+  `into_bytes()`, `mime()`, `len()`, and `is_empty()`.
+- **`crux_http::mime` re-export** — the `mime` crate (v0.3) is now re-exported directly
+  as `crux_http::mime`, giving access to constants like `mime::APPLICATION_JSON` and
+  `mime::TEXT_HTML` without needing a separate dependency.
+- **Native `http` conversions** — `From<http::Request<Body>> for crux_http::Request`,
+  `From<crux_http::Request> for http::Request<Body>`, and
+  `TryFrom<crux_http::Response<Body>> for http::Response<Body>` are available out of the
+  box without any feature flag.
+- **`http-types` compat feature** — add `crux_http = { features = ["http-types"] }` to
+  your `Cargo.toml` to get `From`/`Into` impls between `crux_http` types and the legacy
+  `http_types` types, as a bridge while migrating.
+- **`Response::header_all(name)`** — returns all values for a given header name (via
+  `http::HeaderMap::get_all`), useful when a server sends multiple values for the same
+  header.
+
+### ⚙️ Miscellaneous Tasks
+
+- `http_types` (the temporary fork) is no longer a default dependency; it is pulled in
+  only when the `http-types` feature is enabled, reducing the default dependency footprint.
+- `into_protocol_request` is now a synchronous function (was `async`); the previous
+  `await` on `http_types::Body::into_bytes()` is gone.
+
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_http-v0.17.0...crux_http-v0.18.0) - 2026-05-31
 
 ### 🚀 Features
