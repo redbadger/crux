@@ -224,3 +224,50 @@ let values: Vec<String> = response
 
 For a single value `response.header("name")` still works and returns
 `Option<&http::HeaderValue>`.
+
+---
+
+## `ResponseAsync` body methods are now synchronous
+
+`body_bytes()`, `body_string()`, `body_json()`, and `body_form()` on
+`ResponseAsync` no longer return a future. Since `crux_http` bodies are
+always fully buffered in memory before they reach the core, there was
+never any real async work to do.
+
+```rust
+// Before
+let mut res: ResponseAsync = …;
+let bytes  = res.body_bytes().await?;
+let text   = res.body_string().await?;
+let value  = res.body_json::<MyType>().await?;
+let form   = res.body_form::<MyForm>().await?;
+
+// After — drop the .await
+let bytes  = res.body_bytes()?;
+let text   = res.body_string()?;
+let value  = res.body_json::<MyType>()?;
+let form   = res.body_form::<MyForm>()?;
+```
+
+If your middleware or test helper sits inside an `async fn` purely
+because of these calls, it can now be a plain `fn`.
+
+---
+
+## `Request::set_content_type` takes `&mime::Mime`
+
+The low-level `Request::set_content_type` method now borrows the MIME
+type rather than taking ownership.
+
+```rust
+// Before
+req.set_content_type(mime::APPLICATION_JSON);
+
+// After
+req.set_content_type(&mime::APPLICATION_JSON);
+```
+
+The high-level builder methods (`.content_type(…)` on `RequestBuilder`
+and `command::RequestBuilder`) are **unchanged** — they still accept any
+`impl Into<Mime>` by value. Only direct calls to `Request::set_content_type`
+need updating.

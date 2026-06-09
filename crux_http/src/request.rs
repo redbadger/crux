@@ -207,6 +207,7 @@ impl Request {
     /// # Ok(()) }
     /// ```
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn method(&self) -> &Method {
         &self.method
     }
@@ -223,6 +224,7 @@ impl Request {
     /// # Ok(()) }
     /// ```
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn url(&self) -> &Url {
         &self.url
     }
@@ -231,6 +233,7 @@ impl Request {
     ///
     /// This is useful for middleware that needs to rewrite the request URL.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn url_mut(&mut self) -> &mut Url {
         &mut self.url
     }
@@ -260,7 +263,7 @@ impl Request {
     /// Set the request content type from a `Mime`.
     ///
     /// [Read more on MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types)
-    pub fn set_content_type(&mut self, mime: mime::Mime) {
+    pub fn set_content_type(&mut self, mime: &mime::Mime) {
         if let Ok(v) = HeaderValue::from_str(mime.as_ref()) {
             self.headers.insert(http::header::CONTENT_TYPE, v);
         }
@@ -292,10 +295,10 @@ impl Request {
     /// The encoding is set to `application/octet-stream`.
     pub fn set_body(&mut self, body: impl Into<Body>) {
         let body = body.into();
-        if let Some(mime) = body.mime() {
-            if let Ok(v) = HeaderValue::from_str(mime.as_ref()) {
-                self.headers.insert(http::header::CONTENT_TYPE, v);
-            }
+        if let Some(mime) = body.mime()
+            && let Ok(v) = HeaderValue::from_str(mime.as_ref())
+        {
+            self.headers.insert(http::header::CONTENT_TYPE, v);
         }
         self.body = body;
     }

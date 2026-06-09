@@ -13,28 +13,37 @@ pub struct Body {
 
 impl Body {
     /// Consume the body and return its bytes.
+    #[must_use]
     pub fn into_bytes(self) -> Vec<u8> {
         self.bytes
     }
 
     /// The MIME type of the body, if one has been set.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn mime(&self) -> Option<&Mime> {
         self.mime.as_ref()
     }
 
     /// The number of bytes in the body.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn len(&self) -> usize {
         self.bytes.len()
     }
 
     /// Returns `true` if the body is empty.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn is_empty(&self) -> bool {
         self.bytes.is_empty()
     }
 
     /// Create a body from a string with `text/plain; charset=utf-8` content type.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn from_string(s: String) -> Self {
-        Body {
+        Self {
             bytes: s.into_bytes(),
             mime: Some(mime::TEXT_PLAIN_UTF_8),
         }
@@ -46,7 +55,7 @@ impl Body {
     /// Returns a `serde_json::Error` if serialization fails.
     pub fn from_json(value: &impl Serialize) -> Result<Self, serde_json::Error> {
         let bytes = serde_json::to_vec(value)?;
-        Ok(Body {
+        Ok(Self {
             bytes,
             mime: Some(mime::APPLICATION_JSON),
         })
@@ -58,7 +67,7 @@ impl Body {
     /// Returns a `serde_qs::Error` if serialization fails.
     pub fn from_form(value: &impl Serialize) -> Result<Self, serde_qs::Error> {
         let bytes = serde_qs::to_string(value)?.into_bytes();
-        Ok(Body {
+        Ok(Self {
             bytes,
             mime: Some(mime::APPLICATION_WWW_FORM_URLENCODED),
         })
@@ -67,19 +76,19 @@ impl Body {
 
 impl From<String> for Body {
     fn from(s: String) -> Self {
-        Body::from_string(s)
+        Self::from_string(s)
     }
 }
 
 impl From<&str> for Body {
     fn from(s: &str) -> Self {
-        Body::from_string(s.to_owned())
+        Self::from_string(s.to_owned())
     }
 }
 
 impl From<Vec<u8>> for Body {
     fn from(bytes: Vec<u8>) -> Self {
-        Body {
+        Self {
             bytes,
             mime: Some(mime::APPLICATION_OCTET_STREAM),
         }
@@ -88,7 +97,7 @@ impl From<Vec<u8>> for Body {
 
 impl<'a> From<&'a [u8]> for Body {
     fn from(bytes: &'a [u8]) -> Self {
-        Body {
+        Self {
             bytes: bytes.to_vec(),
             mime: Some(mime::APPLICATION_OCTET_STREAM),
         }
@@ -99,7 +108,7 @@ impl From<serde_json::Value> for Body {
     fn from(value: serde_json::Value) -> Self {
         // serde_json::Value always serialises without error.
         let bytes = serde_json::to_vec(&value).unwrap_or_default();
-        Body {
+        Self {
             bytes,
             mime: Some(mime::APPLICATION_JSON),
         }

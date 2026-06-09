@@ -26,8 +26,7 @@ use url::Url;
 ///     Box::pin(async move {
 ///         let auth_token = client.get("https://httpbin.org/get")
 ///             .await?
-///             .body_string()
-///             .await?;
+///             .body_string()?;
 ///         req.append_header("Authorization", format!("Bearer {auth_token}"));
 ///         next.run(req, client).await
 ///     })
@@ -148,7 +147,7 @@ impl Client {
     /// Errors if there is an error sending the request
     pub async fn recv_bytes(&self, request: impl Into<Request>) -> Result<Vec<u8>> {
         let mut response = self.send(request.into()).await?;
-        response.body_bytes().await
+        response.body_bytes()
     }
 
     /// Submit a `Request` and get the response body as a string.
@@ -157,7 +156,7 @@ impl Client {
     /// Errors if there is an error sending the request
     pub async fn recv_string(&self, request: impl Into<Request>) -> Result<String> {
         let mut response = self.send(request.into()).await?;
-        response.body_string().await
+        response.body_string()
     }
 
     /// Submit a `Request` and decode the response body from json into a struct.
@@ -169,7 +168,7 @@ impl Client {
         request: impl Into<Request>,
     ) -> Result<T> {
         let mut response = self.send(request.into()).await?;
-        response.body_json::<T>().await
+        response.body_json::<T>()
     }
 
     /// Submit a `Request` and decode the response body from form encoding into a struct.
@@ -186,7 +185,7 @@ impl Client {
         request: impl Into<Request>,
     ) -> Result<T> {
         let mut response = self.send(request.into()).await?;
-        response.body_form::<T>().await
+        response.body_form::<T>()
     }
 
     /// Perform an HTTP `GET` request using the `Client` connection.
@@ -349,7 +348,7 @@ mod client_tests {
         let client = Client::new(shell.clone());
 
         let mut response = client.get("https://example.com").await.unwrap();
-        assert_eq!(response.body_string().await.unwrap(), "Hello World!");
+        assert_eq!(response.body_string().unwrap(), "Hello World!");
 
         assert_eq!(
             shell.take_requests_received(),

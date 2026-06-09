@@ -18,8 +18,8 @@ pub struct Response<Body> {
 
 impl<Body> Response<Body> {
     /// Create a new instance.
-    pub(crate) async fn new(mut res: super::ResponseAsync) -> crate::Result<Response<Vec<u8>>> {
-        let body = res.body_bytes().await?;
+    pub(crate) fn new(mut res: super::ResponseAsync) -> crate::Result<Response<Vec<u8>>> {
+        let body = res.body_bytes()?;
         let status = res.status();
 
         if status.is_client_error() || status.is_server_error() {
@@ -215,6 +215,10 @@ impl Response<Vec<u8>> {
 
     /// Reads the entire request body into a byte buffer.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the body has already been taken.
+    ///
     /// # Examples
     ///
     /// ```
@@ -235,6 +239,10 @@ impl Response<Vec<u8>> {
     }
 
     /// Reads the entire response body into a string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the body has already been taken or if it contains invalid UTF-8.
     ///
     /// # Examples
     ///
@@ -259,6 +267,10 @@ impl Response<Vec<u8>> {
     }
 
     /// Reads and deserializes the entire response body from JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the body has already been taken or if deserialisation fails.
     ///
     /// # Examples
     ///
@@ -373,14 +385,9 @@ mod tests {
             .header("accept", "text/html")
             .header("accept", "application/json")
             .build();
-        let all: Vec<String> = res
-            .header_all("accept")
-            .iter()
-            .map(|v| v.to_str().unwrap_or("").to_string())
-            .collect();
         // ResponseBuilder uses insert_header which replaces; only last value survives
         // through the builder. This test verifies the API compiles and returns a value.
-        assert!(!all.is_empty());
+        assert!(res.header_all("accept").iter().next().is_some());
     }
 
     #[test]
@@ -411,9 +418,7 @@ mod tests {
         let response_async = crate::ResponseAsync::from(http_response);
 
         // Step 2: ResponseAsync → Response<Vec<u8>> (the path the command executor takes)
-        let response = Response::<Vec<u8>>::new(response_async)
-            .await
-            .expect("should decode");
+        let response = Response::<Vec<u8>>::new(response_async).expect("should decode");
 
         assert_eq!(response.status().as_u16(), 200);
         assert_eq!(response.content_type(), Some(mime::APPLICATION_JSON));
@@ -441,6 +446,7 @@ mod status_serde {
     use http::StatusCode;
     use serde::{Deserialize, Deserializer, Serializer};
 
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn serialize<S: Serializer>(status: &StatusCode, ser: S) -> Result<S::Ok, S::Error> {
         ser.serialize_u16(status.as_u16())
     }
@@ -465,7 +471,7 @@ mod header_serde {
         // We build a BTreeMap so the output is deterministic.
         let mut map: std::collections::BTreeMap<&str, Vec<&str>> =
             std::collections::BTreeMap::new();
-        for (name, value) in headers.iter() {
+        for (name, value) in headers {
             map.entry(name.as_str())
                 .or_default()
                 .push(value.to_str().unwrap_or(""));

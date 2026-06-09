@@ -16,7 +16,7 @@ pub struct ResponseAsync {
 
 impl ResponseAsync {
     /// Create a new instance directly from parts.
-    pub(crate) fn new(status: StatusCode, headers: HeaderMap, body: Vec<u8>) -> Self {
+    pub(crate) const fn new(status: StatusCode, headers: HeaderMap, body: Vec<u8>) -> Self {
         Self {
             status,
             version: None,
@@ -37,6 +37,7 @@ impl ResponseAsync {
     /// # Ok(()) }
     /// ```
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn status(&self) -> StatusCode {
         self.status
     }
@@ -54,6 +55,7 @@ impl ResponseAsync {
     /// # Ok(()) }
     /// ```
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn version(&self) -> Option<Version> {
         self.version
     }
@@ -163,44 +165,54 @@ impl ResponseAsync {
 
     /// Get the length of the body in bytes.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn len(&self) -> Option<usize> {
         Some(self.body.len())
     }
 
     /// Returns `true` if the body is empty.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn is_empty(&self) -> Option<bool> {
         Some(self.body.is_empty())
     }
 
     /// Reads the entire response body into a byte buffer, leaving it empty.
     ///
+    /// # Errors
+    ///
+    /// This function currently never returns an error; the `Result` wrapper is kept for API consistency.
+    ///
     /// # Examples
     ///
     /// ```no_run
     /// # use crux_http::client::Client;
     /// # async fn middleware(client: Client) -> crux_http::Result<()> {
     /// let mut res = client.get("https://httpbin.org/get").await?;
-    /// let bytes: Vec<u8> = res.body_bytes().await?;
+    /// let bytes: Vec<u8> = res.body_bytes()?;
     /// # Ok(()) }
     /// ```
-    pub async fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
+    pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
         Ok(std::mem::take(&mut self.body))
     }
 
     /// Reads the entire response body into a string.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if the body contains invalid UTF-8.
+    ///
     /// # Examples
     ///
     /// ```no_run
     /// # use crux_http::client::Client;
     /// # async fn middleware(client: Client) -> crux_http::Result<()> {
     /// let mut res = client.get("https://httpbin.org/get").await?;
-    /// let string: String = res.body_string().await?;
+    /// let string: String = res.body_string()?;
     /// # Ok(()) }
     /// ```
-    pub async fn body_string(&mut self) -> crate::Result<String> {
-        let bytes = self.body_bytes().await?;
+    pub fn body_string(&mut self) -> crate::Result<String> {
+        let bytes = self.body_bytes()?;
         let mime = self.content_type();
         let claimed_encoding = mime
             .as_ref()
@@ -211,6 +223,10 @@ impl ResponseAsync {
 
     /// Reads and deserializes the entire response body from JSON.
     ///
+    /// # Errors
+    ///
+    /// Returns an error if deserialisation fails.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -220,15 +236,19 @@ impl ResponseAsync {
     /// #[derive(Deserialize, Serialize)]
     /// struct Ip { ip: String }
     /// let mut res = client.get("https://api.ipify.org?format=json").await?;
-    /// let Ip { ip } = res.body_json().await?;
+    /// let Ip { ip } = res.body_json()?;
     /// # Ok(()) }
     /// ```
-    pub async fn body_json<T: DeserializeOwned>(&mut self) -> crate::Result<T> {
-        let body_bytes = self.body_bytes().await?;
+    pub fn body_json<T: DeserializeOwned>(&mut self) -> crate::Result<T> {
+        let body_bytes = self.body_bytes()?;
         serde_json::from_slice(&body_bytes).map_err(crate::HttpError::from)
     }
 
     /// Reads and deserializes the entire response body from form encoding.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if deserialisation fails.
     ///
     /// # Examples
     ///
@@ -239,11 +259,11 @@ impl ResponseAsync {
     /// #[derive(Deserialize, Serialize)]
     /// struct Body { apples: u32 }
     /// let mut res = client.get("https://api.example.com/v1/response").await?;
-    /// let Body { apples } = res.body_form().await?;
+    /// let Body { apples } = res.body_form()?;
     /// # Ok(()) }
     /// ```
-    pub async fn body_form<T: DeserializeOwned>(&mut self) -> crate::Result<T> {
-        let bytes = self.body_bytes().await?;
+    pub fn body_form<T: DeserializeOwned>(&mut self) -> crate::Result<T> {
+        let bytes = self.body_bytes()?;
         serde_qs::from_bytes(&bytes).map_err(crate::HttpError::from)
     }
 }

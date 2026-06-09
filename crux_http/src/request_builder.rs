@@ -106,7 +106,7 @@ where
         self.req
             .as_mut()
             .unwrap()
-            .set_content_type(content_type.into());
+            .set_content_type(&content_type.into());
         self
     }
 

@@ -10,6 +10,36 @@ and this project adheres to
 
 ### 💥 Breaking Changes
 
+**`ResponseAsync` body-reading methods are now synchronous.**
+
+`body_bytes()`, `body_string()`, `body_json()`, and `body_form()` on
+`ResponseAsync` no longer return a future — they return `Result<T>` directly.
+Remove `.await` at every call site. All body data in `crux_http` is
+already in memory, so the `async` was superfluous.
+
+```rust
+// Before
+let bytes = res.body_bytes().await?;
+// After
+let bytes = res.body_bytes()?;
+```
+
+**`Request::set_content_type` now takes `&mime::Mime` instead of `mime::Mime`.**
+
+The method no longer takes ownership of the MIME type. Pass a reference:
+
+```rust
+// Before
+req.set_content_type(mime::APPLICATION_JSON);
+// After
+req.set_content_type(&mime::APPLICATION_JSON);
+```
+
+The builder-level `.content_type(…)` methods on `RequestBuilder` are
+unaffected — they still accept any `impl Into<Mime>` by value.
+
+---
+
 **`crux_http::http` now re-exports the real [`http`](https://docs.rs/http) crate (v1.4), not `http-types`.**
 
 This is the main breaking change. `crux_http::http` used to be a re-export of the

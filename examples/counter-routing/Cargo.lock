@@ -128,7 +128,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e6fa871e4334a622afd6bb2f611635e8083a6f5e2936c0f90f37c7ef9856298"
 dependencies = [
  "async-channel",
- "futures-lite 1.13.0",
+ "futures-lite",
  "http-types",
  "log",
  "memchr",
@@ -291,12 +291,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
-name = "byteorder"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
-
-[[package]]
 name = "bytes"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -316,17 +310,6 @@ checksum = "556e016178bb5662a08681bbe0f00f8e17631781a4dfc8c45e466e4b185ec27f"
 dependencies = [
  "find-msvc-tools",
  "shlex",
-]
-
-[[package]]
-name = "cfb"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d38f2da7a0a2c4ccf0065be06397cc26a81f4e528be095826eee9d4adbb8c60f"
-dependencies = [
- "byteorder",
- "fnv",
- "uuid",
 ]
 
 [[package]]
@@ -589,7 +572,7 @@ dependencies = [
  "bincode",
  "crossbeam-channel",
  "crux_macros",
- "facet 0.44.5",
+ "facet",
  "facet_generate",
  "futures",
  "log",
@@ -608,10 +591,11 @@ dependencies = [
  "crux_core",
  "derive_builder",
  "encoding_rs",
- "facet 0.44.5",
+ "facet",
  "facet-generate-attrs",
  "futures-util",
- "http-types-red-badger-temporary-fork",
+ "http",
+ "mime",
  "pin-project-lite",
  "serde",
  "serde_bytes",
@@ -877,34 +861,13 @@ dependencies = [
 
 [[package]]
 name = "facet"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d643309d7c46d073b6c51e29901ed9bc3d858dc09aa21f5b32b424491e1bbef"
-dependencies = [
- "facet-core 0.31.8",
- "facet-macros 0.31.8",
- "static_assertions",
-]
-
-[[package]]
-name = "facet"
 version = "0.44.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c78066af2cc259674a54fef24323f6081ae54a5f3a3fb53b995af7a867041c81"
 dependencies = [
  "autocfg",
- "facet-core 0.44.4",
- "facet-macros 0.44.4",
-]
-
-[[package]]
-name = "facet-core"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac27076d75388bffb6c5e5118078dcbb46f2090b35256c45372ff1c1910b1aaf"
-dependencies = [
- "bitflags",
- "impls",
+ "facet-core",
+ "facet-macros",
 ]
 
 [[package]]
@@ -926,7 +889,7 @@ version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b430b495d59ffcf07dabe103a796d8d3ba809d12bb25a5960b605883835b3de"
 dependencies = [
- "facet 0.44.5",
+ "facet",
 ]
 
 [[package]]
@@ -953,31 +916,11 @@ dependencies = [
 
 [[package]]
 name = "facet-macros"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "391fcf43b68a76ba4a494710629a7b6fb430345a5623a6a87f7c263bfadb1643"
-dependencies = [
- "facet-core 0.31.8",
- "facet-macros-emit",
-]
-
-[[package]]
-name = "facet-macros"
 version = "0.44.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0cc46a94a2725e82f2c0095bac16665057c24d7f4f11169a7a879dbcba81d8f"
 dependencies = [
  "facet-macros-impl",
-]
-
-[[package]]
-name = "facet-macros-emit"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e81e536ccafa7d5ef71822c9a67a28a0b29fe0170eaf2d134c36854a3d56ee9a"
-dependencies = [
- "facet-macros-parse",
- "quote",
 ]
 
 [[package]]
@@ -995,24 +938,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "facet-macros-parse"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8da5d4ded1874033bdef5000712d80d28feefe2abb48bb6f31b6fe59b7e9792f"
-dependencies = [
- "proc-macro2",
- "quote",
- "unsynn",
-]
-
-[[package]]
 name = "facet_generate"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd2735cffb3535a6d1554197eaf509192103c9fd0f66cf01f143c252ef0f78d7"
 dependencies = [
  "derive_builder",
- "facet 0.44.5",
+ "facet",
  "facet-generate-attrs",
  "heck",
  "include_dir",
@@ -1134,19 +1066,6 @@ dependencies = [
  "parking",
  "pin-project-lite",
  "waker-fn",
-]
-
-[[package]]
-name = "futures-lite"
-version = "2.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f78e10609fe0e0b3f4157ffab1876319b5b0db102a2c60dc4626306dc46b44ad"
-dependencies = [
- "fastrand 2.4.1",
- "futures-core",
- "futures-io",
- "parking",
- "pin-project-lite",
 ]
 
 [[package]]
@@ -1378,34 +1297,13 @@ dependencies = [
  "anyhow",
  "async-channel",
  "base64 0.13.1",
- "futures-lite 1.13.0",
- "infer 0.2.3",
+ "futures-lite",
+ "infer",
  "pin-project-lite",
  "rand 0.7.3",
  "serde",
  "serde_json",
  "serde_qs 0.8.5",
- "serde_urlencoded",
- "url",
-]
-
-[[package]]
-name = "http-types-red-badger-temporary-fork"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3042c4259fc659f9fa8aea1d71c4ae4201c58a0adddd3406910aed0870c68382"
-dependencies = [
- "anyhow",
- "async-channel",
- "base64 0.22.1",
- "facet 0.31.8",
- "futures-lite 2.6.1",
- "infer 0.19.0",
- "pin-project-lite",
- "rand 0.9.4",
- "serde",
- "serde_json",
- "serde_qs 0.15.0",
  "serde_urlencoded",
  "url",
 ]
@@ -1639,15 +1537,6 @@ name = "infer"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "64e9829a50b42bb782c1df523f78d332fe371b10c661e78b7a3c34b0198e9fac"
-
-[[package]]
-name = "infer"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a588916bfdfd92e71cacef98a63d9b1f0d74d6599980d11894290e7ddefffcf7"
-dependencies = [
- "cfb",
-]
 
 [[package]]
 name = "insta"
@@ -1926,6 +1815,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b947ae49db0d222b1dbc6b113ce7248a3fc3a6ca21b696717bfc000ba4484d8"
 
 [[package]]
+name = "mime"
+version = "0.3.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
+
+[[package]]
 name = "mutants"
 version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2192,19 +2087,9 @@ checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
 dependencies = [
  "getrandom 0.1.16",
  "libc",
- "rand_chacha 0.2.2",
+ "rand_chacha",
  "rand_core 0.5.1",
  "rand_hc",
-]
-
-[[package]]
-name = "rand"
-version = "0.9.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44c5af06bb1b7d3216d91932aed5265164bf384dc89cd6ba05cf59a35f5f76ea"
-dependencies = [
- "rand_chacha 0.9.0",
- "rand_core 0.9.5",
 ]
 
 [[package]]
@@ -2229,31 +2114,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "rand_chacha"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3022b5f1df60f26e1ffddd6c66e8aa15de382ae63b3a0c1bfc0e4d3e3f325cb"
-dependencies = [
- "ppv-lite86",
- "rand_core 0.9.5",
-]
-
-[[package]]
 name = "rand_core"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90bde5296fc891b0cef12a6d03ddccc162ce7b2aff54160af9338f8d40df6d19"
 dependencies = [
  "getrandom 0.1.16",
-]
-
-[[package]]
-name = "rand_core"
-version = "0.9.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
-dependencies = [
- "getrandom 0.3.4",
 ]
 
 [[package]]
@@ -2621,7 +2487,7 @@ dependencies = [
  "clap",
  "crux_core",
  "crux_http",
- "facet 0.44.5",
+ "facet",
  "futures",
  "getrandom 0.3.4",
  "insta",
@@ -2677,12 +2543,6 @@ name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
-
-[[package]]
-name = "static_assertions"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"

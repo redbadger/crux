@@ -141,7 +141,7 @@ where
         self.req
             .as_mut()
             .unwrap()
-            .set_content_type(content_type.into());
+            .set_content_type(&content_type.into());
         self
     }
 
@@ -389,7 +389,6 @@ where
 
             match result {
                 HttpResult::Ok(response) => Response::<Vec<u8>>::new(response.into())
-                    .await
                     .and_then(|r| self.expectation.decode(r)),
                 HttpResult::Err(error) => Err(error),
             }
