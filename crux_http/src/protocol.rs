@@ -220,19 +220,13 @@ pub(crate) trait EffectSender {
     async fn send(&self, effect: HttpRequest) -> HttpResult;
 }
 
-#[async_trait]
 pub(crate) trait ProtocolRequestBuilder {
-    async fn into_protocol_request(mut self) -> crate::Result<HttpRequest>;
+    fn into_protocol_request(self) -> crate::Result<HttpRequest>;
 }
 
-#[async_trait]
 impl ProtocolRequestBuilder for crate::Request {
-    async fn into_protocol_request(mut self) -> crate::Result<HttpRequest> {
-        let body = if self.is_empty() == Some(false) {
-            self.take_body().into_bytes().await?
-        } else {
-            vec![]
-        };
+    fn into_protocol_request(mut self) -> crate::Result<HttpRequest> {
+        let body = self.take_body().into_bytes();
 
         Ok(HttpRequest {
             method: self.method().to_string(),
@@ -536,5 +530,30 @@ mod tests {
             body: "",
         }
         "#);
+    }
+
+    #[test]
+    fn into_protocol_request_is_synchronous_and_carries_body() {
+        use crate::{Request, Url, protocol::ProtocolRequestBuilder};
+        use http_types::Method;
+
+        let mut req = Request::new(Method::Post, Url::parse("https://example.com").unwrap());
+        req.body_json(&serde_json::json!({"x": 1})).unwrap();
+
+        // into_protocol_request is now a plain (sync) fn — no .await needed.
+        let http_req = req.into_protocol_request().expect("must not fail");
+
+        assert_eq!(http_req.method, "POST");
+        assert_eq!(http_req.url, "https://example.com/");
+        assert!(!http_req.body.is_empty(), "body must be present");
+
+        // Content-Type header must be present in the serialised headers.
+        let has_content_type = http_req.headers.iter().any(|h| {
+            h.name.to_lowercase() == "content-type" && h.value.contains("application/json")
+        });
+        assert!(
+            has_content_type,
+            "Content-Type: application/json header expected"
+        );
     }
 }

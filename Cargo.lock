@@ -485,6 +485,7 @@ dependencies = [
  "http",
  "http-types-red-badger-temporary-fork",
  "insta",
+ "mime",
  "pin-project-lite",
  "serde",
  "serde_bytes",

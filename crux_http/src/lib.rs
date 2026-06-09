@@ -13,6 +13,7 @@ mod request;
 mod request_builder;
 mod response;
 
+mod body;
 pub mod client;
 pub mod command;
 pub mod middleware;
@@ -23,7 +24,9 @@ use std::marker::PhantomData;
 
 pub use http_types as http;
 
+pub use crate::body::Body;
 pub use http_types::Method;
+pub use mime;
 pub use url::Url;
 
 pub use crate::protocol::{HttpRequest, HttpResponse};

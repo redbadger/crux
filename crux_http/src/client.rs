@@ -121,7 +121,6 @@ impl Client {
             Box::pin(async move {
                 let request = request
                     .into_protocol_request()
-                    .await
                     .expect("Failed to create request");
                 match client.effect_sender.send(request).await {
                     HttpResult::Ok(response) => Ok(response.into()),

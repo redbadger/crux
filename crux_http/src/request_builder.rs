@@ -3,11 +3,12 @@ use crate::{Client, HttpError, Request, ResponseAsync, Result};
 
 use futures_util::future::BoxFuture;
 use http_types::{
-    Body, Method, Mime, Url,
-    convert::DeserializeOwned,
+    Method, Url,
     headers::{HeaderName, ToHeaderValues},
 };
+use mime::Mime;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use std::{fmt, marker::PhantomData};
 
@@ -19,7 +20,7 @@ use std::{fmt, marker::PhantomData};
 /// # Examples
 ///
 /// ```no_run
-/// use crux_http::http::{mime::HTML};
+/// use crux_http::mime;
 /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
 /// # #[crux_core::macros::effect]
 /// # enum Effect { Http(crux_http::HttpRequest) }
@@ -27,7 +28,7 @@ use std::{fmt, marker::PhantomData};
 /// let cmd = Http::post("https://httpbin.org/post")
 ///     .body("<html>hi</html>")
 ///     .header("custom-header", "value")
-///     .content_type(HTML)
+///     .content_type(mime::TEXT_HTML)
 ///     .build()
 ///     .then_send(Event::ReceiveResponse);
 /// ```
@@ -86,13 +87,13 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # use crux_http::http::mime;
+    /// # use crux_http::mime;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[crux_core::macros::effect]
     /// # enum Effect { Http(crux_http::HttpRequest) }
     /// # type Http = crux_http::Http<Effect, Event>;
     /// let cmd = Http::get("https://httpbin.org/get")
-    ///     .content_type(mime::HTML)
+    ///     .content_type(mime::TEXT_HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
@@ -100,10 +101,7 @@ where
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
     pub fn content_type(mut self, content_type: impl Into<Mime>) -> Self {
-        self.req
-            .as_mut()
-            .unwrap()
-            .set_content_type(content_type.into());
+        self.req.as_mut().unwrap().set_content_type(content_type.into());
         self
     }
 
@@ -120,16 +118,16 @@ where
     /// # enum Effect { Http(crux_http::HttpRequest) }
     /// # type Http = crux_http::Http<Effect, Event>;
     /// use serde_json::json;
-    /// use crux_http::http::mime;
+    /// use crux_http::mime;
     /// let cmd = Http::post("https://httpbin.org/post")
     ///     .body(json!({"any": "Into<Body>"}))
-    ///     .content_type(mime::HTML)
+    ///     .content_type(mime::TEXT_HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
-    pub fn body(mut self, body: impl Into<Body>) -> Self {
+    pub fn body(mut self, body: impl Into<crate::body::Body>) -> Self {
         self.req.as_mut().unwrap().set_body(body);
         self
     }
@@ -165,7 +163,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
-        Ok(self.body(Body::from_json(json)?))
+        Ok(self.body(crate::body::Body::from_json(json)?))
     }
 
     /// Pass a string as the request body.
@@ -187,7 +185,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_string(self, string: String) -> Self {
-        self.body(Body::from_string(string))
+        self.body(crate::body::Body::from_string(string))
     }
 
     /// Pass bytes as the request body.
@@ -209,7 +207,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_bytes(self, bytes: impl AsRef<[u8]>) -> Self {
-        self.body(Body::from(bytes.as_ref()))
+        self.body(crate::body::Body::from(bytes.as_ref()))
     }
 
     /// Pass form data as the request body. The form data needs to be
@@ -243,7 +241,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_form(self, form: &impl Serialize) -> crate::Result<Self> {
-        Ok(self.body(Body::from_form(form)?))
+        Ok(self.body(crate::body::Body::from_form(form)?))
     }
 
     /// Set the URL querystring.

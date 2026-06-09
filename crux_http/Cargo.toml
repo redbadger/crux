@@ -29,6 +29,7 @@ facet-generate-attrs.workspace = true
 futures-util = "0.3"
 http = { version = "1.4", optional = true }
 http-types = { package = "http-types-red-badger-temporary-fork", version = "6.0", default-features = false }
+mime = "0.3"
 pin-project-lite = "0.2"
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11"

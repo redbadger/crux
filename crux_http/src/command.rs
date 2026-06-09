@@ -22,11 +22,12 @@ use std::{fmt, future::Future, marker::PhantomData};
 
 use crux_core::{Command, command};
 use http_types::{
-    Body, Method, Mime, Url,
-    convert::DeserializeOwned,
+    Method, Url,
     headers::{HeaderName, ToHeaderValues},
 };
+use mime::Mime;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::{
     HttpError, Request, Response,
@@ -57,7 +58,7 @@ pub use crate::Http;
 /// Http::post("https://httpbin.org/post")
 ///     .body("<html>hi</html>")
 ///     .header("custom-header", "value")
-///     .content_type(crux_http::http::mime::HTML)
+///     .content_type(crux_http::mime::TEXT_HTML)
 ///     .build()
 ///     .then_send(Event::ReceiveResponse);
 /// ```
@@ -129,7 +130,7 @@ where
     /// # enum Effect { Http(HttpRequest) }
     /// # type Http = crux_http::command::Http<Effect, Event>;
     /// Http::get("https://httpbin.org/get")
-    ///     .content_type(crux_http::http::mime::HTML)
+    ///     .content_type(crux_http::mime::TEXT_HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
@@ -160,12 +161,12 @@ where
     /// # type Http = crux_http::command::Http<Effect, Event>;
     /// Http::post("https://httpbin.org/post")
     ///     .body(serde_json::json!({"any": "Into<Body>"}))
-    ///     .content_type(crux_http::http::mime::HTML)
+    ///     .content_type(crux_http::mime::TEXT_HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     #[allow(clippy::missing_panics_doc)]
-    pub fn body(mut self, body: impl Into<Body>) -> Self {
+    pub fn body(mut self, body: impl Into<crate::body::Body>) -> Self {
         self.req.as_mut().unwrap().set_body(body);
         self
     }
@@ -204,7 +205,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
-        Ok(self.body(Body::from_json(json)?))
+        Ok(self.body(crate::body::Body::from_json(json)?))
     }
 
     /// Pass a string as the request body.
@@ -229,7 +230,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_string(self, string: String) -> Self {
-        self.body(Body::from_string(string))
+        self.body(crate::body::Body::from_string(string))
     }
 
     /// Pass bytes as the request body.
@@ -254,7 +255,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_bytes(self, bytes: impl AsRef<[u8]>) -> Self {
-        self.body(Body::from(bytes.as_ref()))
+        self.body(crate::body::Body::from(bytes.as_ref()))
     }
 
     /// Pass form data as the request body. The form data needs to be
@@ -291,7 +292,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_form(self, form: &impl Serialize) -> crate::Result<Self> {
-        Ok(self.body(Body::from_form(form)?))
+        Ok(self.body(crate::body::Body::from_form(form)?))
     }
 
     /// Set the URL querystring.
@@ -378,7 +379,6 @@ where
         command::RequestBuilder::new(|ctx| async move {
             let operation = req
                 .into_protocol_request()
-                .await
                 .expect("should be able to convert request to protocol request");
 
             let result = Command::request_from_shell(operation)

@@ -1,6 +1,7 @@
+use crate::body::Body;
 use crate::middleware::Middleware;
 use http_types::{
-    Body, Method, Mime, Url,
+    Method, Url,
     headers::{self, HeaderName, HeaderValues, ToHeaderValues},
 };
 
@@ -15,6 +16,8 @@ use std::sync::Arc;
 pub struct Request {
     /// Holds the state of the request.
     req: http_types::Request,
+    /// Holds the request body separately from the inner http_types::Request.
+    body: Body,
     /// Holds an optional per-request middleware stack.
     middleware: Option<Vec<Arc<dyn Middleware>>>,
 }
@@ -41,6 +44,7 @@ impl Request {
         let req = http_types::Request::new(method, url);
         Self {
             req,
+            body: Body::default(),
             middleware: None,
         }
     }
@@ -237,15 +241,18 @@ impl Request {
     ///
     /// [`set_header`]: #method.set_header
     #[must_use]
-    pub fn content_type(&self) -> Option<Mime> {
-        self.req.content_type()
+    pub fn content_type(&self) -> Option<mime::Mime> {
+        self.req
+            .content_type()
+            .and_then(|m| m.to_string().parse().ok())
     }
 
     /// Set the request content type from a `Mime`.
     ///
     /// [Read more on MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types)
-    pub fn set_content_type(&mut self, mime: Mime) {
-        self.req.set_content_type(mime);
+    pub fn set_content_type(&mut self, mime: mime::Mime) {
+        self.req
+            .set_content_type(http_types::Mime::from(mime.to_string().as_str()));
     }
 
     /// Get the length of the body stream, if it has been set.
@@ -257,14 +264,14 @@ impl Request {
     #[allow(clippy::len_without_is_empty)]
     #[must_use]
     pub fn len(&self) -> Option<usize> {
-        self.req.len()
+        Some(self.body.len())
     }
 
     /// Returns `true` if the set length of the body stream is zero, `false`
     /// otherwise.
     #[must_use]
     pub fn is_empty(&self) -> Option<bool> {
-        self.req.is_empty()
+        Some(self.body.is_empty())
     }
 
     /// Pass an `AsyncRead` stream as the request body.
@@ -273,7 +280,12 @@ impl Request {
     ///
     /// The encoding is set to `application/octet-stream`.
     pub fn set_body(&mut self, body: impl Into<Body>) {
-        self.req.set_body(body);
+        let body = body.into();
+        if let Some(mime) = body.mime() {
+            self.req
+                .set_content_type(http_types::Mime::from(mime.to_string().as_str()));
+        }
+        self.body = body;
     }
 
     /// Take the request body as a `Body`.
@@ -283,7 +295,7 @@ impl Request {
     ///
     /// This is useful for consuming the body via an `AsyncReader` or `AsyncBufReader`.
     pub fn take_body(&mut self) -> Body {
-        self.req.take_body()
+        std::mem::take(&mut self.body)
     }
 
     /// Pass JSON as the request body.
@@ -395,35 +407,20 @@ impl From<http_types::Request> for Request {
     fn from(req: http_types::Request) -> Self {
         Self {
             req,
+            body: Body::default(),
             middleware: None,
         }
-    }
-}
-
-#[cfg(feature = "http-compat")]
-impl<B: Into<Body>> TryFrom<http::Request<B>> for Request {
-    type Error = anyhow::Error;
-
-    fn try_from(req: http::Request<B>) -> Result<Self, Self::Error> {
-        use std::str::FromStr;
-        let mut o = Self::new(
-            Method::from_str(req.method().as_str()).map_err(|e| anyhow::anyhow!(e))?,
-            req.uri().to_string().parse()?,
-        );
-
-        for (k, v) in req.headers() {
-            o.append_header(k.as_str(), v.to_str()?);
-        }
-
-        o.set_body(req.into_body());
-        Ok(o)
     }
 }
 
 #[allow(clippy::from_over_into)]
 impl Into<http_types::Request> for Request {
     /// Converts a `crux_http::Request` to an `http_types::Request`.
-    fn into(self) -> http_types::Request {
+    fn into(mut self) -> http_types::Request {
+        let bytes = self.body.into_bytes();
+        if !bytes.is_empty() {
+            self.req.set_body(bytes.as_slice());
+        }
         self.req
     }
 }
@@ -490,5 +487,70 @@ impl Index<&str> for Request {
     #[inline]
     fn index(&self, name: &str) -> &HeaderValues {
         &self.req[name]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn get(url: &str) -> Request {
+        Request::new(Method::Get, Url::parse(url).unwrap())
+    }
+
+    #[test]
+    fn new_request_has_empty_body() {
+        let req = get("https://example.com");
+        assert!(req.is_empty() == Some(true));
+        assert_eq!(req.len(), Some(0));
+    }
+
+    #[test]
+    fn set_body_string_stores_bytes_and_content_type_header() {
+        let mut req = get("https://example.com");
+        req.set_body("hello");
+        assert_eq!(req.len(), Some(5));
+        // Content-Type header must be propagated to the inner http_types::Request
+        // so that iter() picks it up when building HttpRequest headers.
+        let ct = req.content_type().expect("content type must be set");
+        assert_eq!(ct, mime::TEXT_PLAIN_UTF_8);
+    }
+
+    #[test]
+    fn set_body_bytes_sets_octet_stream_content_type() {
+        let mut req = get("https://example.com");
+        req.set_body(vec![1u8, 2, 3]);
+        let ct = req.content_type().expect("content type must be set");
+        assert_eq!(ct, mime::APPLICATION_OCTET_STREAM);
+    }
+
+    #[test]
+    fn take_body_empties_body() {
+        let mut req = get("https://example.com");
+        req.set_body("world");
+        let body = req.take_body();
+        assert_eq!(body.into_bytes(), b"world");
+        assert!(req.is_empty() == Some(true));
+    }
+
+    #[test]
+    fn body_json_sets_application_json_content_type() {
+        let mut req = get("https://example.com");
+        req.body_json(&serde_json::json!({"key": "val"})).unwrap();
+        let ct = req.content_type().expect("content type must be set");
+        assert_eq!(ct, mime::APPLICATION_JSON);
+        assert!(!req.is_empty().unwrap());
+    }
+
+    #[test]
+    fn body_form_sets_form_urlencoded_content_type() {
+        #[derive(serde::Serialize)]
+        struct F {
+            a: u32,
+        }
+        let mut req = get("https://example.com");
+        req.body_form(&F { a: 1 }).unwrap();
+        let ct = req.content_type().expect("content type must be set");
+        assert_eq!(ct, mime::APPLICATION_WWW_FORM_URLENCODED);
     }
 }
