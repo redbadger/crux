@@ -1,5 +1,5 @@
 # Crates published in order (dependencies before dependents)
-publish_packages := "crux_macros crux_core crux_http crux_kv crux_platform crux_time"
+publish_packages := "crux_macros crux_core crux_http crux_kv crux_time"
 
 default: ci
 

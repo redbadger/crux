@@ -90,7 +90,6 @@ Full usage might look something like this:
 pub struct CatFactCapabilities {
     pub http: Http<MyEvent>,
     pub key_value: KeyValue<MyEvent>,
-    pub platform: Platform<MyEvent>,
     pub render: Render<MyEvent>,
     pub time: Time<MyEvent>,
 }
