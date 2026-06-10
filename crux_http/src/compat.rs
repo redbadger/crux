@@ -28,7 +28,7 @@ impl From<http_types::Request> for Request {
             if let Ok(hn) = http::HeaderName::from_bytes(name.as_str().as_bytes()) {
                 for value in values {
                     if let Ok(hv) = HeaderValue::from_str(value.as_str()) {
-                        new_req.insert_header(hn.clone(), hv);
+                        new_req.append_header(hn.clone(), hv);
                     }
                 }
             }
@@ -72,7 +72,7 @@ impl From<http_types::Response> for RawResponse {
             if let Ok(hn) = HeaderName::from_bytes(name.as_str().as_bytes()) {
                 for value in values {
                     if let Ok(hv) = HeaderValue::from_str(value.as_str()) {
-                        headers.insert(hn.clone(), hv);
+                        headers.append(hn.clone(), hv);
                     }
                 }
             }

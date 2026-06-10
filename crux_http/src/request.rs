@@ -122,6 +122,14 @@ impl Request {
         self.headers.get_mut(name)
     }
 
+    /// Get all values for a header name.
+    pub fn header_all(
+        &self,
+        name: impl http::header::AsHeaderName,
+    ) -> http::header::GetAll<'_, HeaderValue> {
+        self.headers.get_all(name)
+    }
+
     /// Set an HTTP header, replacing any existing value.
     ///
     /// Returns the previous value for that header name, if any.

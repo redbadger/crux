@@ -32,7 +32,7 @@ impl<Body> ResponseBuilder<Body> {
         ResponseBuilder { response }
     }
 
-    /// Sets a header on the response.
+    /// Sets a header on the response, replacing any existing value for that name.
     ///
     /// # Panics
     /// Panics if `value` is not a valid header value.
@@ -44,6 +44,24 @@ impl<Body> ResponseBuilder<Body> {
     ) -> Self {
         let value = HeaderValue::from_str(value.as_ref()).expect("invalid header value");
         self.response.insert_header(name, value);
+        self
+    }
+
+    /// Appends a header value, keeping any existing values for that name.
+    ///
+    /// Use this when building responses with multiple values for the same header
+    /// (e.g. `Set-Cookie`).
+    ///
+    /// # Panics
+    /// Panics if `value` is not a valid header value.
+    #[must_use]
+    pub fn append_header(
+        mut self,
+        name: impl http::header::IntoHeaderName,
+        value: impl AsRef<str>,
+    ) -> Self {
+        let value = HeaderValue::from_str(value.as_ref()).expect("invalid header value");
+        self.response.append_header(name, value);
         self
     }
 

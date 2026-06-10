@@ -379,15 +379,16 @@ mod tests {
 
     #[test]
     fn header_all_returns_multiple_values() {
-        // header_all() API compiles and returns values even when only one is present
-        // (ResponseBuilder uses insert_header which replaces).
         let res = ResponseBuilder::ok()
             .header("accept", "text/html")
-            .header("accept", "application/json")
+            .append_header("accept", "application/json")
             .build();
-        // ResponseBuilder uses insert_header which replaces; only last value survives
-        // through the builder. This test verifies the API compiles and returns a value.
-        assert!(res.header_all("accept").iter().next().is_some());
+        let values: Vec<&str> = res
+            .header_all("accept")
+            .iter()
+            .map(|v| v.to_str().unwrap())
+            .collect();
+        assert_eq!(values, ["text/html", "application/json"]);
     }
 
     #[test]
