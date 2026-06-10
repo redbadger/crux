@@ -63,3 +63,9 @@ jobs:
         run: |
           cargo nextest run --all-features
           cargo test --doc --all-features
+
+      - name: Tests (crux_http with http-types compat feature)
+        shell: bash
+        run: |
+          cargo nextest run -p crux_http --features crux_http/http-types
+          cargo test --doc -p crux_http --features crux_http/http-types

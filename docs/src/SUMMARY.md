@@ -44,7 +44,13 @@
 1. [Command runtime](./part-4/runtime.md)
 1. [Type generation](./part-4/typegen.md)
 
+# Guides
+
+1. [Migrating crux_http to native http types](./guide/migrate-crux-http.md)
+
 # RFCs
 
 1. [Command API](./rfcs/command.md)
 1. [Typegen](./rfcs/typegen.md)
+1. [Effect Router](./rfcs/effect-router.md)
+1. [Decouple crux_http from http-types](./rfcs/decouple-from-http-types.md)

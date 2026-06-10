@@ -1,13 +1,12 @@
-use crate::middleware::Middleware;
-use crate::{Client, HttpError, Request, ResponseAsync, Result};
+use crate::body::Body;
+use crate::{Client, HttpError, RawResponse, Request, Result, middleware::Middleware};
+use http::HeaderValue;
 
 use futures_util::future::BoxFuture;
-use http_types::{
-    Body, Method, Mime, Url,
-    convert::DeserializeOwned,
-    headers::{HeaderName, ToHeaderValues},
-};
-use serde::Serialize;
+use http::Method;
+use mime::Mime;
+use serde::{Serialize, de::DeserializeOwned};
+use url::Url;
 
 use std::{fmt, marker::PhantomData};
 
@@ -19,7 +18,7 @@ use std::{fmt, marker::PhantomData};
 /// # Examples
 ///
 /// ```no_run
-/// use crux_http::http::{mime::HTML};
+/// use crux_http::mime;
 /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
 /// # #[crux_core::macros::effect]
 /// # enum Effect { Http(crux_http::HttpRequest) }
@@ -27,7 +26,7 @@ use std::{fmt, marker::PhantomData};
 /// let cmd = Http::post("https://httpbin.org/post")
 ///     .body("<html>hi</html>")
 ///     .header("custom-header", "value")
-///     .content_type(HTML)
+///     .content_type(mime::TEXT_HTML)
 ///     .build()
 ///     .then_send(Event::ReceiveResponse);
 /// ```
@@ -75,9 +74,15 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
-    pub fn header(mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) -> Self {
-        self.req.as_mut().unwrap().insert_header(key, value);
+    /// Panics if the `RequestBuilder` has not been initialized, or if `value` is not a valid
+    /// header value.
+    pub fn header(
+        mut self,
+        name: impl http::header::IntoHeaderName,
+        value: impl AsRef<str>,
+    ) -> Self {
+        let value = HeaderValue::from_str(value.as_ref()).expect("invalid header value");
+        self.req.as_mut().unwrap().insert_header(name, value);
         self
     }
 
@@ -86,13 +91,13 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// # use crux_http::http::mime;
+    /// # use crux_http::mime;
     /// # enum Event { ReceiveResponse(crux_http::Result<crux_http::Response<Vec<u8>>>) }
     /// # #[crux_core::macros::effect]
     /// # enum Effect { Http(crux_http::HttpRequest) }
     /// # type Http = crux_http::Http<Effect, Event>;
     /// let cmd = Http::get("https://httpbin.org/get")
-    ///     .content_type(mime::HTML)
+    ///     .content_type(mime::TEXT_HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
@@ -103,7 +108,7 @@ where
         self.req
             .as_mut()
             .unwrap()
-            .set_content_type(content_type.into());
+            .set_content_type(&content_type.into());
         self
     }
 
@@ -120,10 +125,10 @@ where
     /// # enum Effect { Http(crux_http::HttpRequest) }
     /// # type Http = crux_http::Http<Effect, Event>;
     /// use serde_json::json;
-    /// use crux_http::http::mime;
+    /// use crux_http::mime;
     /// let cmd = Http::post("https://httpbin.org/post")
     ///     .body(json!({"any": "Into<Body>"}))
-    ///     .content_type(mime::HTML)
+    ///     .content_type(mime::TEXT_HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
@@ -164,7 +169,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
+    pub fn body_json(self, json: &impl Serialize) -> Result<Self> {
         Ok(self.body(Body::from_json(json)?))
     }
 
@@ -242,7 +247,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    pub fn body_form(self, form: &impl Serialize) -> crate::Result<Self> {
+    pub fn body_form(self, form: &impl Serialize) -> Result<Self> {
         Ok(self.body(Body::from_form(form)?))
     }
 
@@ -382,7 +387,7 @@ where
         }
     }
 
-    /// Sends the constructed `Request` and returns a future that resolves to [`ResponseAsync`].
+    /// Sends the constructed `Request` and returns a future that resolves to [`RawResponse`].
     /// but does not consume it or convert the body to an expected format.
     ///
     /// Note that this is equivalent to calling `.into_future()` on the `RequestBuilder`, which
@@ -392,15 +397,15 @@ where
     /// Not all code working with futures (such as the `join` macro) works with `IntoFuture` (yet?), so this
     /// method is provided as a more discoverable `.into_future` alias, and may be deprecated later.
     #[must_use]
-    pub fn send_async(self) -> BoxFuture<'static, Result<ResponseAsync>> {
+    pub fn send_async(self) -> BoxFuture<'static, Result<RawResponse>> {
         <Self as std::future::IntoFuture>::into_future(self)
     }
 }
 
 impl<T, Eb> std::future::IntoFuture for RequestBuilder<T, Eb> {
-    type Output = Result<ResponseAsync>;
+    type Output = Result<RawResponse>;
 
-    type IntoFuture = BoxFuture<'static, Result<ResponseAsync>>;
+    type IntoFuture = BoxFuture<'static, Result<RawResponse>>;
 
     /// Sends the constructed `Request` and returns a future that resolves to the response
     fn into_future(self) -> Self::IntoFuture {

@@ -9,7 +9,7 @@ use derive_builder::Builder;
 use facet_generate_attrs as typegen;
 use serde::{Deserialize, Serialize};
 
-use crate::HttpError;
+use crate::{HttpError, Request, Result};
 
 #[derive(facet::Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpHeader {
@@ -92,7 +92,7 @@ impl HttpRequestBuilder {
     ///
     /// # Errors
     /// Returns an [`HttpError`] if the serialization fails.
-    pub fn query(&mut self, query: &impl Serialize) -> crate::Result<&mut Self> {
+    pub fn query(&mut self, query: &impl Serialize) -> Result<&mut Self> {
         if let Some(url) = &mut self.url {
             if url.contains('?') {
                 url.push('&');
@@ -192,8 +192,8 @@ pub enum HttpResult {
     Err(HttpError),
 }
 
-impl From<crate::Result<HttpResponse>> for HttpResult {
-    fn from(result: Result<HttpResponse, HttpError>) -> Self {
+impl From<Result<HttpResponse>> for HttpResult {
+    fn from(result: Result<HttpResponse>) -> Self {
         match result {
             Ok(response) => Self::Ok(response),
             Err(err) => Self::Err(err),
@@ -220,46 +220,26 @@ pub(crate) trait EffectSender {
     async fn send(&self, effect: HttpRequest) -> HttpResult;
 }
 
-#[async_trait]
 pub(crate) trait ProtocolRequestBuilder {
-    async fn into_protocol_request(mut self) -> crate::Result<HttpRequest>;
+    fn into_protocol_request(self) -> Result<HttpRequest>;
 }
 
-#[async_trait]
-impl ProtocolRequestBuilder for crate::Request {
-    async fn into_protocol_request(mut self) -> crate::Result<HttpRequest> {
-        let body = if self.is_empty() == Some(false) {
-            self.take_body().into_bytes().await?
-        } else {
-            vec![]
-        };
+impl ProtocolRequestBuilder for Request {
+    fn into_protocol_request(mut self) -> Result<HttpRequest> {
+        let body = self.take_body().into_bytes();
 
         Ok(HttpRequest {
             method: self.method().to_string(),
             url: self.url().to_string(),
             headers: self
                 .iter()
-                .flat_map(|(name, values)| {
-                    values.iter().map(|value| HttpHeader {
-                        name: name.to_string(),
-                        value: value.to_string(),
-                    })
+                .map(|(name, value)| HttpHeader {
+                    name: name.to_string(),
+                    value: value.to_str().unwrap_or("").to_string(),
                 })
                 .collect(),
             body,
         })
-    }
-}
-
-impl From<HttpResponse> for crate::ResponseAsync {
-    fn from(effect_response: HttpResponse) -> Self {
-        let mut res = http_types::Response::new(effect_response.status);
-        res.set_body(effect_response.body);
-        for header in effect_response.headers {
-            res.append_header(header.name.as_str(), header.value);
-        }
-
-        Self::new(res)
     }
 }
 
@@ -536,5 +516,59 @@ mod tests {
             body: "",
         }
         "#);
+    }
+
+    #[test]
+    fn into_protocol_request_is_synchronous_and_carries_body() {
+        use crate::{Request, Url, protocol::ProtocolRequestBuilder};
+        use http::Method;
+
+        let mut req = Request::new(Method::POST, Url::parse("https://example.com").unwrap());
+        req.body_json(&serde_json::json!({"x": 1})).unwrap();
+
+        // into_protocol_request is now a plain (sync) fn — no .await needed.
+        let http_req = req.into_protocol_request().expect("must not fail");
+
+        assert_eq!(http_req.method, "POST");
+        assert_eq!(http_req.url, "https://example.com/");
+        assert!(!http_req.body.is_empty(), "body must be present");
+
+        // Content-Type header must be present in the serialised headers.
+        let has_content_type = http_req.headers.iter().any(|h| {
+            h.name.to_lowercase() == "content-type" && h.value.contains("application/json")
+        });
+        assert!(
+            has_content_type,
+            "Content-Type: application/json header expected"
+        );
+    }
+
+    /// Round-trip: `http::Request<Body>` → `crux_http::Request` → `HttpRequest`
+    #[test]
+    fn http_request_body_round_trip_to_protocol() {
+        use crate::{Body, Request, protocol::ProtocolRequestBuilder};
+
+        let http_req = http::Request::builder()
+            .method(http::Method::POST)
+            .uri("https://api.example.com/items")
+            .header("content-type", "application/json")
+            .body(Body::from_json(&serde_json::json!({"name": "widget"})).unwrap())
+            .unwrap();
+
+        let req: Request = http_req.into();
+        let protocol_req = req.into_protocol_request().expect("should convert");
+
+        assert_eq!(protocol_req.method, "POST");
+        assert_eq!(protocol_req.url, "https://api.example.com/items");
+        assert!(!protocol_req.body.is_empty(), "body bytes must be present");
+        assert!(
+            protocol_req.headers.iter().any(|h| {
+                h.name.to_lowercase() == "content-type" && h.value.contains("application/json")
+            }),
+            "Content-Type: application/json must be in headers"
+        );
+        // Deserialise the body back to confirm bytes are correct.
+        let parsed: serde_json::Value = serde_json::from_slice(&protocol_req.body).unwrap();
+        assert_eq!(parsed["name"], "widget");
     }
 }

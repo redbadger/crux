@@ -1,5 +1,3 @@
-use http_types::Error;
-
 use std::fmt;
 use std::io;
 
@@ -52,7 +50,7 @@ const fn is_utf8_encoding(encoding_label: &str) -> bool {
 /// If the body cannot be decoded as utf-8, this function returns an `std::io::Error` of kind
 /// `std::io::ErrorKind::InvalidData`, carrying a `DecodeError` struct.
 #[cfg(not(feature = "encoding"))]
-pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<String, Error> {
+pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<String, io::Error> {
     if is_utf8_encoding(content_encoding.unwrap_or("utf-8")) {
         Ok(String::from_utf8(bytes).map_err(|err| {
             let err = DecodeError {
@@ -66,7 +64,7 @@ pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<Str
             encoding: "utf-8".to_string(),
             data: bytes,
         };
-        Err(io::Error::new(io::ErrorKind::InvalidData, err).into())
+        Err(io::Error::new(io::ErrorKind::InvalidData, err))
     }
 }
 
@@ -80,7 +78,7 @@ pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<Str
 /// encoding, this function returns an `std::io::Error` of kind `std::io::ErrorKind::InvalidData`,
 /// carrying a `DecodeError` struct.
 #[cfg(all(feature = "encoding", not(target_arch = "wasm32")))]
-pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<String, Error> {
+pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<String, io::Error> {
     use encoding_rs::Encoding;
 
     let content_encoding = content_encoding.unwrap_or("utf-8");
@@ -91,7 +89,7 @@ pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<Str
                 encoding: encoding_used.name().into(),
                 data: bytes,
             };
-            Err(io::Error::new(io::ErrorKind::InvalidData, err).into())
+            Err(io::Error::new(io::ErrorKind::InvalidData, err))
         } else {
             Ok(decoded.into_owned())
         }
@@ -100,7 +98,7 @@ pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<Str
             encoding: content_encoding.to_string(),
             data: bytes,
         };
-        Err(io::Error::new(io::ErrorKind::InvalidData, err).into())
+        Err(io::Error::new(io::ErrorKind::InvalidData, err))
     }
 }
 
@@ -114,14 +112,17 @@ pub fn decode_body(bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<Str
 /// encoding, this function returns an `std::io::Error` of kind `std::io::ErrorKind::InvalidData`,
 /// carrying a `DecodeError` struct.
 #[cfg(all(feature = "encoding", target_arch = "wasm32"))]
-pub fn decode_body(mut bytes: Vec<u8>, content_encoding: Option<&str>) -> Result<String, Error> {
+pub fn decode_body(
+    mut bytes: Vec<u8>,
+    content_encoding: Option<&str>,
+) -> Result<String, io::Error> {
     use web_sys::TextDecoder;
 
     // Encoding names are always valid ASCII, so we can avoid including casing mapping tables
     let content_encoding = content_encoding.unwrap_or("utf-8").to_ascii_lowercase();
     if is_utf8_encoding(&content_encoding) {
         return String::from_utf8(bytes)
-            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err).into());
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err));
     }
 
     let decoder = TextDecoder::new_with_label(&content_encoding).unwrap();
@@ -157,6 +158,24 @@ mod decode_tests {
             input,
             "Defaults to utf-8"
         );
+    }
+
+    #[test]
+    #[cfg(not(feature = "encoding"))]
+    fn invalid_utf8_is_io_invalid_data() {
+        // 0xFF is not valid UTF-8; the error must be an io::Error with InvalidData kind.
+        let result = decode_body(vec![0xFF, 0xFE], Some("utf-8"));
+        let err = result.expect_err("should fail on invalid UTF-8");
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    #[cfg(not(feature = "encoding"))]
+    fn unsupported_encoding_is_io_invalid_data() {
+        // Without the `encoding` feature, only UTF-8 is supported.
+        let result = decode_body(b"hello".to_vec(), Some("latin-1"));
+        let err = result.expect_err("should fail for unsupported encoding");
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
     }
 
     #[test]

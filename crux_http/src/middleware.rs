@@ -3,7 +3,7 @@
 //! # Examples
 //! ```no_run
 //! use crux_http::middleware::{Next, Middleware};
-//! use crux_http::{client::Client, Request, ResponseAsync, Result};
+//! use crux_http::{client::Client, Request, RawResponse, Result};
 //! use std::time;
 //! use std::sync::Arc;
 //!
@@ -18,7 +18,7 @@
 //!         req: Request,
 //!         client: Client,
 //!         next: Next<'_>,
-//!     ) -> Result<ResponseAsync> {
+//!     ) -> Result<RawResponse> {
 //!         println!("sending request to {}", req.url());
 //!         let now = time::Instant::now();
 //!         let res = next.run(req, client).await?;
@@ -33,11 +33,11 @@
 //! ```no_run
 //! use futures_util::future::BoxFuture;
 //! use crux_http::middleware::{Next, Middleware};
-//! use crux_http::{client::Client, Request, ResponseAsync, Result};
+//! use crux_http::{client::Client, Request, RawResponse, Result};
 //! use std::time;
 //! use std::sync::Arc;
 //!
-//! fn logger<'a>(req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<ResponseAsync>> {
+//! fn logger<'a>(req: Request, client: Client, next: Next<'a>) -> BoxFuture<'a, Result<RawResponse>> {
 //!     Box::pin(async move {
 //!         println!("sending request to {}", req.url());
 //!         let now = time::Instant::now();
@@ -50,7 +50,7 @@
 
 use std::sync::Arc;
 
-use crate::{Client, Request, ResponseAsync, Result};
+use crate::{Client, RawResponse, Request, Result};
 
 mod redirect;
 
@@ -63,7 +63,7 @@ use futures_util::future::BoxFuture;
 #[async_trait]
 pub trait Middleware: 'static + Send + Sync {
     /// Asynchronously handle the request, and return a response.
-    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<ResponseAsync>;
+    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<RawResponse>;
 }
 
 // This allows functions to work as middleware too.
@@ -73,9 +73,9 @@ where
     F: Send
         + Sync
         + 'static
-        + for<'a> Fn(Request, Client, Next<'a>) -> BoxFuture<'a, Result<ResponseAsync>>,
+        + for<'a> Fn(Request, Client, Next<'a>) -> BoxFuture<'a, Result<RawResponse>>,
 {
-    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<ResponseAsync> {
+    async fn handle(&self, req: Request, client: Client, next: Next<'_>) -> Result<RawResponse> {
         (self)(req, client, next).await
     }
 }
@@ -86,7 +86,7 @@ where
 pub struct Next<'a> {
     next_middleware: &'a [Arc<dyn Middleware>],
     endpoint: &'a (
-            dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
+            dyn (Fn(Request, Client) -> BoxFuture<'static, Result<RawResponse>>)
                 + Send
                 + Sync
                 + 'static
@@ -98,7 +98,7 @@ impl<'a> Next<'a> {
     pub fn new(
         next: &'a [Arc<dyn Middleware>],
         endpoint: &'a (
-                dyn (Fn(Request, Client) -> BoxFuture<'static, Result<ResponseAsync>>)
+                dyn (Fn(Request, Client) -> BoxFuture<'static, Result<RawResponse>>)
                     + Send
                     + Sync
                     + 'static
@@ -112,7 +112,7 @@ impl<'a> Next<'a> {
 
     /// Asynchronously execute the remaining middleware chain.
     #[must_use]
-    pub fn run(mut self, req: Request, client: Client) -> BoxFuture<'a, Result<ResponseAsync>> {
+    pub fn run(mut self, req: Request, client: Client) -> BoxFuture<'a, Result<RawResponse>> {
         if let Some((current, next)) = self.next_middleware.split_first() {
             self.next_middleware = next;
             current.handle(req, client, self)

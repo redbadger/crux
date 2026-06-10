@@ -8,6 +8,189 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 💥 Breaking Changes
+
+**`crux_http::http` now re-exports the real [`http`](https://docs.rs/http) crate (v1.4), not `http-types`.**
+
+This is the main breaking change. `crux_http::http` used to be a re-export of the
+`http-types-red-badger-temporary-fork` crate. It is now always the upstream `http` crate.
+The most common impacts:
+
+| Scenario | Action |
+| --- | --- |
+| App only uses `crux_http::{Http, RequestBuilder, Response, …}` and `crux_http::Method` | Likely **compiles unchanged**. `Method` is now `http::Method`; its API is compatible for common uses (`Method::GET`, `Method::POST`, …). |
+| Code references `Method::Get`, `Method::Post`, … (UpperCamelCase variants) | Rename to `Method::GET`, `Method::POST`, … (associated constants on `http::Method`). |
+| `crux_http::http::StatusCode::Unauthorized` etc. | Rename to `http::StatusCode::UNAUTHORIZED` etc. `HttpError::Http { code, .. }` now stores the code as a plain `u16`; compare with `401u16` or `StatusCode::UNAUTHORIZED.as_u16()`. |
+| Imports `crux_http::http::mime::HTML` etc. | Use `crux_http::mime::TEXT_HTML` (or any constant from the `mime` crate, now re-exported as `crux_http::mime`). |
+| Imports `crux_http::http::Body` / `Headers` / `Version` | Use `crux_http::Body` (new crux-owned type) or `http::HeaderMap` / `http::Version` directly. |
+| Used the `http-compat` feature | The feature is **removed**. Native lossless conversions (`From`/`TryFrom`) between `crux_http` types and `http::Request<Body>` / `http::Response<Body>` are now provided unconditionally — no feature flag required. |
+| Has code that builds or consumes `http_types::Request`/`Response` | Enable the new **`http-types`** feature; it provides `From`/`Into` conversion impls between `crux_http` and `http_types` types. |
+| Relied on streaming `http_types::Body` / `AsyncRead` on `ResponseAsync` | The streaming body model is not carried over. The type is now called `RawResponse`; refactor streaming to use the `Chunk`/`Done` capability pattern. |
+
+---
+
+**`insert_header` and `append_header` now take `http::HeaderValue` directly.**
+
+The low-level header mutation methods on `Request`, `RawResponse`, and `Response<T>` now
+accept `HeaderValue` instead of `impl AsRef<str>`. The return types also change to mirror
+`http::HeaderMap`: `insert_header` returns `Option<HeaderValue>` (the evicted previous
+value, if any) and `append_header` returns `bool` (whether a prior value already existed
+for that name).
+
+This eliminates silent failure: the previous `impl AsRef<str>` signature silently discarded
+any value that failed `HeaderValue::from_str`, with no indication to the caller.
+
+The high-level builder `.header(name, value)` on `RequestBuilder` and `ResponseBuilder`
+is **unchanged** — it still accepts `impl AsRef<str>` for convenience and panics on
+invalid values.
+
+```rust
+// Before
+req.insert_header("authorization", format!("Bearer {token}"));
+res.append_header("set-cookie", "sid=abc");
+
+// After
+use crux_http::http::HeaderValue;
+req.insert_header(
+    "authorization",
+    HeaderValue::from_str(&format!("Bearer {token}")).expect("valid token"),
+);
+res.append_header("set-cookie", HeaderValue::from_static("sid=abc"));
+```
+
+---
+
+**`ResponseAsync` renamed to `RawResponse`.**
+
+The type that flows through the middleware chain has been renamed from
+`ResponseAsync` to `RawResponse`. The old name was misleading: the struct
+holds a plain `(StatusCode, HeaderMap, Vec<u8>)` and nothing about it is
+asynchronous. `RawResponse` accurately describes its role — the unvalidated
+response from the shell before the 4xx/5xx error check in `Response::new()`.
+
+Update all imports and type annotations:
+
+```rust
+// Before
+use crux_http::ResponseAsync;
+async fn handle(…) -> Result<ResponseAsync> { … }
+
+// After
+use crux_http::RawResponse;
+async fn handle(…) -> Result<RawResponse> { … }
+```
+
+---
+
+**`RawResponse` body-reading methods are now synchronous.**
+
+`body_bytes()`, `body_string()`, `body_json()`, and `body_form()` on
+`RawResponse` no longer return a future — they return `Result<T>` directly.
+Remove `.await` at every call site. All body data in `crux_http` is
+already in memory, so the `async` was superfluous.
+
+```rust
+// Before
+let bytes = res.body_bytes().await?;
+// After
+let bytes = res.body_bytes()?;
+```
+
+---
+
+**`Config::add_header` name parameter is now `impl IntoHeaderName`.**
+
+`Config::add_header` previously accepted `impl AsRef<str>` for the header name and
+returned `Err` if the name string was invalid. The parameter is now
+`impl http::header::IntoHeaderName`, consistent with every other header-setting method
+in the library. The `Result` return is kept — it now only reflects validation of the
+value.
+
+Callers using `&'static str` literals are unaffected. Callers who were passing a
+runtime-built `String` must convert it to `HeaderName` first:
+
+```rust
+use http::HeaderName;
+// Before
+config.add_header(format!("x-{key}"), "value")?;
+// After
+let name = HeaderName::from_bytes(format!("x-{key}").as_bytes())?;
+config.add_header(name, "value")?;
+```
+
+---
+
+**`Request::set_content_type` now takes `&mime::Mime` instead of `mime::Mime`.**
+
+The method no longer takes ownership of the MIME type. Pass a reference:
+
+```rust
+// Before
+req.set_content_type(mime::APPLICATION_JSON);
+// After
+req.set_content_type(&mime::APPLICATION_JSON);
+```
+
+The builder-level `.content_type(…)` methods on `RequestBuilder` are
+unaffected — they still accept any `impl Into<Mime>` by value.
+
+---
+
+**`Request::set_header` is deprecated — use `insert_header` instead.**
+
+`set_header` was an `http-types`-era alias that did nothing but delegate to
+`insert_header`. It is now `#[deprecated]`. Replace all call sites:
+
+```rust
+// Before
+req.set_header("x-trace-id", HeaderValue::from_static("abc"));
+// After
+req.insert_header("x-trace-id", HeaderValue::from_static("abc"));
+```
+
+### 🐛 Bug Fixes
+
+- **Multi-value headers are no longer silently clobbered in `http-types` compat
+  conversions.** The `From<http_types::Request> for Request` and
+  `From<http_types::Response> for RawResponse` conversions were calling `insert`
+  inside the inner loop that iterates over per-name values, so when a header had more
+  than one value only the last one survived. They now call `append`, preserving all
+  values.
+
+### 🚀 Features
+
+- **`header_all(name)` on `Request`, `RawResponse`, and `Response<T>`** — all three
+  types now expose `header_all`, returning all values for a given header name as an
+  `http::header::GetAll` iterator. Useful when a header can legitimately appear multiple
+  times (e.g. `Set-Cookie` in responses, `Accept` or `Cookie` in requests). `Request`
+  previously had no equivalent to the `header_all` already present on the response types.
+- **New `crux_http::Body` type** — a simple, synchronous, in-memory request body with
+  an optional MIME type. Replaces the async `http_types::Body`. Provides `Into<Body>`
+  conversions from `String`, `&str`, `Vec<u8>`, `&[u8]`, and `serde_json::Value`, plus
+  `into_bytes()`, `mime()`, `len()`, and `is_empty()`.
+- **Native `http` conversions** — `From<http::Request<Body>> for crux_http::Request`,
+  `From<crux_http::Request> for http::Request<Body>`, and
+  `TryFrom<crux_http::Response<Body>> for http::Response<Body>` are available out of the
+  box without any feature flag.
+- **`http-types` compat feature** — add `crux_http = { features = ["http-types"] }` to
+  your `Cargo.toml` to get `From`/`Into` impls between `crux_http` types and the legacy
+  `http_types` types, as a bridge while migrating.
+- **`ResponseBuilder::append_header(name, value)`** — the test helper now provides
+  `append_header` alongside the existing `header` method, so tests can build responses
+  with multiple values for the same header name (e.g. multiple `Set-Cookie` headers)
+  without losing earlier values.
+- **`crux_http::mime` re-export** — the `mime` crate (v0.3) is now re-exported directly
+  as `crux_http::mime`, giving access to constants like `mime::APPLICATION_JSON` and
+  `mime::TEXT_HTML` without needing a separate dependency.
+
+### ⚙️ Miscellaneous Tasks
+
+- `http_types` (the temporary fork) is no longer a default dependency; it is pulled in
+  only when the `http-types` feature is enabled, reducing the default dependency footprint.
+- `into_protocol_request` is now a synchronous function (was `async`); the previous
+  `await` on `http_types::Body::into_bytes()` is gone.
+- `ResponseAsync` renamed to `RawResponse` throughout.
+
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_http-v0.17.0...crux_http-v0.18.0) - 2026-05-31
 
 ### 🚀 Features

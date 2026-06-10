@@ -1,21 +1,16 @@
-use crate::middleware::Middleware;
-use http_types::{
-    Body, Method, Mime, Url,
-    headers::{self, HeaderName, HeaderValues, ToHeaderValues},
-};
-
+use crate::{Result, body::Body, middleware::Middleware};
+use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use serde::Serialize;
-
-use std::fmt;
-use std::ops::Index;
-use std::sync::Arc;
+use std::{fmt, ops::Index, sync::Arc};
+use url::Url;
 
 /// An HTTP request, returns a `Response`.
 #[derive(Clone)]
 pub struct Request {
-    /// Holds the state of the request.
-    req: http_types::Request,
-    /// Holds an optional per-request middleware stack.
+    method: Method,
+    url: Url,
+    headers: HeaderMap,
+    body: Body,
     middleware: Option<Vec<Arc<dyn Middleware>>>,
 }
 
@@ -30,17 +25,19 @@ impl Request {
     ///
     /// ```
     /// fn main() -> crux_http::Result<()> {
-    /// use crux_http::http::{Url, Method};
+    /// use crux_http::{Url, Method};
     ///
     /// let url = Url::parse("https://httpbin.org/get")?;
-    /// let req = crux_http::Request::new(Method::Get, url);
+    /// let req = crux_http::Request::new(Method::GET, url);
     /// # Ok(()) }
     /// ```
     #[must_use]
     pub fn new(method: Method, url: Url) -> Self {
-        let req = http_types::Request::new(method, url);
         Self {
-            req,
+            method,
+            url,
+            headers: HeaderMap::new(),
+            body: Body::default(),
             middleware: None,
         }
     }
@@ -58,7 +55,7 @@ impl Request {
     ///     page: u32
     /// }
     ///
-    /// let req = Request::new(Method::Get, Url::parse("https://httpbin.org/get?page=2")?);
+    /// let req = Request::new(Method::GET, Url::parse("https://httpbin.org/get?page=2")?);
     /// let Index { page } = req.query()?;
     /// assert_eq!(page, 2);
     /// # Ok(()) }
@@ -66,8 +63,9 @@ impl Request {
     ///
     /// # Errors
     /// Returns an error if the query string could not be deserialized.
-    pub fn query<T: serde::de::DeserializeOwned>(&self) -> crate::Result<T> {
-        Ok(self.req.query()?)
+    pub fn query<T: serde::de::DeserializeOwned>(&self) -> Result<T> {
+        let query = self.url.query().unwrap_or("");
+        serde_qs::from_str(query).map_err(Into::into)
     }
 
     /// Set the URL querystring.
@@ -84,7 +82,7 @@ impl Request {
     /// }
     ///
     /// let query = Index { page: 2 };
-    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
+    /// let mut req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
     /// req.set_query(&query)?;
     /// assert_eq!(req.url().query(), Some("page=2"));
     /// assert_eq!(req.url().as_str(), "https://httpbin.org/get?page=2");
@@ -93,8 +91,10 @@ impl Request {
     ///
     /// # Errors
     /// Returns an error if the query string could not be serialized.
-    pub fn set_query(&mut self, query: &impl Serialize) -> crate::Result<()> {
-        Ok(self.req.set_query(query)?)
+    pub fn set_query(&mut self, query: &impl Serialize) -> Result<()> {
+        let qs = serde_qs::to_string(query)?;
+        self.url.set_query(Some(&qs));
+        Ok(())
     }
 
     /// Get an HTTP header.
@@ -104,65 +104,86 @@ impl Request {
     /// ```
     /// fn main() -> crux_http::Result<()> {
     /// # use crux_http::{Request, Method, Url};
-    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
-    /// req.set_header("X-Requested-With", "surf");
+    /// # use crux_http::http::HeaderValue;
+    /// let mut req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
+    /// req.insert_header("X-Requested-With", HeaderValue::from_static("surf"));
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
     /// ```
-    pub fn header(&self, key: impl Into<HeaderName>) -> Option<&HeaderValues> {
-        self.req.header(key)
+    pub fn header(&self, name: impl http::header::AsHeaderName) -> Option<&HeaderValue> {
+        self.headers.get(name)
     }
 
     /// Get a mutable reference to a header.
-    pub fn header_mut(&mut self, name: impl Into<HeaderName>) -> Option<&mut HeaderValues> {
-        self.req.header_mut(name)
+    pub fn header_mut(
+        &mut self,
+        name: impl http::header::AsHeaderName,
+    ) -> Option<&mut HeaderValue> {
+        self.headers.get_mut(name)
     }
 
-    /// Set an HTTP header.
+    /// Get all values for a header name.
+    pub fn header_all(
+        &self,
+        name: impl http::header::AsHeaderName,
+    ) -> http::header::GetAll<'_, HeaderValue> {
+        self.headers.get_all(name)
+    }
+
+    /// Set an HTTP header, replacing any existing value.
+    ///
+    /// Returns the previous value for that header name, if any.
     pub fn insert_header(
         &mut self,
-        name: impl Into<HeaderName>,
-        values: impl ToHeaderValues,
-    ) -> Option<HeaderValues> {
-        self.req.insert_header(name, values)
+        name: impl http::header::IntoHeaderName,
+        value: HeaderValue,
+    ) -> Option<HeaderValue> {
+        self.headers.insert(name, value)
     }
 
     /// Append a header to the headers.
     ///
-    /// Unlike `insert` this function will not override the contents of a header, but insert a
-    /// header if there aren't any. Or else append to the existing list of headers.
-    pub fn append_header(&mut self, name: impl Into<HeaderName>, values: impl ToHeaderValues) {
-        self.req.append_header(name, values);
+    /// Unlike `insert_header` this function will not override the contents of a header, but insert
+    /// a header if there aren't any. Or else append to the existing list of headers.
+    ///
+    /// Returns `true` if the value was appended to an existing entry, `false` if it was the first
+    /// value for that name.
+    pub fn append_header(
+        &mut self,
+        name: impl http::header::IntoHeaderName,
+        value: HeaderValue,
+    ) -> bool {
+        self.headers.append(name, value)
     }
 
     /// Remove a header.
-    pub fn remove_header(&mut self, name: impl Into<HeaderName>) -> Option<HeaderValues> {
-        self.req.remove_header(name)
+    pub fn remove_header(&mut self, name: impl http::header::AsHeaderName) -> Option<HeaderValue> {
+        self.headers.remove(name)
     }
 
     /// An iterator visiting all header pairs in arbitrary order.
     #[must_use]
-    pub fn iter(&self) -> headers::Iter<'_> {
-        self.req.iter()
+    pub fn iter(&self) -> http::header::Iter<'_, HeaderValue> {
+        self.headers.iter()
     }
 
     /// An iterator visiting all header pairs in arbitrary order, with mutable references to the
     /// values.
     #[must_use]
-    pub fn iter_mut(&mut self) -> headers::IterMut<'_> {
-        self.req.iter_mut()
+    pub fn iter_mut(&mut self) -> http::header::IterMut<'_, HeaderValue> {
+        self.headers.iter_mut()
     }
 
     /// An iterator visiting all header names in arbitrary order.
     #[must_use]
-    pub fn header_names(&self) -> headers::Names<'_> {
-        self.req.header_names()
+    pub fn header_names(&self) -> http::header::Keys<'_, HeaderValue> {
+        self.headers.keys()
     }
 
     /// An iterator visiting all header values in arbitrary order.
     #[must_use]
-    pub fn header_values(&self) -> headers::Values<'_> {
-        self.req.header_values()
+    pub fn header_values(&self) -> http::header::Values<'_, HeaderValue> {
+        self.headers.values()
     }
 
     /// Set an HTTP header.
@@ -172,24 +193,17 @@ impl Request {
     /// ```
     /// fn main() -> crux_http::Result<()> {
     /// # use crux_http::{Request, Method, Url};
-    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
-    /// req.set_header("X-Requested-With", "surf");
+    /// # use crux_http::http::HeaderValue;
+    /// let mut req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
+    /// req.insert_header("X-Requested-With", HeaderValue::from_static("surf"));
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
     /// ```
-    pub fn set_header(&mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) {
-        self.insert_header(key, value);
-    }
-
-    /// Get a request extension value.
-    #[must_use]
-    pub fn ext<T: Send + Sync + 'static>(&self) -> Option<&T> {
-        self.req.ext().get()
-    }
-
-    /// Set a request extension value.
-    pub fn set_ext<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
-        self.req.ext_mut().insert(val)
+    #[deprecated(since = "0.16.0", note = "Use `insert_header` instead")]
+    pub fn set_header(&mut self, key: impl http::header::IntoHeaderName, value: impl AsRef<str>) {
+        if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
+            self.insert_header(key, v);
+        }
     }
 
     /// Get the request HTTP method.
@@ -199,13 +213,14 @@ impl Request {
     /// ```
     /// fn main() -> crux_http::Result<()> {
     /// # use crux_http::{Request, Method, Url};
-    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
-    /// assert_eq!(req.method(), crux_http::http::Method::Get);
+    /// let req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
+    /// assert_eq!(req.method(), &Method::GET);
     /// # Ok(()) }
     /// ```
     #[must_use]
-    pub fn method(&self) -> Method {
-        self.req.method()
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn method(&self) -> &Method {
+        &self.method
     }
 
     /// Get the request url.
@@ -215,13 +230,23 @@ impl Request {
     /// ```
     /// fn main() -> crux_http::Result<()> {
     /// # use crux_http::{Request, Method, Url};
-    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
+    /// let req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
     /// assert_eq!(req.url(), &Url::parse("https://httpbin.org/get")?);
     /// # Ok(()) }
     /// ```
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn url(&self) -> &Url {
-        self.req.url()
+        &self.url
+    }
+
+    /// Get a mutable reference to the request url.
+    ///
+    /// This is useful for middleware that needs to rewrite the request URL.
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn url_mut(&mut self) -> &mut Url {
+        &mut self.url
     }
 
     /// Get the request content type as a `Mime`.
@@ -237,15 +262,22 @@ impl Request {
     ///
     /// [`set_header`]: #method.set_header
     #[must_use]
-    pub fn content_type(&self) -> Option<Mime> {
-        self.req.content_type()
+    pub fn content_type(&self) -> Option<mime::Mime> {
+        self.headers
+            .get(http::header::CONTENT_TYPE)?
+            .to_str()
+            .ok()?
+            .parse()
+            .ok()
     }
 
     /// Set the request content type from a `Mime`.
     ///
     /// [Read more on MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types)
-    pub fn set_content_type(&mut self, mime: Mime) {
-        self.req.set_content_type(mime);
+    pub fn set_content_type(&mut self, mime: &mime::Mime) {
+        if let Ok(v) = HeaderValue::from_str(mime.as_ref()) {
+            self.headers.insert(http::header::CONTENT_TYPE, v);
+        }
     }
 
     /// Get the length of the body stream, if it has been set.
@@ -257,14 +289,14 @@ impl Request {
     #[allow(clippy::len_without_is_empty)]
     #[must_use]
     pub fn len(&self) -> Option<usize> {
-        self.req.len()
+        Some(self.body.len())
     }
 
     /// Returns `true` if the set length of the body stream is zero, `false`
     /// otherwise.
     #[must_use]
     pub fn is_empty(&self) -> Option<bool> {
-        self.req.is_empty()
+        Some(self.body.is_empty())
     }
 
     /// Pass an `AsyncRead` stream as the request body.
@@ -273,7 +305,13 @@ impl Request {
     ///
     /// The encoding is set to `application/octet-stream`.
     pub fn set_body(&mut self, body: impl Into<Body>) {
-        self.req.set_body(body);
+        let body = body.into();
+        if let Some(mime) = body.mime()
+            && let Ok(v) = HeaderValue::from_str(mime.as_ref())
+        {
+            self.headers.insert(http::header::CONTENT_TYPE, v);
+        }
+        self.body = body;
     }
 
     /// Take the request body as a `Body`.
@@ -283,7 +321,7 @@ impl Request {
     ///
     /// This is useful for consuming the body via an `AsyncReader` or `AsyncBufReader`.
     pub fn take_body(&mut self) -> Body {
-        self.req.take_body()
+        std::mem::take(&mut self.body)
     }
 
     /// Pass JSON as the request body.
@@ -295,7 +333,7 @@ impl Request {
     /// # Errors
     ///
     /// This method will return an error if the provided data could not be serialized to JSON.
-    pub fn body_json(&mut self, json: &impl Serialize) -> crate::Result<()> {
+    pub fn body_json(&mut self, json: &impl Serialize) -> Result<()> {
         self.set_body(Body::from_json(json)?);
         Ok(())
     }
@@ -327,7 +365,7 @@ impl Request {
     /// # Errors
     ///
     /// An error will be returned if the encoding failed.
-    pub fn body_form(&mut self, form: &impl Serialize) -> crate::Result<()> {
+    pub fn body_form(&mut self, form: &impl Serialize) -> Result<()> {
         self.set_body(Body::from_form(form)?);
         Ok(())
     }
@@ -348,7 +386,7 @@ impl Request {
     /// ```
     /// fn main() -> crux_http::Result<()> {
     /// # use crux_http::{Request, Method, Url};
-    /// let mut req = Request::new(Method::Get, Url::parse("https://httpbin.org/get")?);
+    /// let mut req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
     /// req.middleware(crux_http::middleware::Redirect::default());
     /// # Ok(()) }
     /// ```
@@ -366,121 +404,79 @@ impl Request {
     }
 }
 
-impl AsRef<http_types::Headers> for Request {
-    fn as_ref(&self) -> &http_types::Headers {
-        self.req.as_ref()
+impl AsRef<HeaderMap> for Request {
+    fn as_ref(&self) -> &HeaderMap {
+        &self.headers
     }
 }
 
-impl AsMut<http_types::Headers> for Request {
-    fn as_mut(&mut self) -> &mut http_types::Headers {
-        self.req.as_mut()
+impl AsMut<HeaderMap> for Request {
+    fn as_mut(&mut self) -> &mut HeaderMap {
+        &mut self.headers
     }
 }
 
-impl AsRef<http_types::Request> for Request {
-    fn as_ref(&self) -> &http_types::Request {
-        &self.req
-    }
-}
-
-impl AsMut<http_types::Request> for Request {
-    fn as_mut(&mut self) -> &mut http_types::Request {
-        &mut self.req
-    }
-}
-
-impl From<http_types::Request> for Request {
-    /// Converts an `http_types::Request` to a `crux_http::Request`.
-    fn from(req: http_types::Request) -> Self {
+impl From<http::Request<Body>> for Request {
+    fn from(req: http::Request<Body>) -> Self {
+        let (parts, body) = req.into_parts();
+        let url = parts
+            .uri
+            .to_string()
+            .parse()
+            .unwrap_or_else(|_| Url::parse("https://invalid.example.com").unwrap());
         Self {
-            req,
+            method: parts.method,
+            url,
+            headers: parts.headers,
+            body,
             middleware: None,
         }
     }
 }
 
-#[cfg(feature = "http-compat")]
-impl<B: Into<Body>> TryFrom<http::Request<B>> for Request {
-    type Error = anyhow::Error;
-
-    fn try_from(req: http::Request<B>) -> Result<Self, Self::Error> {
-        use std::str::FromStr;
-        let mut o = Self::new(
-            Method::from_str(req.method().as_str()).map_err(|e| anyhow::anyhow!(e))?,
-            req.uri().to_string().parse()?,
-        );
-
-        for (k, v) in req.headers() {
-            o.append_header(k.as_str(), v.to_str()?);
+impl From<Request> for http::Request<Body> {
+    fn from(req: Request) -> Self {
+        let mut builder = http::Request::builder()
+            .method(req.method)
+            .uri(req.url.as_str());
+        for (name, value) in &req.headers {
+            builder = builder.header(name, value);
         }
-
-        o.set_body(req.into_body());
-        Ok(o)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl Into<http_types::Request> for Request {
-    /// Converts a `crux_http::Request` to an `http_types::Request`.
-    fn into(self) -> http_types::Request {
-        self.req
+        builder.body(req.body).expect("valid request")
     }
 }
 
 impl fmt::Debug for Request {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.req, f)
-    }
-}
-
-impl IntoIterator for Request {
-    type Item = (HeaderName, HeaderValues);
-    type IntoIter = headers::IntoIter;
-
-    /// Returns an iterator of references over the remaining items.
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        self.req.into_iter()
+        f.debug_struct("Request")
+            .field("method", &self.method)
+            .field("url", &self.url.as_str())
+            .finish_non_exhaustive()
     }
 }
 
 impl<'a> IntoIterator for &'a Request {
-    type Item = (&'a HeaderName, &'a HeaderValues);
-    type IntoIter = headers::Iter<'a>;
+    type Item = (&'a HeaderName, &'a HeaderValue);
+    type IntoIter = http::header::Iter<'a, HeaderValue>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.req.iter()
+        self.headers.iter()
     }
 }
 
 impl<'a> IntoIterator for &'a mut Request {
-    type Item = (&'a HeaderName, &'a mut HeaderValues);
-    type IntoIter = headers::IterMut<'a>;
+    type Item = (&'a HeaderName, &'a mut HeaderValue);
+    type IntoIter = http::header::IterMut<'a, HeaderValue>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.req.iter_mut()
-    }
-}
-
-impl Index<HeaderName> for Request {
-    type Output = HeaderValues;
-
-    /// Returns a reference to the value corresponding to the supplied name.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the name is not present in `Request`.
-    #[inline]
-    fn index(&self, name: HeaderName) -> &HeaderValues {
-        &self.req[name]
+        self.headers.iter_mut()
     }
 }
 
 impl Index<&str> for Request {
-    type Output = HeaderValues;
+    type Output = HeaderValue;
 
     /// Returns a reference to the value corresponding to the supplied name.
     ///
@@ -488,7 +484,106 @@ impl Index<&str> for Request {
     ///
     /// Panics if the name is not present in `Request`.
     #[inline]
-    fn index(&self, name: &str) -> &HeaderValues {
-        &self.req[name]
+    fn index(&self, name: &str) -> &HeaderValue {
+        &self.headers[name]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn get(url: &str) -> Request {
+        Request::new(Method::GET, Url::parse(url).unwrap())
+    }
+
+    #[test]
+    fn new_request_has_empty_body() {
+        let req = get("https://example.com");
+        assert!(req.is_empty() == Some(true));
+        assert_eq!(req.len(), Some(0));
+    }
+
+    #[test]
+    fn set_body_string_stores_bytes_and_content_type_header() {
+        let mut req = get("https://example.com");
+        req.set_body("hello");
+        assert_eq!(req.len(), Some(5));
+        // Content-Type header must be propagated to the headers map
+        // so that iter() picks it up when building HttpRequest headers.
+        let ct = req.content_type().expect("content type must be set");
+        assert_eq!(ct, mime::TEXT_PLAIN_UTF_8);
+    }
+
+    #[test]
+    fn set_body_bytes_sets_octet_stream_content_type() {
+        let mut req = get("https://example.com");
+        req.set_body(vec![1u8, 2, 3]);
+        let ct = req.content_type().expect("content type must be set");
+        assert_eq!(ct, mime::APPLICATION_OCTET_STREAM);
+    }
+
+    #[test]
+    fn take_body_empties_body() {
+        let mut req = get("https://example.com");
+        req.set_body("world");
+        let body = req.take_body();
+        assert_eq!(body.into_bytes(), b"world");
+        assert!(req.is_empty() == Some(true));
+    }
+
+    #[test]
+    fn body_json_sets_application_json_content_type() {
+        let mut req = get("https://example.com");
+        req.body_json(&serde_json::json!({"key": "val"})).unwrap();
+        let ct = req.content_type().expect("content type must be set");
+        assert_eq!(ct, mime::APPLICATION_JSON);
+        assert!(!req.is_empty().unwrap());
+    }
+
+    #[test]
+    fn body_form_sets_form_urlencoded_content_type() {
+        #[derive(serde::Serialize)]
+        struct F {
+            a: u32,
+        }
+        let mut req = get("https://example.com");
+        req.body_form(&F { a: 1 }).unwrap();
+        let ct = req.content_type().expect("content type must be set");
+        assert_eq!(ct, mime::APPLICATION_WWW_FORM_URLENCODED);
+    }
+
+    #[test]
+    fn method_is_http_method() {
+        let req = Request::new(Method::POST, Url::parse("https://example.com").unwrap());
+        assert_eq!(req.method(), &Method::POST);
+    }
+
+    #[test]
+    fn from_http_request_roundtrip() {
+        use crate::Body;
+        let http_req = http::Request::builder()
+            .method(Method::PUT)
+            .uri("https://example.com/path")
+            .header("x-test", "value")
+            .body(Body::from("payload"))
+            .unwrap();
+
+        let req: Request = http_req.into();
+        assert_eq!(req.method(), &Method::PUT);
+        assert_eq!(req.header("x-test").unwrap().to_str().unwrap(), "value");
+        assert_eq!(req.len(), Some(7));
+
+        // And back again
+        let back: http::Request<Body> = req.into();
+        assert_eq!(back.method(), Method::PUT);
+        assert_eq!(back.headers()["x-test"], "value");
+    }
+
+    #[test]
+    fn url_mut_allows_url_mutation() {
+        let mut req = get("https://example.com/old");
+        *req.url_mut() = Url::parse("https://example.com/new").unwrap();
+        assert_eq!(req.url().as_str(), "https://example.com/new");
     }
 }

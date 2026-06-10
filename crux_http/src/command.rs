@@ -21,15 +21,15 @@
 use std::{fmt, future::Future, marker::PhantomData};
 
 use crux_core::{Command, command};
-use http_types::{
-    Body, Method, Mime, Url,
-    convert::DeserializeOwned,
-    headers::{HeaderName, ToHeaderValues},
-};
+use http::{HeaderValue, Method};
+use mime::Mime;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
+use url::Url;
 
 use crate::{
-    HttpError, Request, Response,
+    HttpError, Request, Response, Result,
+    body::Body,
     expect::{ExpectBytes, ExpectJson, ExpectString, ResponseExpectation},
     middleware::Middleware,
     protocol::{HttpRequest, HttpResult, ProtocolRequestBuilder},
@@ -57,7 +57,7 @@ pub use crate::Http;
 /// Http::post("https://httpbin.org/post")
 ///     .body("<html>hi</html>")
 ///     .header("custom-header", "value")
-///     .content_type(crux_http::http::mime::HTML)
+///     .content_type(crux_http::mime::TEXT_HTML)
 ///     .build()
 ///     .then_send(Event::ReceiveResponse);
 /// ```
@@ -110,9 +110,16 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     ///
-    #[allow(clippy::missing_panics_doc)]
-    pub fn header(mut self, key: impl Into<HeaderName>, value: impl ToHeaderValues) -> Self {
-        self.req.as_mut().unwrap().insert_header(key, value);
+    /// # Panics
+    /// Panics if `value` is not a valid header value, or if the `RequestBuilder` has
+    /// not been initialized.
+    pub fn header(
+        mut self,
+        name: impl http::header::IntoHeaderName,
+        value: impl AsRef<str>,
+    ) -> Self {
+        let value = HeaderValue::from_str(value.as_ref()).expect("invalid header value");
+        self.req.as_mut().unwrap().insert_header(name, value);
         self
     }
 
@@ -129,7 +136,7 @@ where
     /// # enum Effect { Http(HttpRequest) }
     /// # type Http = crux_http::command::Http<Effect, Event>;
     /// Http::get("https://httpbin.org/get")
-    ///     .content_type(crux_http::http::mime::HTML)
+    ///     .content_type(crux_http::mime::TEXT_HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
@@ -138,7 +145,7 @@ where
         self.req
             .as_mut()
             .unwrap()
-            .set_content_type(content_type.into());
+            .set_content_type(&content_type.into());
         self
     }
 
@@ -160,7 +167,7 @@ where
     /// # type Http = crux_http::command::Http<Effect, Event>;
     /// Http::post("https://httpbin.org/post")
     ///     .body(serde_json::json!({"any": "Into<Body>"}))
-    ///     .content_type(crux_http::http::mime::HTML)
+    ///     .content_type(crux_http::mime::TEXT_HTML)
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
@@ -203,7 +210,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
+    pub fn body_json(self, json: &impl Serialize) -> Result<Self> {
         Ok(self.body(Body::from_json(json)?))
     }
 
@@ -290,7 +297,7 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    pub fn body_form(self, form: &impl Serialize) -> crate::Result<Self> {
+    pub fn body_form(self, form: &impl Serialize) -> Result<Self> {
         Ok(self.body(Body::from_form(form)?))
     }
 
@@ -368,17 +375,13 @@ where
     #[must_use]
     pub fn build(
         self,
-    ) -> command::RequestBuilder<
-        Effect,
-        Event,
-        impl Future<Output = Result<Response<ExpectBody>, HttpError>>,
-    > {
+    ) -> command::RequestBuilder<Effect, Event, impl Future<Output = Result<Response<ExpectBody>>>>
+    {
         let req = self.req.expect("RequestBuilder::build called twice");
 
         command::RequestBuilder::new(|ctx| async move {
             let operation = req
                 .into_protocol_request()
-                .await
                 .expect("should be able to convert request to protocol request");
 
             let result = Command::request_from_shell(operation)
@@ -387,7 +390,6 @@ where
 
             match result {
                 HttpResult::Ok(response) => Response::<Vec<u8>>::new(response.into())
-                    .await
                     .and_then(|r| self.expectation.decode(r)),
                 HttpResult::Err(error) => Err(error),
             }

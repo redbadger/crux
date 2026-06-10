@@ -19,8 +19,7 @@ pub enum HttpError {
     #[serde(skip)]
     #[facet(skip)]
     Http {
-        #[facet(opaque)]
-        code: http_types::StatusCode,
+        code: u16,
         message: String,
         body: Option<Vec<u8>>,
     },
@@ -30,13 +29,20 @@ pub enum HttpError {
     Json(String),
 }
 
+#[cfg(feature = "http-types")]
 impl From<http_types::Error> for HttpError {
     fn from(e: http_types::Error) -> Self {
         Self::Http {
-            code: e.status(),
+            code: e.status().into(),
             message: e.to_string(),
             body: None,
         }
+    }
+}
+
+impl From<std::io::Error> for HttpError {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e.to_string())
     }
 }
 
@@ -65,10 +71,29 @@ mod tests {
     #[test]
     fn test_error_display() {
         let error = HttpError::Http {
-            code: http_types::StatusCode::BadRequest,
+            code: 400,
             message: "Bad Request".to_string(),
             body: None,
         };
         assert_eq!(error.to_string(), "HTTP error 400: Bad Request");
+    }
+
+    #[test]
+    fn http_code_is_plain_u16() {
+        // The code field is a u16, so any valid status code literal works.
+        let error = HttpError::Http {
+            code: 404u16,
+            message: "Not Found".to_string(),
+            body: None,
+        };
+        assert_eq!(error.to_string(), "HTTP error 404: Not Found");
+    }
+
+    #[test]
+    fn io_error_converts_to_io_variant() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let http_err = HttpError::from(io_err);
+        assert!(matches!(http_err, HttpError::Io(_)));
+        assert_eq!(http_err.to_string(), "IO error: file not found");
     }
 }
