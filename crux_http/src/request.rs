@@ -104,8 +104,9 @@ impl Request {
     /// ```
     /// fn main() -> crux_http::Result<()> {
     /// # use crux_http::{Request, Method, Url};
+    /// # use crux_http::http::HeaderValue;
     /// let mut req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
-    /// req.set_header("X-Requested-With", "surf");
+    /// req.insert_header("X-Requested-With", HeaderValue::from_static("surf"));
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
     /// ```
@@ -122,28 +123,29 @@ impl Request {
     }
 
     /// Set an HTTP header, replacing any existing value.
+    ///
+    /// Returns the previous value for that header name, if any.
     pub fn insert_header(
         &mut self,
         name: impl http::header::IntoHeaderName,
-        value: impl AsRef<str>,
-    ) {
-        if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
-            self.headers.insert(name, v);
-        }
+        value: HeaderValue,
+    ) -> Option<HeaderValue> {
+        self.headers.insert(name, value)
     }
 
     /// Append a header to the headers.
     ///
     /// Unlike `insert_header` this function will not override the contents of a header, but insert
     /// a header if there aren't any. Or else append to the existing list of headers.
+    ///
+    /// Returns `true` if the value was appended to an existing entry, `false` if it was the first
+    /// value for that name.
     pub fn append_header(
         &mut self,
         name: impl http::header::IntoHeaderName,
-        value: impl AsRef<str>,
-    ) {
-        if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
-            self.headers.append(name, v);
-        }
+        value: HeaderValue,
+    ) -> bool {
+        self.headers.append(name, value)
     }
 
     /// Remove a header.
@@ -183,14 +185,17 @@ impl Request {
     /// ```
     /// fn main() -> crux_http::Result<()> {
     /// # use crux_http::{Request, Method, Url};
+    /// # use crux_http::http::HeaderValue;
     /// let mut req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
-    /// req.insert_header("X-Requested-With", "surf");
+    /// req.insert_header("X-Requested-With", HeaderValue::from_static("surf"));
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
     /// ```
     #[deprecated(since = "0.16.0", note = "Use `insert_header` instead")]
     pub fn set_header(&mut self, key: impl http::header::IntoHeaderName, value: impl AsRef<str>) {
-        self.insert_header(key, value);
+        if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
+            self.insert_header(key, v);
+        }
     }
 
     /// Get the request HTTP method.

@@ -27,7 +27,9 @@ impl From<http_types::Request> for Request {
             // Convert to HeaderName to satisfy the IntoHeaderName 'static bound on &str.
             if let Ok(hn) = http::HeaderName::from_bytes(name.as_str().as_bytes()) {
                 for value in values {
-                    new_req.insert_header(hn.clone(), value.as_str());
+                    if let Ok(hv) = HeaderValue::from_str(value.as_str()) {
+                        new_req.insert_header(hn.clone(), hv);
+                    }
                 }
             }
         }

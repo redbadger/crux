@@ -1,5 +1,6 @@
 use crate::body::Body;
 use crate::{Client, HttpError, RawResponse, Request, Result, middleware::Middleware};
+use http::HeaderValue;
 
 use futures_util::future::BoxFuture;
 use http::Method;
@@ -73,12 +74,14 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     /// # Panics
-    /// Panics if the `RequestBuilder` has not been initialized.
+    /// Panics if the `RequestBuilder` has not been initialized, or if `value` is not a valid
+    /// header value.
     pub fn header(
         mut self,
         name: impl http::header::IntoHeaderName,
         value: impl AsRef<str>,
     ) -> Self {
+        let value = HeaderValue::from_str(value.as_ref()).expect("invalid header value");
         self.req.as_mut().unwrap().insert_header(name, value);
         self
     }

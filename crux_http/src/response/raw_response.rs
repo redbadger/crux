@@ -96,25 +96,26 @@ impl RawResponse {
     }
 
     /// Insert an HTTP header, replacing any existing value.
+    ///
+    /// Returns the previous value for that header name, if any.
     pub fn insert_header(
         &mut self,
         name: impl http::header::IntoHeaderName,
-        value: impl AsRef<str>,
-    ) {
-        if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
-            self.headers.insert(name, v);
-        }
+        value: HeaderValue,
+    ) -> Option<HeaderValue> {
+        self.headers.insert(name, value)
     }
 
     /// Append an HTTP header, keeping any existing values.
+    ///
+    /// Returns `true` if the value was appended to an existing entry, `false` if it was the first
+    /// value for that name.
     pub fn append_header(
         &mut self,
         name: impl http::header::IntoHeaderName,
-        value: impl AsRef<str>,
-    ) {
-        if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
-            self.headers.append(name, v);
-        }
+        value: HeaderValue,
+    ) -> bool {
+        self.headers.append(name, value)
     }
 
     /// An iterator visiting all header (name, value) pairs in arbitrary order.

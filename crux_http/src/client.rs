@@ -18,6 +18,7 @@ use url::Url;
 /// use futures_util::future::BoxFuture;
 /// use crux_http::middleware::{Next, Middleware};
 /// use crux_http::{client::Client, Request, RequestBuilder, RawResponse, Result};
+/// use crux_http::http::HeaderValue;
 /// use std::time;
 /// use std::sync::Arc;
 ///
@@ -27,7 +28,8 @@ use url::Url;
 ///         let auth_token = client.get("https://httpbin.org/get")
 ///             .await?
 ///             .body_string()?;
-///         req.append_header("Authorization", format!("Bearer {auth_token}"));
+///         let value = HeaderValue::from_str(&format!("Bearer {auth_token}")).expect("valid token");
+///         req.append_header("Authorization", value);
 ///         next.run(req, client).await
 ///     })
 /// }

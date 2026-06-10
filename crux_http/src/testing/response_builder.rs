@@ -1,4 +1,4 @@
-use http::StatusCode;
+use http::{HeaderValue, StatusCode};
 
 use crate::response::Response;
 
@@ -33,12 +33,16 @@ impl<Body> ResponseBuilder<Body> {
     }
 
     /// Sets a header on the response.
+    ///
+    /// # Panics
+    /// Panics if `value` is not a valid header value.
     #[must_use]
     pub fn header(
         mut self,
         name: impl http::header::IntoHeaderName,
         value: impl AsRef<str>,
     ) -> Self {
+        let value = HeaderValue::from_str(value.as_ref()).expect("invalid header value");
         self.response.insert_header(name, value);
         self
     }

@@ -21,7 +21,7 @@
 use std::{fmt, future::Future, marker::PhantomData};
 
 use crux_core::{Command, command};
-use http::Method;
+use http::{HeaderValue, Method};
 use mime::Mime;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -110,12 +110,12 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     ///
-    #[allow(clippy::missing_panics_doc)]
     pub fn header(
         mut self,
         name: impl http::header::IntoHeaderName,
         value: impl AsRef<str>,
     ) -> Self {
+        let value = HeaderValue::from_str(value.as_ref()).expect("invalid header value");
         self.req.as_mut().unwrap().insert_header(name, value);
         self
     }
