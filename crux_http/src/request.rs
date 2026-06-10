@@ -184,10 +184,11 @@ impl Request {
     /// fn main() -> crux_http::Result<()> {
     /// # use crux_http::{Request, Method, Url};
     /// let mut req = Request::new(Method::GET, Url::parse("https://httpbin.org/get")?);
-    /// req.set_header("X-Requested-With", "surf");
+    /// req.insert_header("X-Requested-With", "surf");
     /// assert_eq!(req.header("X-Requested-With").unwrap(), "surf");
     /// # Ok(()) }
     /// ```
+    #[deprecated(since = "0.16.0", note = "Use `insert_header` instead")]
     pub fn set_header(&mut self, key: impl http::header::IntoHeaderName, value: impl AsRef<str>) {
         self.insert_header(key, value);
     }

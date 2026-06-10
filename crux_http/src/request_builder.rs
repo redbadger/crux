@@ -76,10 +76,10 @@ where
     /// Panics if the `RequestBuilder` has not been initialized.
     pub fn header(
         mut self,
-        key: impl http::header::IntoHeaderName,
+        name: impl http::header::IntoHeaderName,
         value: impl AsRef<str>,
     ) -> Self {
-        self.req.as_mut().unwrap().insert_header(key, value);
+        self.req.as_mut().unwrap().insert_header(name, value);
         self
     }
 

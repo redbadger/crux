@@ -1,4 +1,4 @@
-use http::{HeaderValue, StatusCode};
+use http::StatusCode;
 
 use crate::response::Response;
 
@@ -36,12 +36,10 @@ impl<Body> ResponseBuilder<Body> {
     #[must_use]
     pub fn header(
         mut self,
-        key: impl http::header::IntoHeaderName,
+        name: impl http::header::IntoHeaderName,
         value: impl AsRef<str>,
     ) -> Self {
-        if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
-            self.response.insert_header(key, v.to_str().unwrap_or(""));
-        }
+        self.response.insert_header(name, value);
         self
     }
 

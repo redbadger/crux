@@ -105,22 +105,22 @@ impl<Body> Response<Body> {
     /// Insert an HTTP header, replacing any existing value.
     pub fn insert_header(
         &mut self,
-        key: impl http::header::IntoHeaderName,
+        name: impl http::header::IntoHeaderName,
         value: impl AsRef<str>,
     ) {
         if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
-            self.headers.insert(key, v);
+            self.headers.insert(name, v);
         }
     }
 
     /// Append an HTTP header, keeping any existing values.
     pub fn append_header(
         &mut self,
-        key: impl http::header::IntoHeaderName,
+        name: impl http::header::IntoHeaderName,
         value: impl AsRef<str>,
     ) {
         if let Ok(v) = HeaderValue::from_str(value.as_ref()) {
-            self.headers.append(key, v);
+            self.headers.append(name, v);
         }
     }
 

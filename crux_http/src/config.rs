@@ -1,6 +1,6 @@
 //! Configuration for `HttpClient`s.
 
-use http::{HeaderMap, HeaderName, HeaderValue};
+use http::{HeaderMap, HeaderValue};
 use std::fmt::Debug;
 use url::Url;
 
@@ -34,10 +34,12 @@ impl Config {
     /// Default: No extra headers.
     ///
     /// # Errors
-    /// Returns an error if the header name or value is invalid.
-    pub fn add_header(mut self, name: impl AsRef<str>, value: impl AsRef<str>) -> Result<Self> {
-        use std::str::FromStr;
-        let name = HeaderName::from_str(name.as_ref()).map_err(|e| HttpError::Io(e.to_string()))?;
+    /// Returns an error if the header value is invalid.
+    pub fn add_header(
+        mut self,
+        name: impl http::header::IntoHeaderName,
+        value: impl AsRef<str>,
+    ) -> Result<Self> {
         let value =
             HeaderValue::from_str(value.as_ref()).map_err(|e| HttpError::Io(e.to_string()))?;
         self.headers.insert(name, value);
