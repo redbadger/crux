@@ -188,7 +188,7 @@ crux_http = { version = "…", features = ["http-types"] }
 ```
 
 This provides `From<http_types::Request> for crux_http::Request`,
-`From<http_types::Response> for crux_http::ResponseAsync`, and the reverse
+`From<http_types::Response> for crux_http::RawResponse`, and the reverse
 directions. It also re-exports the `http_types` crate as `crux_http::http_types`
 for convenience.
 
@@ -203,7 +203,8 @@ for convenience.
 
 The previous `http_types::HeaderValues` iterator is replaced by
 `http::header::GetAll`. Use the new `header_all` method when a header can
-appear more than once:
+appear more than once. `header_all` is available on `Request`, `RawResponse`,
+and `Response<T>`:
 
 ```rust
 // Before (http_types returned HeaderValues with .iter())
@@ -214,16 +215,68 @@ let values: Vec<String> = response
     .map(|v| v.to_string())
     .collect();
 
-// After
+// After — on a response
 let values: Vec<String> = response
-    .header_all("link")
+    .header_all("set-cookie")
     .iter()
     .map(|v| v.to_str().unwrap_or("").to_string())
     .collect();
+
+// After — on a request (e.g. in middleware)
+let accepted: Vec<&str> = request
+    .header_all("accept")
+    .iter()
+    .filter_map(|v| v.to_str().ok())
+    .collect();
 ```
 
-For a single value `response.header("name")` still works and returns
+For a single value, `header("name")` still works on all three types and returns
 `Option<&http::HeaderValue>`.
+
+---
+
+## Setting headers
+
+The low-level header mutation methods on `Request`, `RawResponse`, and
+`Response<T>` now accept `http::HeaderValue` directly instead of
+`impl AsRef<str>`. The return types also change to mirror `http::HeaderMap`:
+`insert_header` returns `Option<HeaderValue>` (the evicted previous value, if
+any) and `append_header` returns `bool`.
+
+The high-level builder `.header(name, value)` on `RequestBuilder` and
+`ResponseBuilder` is **unchanged** — it still accepts any `impl AsRef<str>`.
+Only direct calls to `insert_header` or `append_header` on the types
+themselves need updating.
+
+```rust
+use crux_http::http::HeaderValue;
+
+// Static value — use from_static (zero-cost, panics at compile time on invalid input)
+req.insert_header(http::header::CONTENT_TYPE, HeaderValue::from_static("application/json"));
+
+// Dynamic value — use from_str, which returns Result
+let token = get_token();
+req.insert_header(
+    http::header::AUTHORIZATION,
+    HeaderValue::from_str(&format!("Bearer {token}")).expect("token is valid ASCII"),
+);
+
+// Accumulating multiple values (e.g. in middleware)
+let had_prior = req.append_header(
+    "x-request-id",
+    HeaderValue::from_static("abc"),
+);
+```
+
+`Request::set_header` is now **deprecated** — it was an `http-types`-era alias
+for `insert_header`. Replace all uses:
+
+```rust
+// Before
+req.set_header("x-trace-id", value);
+// After
+req.insert_header("x-trace-id", value);
+```
 
 ---
 

@@ -110,6 +110,9 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     ///
+    /// # Panics
+    /// Panics if `value` is not a valid header value, or if the `RequestBuilder` has
+    /// not been initialized.
     pub fn header(
         mut self,
         name: impl http::header::IntoHeaderName,
