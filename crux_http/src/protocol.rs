@@ -9,7 +9,7 @@ use derive_builder::Builder;
 use facet_generate_attrs as typegen;
 use serde::{Deserialize, Serialize};
 
-use crate::HttpError;
+use crate::{HttpError, Request, Result};
 
 #[derive(facet::Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpHeader {
@@ -92,7 +92,7 @@ impl HttpRequestBuilder {
     ///
     /// # Errors
     /// Returns an [`HttpError`] if the serialization fails.
-    pub fn query(&mut self, query: &impl Serialize) -> crate::Result<&mut Self> {
+    pub fn query(&mut self, query: &impl Serialize) -> Result<&mut Self> {
         if let Some(url) = &mut self.url {
             if url.contains('?') {
                 url.push('&');
@@ -192,8 +192,8 @@ pub enum HttpResult {
     Err(HttpError),
 }
 
-impl From<crate::Result<HttpResponse>> for HttpResult {
-    fn from(result: Result<HttpResponse, HttpError>) -> Self {
+impl From<Result<HttpResponse>> for HttpResult {
+    fn from(result: Result<HttpResponse>) -> Self {
         match result {
             Ok(response) => Self::Ok(response),
             Err(err) => Self::Err(err),
@@ -221,11 +221,11 @@ pub(crate) trait EffectSender {
 }
 
 pub(crate) trait ProtocolRequestBuilder {
-    fn into_protocol_request(self) -> crate::Result<HttpRequest>;
+    fn into_protocol_request(self) -> Result<HttpRequest>;
 }
 
-impl ProtocolRequestBuilder for crate::Request {
-    fn into_protocol_request(mut self) -> crate::Result<HttpRequest> {
+impl ProtocolRequestBuilder for Request {
+    fn into_protocol_request(mut self) -> Result<HttpRequest> {
         let body = self.take_body().into_bytes();
 
         Ok(HttpRequest {

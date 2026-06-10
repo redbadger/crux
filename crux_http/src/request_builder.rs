@@ -1,11 +1,10 @@
-use crate::middleware::Middleware;
-use crate::{Client, HttpError, RawResponse, Request, Result};
+use crate::body::Body;
+use crate::{Client, HttpError, RawResponse, Request, Result, middleware::Middleware};
 
 use futures_util::future::BoxFuture;
 use http::Method;
 use mime::Mime;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
+use serde::{Serialize, de::DeserializeOwned};
 use url::Url;
 
 use std::{fmt, marker::PhantomData};
@@ -132,7 +131,7 @@ where
     /// ```
     /// # Panics
     /// Panics if the `RequestBuilder` has not been initialized.
-    pub fn body(mut self, body: impl Into<crate::body::Body>) -> Self {
+    pub fn body(mut self, body: impl Into<Body>) -> Self {
         self.req.as_mut().unwrap().set_body(body);
         self
     }
@@ -167,8 +166,8 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
-        Ok(self.body(crate::body::Body::from_json(json)?))
+    pub fn body_json(self, json: &impl Serialize) -> Result<Self> {
+        Ok(self.body(Body::from_json(json)?))
     }
 
     /// Pass a string as the request body.
@@ -190,7 +189,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_string(self, string: String) -> Self {
-        self.body(crate::body::Body::from_string(string))
+        self.body(Body::from_string(string))
     }
 
     /// Pass bytes as the request body.
@@ -212,7 +211,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_bytes(self, bytes: impl AsRef<[u8]>) -> Self {
-        self.body(crate::body::Body::from(bytes.as_ref()))
+        self.body(Body::from(bytes.as_ref()))
     }
 
     /// Pass form data as the request body. The form data needs to be
@@ -245,8 +244,8 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    pub fn body_form(self, form: &impl Serialize) -> crate::Result<Self> {
-        Ok(self.body(crate::body::Body::from_form(form)?))
+    pub fn body_form(self, form: &impl Serialize) -> Result<Self> {
+        Ok(self.body(Body::from_form(form)?))
     }
 
     /// Set the URL querystring.

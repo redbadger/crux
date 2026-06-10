@@ -103,8 +103,7 @@ The most common impacts:
   only when the `http-types` feature is enabled, reducing the default dependency footprint.
 - `into_protocol_request` is now a synchronous function (was `async`); the previous
   `await` on `http_types::Body::into_bytes()` is gone.
-- `ResponseAsync` renamed to `RawResponse` throughout (file remains `response_async.rs`
-  internally; the public name is what changed).
+- `ResponseAsync` renamed to `RawResponse` throughout.
 
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_http-v0.17.0...crux_http-v0.18.0) - 2026-05-31
 

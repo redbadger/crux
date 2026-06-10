@@ -28,7 +28,8 @@ use serde::de::DeserializeOwned;
 use url::Url;
 
 use crate::{
-    HttpError, Request, Response,
+    HttpError, Request, Response, Result,
+    body::Body,
     expect::{ExpectBytes, ExpectJson, ExpectString, ResponseExpectation},
     middleware::Middleware,
     protocol::{HttpRequest, HttpResult, ProtocolRequestBuilder},
@@ -168,7 +169,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     #[allow(clippy::missing_panics_doc)]
-    pub fn body(mut self, body: impl Into<crate::body::Body>) -> Self {
+    pub fn body(mut self, body: impl Into<Body>) -> Self {
         self.req.as_mut().unwrap().set_body(body);
         self
     }
@@ -206,8 +207,8 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    pub fn body_json(self, json: &impl Serialize) -> crate::Result<Self> {
-        Ok(self.body(crate::body::Body::from_json(json)?))
+    pub fn body_json(self, json: &impl Serialize) -> Result<Self> {
+        Ok(self.body(Body::from_json(json)?))
     }
 
     /// Pass a string as the request body.
@@ -232,7 +233,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_string(self, string: String) -> Self {
-        self.body(crate::body::Body::from_string(string))
+        self.body(Body::from_string(string))
     }
 
     /// Pass bytes as the request body.
@@ -257,7 +258,7 @@ where
     ///     .then_send(Event::ReceiveResponse);
     /// ```
     pub fn body_bytes(self, bytes: impl AsRef<[u8]>) -> Self {
-        self.body(crate::body::Body::from(bytes.as_ref()))
+        self.body(Body::from(bytes.as_ref()))
     }
 
     /// Pass form data as the request body. The form data needs to be
@@ -293,8 +294,8 @@ where
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
     /// ```
-    pub fn body_form(self, form: &impl Serialize) -> crate::Result<Self> {
-        Ok(self.body(crate::body::Body::from_form(form)?))
+    pub fn body_form(self, form: &impl Serialize) -> Result<Self> {
+        Ok(self.body(Body::from_form(form)?))
     }
 
     /// Set the URL querystring.
@@ -371,11 +372,8 @@ where
     #[must_use]
     pub fn build(
         self,
-    ) -> command::RequestBuilder<
-        Effect,
-        Event,
-        impl Future<Output = Result<Response<ExpectBody>, HttpError>>,
-    > {
+    ) -> command::RequestBuilder<Effect, Event, impl Future<Output = Result<Response<ExpectBody>>>>
+    {
         let req = self.req.expect("RequestBuilder::build called twice");
 
         command::RequestBuilder::new(|ctx| async move {

@@ -1,10 +1,9 @@
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Version};
 use serde::de::DeserializeOwned;
-use std::fmt;
-use std::ops::Index;
+use std::{fmt, ops::Index};
 
 use super::decode::decode_body;
-use crate::protocol::HttpResponse;
+use crate::{HttpError, Result, protocol::HttpResponse};
 
 /// An HTTP response that exposes async methods for use in middleware.
 pub struct RawResponse {
@@ -192,7 +191,7 @@ impl RawResponse {
     /// let bytes: Vec<u8> = res.body_bytes()?;
     /// # Ok(()) }
     /// ```
-    pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
+    pub fn body_bytes(&mut self) -> Result<Vec<u8>> {
         Ok(std::mem::take(&mut self.body))
     }
 
@@ -211,7 +210,7 @@ impl RawResponse {
     /// let string: String = res.body_string()?;
     /// # Ok(()) }
     /// ```
-    pub fn body_string(&mut self) -> crate::Result<String> {
+    pub fn body_string(&mut self) -> Result<String> {
         let bytes = self.body_bytes()?;
         let mime = self.content_type();
         let claimed_encoding = mime
@@ -239,9 +238,9 @@ impl RawResponse {
     /// let Ip { ip } = res.body_json()?;
     /// # Ok(()) }
     /// ```
-    pub fn body_json<T: DeserializeOwned>(&mut self) -> crate::Result<T> {
+    pub fn body_json<T: DeserializeOwned>(&mut self) -> Result<T> {
         let body_bytes = self.body_bytes()?;
-        serde_json::from_slice(&body_bytes).map_err(crate::HttpError::from)
+        serde_json::from_slice(&body_bytes).map_err(HttpError::from)
     }
 
     /// Reads and deserializes the entire response body from form encoding.
@@ -262,9 +261,9 @@ impl RawResponse {
     /// let Body { apples } = res.body_form()?;
     /// # Ok(()) }
     /// ```
-    pub fn body_form<T: DeserializeOwned>(&mut self) -> crate::Result<T> {
+    pub fn body_form<T: DeserializeOwned>(&mut self) -> Result<T> {
         let bytes = self.body_bytes()?;
-        serde_qs::from_bytes(&bytes).map_err(crate::HttpError::from)
+        serde_qs::from_bytes(&bytes).map_err(HttpError::from)
     }
 }
 

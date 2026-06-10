@@ -46,7 +46,7 @@ serde = { workspace = true, features = ["derive"] }
 static_assertions = "1.1"
 tempfile = "3.27.0"
 url = "2.5.8"
-uuid = { version = "1.23.2", features = ["serde", "v4"] }
+uuid = { version = "1.23.3", features = ["serde", "v4"] }
 
 [features]
 default = ["crux_macros"]

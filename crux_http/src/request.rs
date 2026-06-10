@@ -1,10 +1,7 @@
-use crate::body::Body;
-use crate::middleware::Middleware;
+use crate::{Result, body::Body, middleware::Middleware};
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
 use serde::Serialize;
-use std::fmt;
-use std::ops::Index;
-use std::sync::Arc;
+use std::{fmt, ops::Index, sync::Arc};
 use url::Url;
 
 /// An HTTP request, returns a `Response`.
@@ -66,7 +63,7 @@ impl Request {
     ///
     /// # Errors
     /// Returns an error if the query string could not be deserialized.
-    pub fn query<T: serde::de::DeserializeOwned>(&self) -> crate::Result<T> {
+    pub fn query<T: serde::de::DeserializeOwned>(&self) -> Result<T> {
         let query = self.url.query().unwrap_or("");
         serde_qs::from_str(query).map_err(Into::into)
     }
@@ -94,7 +91,7 @@ impl Request {
     ///
     /// # Errors
     /// Returns an error if the query string could not be serialized.
-    pub fn set_query(&mut self, query: &impl Serialize) -> crate::Result<()> {
+    pub fn set_query(&mut self, query: &impl Serialize) -> Result<()> {
         let qs = serde_qs::to_string(query)?;
         self.url.set_query(Some(&qs));
         Ok(())
@@ -322,7 +319,7 @@ impl Request {
     /// # Errors
     ///
     /// This method will return an error if the provided data could not be serialized to JSON.
-    pub fn body_json(&mut self, json: &impl Serialize) -> crate::Result<()> {
+    pub fn body_json(&mut self, json: &impl Serialize) -> Result<()> {
         self.set_body(Body::from_json(json)?);
         Ok(())
     }
@@ -354,7 +351,7 @@ impl Request {
     /// # Errors
     ///
     /// An error will be returned if the encoding failed.
-    pub fn body_form(&mut self, form: &impl Serialize) -> crate::Result<()> {
+    pub fn body_form(&mut self, form: &impl Serialize) -> Result<()> {
         self.set_body(Body::from_form(form)?);
         Ok(())
     }

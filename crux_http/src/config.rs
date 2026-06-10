@@ -4,7 +4,7 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 use std::fmt::Debug;
 use url::Url;
 
-use crate::Result;
+use crate::{HttpError, Result};
 
 /// Configuration for `crux_http::Http`s and their underlying HTTP client.
 #[non_exhaustive]
@@ -37,10 +37,9 @@ impl Config {
     /// Returns an error if the header name or value is invalid.
     pub fn add_header(mut self, name: impl AsRef<str>, value: impl AsRef<str>) -> Result<Self> {
         use std::str::FromStr;
-        let name =
-            HeaderName::from_str(name.as_ref()).map_err(|e| crate::HttpError::Io(e.to_string()))?;
-        let value = HeaderValue::from_str(value.as_ref())
-            .map_err(|e| crate::HttpError::Io(e.to_string()))?;
+        let name = HeaderName::from_str(name.as_ref()).map_err(|e| HttpError::Io(e.to_string()))?;
+        let value =
+            HeaderValue::from_str(value.as_ref()).map_err(|e| HttpError::Io(e.to_string()))?;
         self.headers.insert(name, value);
         Ok(self)
     }

@@ -1,8 +1,8 @@
 use super::decode::decode_body;
+use crate::{HttpError, Result};
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Version};
 use serde::de::DeserializeOwned;
-use std::fmt;
-use std::ops::Index;
+use std::{fmt, ops::Index};
 
 /// An HTTP Response that will be passed to an app's update function.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -18,12 +18,12 @@ pub struct Response<Body> {
 
 impl<Body> Response<Body> {
     /// Create a new instance.
-    pub(crate) fn new(mut res: super::RawResponse) -> crate::Result<Response<Vec<u8>>> {
+    pub(crate) fn new(mut res: super::RawResponse) -> Result<Response<Vec<u8>>> {
         let body = res.body_bytes()?;
         let status = res.status();
 
         if status.is_client_error() || status.is_server_error() {
-            return Err(crate::HttpError::Http {
+            return Err(HttpError::Http {
                 code: status.as_u16(),
                 message: status.to_string(),
                 body: Some(body),
@@ -230,8 +230,8 @@ impl Response<Vec<u8>> {
     /// let bytes: Vec<u8> = res.body_bytes()?;
     /// # Ok(()) }
     /// ```
-    pub fn body_bytes(&mut self) -> crate::Result<Vec<u8>> {
-        self.body.take().ok_or_else(|| crate::HttpError::Http {
+    pub fn body_bytes(&mut self) -> Result<Vec<u8>> {
+        self.body.take().ok_or_else(|| HttpError::Http {
             code: self.status().as_u16(),
             message: "Body had no bytes".to_string(),
             body: None,
@@ -256,7 +256,7 @@ impl Response<Vec<u8>> {
     /// assert_eq!(string, "hello");
     /// # Ok(()) }
     /// ```
-    pub fn body_string(&mut self) -> crate::Result<String> {
+    pub fn body_string(&mut self) -> Result<String> {
         let bytes = self.body_bytes()?;
         let mime = self.content_type();
         let claimed_encoding = mime
@@ -287,9 +287,9 @@ impl Response<Vec<u8>> {
     /// assert_eq!(ip, "127.0.0.1");
     /// # Ok(()) }
     /// ```
-    pub fn body_json<T: DeserializeOwned>(&mut self) -> crate::Result<T> {
+    pub fn body_json<T: DeserializeOwned>(&mut self) -> Result<T> {
         let body_bytes = self.body_bytes()?;
-        serde_json::from_slice(&body_bytes).map_err(crate::HttpError::from)
+        serde_json::from_slice(&body_bytes).map_err(HttpError::from)
     }
 }
 
@@ -343,7 +343,7 @@ impl<Body> Eq for Response<Body> where Body: Eq {}
 impl<Body> TryFrom<Response<Body>> for http::Response<Body> {
     type Error = ();
 
-    fn try_from(res: Response<Body>) -> Result<Self, ()> {
+    fn try_from(res: Response<Body>) -> std::result::Result<Self, ()> {
         let body = res.body.ok_or(())?;
         let mut builder = http::Response::builder().status(res.status);
         if let Some(v) = res.version {
@@ -360,8 +360,7 @@ impl<Body> TryFrom<Response<Body>> for http::Response<Body> {
 mod tests {
     use http::{HeaderMap, StatusCode};
 
-    use crate::response::Response;
-    use crate::testing::ResponseBuilder;
+    use crate::{RawResponse, response::Response, testing::ResponseBuilder};
 
     #[test]
     fn status_is_http_status_code() {
@@ -415,7 +414,7 @@ mod tests {
             .build();
 
         // Step 1: HttpResponse → RawResponse (via From impl in response_async.rs)
-        let response_async = crate::RawResponse::from(http_response);
+        let response_async = RawResponse::from(http_response);
 
         // Step 2: RawResponse → Response<Vec<u8>> (the path the command executor takes)
         let response = Response::<Vec<u8>>::new(response_async).expect("should decode");
