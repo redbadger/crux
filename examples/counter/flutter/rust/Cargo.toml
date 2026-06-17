@@ -1,0 +1,19 @@
+[package]
+name = "counter_flutter"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+shared = { path = "../../shared" }
+flutter_rust_bridge = "=2.11.1"
+
+# flutter_rust_bridge_macros references `cfg(frb_expand)`; register it for Rust 1.80+ check-cfg.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
+# Own workspace root so this crate is not treated as belonging to `examples/counter` workspace.
+[workspace]
