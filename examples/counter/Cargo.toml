@@ -29,7 +29,6 @@ unsafe_code = "forbid"
 anyhow = "1.0.102"
 boltffi = "=0.25.2"
 crux_core = { path = "../../crux_core" }
-# crux_core = "0.18.0"
 serde = "1.0.228"
 
 [profile]
