@@ -43,12 +43,26 @@ typegen:
             --language swift \
             --output-dir generated
 
-# builds the shared library as a Swift package using BoltFFI
+# builds the shared library as a Swift package using BoltFFI, then fixes the
+# macOS XCFramework slice from a shallow (iOS-style) bundle to the versioned
+# bundle structure that macOS requires. boltffi currently generates shallow
+# bundles for all platforms (see https://github.com/boltffi/boltffi/issues/560).
 [working-directory('../shared')]
 package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
     rm -rf ../apple/generated/Shared
     boltffi pack apple
+    FW="../apple/generated/Shared/Shared.xcframework/macos-arm64_x86_64/SharedFFI.framework" ; \
+    mkdir -p "$FW/Versions/A/Resources" ; \
+    mv "$FW/SharedFFI"   "$FW/Versions/A/SharedFFI" ; \
+    mv "$FW/Headers"     "$FW/Versions/A/Headers" ; \
+    mv "$FW/Modules"     "$FW/Versions/A/Modules" ; \
+    mv "$FW/Info.plist"  "$FW/Versions/A/Resources/Info.plist" ; \
+    ln -sf A                          "$FW/Versions/Current" ; \
+    ln -sf Versions/Current/SharedFFI "$FW/SharedFFI" ; \
+    ln -sf Versions/Current/Headers   "$FW/Headers" ; \
+    ln -sf Versions/Current/Modules   "$FW/Modules" ; \
+    ln -sf Versions/Current/Resources "$FW/Resources"
 
 # rebuilds the Xcode project from project.yml
 generate-project:
