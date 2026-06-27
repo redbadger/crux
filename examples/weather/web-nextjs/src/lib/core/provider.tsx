@@ -12,7 +12,7 @@ import {
 
 import * as sharedWasm from "shared";
 import type { Event, ViewModel } from "shared_types/app";
-import { EventVariantStart, ViewModelVariantLoading } from "shared_types/app";
+import { eventStart, viewModelLoading } from "shared_types/app";
 
 import { Core } from "./";
 
@@ -35,7 +35,7 @@ const DispatchContext = createContext<((event: Event) => void) | null>(null);
  * exposes `dispatch` as a stable callback via context.
  */
 export function CoreProvider({ children }: { children: ReactNode }) {
-  const [view, setView] = useState<ViewModel>(new ViewModelVariantLoading());
+  const [view, setView] = useState<ViewModel>(viewModelLoading());
   const coreRef = useRef<Core | null>(null);
   const initialized = useRef(false);
 
@@ -47,7 +47,7 @@ export function CoreProvider({ children }: { children: ReactNode }) {
       if (!coreRef.current) {
         coreRef.current = new Core(setView);
       }
-      coreRef.current.update(new EventVariantStart());
+      coreRef.current.update(eventStart());
     });
   }, []);
 

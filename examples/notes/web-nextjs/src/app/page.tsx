@@ -14,14 +14,14 @@ import * as sharedWasm from "shared";
 import { SyncMessage, Timers, Core } from "./core";
 import {
   TextCursor,
-  TextCursorVariantPosition,
-  TextCursorVariantSelection,
+  matchTextCursor,
+  textCursorPosition,
   ViewModel,
   Message,
-  EventVariantOpen,
-  EventVariantReplace,
-  EventVariantMoveCursor,
-  EventVariantSelect,
+  eventOpen,
+  eventReplace,
+  eventMoveCursor,
+  eventSelect,
 } from "shared_types/app";
 
 const LOG_EDITS = false;
@@ -35,33 +35,15 @@ type Selection = {
 };
 
 function cursorToSelection(cursor: TextCursor): Selection {
-  var start = 0;
-  var end = 0;
-
-  switch (cursor.constructor) {
-    case TextCursorVariantPosition:
-      let cursorP = cursor as TextCursorVariantPosition;
-
-      start = Number(cursorP.value);
-      end = Number(cursorP.value);
-      break;
-    case TextCursorVariantSelection:
-      let cursorS = cursor as TextCursorVariantSelection;
-
-      start = Number(cursorS.value.start);
-      end = Number(cursorS.value.end);
-      break;
-  }
-
-  return {
-    start,
-    end,
-  };
+  return matchTextCursor(cursor, {
+    Position: (c) => ({ start: Number(c.value), end: Number(c.value) }),
+    Selection: (c) => ({ start: Number(c.value.start), end: Number(c.value.end) }),
+  });
 }
 
 const Home: NextPage = () => {
   const [view, setView] = useState<ViewModel>(
-    new ViewModel("", new TextCursorVariantPosition(BigInt(0))),
+    new ViewModel("", textCursorPosition(BigInt(0))),
   );
 
   const [_, setTimers] = useState<Timers>({});
@@ -85,7 +67,8 @@ const Home: NextPage = () => {
       if (subscriptionId.current == null) return;
 
       // Pass data into the core
-      core.current.respond(subscriptionId.current, new Message(message.data));
+      const data = message.data;
+      core.current.respond(subscriptionId.current, (s) => new Message(data).serialize(s));
     }
   };
 
@@ -108,7 +91,7 @@ const Home: NextPage = () => {
             channel.current.onmessage = onMessage;
 
             // Open the document
-            core.current.update(new EventVariantOpen());
+            core.current.update(eventOpen());
 
             // Ask all peers to reset
             let message: SyncMessage = {
@@ -136,7 +119,7 @@ const Home: NextPage = () => {
     log(`onChange ${start} ${end} "${text}"`);
 
     core.current.update(
-      new EventVariantReplace(BigInt(start), BigInt(end), text),
+      eventReplace(BigInt(start), BigInt(end), text),
     );
   };
 
@@ -145,8 +128,8 @@ const Home: NextPage = () => {
 
     let event =
       start == end
-        ? new EventVariantMoveCursor(BigInt(end))
-        : new EventVariantSelect(BigInt(start), BigInt(end));
+        ? eventMoveCursor(BigInt(end))
+        : eventSelect(BigInt(start), BigInt(end));
 
     core.current.update(event);
   };

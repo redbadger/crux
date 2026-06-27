@@ -3,13 +3,13 @@ import { ArrowLeft, MagnifyingGlass, MapPinLine } from "@phosphor-icons/react";
 
 import type { AddFavoriteViewModel, AddFavoriteEvent } from "shared_types/app";
 import {
-  EventVariantActive,
-  ActiveEventVariantFavorites,
-  FavoritesScreenEventVariantWorkflow,
-  FavoritesWorkflowEventVariantAdd,
-  AddFavoriteEventVariantSearch,
-  AddFavoriteEventVariantSubmit,
-  AddFavoriteEventVariantCancel,
+  eventActive,
+  activeEventFavorites,
+  favoritesScreenEventWorkflow,
+  favoritesWorkflowEventAdd,
+  addFavoriteEventSearch,
+  addFavoriteEventSubmit,
+  addFavoriteEventCancel,
 } from "shared_types/app";
 
 import { useDispatch } from "../../lib/core/provider";
@@ -17,11 +17,9 @@ import { Button, Card, SectionTitle, StatusMessage, TextField } from "./common";
 import { SearchResultItem } from "./SearchResultItem";
 
 function addFavEvent(inner: AddFavoriteEvent) {
-  return new EventVariantActive(
-    new ActiveEventVariantFavorites(
-      new FavoritesScreenEventVariantWorkflow(
-        new FavoritesWorkflowEventVariantAdd(inner),
-      ),
+  return eventActive(
+    activeEventFavorites(
+      favoritesScreenEventWorkflow(favoritesWorkflowEventAdd(inner)),
     ),
   );
 }
@@ -42,7 +40,7 @@ export function AddFavoriteView({ model }: { model: AddFavoriteViewModel }) {
             onInput={(val) => {
               setSearchText(val);
               if (val) {
-                dispatch(addFavEvent(new AddFavoriteEventVariantSearch(val)));
+                dispatch(addFavEvent(addFavoriteEventSearch(val)));
               }
             }}
           />
@@ -57,9 +55,7 @@ export function AddFavoriteView({ model }: { model: AddFavoriteViewModel }) {
                   key={i}
                   result={result}
                   onAdd={() =>
-                    dispatch(
-                      addFavEvent(new AddFavoriteEventVariantSubmit(result)),
-                    )
+                    dispatch(addFavEvent(addFavoriteEventSubmit(result)))
                   }
                 />
               ))}
@@ -71,9 +67,7 @@ export function AddFavoriteView({ model }: { model: AddFavoriteViewModel }) {
           label="Cancel"
           icon={ArrowLeft}
           variant="secondary"
-          onClick={() =>
-            dispatch(addFavEvent(new AddFavoriteEventVariantCancel()))
-          }
+          onClick={() => dispatch(addFavEvent(addFavoriteEventCancel()))}
         />
       </div>
     </>

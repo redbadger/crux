@@ -1,22 +1,21 @@
 import type { LocationOperation, LocationResult } from "shared_types/app";
 import {
-  LocationOperationVariantIsLocationEnabled,
-  LocationResultVariantEnabled,
-  LocationResultVariantLocation,
+  matchLocationOperation,
+  locationResultEnabled,
+  locationResultLocation,
   Location,
 } from "shared_types/app";
 
 export async function handle(
   operation: LocationOperation,
 ): Promise<LocationResult> {
-  switch (operation.constructor) {
-    case LocationOperationVariantIsLocationEnabled: {
+  return matchLocationOperation<Promise<LocationResult>>(operation, {
+    IsLocationEnabled: async () => {
       const enabled = "geolocation" in navigator;
       console.debug("location enabled:", enabled);
-      return new LocationResultVariantEnabled(enabled);
-    }
-    default: {
-      // GetLocation
+      return locationResultEnabled(enabled);
+    },
+    GetLocation: async () => {
       try {
         const position = await new Promise<GeolocationPosition>(
           (resolve, reject) => {
@@ -28,7 +27,7 @@ export async function handle(
           position.coords.latitude,
           position.coords.longitude,
         );
-        return new LocationResultVariantLocation(
+        return locationResultLocation(
           new Location(
             position.coords.latitude,
             position.coords.longitude,
@@ -36,8 +35,8 @@ export async function handle(
         );
       } catch (e) {
         console.warn("geolocation failed:", e);
-        return new LocationResultVariantLocation(null);
+        return locationResultLocation(null);
       }
-    }
-  }
+    },
+  });
 }

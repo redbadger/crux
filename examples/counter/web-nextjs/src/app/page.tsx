@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   ViewModel,
-  EventVariantReset,
-  EventVariantIncrement,
-  EventVariantDecrement,
+  eventReset,
+  eventIncrement,
+  eventDecrement,
 } from "shared_types/app";
 
 import { Core } from "./core";
@@ -27,19 +27,19 @@ const Home: NextPage = () => {
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() => core.current.update(new EventVariantReset())}
+            onClick={() => core.current.update(eventReset())}
           >
             {"Reset"}
           </button>
           <button
             className="button is-primary is-success"
-            onClick={() => core.current.update(new EventVariantIncrement())}
+            onClick={() => core.current.update(eventIncrement())}
           >
             {"Increment"}
           </button>
           <button
             className="button is-primary is-warning"
-            onClick={() => core.current.update(new EventVariantDecrement())}
+            onClick={() => core.current.update(eventDecrement())}
           >
             {"Decrement"}
           </button>

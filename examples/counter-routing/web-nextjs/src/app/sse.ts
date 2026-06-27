@@ -1,10 +1,13 @@
+import type { SseResponse } from "shared_types/app";
 import {
   SseRequest,
-  SseResponseVariantDone,
-  SseResponseVariantChunk,
+  sseResponseDone,
+  sseResponseChunk,
+  serializeSseResponse,
 } from "shared_types/app";
+import type { Serializer } from "shared_types/serde";
 
-export async function* request({ url }: SseRequest) {
+export async function* request({ url }: SseRequest): AsyncGenerator<SseResponse> {
   const request = new Request(url);
 
   const response = await fetch(request);
@@ -17,8 +20,8 @@ export async function* request({ url }: SseRequest) {
     while (true) {
       const { done, value } = await reader.read();
       yield done
-        ? new SseResponseVariantDone()
-        : new SseResponseVariantChunk(Array.from(value));
+        ? sseResponseDone()
+        : sseResponseChunk(Array.from(value));
       if (done) {
         break;
       }
@@ -26,4 +29,8 @@ export async function* request({ url }: SseRequest) {
   } finally {
     reader.releaseLock();
   }
+}
+
+export function serializeResponse(response: SseResponse, serializer: Serializer): void {
+  serializeSseResponse(response, serializer);
 }

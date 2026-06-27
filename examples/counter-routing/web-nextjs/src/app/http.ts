@@ -2,8 +2,10 @@ import type { HttpRequest, HttpResult } from "shared_types/app";
 import {
   HttpResponse,
   HttpHeader,
-  HttpResultVariantOk,
+  httpResultOk,
+  serializeHttpResult,
 } from "shared_types/app";
+import type { Serializer } from "shared_types/serde";
 
 export async function request({
   url,
@@ -24,7 +26,11 @@ export async function request({
 
   const body = await response.arrayBuffer();
 
-  return new HttpResultVariantOk(
+  return httpResultOk(
     new HttpResponse(response.status, responseHeaders, new Uint8Array(body)),
   );
+}
+
+export function serializeResult(result: HttpResult, serializer: Serializer): void {
+  serializeHttpResult(result, serializer);
 }

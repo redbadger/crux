@@ -2,7 +2,7 @@ import type { HttpRequest, HttpResult } from "shared_types/app";
 import {
   HttpResponse,
   HttpHeader,
-  HttpResultVariantOk,
+  httpResultOk,
 } from "shared_types/app";
 
 export async function request({
@@ -25,7 +25,7 @@ export async function request({
 
   const body = await response.arrayBuffer();
 
-  return new HttpResultVariantOk(
+  return httpResultOk(
     new HttpResponse(response.status, responseHeaders, new Uint8Array(body)),
   );
 }

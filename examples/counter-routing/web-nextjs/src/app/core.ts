@@ -1,22 +1,18 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import { CoreFFI } from "shared";
-import type { Effect, Event, RenderOperation } from "shared_types/app";
+import type { Effect, Event } from "shared_types/app";
 import {
-  EffectVariantHttp,
-  EffectVariantRandom,
-  EffectVariantRender,
-  EffectVariantServerSentEvents,
   RandomNumber,
   Request,
   ViewModel,
+  matchEffect,
+  serializeEvent,
 } from "shared_types/app";
 import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
+import type { Serializer } from "shared_types/serde";
 import * as http from "./http";
 import * as sse from "./sse";
-
-// union of all Operation types, only render is needed here
-type Response = RenderOperation;
 
 export class Core {
   core: CoreFFI;
@@ -40,7 +36,7 @@ export class Core {
 
   update(event: Event) {
     const serializer = new BincodeSerializer();
-    event.serialize(serializer);
+    serializeEvent(event, serializer);
     const effects = this.core.update(serializer.getBytes());
     const requests = deserializeRequests(new Uint8Array(effects));
     for (const { id, effect } of requests) {
@@ -48,41 +44,36 @@ export class Core {
     }
   }
 
-  async resolve(id: number, effect: Effect) {
-    switch (effect.constructor) {
-      case EffectVariantRender: {
+  resolve(id: number, effect: Effect): void {
+    matchEffect<void>(effect, {
+      Render: (_e) => {
         this.callback(deserializeView(new Uint8Array(this.core.view())));
-        break;
-      }
-      case EffectVariantHttp: {
-        const request = (effect as EffectVariantHttp).value;
-        const response = await http.request(request);
-        this.respond(id, response);
-        break;
-      }
-      case EffectVariantServerSentEvents: {
-        const request = (effect as EffectVariantServerSentEvents).value;
+      },
+      Http: (e) => {
         (async () => {
-          for await (const response of sse.request(request)) {
-            this.respond(id, response);
+          const response = await http.request(e.value);
+          this.respond(id, (s) => http.serializeResult(response, s));
+        })();
+      },
+      ServerSentEvents: (e) => {
+        (async () => {
+          for await (const response of sse.request(e.value)) {
+            this.respond(id, (s) => sse.serializeResponse(response, s));
           }
         })();
-        break;
-      }
-      case EffectVariantRandom: {
-        const request = (effect as EffectVariantRandom).value;
-        const min = Number(request.field0);
-        const max = Number(request.field1);
+      },
+      Random: (e) => {
+        const min = Number(e.value.field0);
+        const max = Number(e.value.field1);
         const result = Math.floor(Math.random() * (max - min)) + min;
-        this.respond(id, new RandomNumber(BigInt(result)));
-        break;
-      }
-    }
+        this.respond(id, (s) => new RandomNumber(BigInt(result)).serialize(s));
+      },
+    });
   }
 
-  respond(id: number, response: Response) {
+  respond(id: number, serialize: (s: Serializer) => void) {
     const serializer = new BincodeSerializer();
-    response.serialize(serializer);
+    serialize(serializer);
     const effects = this.core.resolve(id, serializer.getBytes());
     const requests = deserializeRequests(new Uint8Array(effects));
     for (const { id, effect } of requests) {

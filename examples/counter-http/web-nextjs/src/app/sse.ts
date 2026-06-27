@@ -1,7 +1,7 @@
 import type { SseRequest } from "shared_types/app";
 import {
-  SseResponseVariantDone,
-  SseResponseVariantChunk,
+  sseResponseDone,
+  sseResponseChunk,
 } from "shared_types/app";
 
 export async function* request({ url }: SseRequest) {
@@ -17,8 +17,8 @@ export async function* request({ url }: SseRequest) {
     while (true) {
       const { done, value } = await reader.read();
       yield done
-        ? new SseResponseVariantDone()
-        : new SseResponseVariantChunk(Array.from(value));
+        ? sseResponseDone()
+        : sseResponseChunk(Array.from(value));
       if (done) {
         break;
       }

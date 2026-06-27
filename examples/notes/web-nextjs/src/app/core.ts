@@ -2,34 +2,27 @@ import { CoreFFI } from "shared";
 import type {
   Effect,
   Event,
-  KeyValueResult,
-  Message,
-  TimeResponse,
 } from "shared_types/app";
 import {
-  EffectVariantRender,
   ViewModel,
   Request,
-  EffectVariantKeyValue,
-  EffectVariantPubSub,
-  EffectVariantTime,
-  PubSubOperationVariantPublish,
-  PubSubOperationVariantSubscribe,
-  KeyValueOperationVariantGet,
-  KeyValueOperationVariantSet,
-  KeyValueResultVariantOk,
-  KeyValueResponseVariantGet,
-  KeyValueResponseVariantSet,
-  ValueVariantNone,
-  ValueVariantBytes,
-  TimeRequestVariantNotifyAfter,
-  TimeResponseVariantDurationElapsed,
-  TimeRequestVariantClear,
+  matchEffect,
+  matchPubSubOperation,
+  matchTimeRequest,
+  matchKeyValueOperation,
+  timeResponseDurationElapsed,
+  keyValueResultOk,
+  keyValueResponseGet,
+  keyValueResponseSet,
+  valueNone,
+  valueBytes,
+  serializeEvent,
+  serializeKeyValueResult,
+  serializeTimeResponse,
 } from "shared_types/app";
 import { BincodeSerializer, BincodeDeserializer } from "shared_types/bincode";
+import type { Serializer } from "shared_types/serde";
 import { Dispatch, RefObject, SetStateAction } from "react";
-
-type Response = Message | TimeResponse | KeyValueResult;
 
 export type Timers = {
   [key: number]: number;
@@ -80,7 +73,7 @@ export class Core {
     console.log("event", event);
 
     const serializer = new BincodeSerializer();
-    event.serialize(serializer);
+    serializeEvent(event, serializer);
 
     const effects = this.core.update(serializer.getBytes());
 
@@ -93,127 +86,95 @@ export class Core {
   private processEffect(id: number, effect: Effect) {
     console.log("effect", effect);
 
-    switch (effect.constructor) {
-      case EffectVariantRender: {
+    matchEffect(effect, {
+      Render: () => {
         this.setState(this.view());
-        break;
-      }
+      },
 
-      case EffectVariantPubSub: {
-        const pubSubOp = (effect as EffectVariantPubSub).value;
-
-        switch (pubSubOp.constructor) {
-          case PubSubOperationVariantPublish:
-            let publish = pubSubOp as PubSubOperationVariantPublish;
-            let message: SyncMessage = {
+      PubSub: ({ value: pubSubOp }) => {
+        matchPubSubOperation(pubSubOp, {
+          Publish: (op) => {
+            const message: SyncMessage = {
               kind: "change",
-              data: publish.value,
+              data: op.value,
             };
-
             this.channel.current.postMessage(message);
-
-            break;
-          case PubSubOperationVariantSubscribe:
+          },
+          Subscribe: () => {
             this.subscriptionId.current = id;
+          },
+        });
+      },
 
-            break;
-        }
-        break;
-      }
+      Time: ({ value: timerOp }) => {
+        matchTimeRequest(timerOp, {
+          Now: () => {},
+          NotifyAt: () => {},
+          NotifyAfter: (op) => {
+            const { id: startId, duration } = op;
+            const milliseconds = Number(duration.nanos) / 1e6;
 
-      case EffectVariantTime: {
-        const timerOp = (effect as EffectVariantTime).value;
-
-        switch (timerOp.constructor) {
-          case TimeRequestVariantNotifyAfter: {
-            let { id: startId, duration } =
-              timerOp as TimeRequestVariantNotifyAfter;
-            let milliseconds = Number(duration.nanos) / 1e6;
-
-            let handle = window.setTimeout(() => {
+            const handle = window.setTimeout(() => {
               // Drop the timer
               this.setTimers((ts) => {
-                let { [Number(startId)]: _, ...rest } = ts;
-
+                const { [Number(startId.value)]: _, ...rest } = ts;
                 return rest;
               });
 
-              this.respond(id, new TimeResponseVariantDurationElapsed(startId));
+              this.respond(id, (s) =>
+                serializeTimeResponse(timeResponseDurationElapsed(startId), s),
+              );
             }, milliseconds);
-            this.setTimers((ts) => ({ [Number(startId)]: handle, ...ts }));
-
-            break;
-          }
-
-          case TimeRequestVariantClear: {
-            let { id: cancelId } = timerOp as TimeRequestVariantClear;
-
+            this.setTimers((ts) => ({ [Number(startId.value)]: handle, ...ts }));
+          },
+          Clear: (op) => {
+            const cancelId = op.id;
             this.setTimers((ts) => {
-              let { [Number(cancelId.value)]: handle, ...rest } = ts;
+              const { [Number(cancelId.value)]: handle, ...rest } = ts;
               window.clearTimeout(handle);
-
               return rest;
             });
-          }
-        }
-        break;
-      }
+          },
+        });
+      },
 
-      case EffectVariantKeyValue: {
-        const request = (effect as EffectVariantKeyValue).value;
-        switch (request.constructor) {
-          case KeyValueOperationVariantGet: {
-            const { key: readKey } = request as KeyValueOperationVariantGet;
-
+      KeyValue: ({ value: request }) => {
+        matchKeyValueOperation(request, {
+          Get: (op) => {
+            const readKey = op.key;
             const data = window.localStorage.getItem(readKey);
             const bytes: number[] = data == null ? [] : JSON.parse(data);
             const value =
-              bytes.length === 0
-                ? new ValueVariantNone()
-                : new ValueVariantBytes(bytes);
+              bytes.length === 0 ? valueNone() : valueBytes(bytes);
 
             console.log(`Loaded document (${bytes.length} bytes)`);
-            this.respond(
-              id,
-              new KeyValueResultVariantOk(
-                new KeyValueResponseVariantGet(value),
-              ),
-            );
-
-            break;
-          }
-
-          case KeyValueOperationVariantSet: {
-            const { key: writeKey, value: writeValue } =
-              request as KeyValueOperationVariantSet;
-
+            const result = keyValueResultOk(keyValueResponseGet(value));
+            this.respond(id, (s) => serializeKeyValueResult(result, s));
+          },
+          Set: (op) => {
+            const { key: writeKey, value: writeValue } = op;
             console.log(`Saving document (${writeValue.length} bytes)`);
             window.localStorage.setItem(
               writeKey,
               JSON.stringify(Array.from(writeValue)),
             );
-
-            this.respond(
-              id,
-              new KeyValueResultVariantOk(
-                new KeyValueResponseVariantSet(new ValueVariantNone()),
-              ),
-            );
-
-            break;
-          }
-        }
-        break;
-      }
-    }
+            const result = keyValueResultOk(keyValueResponseSet(valueNone()));
+            this.respond(id, (s) => serializeKeyValueResult(result, s));
+          },
+          Delete: () => {},
+          Exists: () => {},
+          ListKeys: () => {},
+        });
+      },
+    });
   }
 
-  respond(id: number, response: Response) {
+  respond(id: number, serialize: (s: Serializer) => void) {
     if (!this.core) {
       throw new Error("Core not initialized. Call initialize() first.");
     }
     const serializer = new BincodeSerializer();
-    response.serialize(serializer);
+    serialize(serializer);
 
     const effects = this.core.resolve(id, serializer.getBytes());
     const requests = deserializeRequests(effects);
