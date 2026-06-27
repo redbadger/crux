@@ -1,8 +1,5 @@
 import { CoreFFI } from "shared";
-import type {
-  Effect,
-  Event,
-} from "shared_types/app";
+import type { Effect, Event } from "shared_types/app";
 
 // WORKAROUND: automerge uses `features = ["wasm"]` in its Cargo.toml, which
 // enables the `getrandom/js` feature. That compiles a wasm-bindgen import
@@ -49,7 +46,10 @@ if (typeof WebAssembly !== "undefined" && typeof crypto !== "undefined") {
       }) as WebAssembly.ModuleImports;
     }
     return (
-      _origInstantiate(source as any, importObject) as Promise<WebAssembly.WebAssemblyInstantiatedSource>
+      _origInstantiate(
+        source as any,
+        importObject,
+      ) as Promise<WebAssembly.WebAssemblyInstantiatedSource>
     ).then((result) => {
       _memory = result.instance.exports["memory"] as WebAssembly.Memory;
       return result;
@@ -178,7 +178,10 @@ export class Core {
                 serializeTimeResponse(timeResponseDurationElapsed(startId), s),
               );
             }, milliseconds);
-            this.setTimers((ts) => ({ [Number(startId.value)]: handle, ...ts }));
+            this.setTimers((ts) => ({
+              [Number(startId.value)]: handle,
+              ...ts,
+            }));
           },
           Clear: (op) => {
             const cancelId = op.id;
@@ -197,8 +200,7 @@ export class Core {
             const readKey = op.key;
             const data = window.localStorage.getItem(readKey);
             const bytes: number[] = data == null ? [] : JSON.parse(data);
-            const value =
-              bytes.length === 0 ? valueNone() : valueBytes(bytes);
+            const value = bytes.length === 0 ? valueNone() : valueBytes(bytes);
 
             console.log(`Loaded document (${bytes.length} bytes)`);
             const result = keyValueResultOk(keyValueResponseGet(value));

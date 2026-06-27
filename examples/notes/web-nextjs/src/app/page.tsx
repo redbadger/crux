@@ -26,8 +26,9 @@ import {
 
 const LOG_EDITS = false;
 
-const wasmInitialized = (sharedWasm as unknown as { initialized: Promise<void> })
-  .initialized;
+const wasmInitialized = (
+  sharedWasm as unknown as { initialized: Promise<void> }
+).initialized;
 
 type Selection = {
   start: number;
@@ -37,7 +38,10 @@ type Selection = {
 function cursorToSelection(cursor: TextCursor): Selection {
   return matchTextCursor(cursor, {
     Position: (c) => ({ start: Number(c.value), end: Number(c.value) }),
-    Selection: (c) => ({ start: Number(c.value.start), end: Number(c.value.end) }),
+    Selection: (c) => ({
+      start: Number(c.value.start),
+      end: Number(c.value.end),
+    }),
   });
 }
 
@@ -68,7 +72,9 @@ const Home: NextPage = () => {
 
       // Pass data into the core
       const data = message.data;
-      core.current.respond(subscriptionId.current, (s) => new Message(data).serialize(s));
+      core.current.respond(subscriptionId.current, (s) =>
+        new Message(data).serialize(s),
+      );
     }
   };
 
@@ -118,9 +124,7 @@ const Home: NextPage = () => {
   const onChange = ({ start, end, text }: ChangeEvent): void => {
     log(`onChange ${start} ${end} "${text}"`);
 
-    core.current.update(
-      eventReplace(BigInt(start), BigInt(end), text),
-    );
+    core.current.update(eventReplace(BigInt(start), BigInt(end), text));
   };
 
   const onSelect = ({ start, end }: SelectEvent): void => {

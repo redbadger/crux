@@ -51,29 +51,29 @@ export class Core {
       },
       // ANCHOR: http
       Http: (e): void => {
-        void http.request(e.value).then((r) =>
-          this.respond(id, (s) => serializeHttpResult(r, s)),
-        );
+        void http
+          .request(e.value)
+          .then((r) => this.respond(id, (s) => serializeHttpResult(r, s)));
       },
       // ANCHOR_END: http
       KeyValue: (e): void => {
-        void kv.handle(e.value).then((r) =>
-          this.respond(id, (s) => serializeKeyValueResult(r, s)),
-        );
+        void kv
+          .handle(e.value)
+          .then((r) => this.respond(id, (s) => serializeKeyValueResult(r, s)));
       },
       Location: (e): void => {
-        void location.handle(e.value).then((r) =>
-          this.respond(id, (s) => serializeLocationResult(r, s)),
-        );
+        void location
+          .handle(e.value)
+          .then((r) => this.respond(id, (s) => serializeLocationResult(r, s)));
       },
       Secret: (e): void => {
         const r = secret.handle(e.value);
         this.respond(id, (s) => serializeSecretResponse(r, s));
       },
       Time: (e): void => {
-        void time.handle(e.value).then((r) =>
-          this.respond(id, (s) => serializeTimeResponse(r, s)),
-        );
+        void time
+          .handle(e.value)
+          .then((r) => this.respond(id, (s) => serializeTimeResponse(r, s)));
       },
     });
   }

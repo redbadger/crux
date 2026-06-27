@@ -22,7 +22,9 @@ export function FavoriteWeatherCard({
               {v.value.main.temp.toFixed(1)}&deg;
             </span>
             {v.value.weather?.[0] ? (
-              <span className="capitalize">{v.value.weather[0].description}</span>
+              <span className="capitalize">
+                {v.value.weather[0].description}
+              </span>
             ) : null}
             <span className="flex items-center gap-1">
               <Drop size={14} />

@@ -54,12 +54,14 @@ export class Core {
         this.callback(deserializeView(this.core.view()));
       },
       Http: (e): void => {
-        void http.request(e.value).then(r => this.respond(id, s => serializeHttpResult(r, s)));
+        void http
+          .request(e.value)
+          .then((r) => this.respond(id, (s) => serializeHttpResult(r, s)));
       },
       ServerSentEvents: (e): void => {
         void (async () => {
           for await (const r of sse.request(e.value)) {
-            this.respond(id, s => serializeSseResponse(r, s));
+            this.respond(id, (s) => serializeSseResponse(r, s));
           }
         })();
       },
@@ -67,7 +69,7 @@ export class Core {
         const min = Number(e.value.field0);
         const max = Number(e.value.field1);
         const result = Math.floor(Math.random() * (max - min)) + min;
-        this.respond(id, s => new RandomNumber(BigInt(result)).serialize(s));
+        this.respond(id, (s) => new RandomNumber(BigInt(result)).serialize(s));
       },
     });
   }

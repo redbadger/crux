@@ -13,8 +13,9 @@ import {
 
 import { Core } from "./core";
 
-const wasmInitialized = (sharedWasm as unknown as { initialized: Promise<void> })
-  .initialized;
+const wasmInitialized = (
+  sharedWasm as unknown as { initialized: Promise<void> }
+).initialized;
 
 const Home: NextPage = () => {
   const [view, setView] = useState(new ViewModel("", true));
@@ -35,7 +36,7 @@ const Home: NextPage = () => {
         });
       }
     },
-     
+
     /*once*/ [],
   );
 

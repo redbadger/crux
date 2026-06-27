@@ -16,8 +16,9 @@ import { eventStart, viewModelLoading } from "shared_types/app";
 
 import { Core } from "./";
 
-const wasmInitialized = (sharedWasm as unknown as { initialized: Promise<void> })
-  .initialized;
+const wasmInitialized = (
+  sharedWasm as unknown as { initialized: Promise<void> }
+).initialized;
 
 // ANCHOR: context
 /**

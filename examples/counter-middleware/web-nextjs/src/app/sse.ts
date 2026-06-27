@@ -16,9 +16,7 @@ export async function* request({ url }: SseRequest) {
   try {
     while (true) {
       const { done, value } = await reader.read();
-      yield done
-        ? sseResponseDone()
-        : sseResponseChunk(Array.from(value));
+      yield done ? sseResponseDone() : sseResponseChunk(Array.from(value));
       if (done) {
         break;
       }

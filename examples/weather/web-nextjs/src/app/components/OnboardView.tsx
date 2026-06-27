@@ -16,13 +16,7 @@ import {
 } from "shared_types/app";
 
 import { useDispatch } from "../../lib/core/provider";
-import {
-  Button,
-  Card,
-  SectionTitle,
-  Spinner,
-  TextField,
-} from "./common";
+import { Button, Card, SectionTitle, Spinner, TextField } from "./common";
 
 // ANCHOR: onboard_view
 export function OnboardView({ model }: { model: OnboardViewModel }) {

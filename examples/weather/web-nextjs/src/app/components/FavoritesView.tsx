@@ -7,7 +7,10 @@ import {
   Warning,
 } from "@phosphor-icons/react";
 
-import type { FavoritesViewModel, FavoritesScreenEvent } from "shared_types/app";
+import type {
+  FavoritesViewModel,
+  FavoritesScreenEvent,
+} from "shared_types/app";
 import {
   eventActive,
   activeEventFavorites,

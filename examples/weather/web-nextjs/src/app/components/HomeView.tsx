@@ -1,9 +1,4 @@
-import {
-  CloudSlash,
-  Key,
-  MapPinLine,
-  Star,
-} from "@phosphor-icons/react";
+import { CloudSlash, Key, MapPinLine, Star } from "@phosphor-icons/react";
 
 import type { HomeViewModel } from "shared_types/app";
 import {
@@ -15,13 +10,7 @@ import {
 } from "shared_types/app";
 
 import { useDispatch } from "../../lib/core/provider";
-import {
-  Button,
-  Card,
-  SectionTitle,
-  Spinner,
-  StatusMessage,
-} from "./common";
+import { Button, Card, SectionTitle, Spinner, StatusMessage } from "./common";
 import { FavoriteWeatherCard } from "./FavoriteWeatherCard";
 import { WeatherDetail } from "./WeatherDetail";
 
@@ -49,9 +38,7 @@ export function HomeView({ model }: { model: HomeViewModel }) {
           FetchingLocation: () => (
             <Spinner message="Getting your location..." />
           ),
-          FetchingWeather: () => (
-            <Spinner message="Loading weather data..." />
-          ),
+          FetchingWeather: () => <Spinner message="Loading weather data..." />,
           Fetched: (v) => <WeatherDetail data={v.value} />,
           Failed: () => (
             <StatusMessage

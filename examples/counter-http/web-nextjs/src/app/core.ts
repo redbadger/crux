@@ -42,14 +42,16 @@ export class Core {
         this.callback(deserializeView(this.core.view()));
       },
       Http: (e): void => {
-        void http.request(e.value).then(response =>
-          this.respond(id, s => serializeHttpResult(response, s))
-        );
+        void http
+          .request(e.value)
+          .then((response) =>
+            this.respond(id, (s) => serializeHttpResult(response, s)),
+          );
       },
       ServerSentEvents: (e): void => {
         void (async () => {
           for await (const response of sse.request(e.value)) {
-            this.respond(id, s => serializeSseResponse(response, s));
+            this.respond(id, (s) => serializeSseResponse(response, s));
           }
         })();
       },

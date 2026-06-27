@@ -31,6 +31,9 @@ export async function request({
   );
 }
 
-export function serializeResult(result: HttpResult, serializer: Serializer): void {
+export function serializeResult(
+  result: HttpResult,
+  serializer: Serializer,
+): void {
   serializeHttpResult(result, serializer);
 }

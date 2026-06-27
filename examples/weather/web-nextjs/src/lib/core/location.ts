@@ -28,10 +28,7 @@ export async function handle(
           position.coords.longitude,
         );
         return locationResultLocation(
-          new Location(
-            position.coords.latitude,
-            position.coords.longitude,
-          ),
+          new Location(position.coords.latitude, position.coords.longitude),
         );
       } catch (e) {
         console.warn("geolocation failed:", e);

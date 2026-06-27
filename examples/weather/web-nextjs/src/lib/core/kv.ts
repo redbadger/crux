@@ -18,9 +18,7 @@ export async function handle(
       const key = op.key;
       console.debug("kv get:", key);
       const stored = localStorage.getItem(key);
-      const bytes = stored
-        ? Array.from(new TextEncoder().encode(stored))
-        : [];
+      const bytes = stored ? Array.from(new TextEncoder().encode(stored)) : [];
       return Promise.resolve(
         keyValueResultOk(keyValueResponseGet(valueBytes(bytes))),
       );
@@ -54,9 +52,7 @@ export async function handle(
       const key = op.key;
       const exists = localStorage.getItem(key) !== null;
       console.debug("kv exists:", key, exists);
-      return Promise.resolve(
-        keyValueResultOk(keyValueResponseExists(exists)),
-      );
+      return Promise.resolve(keyValueResultOk(keyValueResponseExists(exists)));
     },
     ListKeys: (op) => {
       const { prefix } = op;
