@@ -104,8 +104,8 @@ mod tests {
         let cookie_values: Vec<String> = ht
             .header("cookie")
             .into_iter()
-            .flat_map(|vals| vals.iter())
-            .map(|v| v.to_string())
+            .flat_map(http_types::headers::HeaderValues::iter)
+            .map(ToString::to_string)
             .collect();
 
         assert_eq!(cookie_values.len(), 2, "both cookie values must survive");
@@ -124,7 +124,10 @@ mod tests {
 
         let req: Request = ht.into();
 
-        let values: Vec<&HeaderValue> = req.header_all("set-cookie").into_iter().collect();
-        assert_eq!(values.len(), 2, "both set-cookie values must survive");
+        assert_eq!(
+            req.header_all("set-cookie").into_iter().count(),
+            2,
+            "both set-cookie values must survive"
+        );
     }
 }
