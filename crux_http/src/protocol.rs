@@ -131,11 +131,51 @@ impl HttpRequestBuilder {
 
     /// Sets the body of the request to the JSON representation of the given value.
     ///
+    /// Sets **only** the body. To build the request a capability call produces —
+    /// body *and* `content-type` — use [`body_json`](Self::body_json).
+    ///
     /// # Panics
     /// Panics if the serialization fails.
     pub fn json(&mut self, body: impl serde::Serialize) -> &mut Self {
         self.body = Some(serde_json::to_vec(&body).unwrap());
         self
+    }
+
+    /// Sets the body to the JSON representation of `body` **and** sets
+    /// `content-type: application/json`, mirroring
+    /// [`crate::command::RequestBuilder::body_json`].
+    ///
+    /// This is what you want when asserting on a request an app actually made,
+    /// where spelling the header out by hand is easy to forget:
+    ///
+    /// ```rust
+    /// # use crux_http::protocol::HttpRequest;
+    /// let body = serde_json::json!({ "title": "New Post" });
+    ///
+    /// assert_eq!(
+    ///     HttpRequest::post("https://example.com/posts")
+    ///         .body_json(&body)
+    ///         .build(),
+    ///     HttpRequest::post("https://example.com/posts")
+    ///         .header("content-type", "application/json")
+    ///         .json(&body)
+    ///         .build(),
+    /// );
+    /// ```
+    ///
+    /// [`json`](Self::json) deliberately does not set the header — these builders
+    /// construct protocol-layer values, so they must stay able to express a JSON
+    /// body with no `content-type`, or a malformed one. But because the capability
+    /// side sets the mime (via `Body::from_json`), mirroring a real request with
+    /// `json` alone fails on a header-only difference. Hence this method.
+    ///
+    /// # Panics
+    /// Panics if the serialization fails.
+    pub fn body_json(&mut self, body: impl serde::Serialize) -> &mut Self {
+        self.json(body).header(
+            http::header::CONTENT_TYPE.as_str(),
+            mime::APPLICATION_JSON.as_ref(),
+        )
     }
 
     /// Builds the request.
