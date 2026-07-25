@@ -29,7 +29,7 @@ impl fmt::Debug for DecodeError {
 
 impl fmt::Display for DecodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "could not decode body as {}", &self.encoding)
+        write!(f, "could not decode body as {}", self.encoding)
     }
 }
 

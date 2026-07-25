@@ -500,7 +500,7 @@ mod tests {
     #[test]
     fn new_request_has_empty_body() {
         let req = get("https://example.com");
-        assert!(req.is_empty() == Some(true));
+        assert_eq!(req.is_empty(), Some(true));
         assert_eq!(req.len(), Some(0));
     }
 
@@ -529,7 +529,7 @@ mod tests {
         req.set_body("world");
         let body = req.take_body();
         assert_eq!(body.into_bytes(), b"world");
-        assert!(req.is_empty() == Some(true));
+        assert_eq!(req.is_empty(), Some(true));
     }
 
     #[test]

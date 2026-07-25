@@ -82,22 +82,19 @@ mod tests {
         };
 
         let Value::Number(id) = &request["id"] else {
-            panic!("Expected id to be a number, got: {:?}", &request["id"])
+            panic!("Expected id to be a number, got: {:?}", request["id"])
         };
         assert_eq!(id.as_u64().unwrap(), 0);
 
         let Value::Object(effect) = &request["effect"] else {
             panic!(
                 "Expected effect to be an object, got: {:?}",
-                &request["effect"]
+                request["effect"]
             )
         };
 
         let Value::Null = &effect["Render"] else {
-            panic!(
-                "Expected effect to be a 'Render' variant, got: {:?}",
-                &effect
-            )
+            panic!("Expected effect to be a 'Render' variant, got: {effect:?}")
         };
     }
 

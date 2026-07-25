@@ -72,7 +72,7 @@ mod shared {
                     "Status: {}, Body: {}, Json Body: {}",
                     model.status,
                     String::from_utf8_lossy(&model.body),
-                    &model.json_body
+                    model.json_body
                 ),
             }
         }
