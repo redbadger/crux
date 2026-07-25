@@ -8,6 +8,36 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `HttpRequestBuilder::body_json`, which sets a JSON body **and**
+  `content-type: application/json`, mirroring what
+  `command::RequestBuilder::body_json` puts on the wire.
+
+  The protocol builders are how a test names the request it expects, but
+  `HttpRequestBuilder::json` sets only the body, where the capability side sets the
+  mime too (via `Body::from_json`). Mirroring a real request therefore failed on
+  the `content-type` header alone unless you knew to add it by hand:
+
+  ```rust
+  // before — passes only with the header spelled out
+  assert_eq!(
+      &request.operation,
+      &HttpRequest::post(URL)
+          .header("content-type", "application/json")
+          .json(&body)
+          .build()
+  );
+
+  // after
+  assert_eq!(&request.operation, &HttpRequest::post(URL).body_json(&body).build());
+  ```
+
+  `json` is unchanged and still sets only the body: these builders construct
+  protocol-layer values, so they must stay able to express a JSON body with no
+  `content-type` (or a malformed one), and changing `json` would silently break
+  tests that already add the header themselves.
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_http-v0.18.0...crux_http-v0.19.0) - 2026-07-06
 
 > **📖 See the [Migrating `crux_http` to native `http` types](https://redbadger.github.io/crux/guide/migrate-crux-http.html)
