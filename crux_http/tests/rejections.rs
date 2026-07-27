@@ -57,7 +57,7 @@ mod shared {
 
 use crux_http::{
     protocol::{HttpResponse, HttpResult},
-    testing::rejection,
+    testing::{rejection, rejection_from},
 };
 use shared::{Effect, Event, Leave, URL, book, message};
 
@@ -113,15 +113,54 @@ fn the_error_body_survives_a_typed_expectation() {
     );
 }
 
+/// `Retry-After` is only in the headers — not in the status, not in the body — so this is
+/// the case that proves the headers have to survive the conversion into an error.
+#[test]
+fn a_rejections_headers_reach_the_app() {
+    let error = resolve(
+        HttpResponse::status(503)
+            .header("retry-after", "120")
+            .header("content-type", "text/plain")
+            .body(b"maintenance until 09:00".to_vec())
+            .build(),
+    )
+    .expect_err("a 503 is never Ok");
+
+    assert_eq!(error.header("Retry-After").unwrap(), "120");
+    assert_eq!(
+        error
+            .content_type()
+            .map(|mime| mime.essence_str().to_string()),
+        Some("text/plain".to_string())
+    );
+    assert_eq!(error.body(), Some(&b"maintenance until 09:00"[..]));
+}
+
 /// The value `testing::rejection` builds is the value the machinery delivers — so a test
-/// that asserts against it is testing the live path.
+/// that asserts against it is testing the live path. With headers in play, that equality
+/// only holds for the header-carrying form.
 #[test]
 fn the_testing_helper_matches_what_the_shell_produces() {
     let body = r#"{"error":"that would create a management cycle"}"#;
 
     let from_shell = resolve(HttpResponse::status(409).body(body).build());
-
     assert_eq!(from_shell, rejection::<Leave>(409, body));
+
+    let with_headers = resolve(
+        HttpResponse::status(409)
+            .header("content-type", "application/json")
+            .body(body)
+            .build(),
+    );
+    assert_eq!(
+        with_headers,
+        rejection_from::<Leave>(
+            HttpResponse::status(409)
+                .header("content-type", "application/json")
+                .body(body)
+                .build()
+        )
+    );
 }
 
 #[test]

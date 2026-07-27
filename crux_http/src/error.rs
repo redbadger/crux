@@ -1,4 +1,5 @@
 use facet::Facet;
+use http::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error as ThisError;
 
@@ -25,9 +26,10 @@ use crate::Result;
 ///
 /// # Reading what the server said
 ///
-/// Because a rejection arrives as an error rather than a response, the server's own
-/// explanation lives on this type. [`HttpError::body`] and [`HttpError::body_json`]
-/// read it without matching on the variant's fields by hand:
+/// Because a rejection arrives as an error rather than a response, everything the server
+/// sent with it lives on this type: [`HttpError::body`] and [`HttpError::body_json`] for
+/// the body, [`HttpError::header`] and [`HttpError::content_type`] for the headers. No
+/// matching on the variant's fields required:
 ///
 /// ```
 /// # use serde::Deserialize;
@@ -80,12 +82,31 @@ pub enum HttpError {
     /// explanation. [`Display`](std::fmt::Display) shows only those two, so an app that
     /// reports `error.to_string()` to a user shows `"HTTP error 409: 409 Conflict"` and
     /// discards whatever the server took the trouble to say.
+    ///
+    /// `headers` are the rejected response's headers, because a rejection's *policy* often
+    /// lives there and nowhere else: `Retry-After` on a 429 or 503, `WWW-Authenticate` on
+    /// a 401, rate-limit headers, or the `Content-Type` that says whether the body is JSON,
+    /// HTML or prose. Read them with [`HttpError::header`], [`HttpError::content_type`] or
+    /// [`HttpError::headers`]. `None` when the error was raised with no response to describe
+    /// — a transport failure, or a status code that wasn't valid HTTP.
+    ///
+    /// (The map is boxed only to keep `HttpError` small: a bare `HeaderMap` is 96 bytes, and
+    /// this type is the `Err` of nearly every function in the crate.)
+    ///
+    /// The variant is `#[non_exhaustive]`: only `crux_http` constructs it, so that what a
+    /// rejection carries can grow without breaking you. Match it with `{ code, .. }` and
+    /// read the rest through the accessors above; in tests, build one with
+    /// [`rejection`](crate::testing::rejection) or
+    /// [`rejection_from`](crate::testing::rejection_from).
     #[error("HTTP error {code}: {message}")]
     #[serde(skip)]
     #[facet(skip)]
+    #[non_exhaustive]
     Http {
         code: u16,
         message: String,
+        #[facet(opaque)]
+        headers: Option<Box<HeaderMap>>,
         body: Option<Vec<u8>>,
     },
     /// A response body could not be deserialized (or a request body serialized).
@@ -148,6 +169,80 @@ impl HttpError {
         }
     }
 
+    /// A header from the rejected response.
+    ///
+    /// Some of what an app needs to *act on* a rejection is only in the headers:
+    /// `Retry-After` on a 429 or 503, `WWW-Authenticate` on a 401, rate-limit headers.
+    /// None of it can be recovered from the status or the body.
+    ///
+    /// Returns `None` for errors with no response behind them, and for a name the response
+    /// didn't carry. Lookup is case-insensitive, as HTTP requires.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crux_http::{protocol::HttpResponse, testing::rejection_from};
+    /// let error = rejection_from::<Vec<u8>>(
+    ///     HttpResponse::status(429).header("retry-after", "30").build(),
+    /// )
+    /// .expect_err("a 429 is never Ok");
+    ///
+    /// assert_eq!(error.header("Retry-After").unwrap(), "30");
+    /// ```
+    #[must_use]
+    pub fn header(&self, name: impl http::header::AsHeaderName) -> Option<&HeaderValue> {
+        self.headers()?.get(name)
+    }
+
+    /// All headers from the rejected response.
+    ///
+    /// The escape hatch for anything [`HttpError::header`] and
+    /// [`HttpError::content_type`] don't cover — multi-value headers, iteration, or
+    /// forwarding the lot to a logger.
+    ///
+    /// `None` for errors with no response behind them, which is a different thing from
+    /// `Some(&empty_map)`: a response that sent no headers at all.
+    #[must_use]
+    pub fn headers(&self) -> Option<&HeaderMap> {
+        match self {
+            Self::Http { headers, .. } => headers.as_deref(),
+            _ => None,
+        }
+    }
+
+    /// The content type of the error response body, if it declared one.
+    ///
+    /// Tells an error envelope (`application/json`) from an RFC 7807 document
+    /// (`application/problem+json`) from a proxy's HTML page (`text/html`) — which decides
+    /// whether it is worth handing the body to [`HttpError::body_json`], and whether the
+    /// body is safe to show a user as text.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crux_http::{protocol::HttpResponse, testing::rejection_from};
+    /// let error = rejection_from::<Vec<u8>>(
+    ///     HttpResponse::status(400)
+    ///         .header("content-type", "application/problem+json")
+    ///         .body(br#"{"detail":"nope"}"#.to_vec())
+    ///         .build(),
+    /// )
+    /// .expect_err("a 400 is never Ok");
+    ///
+    /// assert_eq!(
+    ///     error.content_type().map(|mime| mime.to_string()),
+    ///     Some("application/problem+json".to_string())
+    /// );
+    /// ```
+    #[must_use]
+    pub fn content_type(&self) -> Option<mime::Mime> {
+        self.header(http::header::CONTENT_TYPE)?
+            .to_str()
+            .ok()?
+            .parse()
+            .ok()
+    }
+
     /// Deserialize the error response body from JSON.
     ///
     /// Works for any JSON error shape — deserialize into your API's own envelope, or
@@ -191,6 +286,8 @@ impl From<http_types::Error> for HttpError {
         Self::Http {
             code: e.status().into(),
             message: e.to_string(),
+            // An `http_types::Error` is a status and a message; it has no response.
+            headers: None,
             body: None,
         }
     }
@@ -229,6 +326,7 @@ mod tests {
         let error = HttpError::Http {
             code: 400,
             message: "Bad Request".to_string(),
+            headers: None,
             body: None,
         };
         assert_eq!(error.to_string(), "HTTP error 400: Bad Request");
@@ -240,6 +338,7 @@ mod tests {
         let error = HttpError::Http {
             code: 404u16,
             message: "Not Found".to_string(),
+            headers: None,
             body: None,
         };
         assert_eq!(error.to_string(), "HTTP error 404: Not Found");
@@ -270,9 +369,15 @@ mod tests {
 
     #[test]
     fn accessors_read_the_error_response() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            http::header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        );
         let error = HttpError::Http {
             code: 409,
             message: "409 Conflict".to_string(),
+            headers: Some(Box::new(headers)),
             body: Some(br#"{"error":"already booked"}"#.to_vec()),
         };
 
@@ -280,6 +385,53 @@ mod tests {
         assert_eq!(error.body(), Some(&br#"{"error":"already booked"}"#[..]));
         let body: serde_json::Value = error.body_json().expect("body is JSON");
         assert_eq!(body["error"], "already booked");
+        assert_eq!(error.content_type(), Some(mime::APPLICATION_JSON));
+        // HTTP header names are case-insensitive; HeaderMap handles that for us.
+        assert_eq!(error.header("Content-Type").unwrap(), "application/json");
+        assert_eq!(error.header("x-absent"), None);
+    }
+
+    #[test]
+    fn there_are_no_headers_without_a_response() {
+        // A transport error never had a response, so there is nothing to describe.
+        assert_eq!(HttpError::Timeout.header("retry-after"), None);
+        assert_eq!(HttpError::Timeout.headers(), None);
+        assert_eq!(HttpError::Timeout.content_type(), None);
+
+        // Nor does a status the crate rejected before a response existed.
+        let error = HttpError::Http {
+            code: 999,
+            message: "invalid HTTP status code: 999".to_string(),
+            headers: None,
+            body: None,
+        };
+        assert_eq!(error.headers(), None);
+        assert_eq!(error.content_type(), None);
+
+        // A real response with no headers is `Some`, but empty — the two are different
+        // things, and only the accessors' `None` conflates them.
+        let error = HttpError::Http {
+            code: 500,
+            message: "500 Internal Server Error".to_string(),
+            headers: Some(Box::default()),
+            body: None,
+        };
+        assert!(error.headers().expect("a response's headers").is_empty());
+        assert_eq!(error.content_type(), None);
+    }
+
+    /// `Retry-After` is the case that cannot be recovered any other way: it is not in the
+    /// status, and not in the body.
+    #[test]
+    fn retry_after_survives_on_the_error() {
+        let error = crate::testing::rejection_from::<Vec<u8>>(
+            crate::HttpResponse::status(429)
+                .header("retry-after", "30")
+                .build(),
+        )
+        .expect_err("a 429 is never Ok");
+
+        assert_eq!(error.header("retry-after").unwrap(), "30");
     }
 
     #[test]
@@ -297,6 +449,7 @@ mod tests {
         let error = HttpError::Http {
             code: 500,
             message: "500 Internal Server Error".to_string(),
+            headers: None,
             body: None,
         };
         assert_eq!(error.code(), Some(500));
@@ -308,6 +461,7 @@ mod tests {
         let error = HttpError::Http {
             code: 404,
             message: "404 Not Found".to_string(),
+            headers: None,
             body: Some(vec![]),
         };
         assert_eq!(error.body(), None);
@@ -318,6 +472,7 @@ mod tests {
         let error = HttpError::Http {
             code: 502,
             message: "502 Bad Gateway".to_string(),
+            headers: None,
             body: Some(b"<html>nginx</html>".to_vec()),
         };
         assert!(matches!(

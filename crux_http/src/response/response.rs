@@ -10,8 +10,9 @@ use std::{fmt, ops::Index};
 ///
 /// Holding one of these means the server did **not** reject the request. `crux_http`
 /// converts every 4xx and 5xx response into an [`HttpError::Http`](crate::HttpError::Http)
-/// — keeping the body — and delivers it on the `Err` side, so [`status`](Self::status) is
-/// always a 1xx, 2xx or 3xx. A `match` arm that checks it for failure is dead code:
+/// — keeping the headers and body — and delivers it on the `Err` side, so
+/// [`status`](Self::status) is always a 1xx, 2xx or 3xx. A `match` arm that checks it for
+/// failure is dead code:
 ///
 /// ```
 /// # use crux_http::{HttpError, Response};
@@ -55,22 +56,22 @@ impl<Body> Response<Body> {
     /// Create a new instance.
     ///
     /// A 4xx or 5xx status is not a response as far as the app is concerned: it becomes
-    /// [`HttpError::Http`], carrying the body so the caller can still read what the
-    /// server said. This is the single place that invariant is established — see the
+    /// [`HttpError::Http`], carrying the headers and body so the caller can still read what
+    /// the server said. This is the single place that invariant is established — see the
     /// [type docs](Response) for what it means for app and test code.
     pub(crate) fn new(mut res: super::RawResponse) -> Result<Response<Vec<u8>>> {
         let body = res.body_bytes()?;
         let status = res.status();
+        let headers = res.as_ref().clone();
 
         if status.is_client_error() || status.is_server_error() {
             return Err(HttpError::Http {
                 code: status.as_u16(),
                 message: status.to_string(),
+                headers: Some(Box::new(headers)),
                 body: Some(body),
             });
         }
-
-        let headers = res.as_ref().clone();
 
         Ok(Response {
             status,
@@ -277,11 +278,17 @@ impl Response<Vec<u8>> {
     /// # Ok(()) }
     /// ```
     pub fn body_bytes(&mut self) -> Result<Vec<u8>> {
-        self.body.take().ok_or_else(|| HttpError::Http {
-            code: self.status().as_u16(),
-            message: "Body had no bytes".to_string(),
-            body: None,
-        })
+        // Deliberately a `match` rather than `ok_or_else`: the closure would have to
+        // capture the cloned headers, cloning them on every successful read too.
+        match self.body.take() {
+            Some(body) => Ok(body),
+            None => Err(HttpError::Http {
+                code: self.status().as_u16(),
+                message: "Body had no bytes".to_string(),
+                headers: Some(Box::new(self.headers.clone())),
+                body: None,
+            }),
+        }
     }
 
     /// Reads the entire response body into a string.

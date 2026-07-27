@@ -35,6 +35,22 @@ and this project adheres to
   skipped for an error status, so the raw error body survives even for a request
   built with `expect_json::<T>()`; there is now a test pinning that.
 
+- **`HttpError::header`, `HttpError::headers` and `HttpError::content_type`** — read the
+  headers of the response that was rejected.
+
+  A rejection's *policy* often lives only in its headers, and none of it is recoverable
+  from the status or the body: `Retry-After` on a 429 or 503, `WWW-Authenticate` on a 401
+  (expired token vs insufficient scope), rate-limit headers, or the `Content-Type` that
+  says whether an error body is JSON, an RFC 7807 document, or a proxy's HTML page.
+  `Response::new` used to drop the `HeaderMap` on the error branch, and since `crux_http`
+  middleware does not run in the command API, an app had no way to see any of it.
+
+  ```rust
+  if let Some(retry_after) = error.header("retry-after") { /* back off politely */ }
+  ```
+
+  This adds a `headers` field to `HttpError::Http` — see the breaking change below.
+
 - **`crux_http::testing::rejection(status, body)`** — builds the
   `crux_http::Result<Response<Body>>` a feature receives when the server rejects a
   request, via the same conversion a real shell response takes:
@@ -46,9 +62,19 @@ and this project adheres to
   Use it wherever you would previously have fabricated `Ok(response_with_409)` (see
   the breaking change below).
 
-- `crux_http::testing` now has module docs, stating the invariant the two builders
-  divide: `ResponseBuilder` for the `Ok(Response)` of a successful exchange,
-  `rejection` for the `Err` of a rejection. There is no third case.
+- **`crux_http::testing::rejection_from(HttpResponse)`** — the header-carrying form,
+  taking the same protocol response you would resolve a request with in an end-to-end
+  test, so both styles of test describe a rejection the same way:
+
+  ```rust
+  let result = rejection_from(HttpResponse::status(429).header("retry-after", "30").build());
+  ```
+
+  `rejection(status, body)` is unchanged, and is now sugar over it.
+
+- `crux_http::testing` now has module docs, stating the invariant the builders divide:
+  `ResponseBuilder` for the `Ok(Response)` of a successful exchange, `rejection` /
+  `rejection_from` for the `Err` of a rejection. There is no third case.
 
 - `HttpRequestBuilder::body_json`, which sets a JSON body **and**
   `content-type: application/json`, mirroring what
@@ -79,6 +105,37 @@ and this project adheres to
   tests that already add the header themselves.
 
 ### 💥 Breaking Changes
+
+- **`HttpError::Http` has a new `headers` field**, so that a rejection's headers reach the
+  app (see `HttpError::header` above). It is `Option<Box<HeaderMap>>`: `None` when the error
+  was raised with no response to describe (a transport failure, or a status code that wasn't
+  valid HTTP), and boxed only because a bare `HeaderMap` is 96 bytes and this type is the
+  `Err` of nearly every function in the crate — inline, it pushed `HttpError` to 160 bytes
+  and tripped `clippy::result_large_err` across the crate.
+
+  `match` arms that name only the fields they use are unaffected:
+
+  ```rust
+  Err(HttpError::Http { code, .. }) if code == 401 => { … }      // still compiles
+  ```
+
+  The variant is also now **`#[non_exhaustive]`**, so this is the last time a new field
+  breaks you: only `crux_http` constructs it, and what a rejection carries can grow behind
+  the accessors. Code that *constructed* it — in practice, tests — must switch to
+  `crux_http::testing::rejection` / `rejection_from`, which build it through the real
+  conversion:
+
+  ```rust
+  // before
+  let error = HttpError::Http { code: 409, message: "409 Conflict".into(), body: Some(body) };
+  // after
+  let error = crux_http::testing::rejection::<Vec<u8>>(409, body).unwrap_err();
+  ```
+
+  Note that `HttpError`'s `PartialEq` now compares headers too, so a hand-built variant no
+  longer equals the real thing: `rejection(409, body)` carries `Some(<empty map>)`, which is
+  not equal to `headers: None`. Another reason to compare against `rejection` /
+  `rejection_from` rather than a value assembled by hand.
 
 - **`ResponseBuilder::with_status` now panics for a 4xx or 5xx status.** It could
   previously build a `Response` carrying an error status — a value no app can ever

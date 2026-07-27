@@ -40,16 +40,63 @@ use crate::{RawResponse, Response, Result, protocol::HttpResponse};
 /// (4xx) or server (5xx) error — for any other status a feature receives
 /// `Ok(Response)`, which is what [`ResponseBuilder`](super::ResponseBuilder) builds.
 pub fn rejection<Body>(status: u16, body: impl AsRef<[u8]>) -> Result<Response<Body>> {
-    let response = HttpResponse::status(status)
-        .body(body.as_ref().to_vec())
-        .build();
-    let raw = RawResponse::try_from(response)
-        .expect("rejection called with an out-of-range status code (must be 100–999)");
+    build_rejection(
+        "rejection",
+        HttpResponse::status(status)
+            .body(body.as_ref().to_vec())
+            .build(),
+    )
+}
+
+/// Build the [`crux_http::Result`](crate::Result) a feature receives for a rejection, from
+/// a full protocol response.
+///
+/// Use this over [`rejection`] when the rejection's *headers* are what the feature acts on
+/// — `Retry-After`, `WWW-Authenticate`, `Content-Type` — since those are readable from the
+/// error via [`HttpError::header`](crate::HttpError::header) and
+/// [`HttpError::content_type`](crate::HttpError::content_type):
+///
+/// ```
+/// # use crux_http::{protocol::HttpResponse, testing::rejection_from};
+/// let result = rejection_from::<Vec<u8>>(
+///     HttpResponse::status(503)
+///         .header("retry-after", "120")
+///         .body(b"maintenance".to_vec())
+///         .build(),
+/// );
+///
+/// let error = result.expect_err("a 503 is never Ok");
+/// assert_eq!(error.header("retry-after").unwrap(), "120");
+/// assert_eq!(error.body(), Some(&b"maintenance"[..]));
+/// ```
+///
+/// It takes the same [`HttpResponse`] you would resolve a request with in an end-to-end
+/// test, so the two styles of test describe a rejection the same way.
+///
+/// # Errors
+///
+/// Always `Err`, for the reason given on [`rejection`].
+///
+/// # Panics
+///
+/// Panics if the response's status is outside the valid HTTP range (100–999), or if it is
+/// not a client (4xx) or server (5xx) error.
+pub fn rejection_from<Body>(response: HttpResponse) -> Result<Response<Body>> {
+    build_rejection("rejection_from", response)
+}
+
+/// The shared body of [`rejection`] and [`rejection_from`]. `caller` names whichever of
+/// them the test actually called, so a panic points at the right function.
+fn build_rejection<Body>(caller: &str, response: HttpResponse) -> Result<Response<Body>> {
+    let status = response.status;
+    let raw = RawResponse::try_from(response).unwrap_or_else(|_| {
+        panic!("{caller} called with an out-of-range status code ({status}, must be 100–999)")
+    });
 
     match Response::<Vec<u8>>::new(raw) {
         Err(error) => Err(error),
         Ok(_) => panic!(
-            "rejection called with status {status}, which is not a client (4xx) or server (5xx) \
+            "{caller} called with status {status}, which is not a client (4xx) or server (5xx) \
              error — a feature receives that as Ok(Response), which ResponseBuilder builds"
         ),
     }
@@ -59,7 +106,7 @@ pub fn rejection<Body>(status: u16, body: impl AsRef<[u8]>) -> Result<Response<B
 mod tests {
     use crate::{HttpError, protocol::HttpResponse};
 
-    use super::rejection;
+    use super::{rejection, rejection_from};
 
     #[test]
     fn carries_code_reason_and_body() {
@@ -69,6 +116,7 @@ mod tests {
         let HttpError::Http {
             code,
             message,
+            headers,
             body,
         } = error
         else {
@@ -76,7 +124,42 @@ mod tests {
         };
         assert_eq!(code, 409);
         assert_eq!(message, "409 Conflict");
+        assert!(
+            headers.expect("a rejection has headers").is_empty(),
+            "rejection() sets no headers"
+        );
         assert_eq!(body.unwrap(), br#"{"error":"management cycle"}"#);
+    }
+
+    /// `rejection_from` is the header-carrying form, and must agree with `rejection` when
+    /// there are no headers to carry.
+    #[test]
+    fn rejection_is_the_header_less_case_of_rejection_from() {
+        let sugar = rejection::<Vec<u8>>(409, "nope");
+        let explicit =
+            rejection_from::<Vec<u8>>(HttpResponse::status(409).body(b"nope".to_vec()).build());
+
+        assert_eq!(sugar, explicit);
+    }
+
+    #[test]
+    fn rejection_from_keeps_the_headers() {
+        let error = rejection_from::<Vec<u8>>(
+            HttpResponse::status(401)
+                .header("www-authenticate", r#"Bearer error="invalid_token""#)
+                .header("content-type", "application/problem+json")
+                .build(),
+        )
+        .expect_err("a 401 is never Ok");
+
+        assert_eq!(
+            error.header("www-authenticate").unwrap(),
+            r#"Bearer error="invalid_token""#
+        );
+        assert_eq!(
+            error.content_type().map(|mime| mime.to_string()),
+            Some("application/problem+json".to_string())
+        );
     }
 
     /// The whole point of the helper: what it produces must be indistinguishable from
@@ -106,13 +189,20 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "which is not a client (4xx) or server (5xx) error")]
+    #[should_panic(expected = "rejection called with status 200, which is not a client")]
     fn refuses_a_success_status() {
         let _ = rejection::<Vec<u8>>(200, "");
     }
 
+    /// A panic must name the function the test called, not the one it delegates to.
     #[test]
-    #[should_panic(expected = "out-of-range status code")]
+    #[should_panic(expected = "rejection_from called with status 200, which is not a client")]
+    fn rejection_from_refuses_a_success_status() {
+        let _ = rejection_from::<Vec<u8>>(HttpResponse::status(200).build());
+    }
+
+    #[test]
+    #[should_panic(expected = "rejection called with an out-of-range status code (99")]
     fn refuses_an_out_of_range_status() {
         let _ = rejection::<Vec<u8>>(99, "");
     }

@@ -293,6 +293,8 @@ impl TryFrom<HttpResponse> for RawResponse {
         let status = StatusCode::from_u16(status_u16).map_err(|_| HttpError::Http {
             code: status_u16,
             message: format!("invalid HTTP status code: {status_u16}"),
+            // The response never became one, so there are no headers to describe it with.
+            headers: None,
             body: None,
         })?;
 
