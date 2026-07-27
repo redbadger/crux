@@ -1,6 +1,8 @@
 use facet::Facet;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error as ThisError;
+
+use crate::Result;
 
 /// An error produced when an HTTP request fails.
 ///
@@ -17,8 +19,34 @@ use thiserror::Error as ThisError;
 ///   a 4xx or 5xx status. At the *protocol* level these arrive as
 ///   [`HttpResult::Ok`](crate::protocol::HttpResult::Ok); `Response::new()` converts
 ///   them here, so app code using `crux_http::Result<Response<T>>` will see them as
-///   `Err(HttpError::Http { code, .. })`.
+///   `Err(HttpError::Http { code, .. })` — **never** as `Ok(response)` with an error
+///   status.
 /// - [`Json`](HttpError::Json) — produced when response body deserialisation fails.
+///
+/// # Reading what the server said
+///
+/// Because a rejection arrives as an error rather than a response, the server's own
+/// explanation lives on this type. [`HttpError::body`] and [`HttpError::body_json`]
+/// read it without matching on the variant's fields by hand:
+///
+/// ```
+/// # use serde::Deserialize;
+/// #[derive(Deserialize)]
+/// struct ApiError {
+///     error: String,
+/// }
+///
+/// // the `crux_http::Result` a feature receives when the server rejects a request
+/// let result: crux_http::Result<crux_http::Response<Vec<u8>>> =
+///     crux_http::testing::rejection(409, r#"{"error":"that overlaps a booked day"}"#);
+///
+/// let error = result.expect_err("a 409 is never Ok");
+/// assert_eq!(error.code(), Some(409));
+/// assert_eq!(
+///     error.body_json::<ApiError>().unwrap().error,
+///     "that overlaps a booked day"
+/// );
+/// ```
 #[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Clone, ThisError, Debug)]
 #[repr(C)]
 pub enum HttpError {
@@ -34,6 +62,24 @@ pub enum HttpError {
     Timeout,
 
     // Internal only — not serialized, never sent over the FFI boundary.
+    /// The exchange completed, but the server answered with a 4xx or 5xx status.
+    ///
+    /// This is what a feature receives *instead of* a [`Response`](crate::Response)
+    /// when the server rejects a request, so it is the only place a rejection can be
+    /// handled.
+    ///
+    /// `body` is the response body exactly as the server sent it. Body decoding
+    /// (`expect_json`, `expect_string`) is skipped for an error status, so a server's
+    /// error envelope — `{"error": "…"}`, an RFC 7807 `problem+json` document, a plain
+    /// sentence — survives here even for a request built with
+    /// [`expect_json`](crate::command::RequestBuilder::expect_json). Read it with
+    /// [`HttpError::body`] or [`HttpError::body_json`] rather than destructuring.
+    ///
+    /// `code` is the status code and `message` its canonical reason phrase (e.g.
+    /// `"409 Conflict"`) — a description of the status, never the server's own
+    /// explanation. [`Display`](std::fmt::Display) shows only those two, so an app that
+    /// reports `error.to_string()` to a user shows `"HTTP error 409: 409 Conflict"` and
+    /// discards whatever the server took the trouble to say.
     #[error("HTTP error {code}: {message}")]
     #[serde(skip)]
     #[facet(skip)]
@@ -42,10 +88,101 @@ pub enum HttpError {
         message: String,
         body: Option<Vec<u8>>,
     },
+    /// A response body could not be deserialized (or a request body serialized).
     #[error("JSON serialization error: {0}")]
     #[serde(skip)]
     #[facet(skip)]
     Json(String),
+}
+
+impl HttpError {
+    /// The status code of the response this error came from, if there was one.
+    ///
+    /// Normally the 4xx or 5xx the server rejected the request with. It can also be a
+    /// *non-error* status: [`Response::body_bytes`](crate::Response::body_bytes) reports an
+    /// already-taken body as an `Http` error carrying that response's own status, so `Some`
+    /// is not by itself proof of a rejection — test the value if you need one.
+    ///
+    /// `None` for errors that never had a response at all: transport failures and body
+    /// deserialisation failures.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use crux_http::HttpError;
+    /// let error: HttpError = crux_http::testing::rejection::<Vec<u8>>(404, "")
+    ///     .expect_err("a 404 is never Ok");
+    /// assert_eq!(error.code(), Some(404));
+    ///
+    /// assert_eq!(HttpError::Timeout.code(), None);
+    /// ```
+    #[must_use]
+    pub const fn code(&self) -> Option<u16> {
+        match self {
+            Self::Http { code, .. } => Some(*code),
+            _ => None,
+        }
+    }
+
+    /// The raw response body that came with an error status, if there was one.
+    ///
+    /// This is the server's own account of why it rejected the request — usually far
+    /// more useful to a user than [`Display`](std::fmt::Display), which can only report
+    /// the status. Returns `None` for errors that carry no body (transport failures, and
+    /// responses with an empty body).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let error = crux_http::testing::rejection::<Vec<u8>>(422, "name is required")
+    ///     .expect_err("a 422 is never Ok");
+    /// assert_eq!(error.body(), Some(&b"name is required"[..]));
+    /// ```
+    #[must_use]
+    pub fn body(&self) -> Option<&[u8]> {
+        match self {
+            Self::Http {
+                body: Some(body), ..
+            } if !body.is_empty() => Some(body),
+            _ => None,
+        }
+    }
+
+    /// Deserialize the error response body from JSON.
+    ///
+    /// Works for any JSON error shape — deserialize into your API's own envelope, or
+    /// into an RFC 7807 `problem+json` struct, or into [`serde_json::Value`] if you
+    /// don't know which you'll get.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HttpError::Json`] if the error carries no body, or if the body is not
+    /// valid JSON for `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use serde::Deserialize;
+    /// #[derive(Deserialize)]
+    /// struct Problem {
+    ///     detail: String,
+    /// }
+    ///
+    /// let error = crux_http::testing::rejection::<Vec<u8>>(
+    ///     409,
+    ///     r#"{"title":"Conflict","detail":"that would create a management cycle"}"#,
+    /// )
+    /// .expect_err("a 409 is never Ok");
+    ///
+    /// let problem: Problem = error.body_json().unwrap();
+    /// assert_eq!(problem.detail, "that would create a management cycle");
+    /// ```
+    pub fn body_json<T: DeserializeOwned>(&self) -> Result<T> {
+        let body = self
+            .body()
+            .ok_or_else(|| Self::Json("error has no response body".to_string()))?;
+        serde_json::from_slice(body).map_err(Self::from)
+    }
 }
 
 #[cfg(feature = "http-types")]
@@ -129,6 +266,66 @@ mod tests {
         let url_err = url::Url::parse("not a url").unwrap_err();
         let http_err = HttpError::from(url_err);
         assert!(matches!(http_err, HttpError::Url(_)));
+    }
+
+    #[test]
+    fn accessors_read_the_error_response() {
+        let error = HttpError::Http {
+            code: 409,
+            message: "409 Conflict".to_string(),
+            body: Some(br#"{"error":"already booked"}"#.to_vec()),
+        };
+
+        assert_eq!(error.code(), Some(409));
+        assert_eq!(error.body(), Some(&br#"{"error":"already booked"}"#[..]));
+        let body: serde_json::Value = error.body_json().expect("body is JSON");
+        assert_eq!(body["error"], "already booked");
+    }
+
+    #[test]
+    fn accessors_are_empty_for_errors_without_a_response() {
+        // A transport error never had a response to read.
+        let error = HttpError::Timeout;
+        assert_eq!(error.code(), None);
+        assert_eq!(error.body(), None);
+        assert!(matches!(
+            error.body_json::<serde_json::Value>(),
+            Err(HttpError::Json(_))
+        ));
+
+        // Nor did an error status the crate raised itself, e.g. a body already taken.
+        let error = HttpError::Http {
+            code: 500,
+            message: "500 Internal Server Error".to_string(),
+            body: None,
+        };
+        assert_eq!(error.code(), Some(500));
+        assert_eq!(error.body(), None);
+    }
+
+    #[test]
+    fn an_empty_body_reads_as_no_body() {
+        let error = HttpError::Http {
+            code: 404,
+            message: "404 Not Found".to_string(),
+            body: Some(vec![]),
+        };
+        assert_eq!(error.body(), None);
+    }
+
+    #[test]
+    fn body_json_reports_a_body_that_is_not_json() {
+        let error = HttpError::Http {
+            code: 502,
+            message: "502 Bad Gateway".to_string(),
+            body: Some(b"<html>nginx</html>".to_vec()),
+        };
+        assert!(matches!(
+            error.body_json::<serde_json::Value>(),
+            Err(HttpError::Json(_))
+        ));
+        // ... but the raw body is still there to log or display.
+        assert_eq!(error.body(), Some(&b"<html>nginx</html>"[..]));
     }
 
     #[test]
