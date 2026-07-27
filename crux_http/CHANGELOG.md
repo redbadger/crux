@@ -10,6 +10,46 @@ and this project adheres to
 
 ### Added
 
+- **`HttpError::body`, `HttpError::body_json` and `HttpError::code`** — read what the
+  server said when it rejected a request, without destructuring the variant.
+
+  A 4xx/5xx arrives as `Err(HttpError::Http { code, message, body })`, and `body` has
+  always held the server's own explanation. But `Display` shows only the status
+  (`"HTTP error 409: 409 Conflict"`), so getting at the message meant hand-rolling
+  this in every app:
+
+  ```rust
+  // before
+  let crux_http::HttpError::Http { body: Some(body), .. } = error else { return None };
+  serde_json::from_slice::<serde_json::Value>(body)
+      .ok()
+      .and_then(|b| b.get("error").and_then(|e| e.as_str()).map(String::from))
+
+  // after
+  error.body_json::<serde_json::Value>().ok()
+      .and_then(|b| b["error"].as_str().map(String::from))
+  ```
+
+  `body_json` deserializes into whatever shape your API uses — your own envelope, an
+  RFC 7807 `problem+json` struct, or `serde_json::Value`. Note that body decoding is
+  skipped for an error status, so the raw error body survives even for a request
+  built with `expect_json::<T>()`; there is now a test pinning that.
+
+- **`crux_http::testing::rejection(status, body)`** — builds the
+  `crux_http::Result<Response<Body>>` a feature receives when the server rejects a
+  request, via the same conversion a real shell response takes:
+
+  ```rust
+  let event = Event::Saved(crux_http::testing::rejection(409, r#"{"error":"…"}"#));
+  ```
+
+  Use it wherever you would previously have fabricated `Ok(response_with_409)` (see
+  the breaking change below).
+
+- `crux_http::testing` now has module docs, stating the invariant the two builders
+  divide: `ResponseBuilder` for the `Ok(Response)` of a successful exchange,
+  `rejection` for the `Err` of a rejection. There is no third case.
+
 - `HttpRequestBuilder::body_json`, which sets a JSON body **and**
   `content-type: application/json`, mirroring what
   `command::RequestBuilder::body_json` puts on the wire.
@@ -37,6 +77,52 @@ and this project adheres to
   protocol-layer values, so they must stay able to express a JSON body with no
   `content-type` (or a malformed one), and changing `json` would silently break
   tests that already add the header themselves.
+
+### 💥 Breaking Changes
+
+- **`ResponseBuilder::with_status` now panics for a 4xx or 5xx status.** It could
+  previously build a `Response` carrying an error status — a value no app can ever
+  receive, because `crux_http` converts those responses into
+  `Err(HttpError::Http { .. })` before the event is sent.
+
+  This mattered in practice. A downstream app had eight call sites shaped like this:
+
+  ```rust
+  match result {
+      Ok(mut response) => {
+          if response.status().is_success() { /* … */ }
+          else { show(api::error_reason(&mut response)) }  // unreachable
+      }
+      Err(error) => fail(&error),  // "HTTP error 409: 409 Conflict"
+  }
+  ```
+
+  The `else` branch cannot run, so users saw the bare status instead of the sentence
+  the service had written for them. Seven of those sites had **passing tests** for the
+  message, because each test built the impossible value —
+  `Ok(ResponseBuilder::with_status(409).body(…).build())` — and asserted the dead
+  branch. Code review passed all eight.
+
+  The panic turns exactly those tests red, with a message naming the replacement.
+  Migration is mechanical:
+
+  ```rust
+  // before — asserts a state the app can never observe
+  let result = Ok(ResponseBuilder::with_status(409).body(body).build());
+  // after — what the app really receives
+  let result = crux_http::testing::rejection(409, body);
+  ```
+
+  Non-error statuses (1xx, 2xx, 3xx) are unaffected, including non-standard ones.
+  Nothing about the runtime behaviour of a request changes — this is a test-helper
+  guard rail plus documentation of an invariant `crux_http` already had.
+
+### Documentation
+
+- `Response`, `Response::status`, `HttpError::Http` and the crate root now state the
+  invariant plainly: an `Ok(Response)` never carries a 4xx or 5xx status, so a
+  rejection can only be handled on the `Err` side. The `Response` docs carry the
+  correct match shape as a compiled example.
 
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_http-v0.18.0...crux_http-v0.19.0) - 2026-07-06
 
