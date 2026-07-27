@@ -4,6 +4,16 @@
 //! `crux_http` allows Crux apps to make HTTP requests by asking the Shell to perform them.
 //!
 //! This is still work in progress and large parts of HTTP are not yet supported.
+//!
+//! # Errors and rejections
+//!
+//! A request resolves to a [`Result<Response<T>>`](Result), and a 4xx or 5xx response is
+//! on the **`Err`** side of it: `crux_http` turns those into
+//! [`HttpError::Http`] — body included — before the event reaches the
+//! app, so [`Response::status`] is never an error status. Read the server's own
+//! explanation of a rejection with [`HttpError::body`] or [`HttpError::body_json`].
+//! [`Response`] documents the shape to write, and [`testing`] the two values a test
+//! should build.
 // #![warn(missing_docs)]
 
 mod config;
