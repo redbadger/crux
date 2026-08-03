@@ -32,9 +32,9 @@ impl CoreFFI {
     /// If the event cannot be deserialized.
     /// In production you should handle the error properly.
     #[must_use]
-    pub fn update(&self, data: &[u8]) -> Vec<u8> {
+    pub fn update(&self, data: Vec<u8>) -> Vec<u8> {
         let mut effects = Vec::new();
-        match self.core.update(data, &mut effects) {
+        match self.core.update(&data, &mut effects) {
             Ok(()) => effects,
             Err(e) => panic!("{e}"),
         }
@@ -45,32 +45,12 @@ impl CoreFFI {
     /// If the `data` cannot be deserialized into an effect or the `effect_id` is invalid.
     /// In production you should handle the error properly.
     #[must_use]
-    pub fn resolve(&self, id: u32, data: &[u8]) -> Vec<u8> {
+    pub fn resolve(&self, id: u32, data: Vec<u8>) -> Vec<u8> {
         let mut effects = Vec::new();
-        match self.core.resolve(EffectId(id), data, &mut effects) {
+        match self.core.resolve(EffectId(id), &data, &mut effects) {
             Ok(()) => effects,
             Err(e) => panic!("{e}"),
         }
-    }
-
-    /// Send an event to the app using owned bytes for generated C# bindings.
-    /// # Panics
-    /// If the event cannot be deserialized.
-    /// In production you should handle the error properly.
-    #[must_use]
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn update_bytes(&self, data: Vec<u8>) -> Vec<u8> {
-        self.update(&data)
-    }
-
-    /// Resolve an effect using owned bytes for generated C# bindings.
-    /// # Panics
-    /// If the `data` cannot be deserialized into an effect or the `effect_id` is invalid.
-    /// In production you should handle the error properly.
-    #[must_use]
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn resolve_bytes(&self, id: u32, data: Vec<u8>) -> Vec<u8> {
-        self.resolve(id, &data)
     }
 
     /// Get the current `ViewModel`.

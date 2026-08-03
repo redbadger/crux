@@ -32,7 +32,7 @@ that it can be referenced from our code.
 To do this, we'll use BoltFFI, which you can install like this:
 
 ```sh
-cargo install boltffi_cli --version '=0.25.2' --locked
+cargo install boltffi_cli --version '=0.29.3' --locked
 brew install binaryen # provides wasm-opt
 ```
 

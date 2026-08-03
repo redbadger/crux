@@ -53,7 +53,7 @@ a Swift package for our shared library, which we can add in Xcode. Install the
 matching CLI with
 
 ```bash
-cargo install boltffi_cli --version '=0.25.2' --locked
+cargo install boltffi_cli --version '=0.29.3' --locked
 ```
 
 To run the various steps, we'll also use the [Just]() task runner.

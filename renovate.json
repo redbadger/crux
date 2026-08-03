@@ -77,7 +77,7 @@
       "description": "Pin BoltFFI while generated shell artifacts are migrated together",
       "matchPackageNames": ["boltffi", "boltffi_cli"],
       "matchManagers": ["cargo"],
-      "allowedVersions": "0.25.2"
+      "allowedVersions": "0.29.3"
     },
     {
       "description": "Pin facet to 0.44 — aligns with facet_generate 0.17",

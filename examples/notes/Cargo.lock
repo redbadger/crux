@@ -128,9 +128,9 @@ dependencies = [
 
 [[package]]
 name = "boltffi"
-version = "0.25.2"
+version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5662bb1904d8a0791e1e9c61610d1529b47c107b71d7f56a11d71c9de8bfff06"
+checksum = "6c3bb8c369cc4c6b5401513bf70bfac736b86763257d1bd0bd200ed979069d46"
 dependencies = [
  "boltffi_core",
  "boltffi_macros",
@@ -138,28 +138,29 @@ dependencies = [
 
 [[package]]
 name = "boltffi_ast"
-version = "0.25.3"
+version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce0e403c40b5c46c1e42730b8b68bf88198a7e9f37b266c5e28a6cbc55ea6e45"
+checksum = "6b30102150030def59e063c273237a7b4e938793c77de10547424e2b6edb6228"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "boltffi_binding"
-version = "0.25.3"
+version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "253d160c9254d385c67f02bac0d9f6faeb8b2d6afc28927e1ad31d2777e3d309"
+checksum = "951cae225c051983ee35b477f6161513583a2f929613ca00feb07ea0f348fd94"
 dependencies = [
  "boltffi_ast",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
 name = "boltffi_core"
-version = "0.25.3"
+version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b41dc30e77af405dbdb856b9abd1c291beb5f5bfeab6d8d2eb59a42a10d62653"
+checksum = "0ac570985429216296a00f9d51612a5039183e5e952d5f8086d76832ee7052b7"
 dependencies = [
  "boltffi_macros",
  "url",
@@ -168,22 +169,45 @@ dependencies = [
 
 [[package]]
 name = "boltffi_ffi_rules"
-version = "0.25.3"
+version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f760cf0530af25beb03c40fbb07c7d7c2609dea7373b24671dae326a38c9f54"
+checksum = "cc3d3752533957ec90480fcf98bd743adc489307488d0279225be30902d388a2"
+dependencies = [
+ "serde",
+ "serde_json",
+ "syn 2.0.118",
+ "walkdir",
+]
 
 [[package]]
 name = "boltffi_macros"
-version = "0.25.3"
+version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5c6574f277e9f8622bd87be2ad12d5f472e936191f4fa33f859008094d6c8fc"
+checksum = "0857f626d310398b817c35236cb1dd4d3557d33210704dd2f969896b168be902"
 dependencies = [
  "boltffi_ast",
  "boltffi_binding",
  "boltffi_ffi_rules",
+ "boltffi_scan",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 2.0.118",
+]
+
+[[package]]
+name = "boltffi_scan"
+version = "0.29.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bda94ad221c65239f62d25ec33369c09c7939530a72ad3e19af0849f0c8a415"
+dependencies = [
+ "boltffi_ast",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "syn 2.0.118",
+ "walkdir",
 ]
 
 [[package]]
@@ -754,6 +778,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashbrown"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -868,7 +898,7 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
- "hashbrown",
+ "hashbrown 0.16.1",
  "rustc-hash",
 ]
 
@@ -929,6 +959,16 @@ name = "indent"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9f1a0777d972970f204fdf8ef319f1f4f8459131636d7e3c96c5d59570d0fa6"
+
+[[package]]
+name = "indexmap"
+version = "2.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
+dependencies = [
+ "equivalent",
+ "hashbrown 0.17.1",
+]
 
 [[package]]
 name = "indoc"
@@ -1072,6 +1112,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-crate"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e67ba7e9b2b56446f1d419b1d807906278ffa1a658a8a5d8a39dcb1f5a78614f"
+dependencies = [
+ "toml_edit",
+]
+
+[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1159,6 +1208,15 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
+]
 
 [[package]]
 name = "serde"
@@ -1405,6 +1463,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
+name = "toml_datetime"
+version = "1.1.1+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3165f65f62e28e0115a00b2ebdd37eb6f3b641855f9d636d3cd4103767159ad7"
+dependencies = [
+ "serde_core",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.25.13+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6975367e4d2ef766d86af01ffad14b622fecc8d4357a998fbc4deb6e9bacaf9b"
+dependencies = [
+ "indexmap",
+ "toml_datetime",
+ "toml_parser",
+ "winnow",
+]
+
+[[package]]
+name = "toml_parser"
+version = "1.1.3+spec-1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d38ac1cf9b95face32296c0a3ede1fdc270627c9d9c02a7274dd6d960dc4d56"
+dependencies = [
+ "winnow",
+]
+
+[[package]]
 name = "tracing"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1513,6 +1601,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
+name = "walkdir"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
+dependencies = [
+ "same-file",
+ "winapi-util",
+]
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1589,6 +1687,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "winnow"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23b97319f7b8343df12cc98938e5c3eb436064524c8d2b4e30a1d3a36eecdf81"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
