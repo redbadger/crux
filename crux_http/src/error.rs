@@ -17,12 +17,16 @@ use crate::Result;
 /// These are never serialized or visible to shells:
 ///
 /// - [`Http`](HttpError::Http) — produced by `Response::new()` when the server returns
-///   a 4xx or 5xx status. At the *protocol* level these arrive as
+///   a 4xx or 5xx status, and **only** then. At the *protocol* level these arrive as
 ///   [`HttpResult::Ok`](crate::protocol::HttpResult::Ok); `Response::new()` converts
 ///   them here, so app code using `crux_http::Result<Response<T>>` will see them as
 ///   `Err(HttpError::Http { code, .. })` — **never** as `Ok(response)` with an error
 ///   status.
 /// - [`Json`](HttpError::Json) — produced when response body deserialisation fails.
+/// - [`BodyAlreadyTaken`](HttpError::BodyAlreadyTaken) — a caller took the response body
+///   twice.
+/// - [`InvalidStatusCode`](HttpError::InvalidStatusCode) — the shell sent a status that
+///   isn't valid HTTP.
 ///
 /// # Reading what the server said
 ///
@@ -68,7 +72,9 @@ pub enum HttpError {
     ///
     /// This is what a feature receives *instead of* a [`Response`](crate::Response)
     /// when the server rejects a request, so it is the only place a rejection can be
-    /// handled.
+    /// handled — and a rejection is the only thing that produces it. Nothing else in the
+    /// crate raises an `Http`, so `matches!(error, HttpError::Http { .. })` (or, more
+    /// simply, [`code`](HttpError::code) returning `Some`) means the server said no.
     ///
     /// `body` is the response body exactly as the server sent it. Body decoding
     /// (`expect_json`, `expect_string`) is skipped for an error status, so a server's
@@ -87,8 +93,7 @@ pub enum HttpError {
     /// lives there and nowhere else: `Retry-After` on a 429 or 503, `WWW-Authenticate` on
     /// a 401, rate-limit headers, or the `Content-Type` that says whether the body is JSON,
     /// HTML or prose. Read them with [`HttpError::header`], [`HttpError::content_type`] or
-    /// [`HttpError::headers`]. `None` when the error was raised with no response to describe
-    /// — a transport failure, or a status code that wasn't valid HTTP.
+    /// [`HttpError::headers`].
     ///
     /// (The map is boxed only to keep `HttpError` small: a bare `HeaderMap` is 96 bytes, and
     /// this type is the `Err` of nearly every function in the crate.)
@@ -114,18 +119,42 @@ pub enum HttpError {
     #[serde(skip)]
     #[facet(skip)]
     Json(String),
+
+    /// The response body had already been taken.
+    ///
+    /// A caller error rather than anything the server did: [`body_bytes`], [`body_string`],
+    /// [`body_json`] and [`body_form`] each *take* the body, so only the first call can
+    /// succeed. It carries nothing, because the caller still holds the
+    /// [`Response`](crate::Response) and so already has its status and headers.
+    ///
+    /// [`body_bytes`]: crate::Response::body_bytes
+    /// [`body_string`]: crate::Response::body_string
+    /// [`body_json`]: crate::Response::body_json
+    /// [`body_form`]: crate::Response::body_form
+    #[error("response body had already been taken")]
+    #[serde(skip)]
+    #[facet(skip)]
+    BodyAlreadyTaken,
+
+    /// The shell sent a status code that is not valid HTTP (outside the range 100–999).
+    ///
+    /// The response never became one, so there is nothing to read from it. This means the
+    /// shell is misbehaving, not that the request was rejected.
+    #[error("invalid HTTP status code: {0}")]
+    #[serde(skip)]
+    #[facet(skip)]
+    InvalidStatusCode(u16),
 }
 
 impl HttpError {
-    /// The status code of the response this error came from, if there was one.
+    /// The status the server rejected the request with.
     ///
-    /// Normally the 4xx or 5xx the server rejected the request with. It can also be a
-    /// *non-error* status: [`Response::body_bytes`](crate::Response::body_bytes) reports an
-    /// already-taken body as an `Http` error carrying that response's own status, so `Some`
-    /// is not by itself proof of a rejection — test the value if you need one.
-    ///
-    /// `None` for errors that never had a response at all: transport failures and body
-    /// deserialisation failures.
+    /// `Some` if and only if this error *is* a rejection — nothing else in the crate carries
+    /// a status. `None` covers everything the server didn't decide: transport failures, a
+    /// body that wouldn't deserialize, a body taken twice, and a status the shell sent that
+    /// wasn't valid HTTP (that one keeps its number on
+    /// [`InvalidStatusCode`](HttpError::InvalidStatusCode), which is not a status a server
+    /// ever answered with).
     ///
     /// # Examples
     ///
@@ -136,6 +165,7 @@ impl HttpError {
     /// assert_eq!(error.code(), Some(404));
     ///
     /// assert_eq!(HttpError::Timeout.code(), None);
+    /// assert_eq!(HttpError::InvalidStatusCode(999).code(), None);
     /// ```
     #[must_use]
     pub const fn code(&self) -> Option<u16> {
@@ -398,17 +428,14 @@ mod tests {
         assert_eq!(HttpError::Timeout.headers(), None);
         assert_eq!(HttpError::Timeout.content_type(), None);
 
-        // Nor does a status the crate rejected before a response existed.
-        let error = HttpError::Http {
-            code: 999,
-            message: "invalid HTTP status code: 999".to_string(),
-            headers: None,
-            body: None,
-        };
+        // Nor does a status the crate rejected before a response existed. That is no longer
+        // an `Http` at all, which is the point of the variant: it was never a rejection.
+        let error = HttpError::InvalidStatusCode(999);
+        assert_eq!(error.header("retry-after"), None);
         assert_eq!(error.headers(), None);
         assert_eq!(error.content_type(), None);
 
-        // A real response with no headers is `Some`, but empty — the two are different
+        // A real rejection that sent no headers is `Some`, but empty — the two are different
         // things, and only the accessors' `None` conflates them.
         let error = HttpError::Http {
             code: 500,
@@ -445,7 +472,11 @@ mod tests {
             Err(HttpError::Json(_))
         ));
 
-        // Nor did an error status the crate raised itself, e.g. a body already taken.
+        // Nor do the two errors the crate raises itself, neither of which is a rejection.
+        assert_eq!(HttpError::BodyAlreadyTaken.body(), None);
+        assert_eq!(HttpError::InvalidStatusCode(999).body(), None);
+
+        // A rejection that sent no body still reports its status.
         let error = HttpError::Http {
             code: 500,
             message: "500 Internal Server Error".to_string(),
@@ -454,6 +485,37 @@ mod tests {
         };
         assert_eq!(error.code(), Some(500));
         assert_eq!(error.body(), None);
+    }
+
+    /// The invariant this split exists to establish: a status on the error means the server
+    /// rejected the request, and nothing else does.
+    #[test]
+    fn only_a_rejection_has_a_code() {
+        assert_eq!(
+            crate::testing::rejection::<Vec<u8>>(409, "")
+                .expect_err("a 409 is never Ok")
+                .code(),
+            Some(409)
+        );
+
+        assert_eq!(HttpError::BodyAlreadyTaken.code(), None);
+        assert_eq!(HttpError::InvalidStatusCode(999).code(), None);
+        assert_eq!(HttpError::Timeout.code(), None);
+        assert_eq!(HttpError::Io("refused".to_string()).code(), None);
+        assert_eq!(HttpError::Url("bad".to_string()).code(), None);
+        assert_eq!(HttpError::Json("nope".to_string()).code(), None);
+    }
+
+    #[test]
+    fn the_new_variants_display_usefully() {
+        assert_eq!(
+            HttpError::BodyAlreadyTaken.to_string(),
+            "response body had already been taken"
+        );
+        assert_eq!(
+            HttpError::InvalidStatusCode(999).to_string(),
+            "invalid HTTP status code: 999"
+        );
     }
 
     #[test]

@@ -106,10 +106,33 @@ and this project adheres to
 
 ### 💥 Breaking Changes
 
+- **`HttpError` has two new variants, and `HttpError::Http` now means only a server
+  rejection.** Two things that were not rejections used to report themselves as one:
+
+  | Was | Is now |
+  | --- | --- |
+  | `Response::body_bytes` on an already-taken body → `Http { code: <the success status>, headers: <that response's>, .. }` | `HttpError::BodyAlreadyTaken` |
+  | A shell status outside 100–999 → `Http { code: 999, .. }` | `HttpError::InvalidStatusCode(999)` |
+
+  So `error.code()` could return `Some(200)`, and `matches!(err, HttpError::Http { .. })`
+  was not a reliable test for "the server rejected this". Both now are:
+
+  ```rust
+  // `Some` if and only if the server rejected the request
+  if let Some(code) = error.code() { … }
+  ```
+
+  `BodyAlreadyTaken` carries nothing: the caller still holds the `Response`, so the status
+  and headers the old error reported were already in hand — and they described a *successful*
+  response, which is what made them misleading.
+
+  An exhaustive `match` on `HttpError` needs two new arms. That is deliberate: the enum is
+  **not** `#[non_exhaustive]`, so a new failure mode is a compile error you get to think
+  about, rather than something that silently lands in a wildcard.
+
 - **`HttpError::Http` has a new `headers` field**, so that a rejection's headers reach the
-  app (see `HttpError::header` above). It is `Option<Box<HeaderMap>>`: `None` when the error
-  was raised with no response to describe (a transport failure, or a status code that wasn't
-  valid HTTP), and boxed only because a bare `HeaderMap` is 96 bytes and this type is the
+  app (see `HttpError::header` above). It is `Option<Box<HeaderMap>>`, boxed only because a
+  bare `HeaderMap` is 96 bytes and this type is the
   `Err` of nearly every function in the crate — inline, it pushed `HttpError` to 160 bytes
   and tripped `clippy::result_large_err` across the crate.
 

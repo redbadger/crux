@@ -290,13 +290,8 @@ impl TryFrom<HttpResponse> for RawResponse {
             body,
         } = r;
 
-        let status = StatusCode::from_u16(status_u16).map_err(|_| HttpError::Http {
-            code: status_u16,
-            message: format!("invalid HTTP status code: {status_u16}"),
-            // The response never became one, so there are no headers to describe it with.
-            headers: None,
-            body: None,
-        })?;
+        let status = StatusCode::from_u16(status_u16)
+            .map_err(|_| HttpError::InvalidStatusCode(status_u16))?;
 
         let mut headers = HeaderMap::new();
         for header in header_fields {
@@ -391,8 +386,8 @@ mod tests {
             let err = RawResponse::try_from(http_response)
                 .expect_err(&format!("{bad_code} should be rejected"));
             assert!(
-                matches!(err, HttpError::Http { code, .. } if code == bad_code),
-                "expected HttpError::Http with code {bad_code}, got: {err:?}"
+                matches!(err, HttpError::InvalidStatusCode(code) if code == bad_code),
+                "expected HttpError::InvalidStatusCode({bad_code}), got: {err:?}"
             );
         }
     }

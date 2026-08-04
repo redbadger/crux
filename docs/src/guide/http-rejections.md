@@ -56,7 +56,7 @@ need to destructure the variant:
 
 | Accessor | What you get |
 | --- | --- |
-| `code()` | The status code, e.g. `Some(409)` |
+| `code()` | The status the server rejected with, e.g. `Some(409)` |
 | `body()` | The raw body bytes the server sent, if any |
 | `body_json::<T>()` | That body deserialized — your own error envelope, an RFC 7807 `problem+json` struct, or `serde_json::Value` |
 | `header(name)` | One header, looked up case-insensitively |
@@ -66,6 +66,13 @@ need to destructure the variant:
 Body decoding is skipped for an error status, so the raw error body survives even when
 the request was built with `.expect_json::<T>()` — an error envelope that doesn't match
 `T` still reaches you intact.
+
+`HttpError::Http` is raised for a rejection and nothing else, so `code().is_some()` is the
+test for "the server said no". The crate's own failures have their own variants —
+`Json` (a body that wouldn't deserialize), `BodyAlreadyTaken` (you read the body twice),
+`InvalidStatusCode` (the shell sent a status that isn't valid HTTP) — as do the shell's
+transport failures (`Url`, `Io`, `Timeout`). None of them carry a status, because no server
+chose one.
 
 The headers matter more than they first appear, because some of what an app needs in
 order to *act* on a rejection is only there:

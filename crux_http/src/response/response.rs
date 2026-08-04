@@ -264,7 +264,8 @@ impl Response<Vec<u8>> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the body has already been taken.
+    /// Returns [`HttpError::BodyAlreadyTaken`] if the body has already been taken — this and
+    /// the other `body_*` readers each take it, so only the first call can succeed.
     ///
     /// # Examples
     ///
@@ -278,17 +279,7 @@ impl Response<Vec<u8>> {
     /// # Ok(()) }
     /// ```
     pub fn body_bytes(&mut self) -> Result<Vec<u8>> {
-        // Deliberately a `match` rather than `ok_or_else`: the closure would have to
-        // capture the cloned headers, cloning them on every successful read too.
-        match self.body.take() {
-            Some(body) => Ok(body),
-            None => Err(HttpError::Http {
-                code: self.status().as_u16(),
-                message: "Body had no bytes".to_string(),
-                headers: Some(Box::new(self.headers.clone())),
-                body: None,
-            }),
-        }
+        self.body.take().ok_or(HttpError::BodyAlreadyTaken)
     }
 
     /// Reads the entire response body into a string.
@@ -557,7 +548,11 @@ mod tests {
         let mut res: Response<Vec<u8>> = ResponseBuilder::ok().body(b"hello".to_vec()).build();
         let _ = res.body_bytes().unwrap();
         let err = res.body_bytes().expect_err("second call must fail");
-        assert!(matches!(err, HttpError::Http { .. }));
+
+        // Not a rejection: the server answered 200. It used to report itself as
+        // `Http { code: 200, .. }`, which made `code()` unusable as a rejection test.
+        assert!(matches!(err, HttpError::BodyAlreadyTaken), "got: {err:?}");
+        assert_eq!(err.code(), None);
     }
 
     #[test]
