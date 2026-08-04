@@ -184,8 +184,20 @@ jobs:
 
       - name: Install wasm-opt
         run: |
-          sudo apt-get update
-          sudo apt-get install -y binaryen
+          # BoltFFI 0.29.3 passes --enable-bulk-memory-opt, which was added in Binaryen 123.
+          binaryen_version=123
+          archive="binaryen-version_${binaryen_version}-x86_64-linux.tar.gz"
+          url="https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/${archive}"
+          archive_path="$RUNNER_TEMP/$archive"
+
+          curl --fail --location --retry 3 "$url" --output "$archive_path"
+          curl --fail --location --retry 3 "$url.sha256" --output "$archive_path.sha256"
+          (cd "$RUNNER_TEMP" && sha256sum --check "$archive.sha256")
+
+          mkdir -p "$RUNNER_TEMP/binaryen"
+          tar -xzf "$archive_path" --strip-components=1 -C "$RUNNER_TEMP/binaryen"
+          echo "$RUNNER_TEMP/binaryen/bin" >> "$GITHUB_PATH"
+          wasm-opt --version
 
       - uses: actions/setup-node@v6
         with:
