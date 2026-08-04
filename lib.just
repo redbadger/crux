@@ -1,6 +1,8 @@
 # Shared justfile helpers for Crux.
 # Import with: mod lib '../lib.just' (adjust path as needed)
 
+boltffi_version := "0.29.3"
+
 # Check if a tool is installed, report status (does not fail build)
 [no-cd]
 [script('bash')]
@@ -20,6 +22,24 @@ require-tool tool install_cmd:
     else
         echo '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}'
         exit 1
+    fi
+
+# Check that the installed BoltFFI CLI matches the version used by the examples
+[no-cd]
+[script('bash')]
+check-boltffi:
+    install_cmd="cargo install boltffi_cli --version '={{ boltffi_version }}' --locked"
+    if ! command -v boltffi >/dev/null 2>&1; then
+        echo "  {{ style("error") }}✗ boltffi{{ NORMAL }} — install with: $install_cmd"
+        exit 0
+    fi
+    actual=$(boltffi --version 2>/dev/null | head -n 1)
+    expected="boltffi {{ boltffi_version }}"
+    if [ "$actual" = "$expected" ]; then
+        echo "  ✓ $actual"
+    else
+        if [ -z "$actual" ]; then actual='boltffi (unknown version)'; fi
+        echo "  {{ style("error") }}✗ $actual{{ NORMAL }} — expected $expected; install with: $install_cmd"
     fi
 
 # Check if a file exists, report status (does not fail build)
@@ -58,7 +78,7 @@ _check-java-version:
 [no-cd]
 check-apple:
     @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.29.3' --locked"
+    @just lib::check-boltffi
     @just lib::check-tool xcodegen "brew install xcodegen"
     @just lib::check-tool xcodebuild "install Xcode from the App Store"
     @just lib::check-tool xcrun "xcode-select --install"
@@ -71,7 +91,7 @@ check-apple:
 [no-cd]
 check-windows:
     @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.29.3' --locked"
+    @just lib::check-boltffi
     @just lib::check-tool dotnet "install the .NET 10 SDK: https://dotnet.microsoft.com/download"
     @just lib::_check-vswhere
     @just lib::check-rust-target x86_64-pc-windows-msvc
@@ -92,7 +112,7 @@ _check-vswhere:
 [no-cd]
 check-android:
     @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.29.3' --locked"
+    @just lib::check-boltffi
     @just lib::check-tool rustup "https://rustup.rs"
     @just lib::check-tool java "install JDK 17+"
     @just lib::_check-java-version
@@ -107,7 +127,7 @@ check-android:
 [no-cd]
 check-web-wasm:
     @just lib::check-tool cargo "https://rustup.rs"
-    @just lib::check-tool boltffi "cargo install boltffi_cli --version '=0.29.3' --locked"
+    @just lib::check-boltffi
     @just lib::check-tool wasm-opt "install Binaryen: brew install binaryen"
     @just lib::check-tool node "https://nodejs.org"
     @just lib::check-tool pnpm "npm install -g pnpm"
