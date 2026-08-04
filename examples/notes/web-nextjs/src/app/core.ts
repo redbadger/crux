@@ -1,61 +1,11 @@
+// Must come first: patches `WebAssembly.instantiate` so automerge can reach
+// `crypto.getRandomValues` through boltffi's stubbed wasm-bindgen imports.
+// See the module for the full explanation — importing it before `shared`
+// is what guarantees the patch is installed before the WASM module loads.
+import "./wasm-getrandom";
+
 import { CoreFFI } from "shared";
 import type { Effect, Event } from "shared_types/app";
-
-// WORKAROUND: automerge uses `features = ["wasm"]` in its Cargo.toml, which
-// enables the `getrandom/js` feature. That compiles a wasm-bindgen import
-// (`__wbg_getRandomValues_8aa3112c6615eef6`) into the WASM binary so that
-// automerge can call `crypto.getRandomValues` to generate random actor IDs.
-//
-// boltffi deliberately stubs ALL `__wbindgen_placeholder__` imports as
-// "Unimplemented" — it replaces wasm-bindgen interop entirely and doesn't
-// provide browser API bindings. There is currently no way to inject custom
-// `__wbindgen_placeholder__` implementations through the `instantiateBoltFFI`
-// API, so we intercept `WebAssembly.instantiate` to replace the stub with the
-// real `crypto.getRandomValues` before the module is loaded.
-//
-// The function name encodes a hash of its wasm-bindgen signature, so it could
-// change if the `getrandom` version changes — grep for the new name in the
-// WASM binary's imports if this breaks after a dependency update:
-//   node -e "const fs=require('fs'); WebAssembly.compile(fs.readFileSync('generated/pkg/shared_bg.wasm')).then(m=>console.log(WebAssembly.Module.imports(m).map(i=>i.module+'::'+i.name).join('\n')))"
-//
-// The proper fix is either:
-//   a) Remove `features = ["wasm"]` from the `automerge` dependency in
-//      shared/Cargo.toml and configure `getrandom` with `features = ["custom"]`
-//      plus a boltffi-compatible random implementation, or
-//   b) Ask boltffi to natively provide `crypto.getRandomValues` for the
-//      `__wbindgen_placeholder__` namespace (feature request to boltffi).
-if (typeof WebAssembly !== "undefined" && typeof crypto !== "undefined") {
-  const _origInstantiate = WebAssembly.instantiate.bind(WebAssembly);
-  let _memory: WebAssembly.Memory | null = null;
-
-  (WebAssembly as any).instantiate = (
-    source: BufferSource | WebAssembly.Module,
-    importObject?: WebAssembly.Imports,
-  ) => {
-    if (importObject?.["__wbindgen_placeholder__"]) {
-      const stubs = importObject["__wbindgen_placeholder__"] as object;
-      importObject["__wbindgen_placeholder__"] = new Proxy(stubs, {
-        get(target, prop) {
-          if (prop === "__wbg_getRandomValues_8aa3112c6615eef6") {
-            return (ptr: number, len: number) => {
-              crypto.getRandomValues(new Uint8Array(_memory!.buffer, ptr, len));
-            };
-          }
-          return Reflect.get(target, prop);
-        },
-      }) as WebAssembly.ModuleImports;
-    }
-    return (
-      _origInstantiate(
-        source as any,
-        importObject,
-      ) as Promise<WebAssembly.WebAssemblyInstantiatedSource>
-    ).then((result) => {
-      _memory = result.instance.exports["memory"] as WebAssembly.Memory;
-      return result;
-    });
-  };
-}
 import {
   ViewModel,
   Request,
@@ -161,8 +111,8 @@ export class Core {
 
       Time: ({ value: timerOp }) => {
         matchTimeRequest(timerOp, {
-          Now: () => {},
-          NotifyAt: () => {},
+          Now: () => unsupported("Time::Now"),
+          NotifyAt: () => unsupported("Time::NotifyAt"),
           NotifyAfter: (op) => {
             const { id: startId, duration } = op;
             const milliseconds = Number(duration.nanos) / 1e6;
@@ -216,9 +166,9 @@ export class Core {
             const result = keyValueResultOk(keyValueResponseSet(valueNone()));
             this.respond(id, (s) => serializeKeyValueResult(result, s));
           },
-          Delete: () => {},
-          Exists: () => {},
-          ListKeys: () => {},
+          Delete: () => unsupported("KeyValue::Delete"),
+          Exists: () => unsupported("KeyValue::Exists"),
+          ListKeys: () => unsupported("KeyValue::ListKeys"),
         });
       },
     });
@@ -238,6 +188,14 @@ export class Core {
       this.processEffect(id, effect);
     }
   }
+}
+
+// The notes app never issues these operations, but the generated `match`
+// helpers are exhaustive so every variant needs an arm. Throwing beats a silent
+// no-op: an unanswered request leaves the core's command waiting forever, so a
+// future change to the app would hang rather than fail here.
+function unsupported(operation: string): never {
+  throw new Error(`the notes shell does not implement ${operation}`);
 }
 
 function deserializeRequests(bytes: Uint8Array | number[]): Request[] {
