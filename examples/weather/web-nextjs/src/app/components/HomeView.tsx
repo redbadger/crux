@@ -1,32 +1,16 @@
-import {
-  CloudSlash,
-  Key,
-  MapPinLine,
-  Star,
-} from "@phosphor-icons/react";
+import { CloudSlash, Key, MapPinLine, Star } from "@phosphor-icons/react";
 
 import type { HomeViewModel } from "shared_types/app";
 import {
-  LocalWeatherViewModelVariantCheckingPermission,
-  LocalWeatherViewModelVariantLocationDisabled,
-  LocalWeatherViewModelVariantFetchingLocation,
-  LocalWeatherViewModelVariantFetchingWeather,
-  LocalWeatherViewModelVariantFetched,
-  LocalWeatherViewModelVariantFailed,
-  EventVariantActive,
-  ActiveEventVariantHome,
-  ActiveEventVariantResetApiKey,
-  HomeEventVariantGoToFavorites,
+  matchLocalWeatherViewModel,
+  eventActive,
+  activeEventHome,
+  activeEventResetApiKey,
+  homeEventGoToFavorites,
 } from "shared_types/app";
 
 import { useDispatch } from "../../lib/core/provider";
-import {
-  Button,
-  Card,
-  SectionTitle,
-  Spinner,
-  StatusMessage,
-} from "./common";
+import { Button, Card, SectionTitle, Spinner, StatusMessage } from "./common";
 import { FavoriteWeatherCard } from "./FavoriteWeatherCard";
 import { WeatherDetail } from "./WeatherDetail";
 
@@ -38,34 +22,32 @@ export function HomeView({ model }: { model: HomeViewModel }) {
   return (
     <>
       <Card className="mb-4">
-        {lw instanceof LocalWeatherViewModelVariantCheckingPermission && (
-          <StatusMessage
-            icon={MapPinLine}
-            message="Checking location permission..."
-          />
-        )}
-        {lw instanceof LocalWeatherViewModelVariantLocationDisabled && (
-          <StatusMessage
-            icon={MapPinLine}
-            message="Location is disabled. Enable location access to see local weather."
-          />
-        )}
-        {lw instanceof LocalWeatherViewModelVariantFetchingLocation && (
-          <Spinner message="Getting your location..." />
-        )}
-        {lw instanceof LocalWeatherViewModelVariantFetchingWeather && (
-          <Spinner message="Loading weather data..." />
-        )}
-        {lw instanceof LocalWeatherViewModelVariantFetched && (
-          <WeatherDetail data={lw.value} />
-        )}
-        {lw instanceof LocalWeatherViewModelVariantFailed && (
-          <StatusMessage
-            icon={CloudSlash}
-            message="Failed to load weather."
-            tone="error"
-          />
-        )}
+        {matchLocalWeatherViewModel(lw, {
+          CheckingPermission: () => (
+            <StatusMessage
+              icon={MapPinLine}
+              message="Checking location permission..."
+            />
+          ),
+          LocationDisabled: () => (
+            <StatusMessage
+              icon={MapPinLine}
+              message="Location is disabled. Enable location access to see local weather."
+            />
+          ),
+          FetchingLocation: () => (
+            <Spinner message="Getting your location..." />
+          ),
+          FetchingWeather: () => <Spinner message="Loading weather data..." />,
+          Fetched: (v) => <WeatherDetail data={v.value} />,
+          Failed: () => (
+            <StatusMessage
+              icon={CloudSlash}
+              message="Failed to load weather."
+              tone="error"
+            />
+          ),
+        })}
       </Card>
       {model.favorites.length > 0 && (
         <Card className="mb-4">
@@ -82,24 +64,14 @@ export function HomeView({ model }: { model: HomeViewModel }) {
           label="Favourites"
           icon={Star}
           onClick={() =>
-            dispatch(
-              new EventVariantActive(
-                new ActiveEventVariantHome(
-                  new HomeEventVariantGoToFavorites(),
-                ),
-              ),
-            )
+            dispatch(eventActive(activeEventHome(homeEventGoToFavorites())))
           }
         />
         <Button
           label="Reset API Key"
           icon={Key}
           variant="secondary"
-          onClick={() =>
-            dispatch(
-              new EventVariantActive(new ActiveEventVariantResetApiKey()),
-            )
-          }
+          onClick={() => dispatch(eventActive(activeEventResetApiKey()))}
         />
       </div>
     </>

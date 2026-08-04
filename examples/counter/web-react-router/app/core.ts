@@ -2,11 +2,17 @@ import type { Dispatch, SetStateAction } from "react";
 import { CoreFFI } from "shared";
 import * as sharedWasm from "shared";
 import type { Effect, Event } from "shared_types/app";
-import { EffectVariantRender, Request, ViewModel } from "shared_types/app";
+import {
+  serializeEvent,
+  matchEffect,
+  Request,
+  ViewModel,
+} from "shared_types/app";
 import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
 
-const wasmInitialized = (sharedWasm as unknown as { initialized: Promise<void> })
-  .initialized;
+const wasmInitialized = (
+  sharedWasm as unknown as { initialized: Promise<void> }
+).initialized;
 
 export class Core {
   core: CoreFFI | null = null;
@@ -52,7 +58,7 @@ export class Core {
       throw new Error("Core not initialized. Call initialize() first.");
     }
     const serializer = new BincodeSerializer();
-    event.serialize(serializer);
+    serializeEvent(event, serializer);
 
     const effects = this.core.update(serializer.getBytes());
 
@@ -63,12 +69,9 @@ export class Core {
   }
 
   private processEffect(effect: Effect) {
-    switch (effect.constructor) {
-      case EffectVariantRender: {
-        this.setState(this.view());
-        break;
-      }
-    }
+    matchEffect(effect, {
+      Render: () => this.setState(this.view()),
+    });
   }
 }
 

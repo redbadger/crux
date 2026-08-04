@@ -1,36 +1,28 @@
 import type { KeyValueOperation, KeyValueResult } from "shared_types/app";
 import {
-  KeyValueOperationVariantGet,
-  KeyValueOperationVariantSet,
-  KeyValueOperationVariantDelete,
-  KeyValueOperationVariantExists,
-  KeyValueOperationVariantListKeys,
-  KeyValueResultVariantOk,
-  KeyValueResponseVariantGet,
-  KeyValueResponseVariantSet,
-  KeyValueResponseVariantDelete,
-  KeyValueResponseVariantExists,
-  KeyValueResponseVariantListKeys,
-  ValueVariantBytes,
+  matchKeyValueOperation,
+  keyValueResultOk,
+  keyValueResponseGet,
+  keyValueResponseSet,
+  keyValueResponseDelete,
+  keyValueResponseExists,
+  keyValueResponseListKeys,
+  valueBytes,
 } from "shared_types/app";
 
 export async function handle(
   operation: KeyValueOperation,
 ): Promise<KeyValueResult> {
-  switch (operation.constructor) {
-    case KeyValueOperationVariantGet: {
-      const key = (operation as KeyValueOperationVariantGet).key;
+  return matchKeyValueOperation(operation, {
+    Get: (op) => {
+      const key = op.key;
       console.debug("kv get:", key);
       const stored = localStorage.getItem(key);
-      const bytes = stored
-        ? Array.from(new TextEncoder().encode(stored))
-        : [];
-      return new KeyValueResultVariantOk(
-        new KeyValueResponseVariantGet(new ValueVariantBytes(bytes)),
-      );
-    }
-    case KeyValueOperationVariantSet: {
-      const { key, value } = operation as KeyValueOperationVariantSet;
+      const bytes = stored ? Array.from(new TextEncoder().encode(stored)) : [];
+      return keyValueResultOk(keyValueResponseGet(valueBytes(bytes)));
+    },
+    Set: (op) => {
+      const { key, value } = op;
       console.debug("kv set:", key);
       const previous = localStorage.getItem(key);
       const prevBytes = previous
@@ -38,32 +30,26 @@ export async function handle(
         : [];
       const valueStr = new TextDecoder().decode(new Uint8Array(value));
       localStorage.setItem(key, valueStr);
-      return new KeyValueResultVariantOk(
-        new KeyValueResponseVariantSet(new ValueVariantBytes(prevBytes)),
-      );
-    }
-    case KeyValueOperationVariantDelete: {
-      const key = (operation as KeyValueOperationVariantDelete).key;
+      return keyValueResultOk(keyValueResponseSet(valueBytes(prevBytes)));
+    },
+    Delete: (op) => {
+      const key = op.key;
       console.debug("kv delete:", key);
       const previous = localStorage.getItem(key);
       const prevBytes = previous
         ? Array.from(new TextEncoder().encode(previous))
         : [];
       localStorage.removeItem(key);
-      return new KeyValueResultVariantOk(
-        new KeyValueResponseVariantDelete(new ValueVariantBytes(prevBytes)),
-      );
-    }
-    case KeyValueOperationVariantExists: {
-      const key = (operation as KeyValueOperationVariantExists).key;
+      return keyValueResultOk(keyValueResponseDelete(valueBytes(prevBytes)));
+    },
+    Exists: (op) => {
+      const key = op.key;
       const exists = localStorage.getItem(key) !== null;
       console.debug("kv exists:", key, exists);
-      return new KeyValueResultVariantOk(
-        new KeyValueResponseVariantExists(exists),
-      );
-    }
-    case KeyValueOperationVariantListKeys: {
-      const { prefix } = operation as KeyValueOperationVariantListKeys;
+      return keyValueResultOk(keyValueResponseExists(exists));
+    },
+    ListKeys: (op) => {
+      const { prefix } = op;
       console.debug("kv list_keys: prefix=", prefix);
       const keys: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -72,11 +58,7 @@ export async function handle(
           keys.push(key);
         }
       }
-      return new KeyValueResultVariantOk(
-        new KeyValueResponseVariantListKeys(keys, BigInt(0)),
-      );
-    }
-    default:
-      throw new Error(`Unhandled KeyValue operation: ${operation.constructor}`);
-  }
+      return keyValueResultOk(keyValueResponseListKeys(keys, BigInt(0)));
+    },
+  });
 }

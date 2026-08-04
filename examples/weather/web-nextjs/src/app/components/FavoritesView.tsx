@@ -7,19 +7,20 @@ import {
   Warning,
 } from "@phosphor-icons/react";
 
-import type { FavoritesViewModel, FavoritesScreenEvent } from "shared_types/app";
+import type {
+  FavoritesViewModel,
+  FavoritesScreenEvent,
+} from "shared_types/app";
 import {
-  FavoritesWorkflowViewModelVariantAdd,
-  FavoritesWorkflowViewModelVariantConfirmDelete,
-  EventVariantActive,
-  ActiveEventVariantFavorites,
-  FavoritesScreenEventVariantGoToHome,
-  FavoritesScreenEventVariantRequestAddFavorite,
-  FavoritesScreenEventVariantRequestDelete,
-  FavoritesScreenEventVariantWorkflow,
-  FavoritesWorkflowEventVariantConfirmDelete,
-  ConfirmDeleteEventVariantConfirmed,
-  ConfirmDeleteEventVariantCancelled,
+  eventActive,
+  activeEventFavorites,
+  favoritesScreenEventGoToHome,
+  favoritesScreenEventRequestAddFavorite,
+  favoritesScreenEventRequestDelete,
+  favoritesScreenEventWorkflow,
+  favoritesWorkflowEventConfirmDelete,
+  confirmDeleteEventConfirmed,
+  confirmDeleteEventCancelled,
 } from "shared_types/app";
 
 import { useDispatch } from "../../lib/core/provider";
@@ -34,18 +35,17 @@ import {
 } from "./common";
 
 function favEvent(inner: FavoritesScreenEvent) {
-  return new EventVariantActive(new ActiveEventVariantFavorites(inner));
+  return eventActive(activeEventFavorites(inner));
 }
 
 export function FavoritesView({ model }: { model: FavoritesViewModel }) {
   const dispatch = useDispatch();
 
-  if (model.workflow instanceof FavoritesWorkflowViewModelVariantAdd) {
+  if (model.workflow?.kind === "Add") {
     return <AddFavoriteView model={model.workflow.value} />;
   }
 
-  const isConfirmingDelete =
-    model.workflow instanceof FavoritesWorkflowViewModelVariantConfirmDelete;
+  const isConfirmingDelete = model.workflow?.kind === "ConfirmDelete";
 
   return (
     <>
@@ -70,11 +70,7 @@ export function FavoritesView({ model }: { model: FavoritesViewModel }) {
                   ariaLabel="Delete favourite"
                   onClick={() =>
                     dispatch(
-                      favEvent(
-                        new FavoritesScreenEventVariantRequestDelete(
-                          fav.location,
-                        ),
-                      ),
+                      favEvent(favoritesScreenEventRequestDelete(fav.location)),
                     )
                   }
                 />
@@ -100,9 +96,9 @@ export function FavoritesView({ model }: { model: FavoritesViewModel }) {
                   onClick={() =>
                     dispatch(
                       favEvent(
-                        new FavoritesScreenEventVariantWorkflow(
-                          new FavoritesWorkflowEventVariantConfirmDelete(
-                            new ConfirmDeleteEventVariantCancelled(),
+                        favoritesScreenEventWorkflow(
+                          favoritesWorkflowEventConfirmDelete(
+                            confirmDeleteEventCancelled(),
                           ),
                         ),
                       ),
@@ -116,9 +112,9 @@ export function FavoritesView({ model }: { model: FavoritesViewModel }) {
                   onClick={() =>
                     dispatch(
                       favEvent(
-                        new FavoritesScreenEventVariantWorkflow(
-                          new FavoritesWorkflowEventVariantConfirmDelete(
-                            new ConfirmDeleteEventVariantConfirmed(),
+                        favoritesScreenEventWorkflow(
+                          favoritesWorkflowEventConfirmDelete(
+                            confirmDeleteEventConfirmed(),
                           ),
                         ),
                       ),
@@ -135,17 +131,13 @@ export function FavoritesView({ model }: { model: FavoritesViewModel }) {
           label="Back"
           icon={ArrowLeft}
           variant="secondary"
-          onClick={() =>
-            dispatch(favEvent(new FavoritesScreenEventVariantGoToHome()))
-          }
+          onClick={() => dispatch(favEvent(favoritesScreenEventGoToHome()))}
         />
         <Button
           label="Add Favourite"
           icon={Plus}
           onClick={() =>
-            dispatch(
-              favEvent(new FavoritesScreenEventVariantRequestAddFavorite()),
-            )
+            dispatch(favEvent(favoritesScreenEventRequestAddFavorite()))
           }
         />
       </div>

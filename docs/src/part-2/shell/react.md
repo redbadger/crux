@@ -50,7 +50,7 @@ Then components fire events with:
 
 ```typescript
 const dispatch = useDispatch();
-dispatch(new EventVariantActive(new ActiveEventVariantResetApiKey()));
+dispatch(eventActive(activeEventResetApiKey()));
 ```
 
 Both directions cross the FFI as bincode. `dispatch` is just a JS callback wrapping the serialise-and-call-update flow; `setView` is a React state setter the `Core` invokes after deserialising the response to `Effect::Render`.
