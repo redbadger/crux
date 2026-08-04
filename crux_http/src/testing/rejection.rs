@@ -124,11 +124,8 @@ mod tests {
         };
         assert_eq!(code, 409);
         assert_eq!(message, "409 Conflict");
-        assert!(
-            headers.expect("a rejection has headers").is_empty(),
-            "rejection() sets no headers"
-        );
-        assert_eq!(body.unwrap(), br#"{"error":"management cycle"}"#);
+        assert!(headers.is_empty(), "rejection() sets no headers");
+        assert_eq!(body, br#"{"error":"management cycle"}"#);
     }
 
     /// `rejection_from` is the header-carrying form, and must agree with `rejection` when

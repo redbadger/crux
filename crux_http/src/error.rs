@@ -93,7 +93,9 @@ pub enum HttpError {
     /// lives there and nowhere else: `Retry-After` on a 429 or 503, `WWW-Authenticate` on
     /// a 401, rate-limit headers, or the `Content-Type` that says whether the body is JSON,
     /// HTML or prose. Read them with [`HttpError::header`], [`HttpError::content_type`] or
-    /// [`HttpError::headers`].
+    /// [`HttpError::headers`]. A rejection that sent no headers has an empty map, not an
+    /// absent one — there was always a response here, which is what distinguishes this
+    /// variant from every other.
     ///
     /// (The map is boxed only to keep `HttpError` small: a bare `HeaderMap` is 96 bytes, and
     /// this type is the `Err` of nearly every function in the crate.)
@@ -111,8 +113,8 @@ pub enum HttpError {
         code: u16,
         message: String,
         #[facet(opaque)]
-        headers: Option<Box<HeaderMap>>,
-        body: Option<Vec<u8>>,
+        headers: Box<HeaderMap>,
+        body: Vec<u8>,
     },
     /// A response body could not be deserialized (or a request body serialized).
     #[error("JSON serialization error: {0}")]
@@ -178,8 +180,9 @@ impl HttpError {
     ///
     /// This is the server's own account of why it rejected the request — usually far
     /// more useful to a user than [`Display`](std::fmt::Display), which can only report
-    /// the status. Returns `None` for errors that carry no body (transport failures, and
-    /// responses with an empty body).
+    /// the status. `None` for anything that isn't a rejection, and for a rejection whose
+    /// body was empty — every real 4xx arrives with bytes, and `Some(&[])` would only make
+    /// the obvious `if let Some(body)` idiom display blanks.
     ///
     /// # Examples
     ///
@@ -191,9 +194,7 @@ impl HttpError {
     #[must_use]
     pub fn body(&self) -> Option<&[u8]> {
         match self {
-            Self::Http {
-                body: Some(body), ..
-            } if !body.is_empty() => Some(body),
+            Self::Http { body, .. } if !body.is_empty() => Some(body),
             _ => None,
         }
     }
@@ -204,8 +205,8 @@ impl HttpError {
     /// `Retry-After` on a 429 or 503, `WWW-Authenticate` on a 401, rate-limit headers.
     /// None of it can be recovered from the status or the body.
     ///
-    /// Returns `None` for errors with no response behind them, and for a name the response
-    /// didn't carry. Lookup is case-insensitive, as HTTP requires.
+    /// Returns `None` for anything that isn't a rejection, and for a name the rejected
+    /// response didn't carry. Lookup is case-insensitive, as HTTP requires.
     ///
     /// # Examples
     ///
@@ -229,12 +230,12 @@ impl HttpError {
     /// [`HttpError::content_type`] don't cover — multi-value headers, iteration, or
     /// forwarding the lot to a logger.
     ///
-    /// `None` for errors with no response behind them, which is a different thing from
-    /// `Some(&empty_map)`: a response that sent no headers at all.
+    /// `Some` for a rejection — possibly an empty map, if the server sent no headers — and
+    /// `None` for every other error, none of which had a response behind them.
     #[must_use]
     pub fn headers(&self) -> Option<&HeaderMap> {
         match self {
-            Self::Http { headers, .. } => headers.as_deref(),
+            Self::Http { headers, .. } => Some(headers),
             _ => None,
         }
     }
@@ -342,8 +343,8 @@ mod tests {
         let error = HttpError::Http {
             code: 400,
             message: "Bad Request".to_string(),
-            headers: None,
-            body: None,
+            headers: Box::default(),
+            body: vec![],
         };
         assert_eq!(error.to_string(), "HTTP error 400: Bad Request");
     }
@@ -354,8 +355,8 @@ mod tests {
         let error = HttpError::Http {
             code: 404u16,
             message: "Not Found".to_string(),
-            headers: None,
-            body: None,
+            headers: Box::default(),
+            body: vec![],
         };
         assert_eq!(error.to_string(), "HTTP error 404: Not Found");
     }
@@ -393,8 +394,8 @@ mod tests {
         let error = HttpError::Http {
             code: 409,
             message: "409 Conflict".to_string(),
-            headers: Some(Box::new(headers)),
-            body: Some(br#"{"error":"already booked"}"#.to_vec()),
+            headers: Box::new(headers),
+            body: br#"{"error":"already booked"}"#.to_vec(),
         };
 
         assert_eq!(error.code(), Some(409));
@@ -421,15 +422,16 @@ mod tests {
         assert_eq!(error.headers(), None);
         assert_eq!(error.content_type(), None);
 
-        // A real rejection that sent no headers is `Some`, but empty — the two are different
-        // things, and only the accessors' `None` conflates them.
+        // Whereas a rejection always has a header map, even when the server sent nothing in
+        // it — so `headers()` is `Some(&empty)` here, never `None`. That is the whole
+        // distinction the accessor draws: `None` means "not a rejection".
         let error = HttpError::Http {
             code: 500,
             message: "500 Internal Server Error".to_string(),
-            headers: Some(Box::default()),
-            body: None,
+            headers: Box::default(),
+            body: vec![],
         };
-        assert!(error.headers().expect("a response's headers").is_empty());
+        assert!(error.headers().expect("a rejection has headers").is_empty());
         assert_eq!(error.content_type(), None);
     }
 
@@ -466,8 +468,8 @@ mod tests {
         let error = HttpError::Http {
             code: 500,
             message: "500 Internal Server Error".to_string(),
-            headers: None,
-            body: None,
+            headers: Box::default(),
+            body: vec![],
         };
         assert_eq!(error.code(), Some(500));
         assert_eq!(error.body(), None);
@@ -509,8 +511,8 @@ mod tests {
         let error = HttpError::Http {
             code: 404,
             message: "404 Not Found".to_string(),
-            headers: None,
-            body: Some(vec![]),
+            headers: Box::default(),
+            body: vec![],
         };
         assert_eq!(error.body(), None);
     }
@@ -520,8 +522,8 @@ mod tests {
         let error = HttpError::Http {
             code: 502,
             message: "502 Bad Gateway".to_string(),
-            headers: None,
-            body: Some(b"<html>nginx</html>".to_vec()),
+            headers: Box::default(),
+            body: b"<html>nginx</html>".to_vec(),
         };
         assert!(matches!(
             error.body_json::<serde_json::Value>(),

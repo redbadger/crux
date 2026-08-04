@@ -68,8 +68,8 @@ impl<Body> Response<Body> {
             return Err(HttpError::Http {
                 code: status.as_u16(),
                 message: status.to_string(),
-                headers: Some(Box::new(headers)),
-                body: Some(body),
+                headers: Box::new(headers),
+                body,
             });
         }
 

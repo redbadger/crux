@@ -141,10 +141,17 @@ and this project adheres to
   their own release. If you still depend on the feature, now is the time to say so.
 
 - **`HttpError::Http` has a new `headers` field**, so that a rejection's headers reach the
-  app (see `HttpError::header` above). It is `Option<Box<HeaderMap>>`, boxed only because a
-  bare `HeaderMap` is 96 bytes and this type is the
-  `Err` of nearly every function in the crate — inline, it pushed `HttpError` to 160 bytes
-  and tripped `clippy::result_large_err` across the crate.
+  app (see `HttpError::header` above). It is `Box<HeaderMap>`, boxed only because a bare
+  `HeaderMap` is 96 bytes and this type is the `Err` of nearly every function in the crate —
+  inline, it pushed `HttpError` to 160 bytes and tripped `clippy::result_large_err` across
+  the crate.
+
+  Neither `headers` nor `body` is optional, and `body` is now a plain `Vec<u8>` rather than
+  `Option<Vec<u8>>`. `Response::new` is the variant's only constructor and always supplies
+  both, so the `Option`s described states that could not arise. Both types are
+  niche-optimised, so this costs nothing at runtime — `HttpError` stays 72 bytes — and the
+  accessors are unchanged: `body()` still returns `None` for an empty body, and `headers()`
+  still returns `None`, but now that means simply "not a rejection".
 
   `match` arms that name only the fields they use are unaffected:
 
@@ -165,10 +172,9 @@ and this project adheres to
   let error = crux_http::testing::rejection::<Vec<u8>>(409, body).unwrap_err();
   ```
 
-  Note that `HttpError`'s `PartialEq` now compares headers too, so a hand-built variant no
-  longer equals the real thing: `rejection(409, body)` carries `Some(<empty map>)`, which is
-  not equal to `headers: None`. Another reason to compare against `rejection` /
-  `rejection_from` rather than a value assembled by hand.
+  Note that `HttpError`'s `PartialEq` now compares headers too, so two rejections that
+  differ only in what the server sent in its headers are no longer equal. Compare against
+  `rejection` / `rejection_from` rather than a value assembled by hand.
 
 - **`ResponseBuilder::with_status` now panics for a 4xx or 5xx status.** It could
   previously build a `Response` carrying an error status — a value no app can ever
