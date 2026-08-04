@@ -1,49 +1,43 @@
 import type { TimeRequest, TimeResponse } from "shared_types/app";
 import {
-  TimeRequestVariantNow,
-  TimeRequestVariantNotifyAfter,
-  TimeRequestVariantNotifyAt,
-  TimeRequestVariantClear,
-  TimeResponseVariantNow,
-  TimeResponseVariantDurationElapsed,
-  TimeResponseVariantInstantArrived,
-  TimeResponseVariantCleared,
+  matchTimeRequest,
+  timeResponseNow,
+  timeResponseDurationElapsed,
+  timeResponseInstantArrived,
+  timeResponseCleared,
   Instant,
 } from "shared_types/app";
 
 export async function handle(request: TimeRequest): Promise<TimeResponse> {
-  if (request instanceof TimeRequestVariantNow) {
-    console.debug("time: now");
-    return new TimeResponseVariantNow(nowInstant());
-  }
-
-  if (request instanceof TimeRequestVariantNotifyAfter) {
-    const millis = Number(request.duration.nanos / BigInt(1_000_000));
-    console.debug(`time: notify_after ${millis}ms (id=${request.id})`);
-    await sleep(millis);
-    console.debug(`time: duration elapsed (id=${request.id})`);
-    return new TimeResponseVariantDurationElapsed(request.id);
-  }
-
-  if (request instanceof TimeRequestVariantNotifyAt) {
-    const targetMs = instantToEpochMs(request.instant);
-    const nowMs = Date.now();
-    console.debug(
-      `time: notify_at target=${targetMs}ms now=${nowMs}ms (id=${request.id})`,
-    );
-    if (targetMs > nowMs) {
-      await sleep(targetMs - nowMs);
-    }
-    console.debug(`time: instant arrived (id=${request.id})`);
-    return new TimeResponseVariantInstantArrived(request.id);
-  }
-
-  if (request instanceof TimeRequestVariantClear) {
-    console.debug(`time: clear (id=${request.id})`);
-    return new TimeResponseVariantCleared(request.id);
-  }
-
-  throw new Error(`Unhandled time operation: ${request.constructor.name}`);
+  return matchTimeRequest<Promise<TimeResponse>>(request, {
+    Now: async () => {
+      console.debug("time: now");
+      return timeResponseNow(nowInstant());
+    },
+    NotifyAfter: async (r) => {
+      const millis = Number(r.duration.nanos / BigInt(1_000_000));
+      console.debug(`time: notify_after ${millis}ms (id=${r.id})`);
+      await sleep(millis);
+      console.debug(`time: duration elapsed (id=${r.id})`);
+      return timeResponseDurationElapsed(r.id);
+    },
+    NotifyAt: async (r) => {
+      const targetMs = instantToEpochMs(r.instant);
+      const nowMs = Date.now();
+      console.debug(
+        `time: notify_at target=${targetMs}ms now=${nowMs}ms (id=${r.id})`,
+      );
+      if (targetMs > nowMs) {
+        await sleep(targetMs - nowMs);
+      }
+      console.debug(`time: instant arrived (id=${r.id})`);
+      return timeResponseInstantArrived(r.id);
+    },
+    Clear: async (r) => {
+      console.debug(`time: clear (id=${r.id})`);
+      return timeResponseCleared(r.id);
+    },
+  });
 }
 
 function sleep(ms: number): Promise<void> {

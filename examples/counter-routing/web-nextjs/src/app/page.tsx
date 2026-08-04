@@ -6,10 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import * as sharedWasm from "shared";
 import {
   ViewModel,
-  EventVariantStartWatch,
-  EventVariantDecrement,
-  EventVariantIncrement,
-  EventVariantRandom,
+  eventStartWatch,
+  eventDecrement,
+  eventIncrement,
+  eventRandom,
 } from "shared_types/app";
 
 import { Core } from "./core";
@@ -33,7 +33,7 @@ const Home: NextPage = () => {
             core.current = new Core(setView);
           }
           // Initial events
-          core.current?.update(new EventVariantStartWatch());
+          core.current?.update(eventStartWatch());
         });
       }
     },
@@ -51,19 +51,19 @@ const Home: NextPage = () => {
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-warning"
-            onClick={() => core.current?.update(new EventVariantDecrement())}
+            onClick={() => core.current?.update(eventDecrement())}
           >
             {"Decrement"}
           </button>
           <button
             className="button is-primary is-danger"
-            onClick={() => core.current?.update(new EventVariantIncrement())}
+            onClick={() => core.current?.update(eventIncrement())}
           >
             {"Increment"}
           </button>
           <button
             className="button is-primary is-link"
-            onClick={() => core.current?.update(new EventVariantRandom())}
+            onClick={() => core.current?.update(eventRandom())}
           >
             {"I'm feeling lucky"}
           </button>

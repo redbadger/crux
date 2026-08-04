@@ -1,10 +1,13 @@
+import type { SseResponse } from "shared_types/app";
 import {
   SseRequest,
-  SseResponseVariantDone,
-  SseResponseVariantChunk,
+  sseResponseDone,
+  sseResponseChunk,
 } from "shared_types/app";
 
-export async function* request({ url }: SseRequest) {
+export async function* request({
+  url,
+}: SseRequest): AsyncGenerator<SseResponse> {
   const request = new Request(url);
 
   const response = await fetch(request);
@@ -16,9 +19,7 @@ export async function* request({ url }: SseRequest) {
   try {
     while (true) {
       const { done, value } = await reader.read();
-      yield done
-        ? new SseResponseVariantDone()
-        : new SseResponseVariantChunk(Array.from(value));
+      yield done ? sseResponseDone() : sseResponseChunk(Array.from(value));
       if (done) {
         break;
       }

@@ -21,7 +21,7 @@ keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 [workspace.dependencies]
 anyhow = "1.0"
 facet = "=0.44"
-facet_generate = "0.17"
+facet_generate = "0.18"
 facet-generate-attrs = "0.17"
 # facet_generate = { path = "../facet-generate/crates/facet_generate" }
 # facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }

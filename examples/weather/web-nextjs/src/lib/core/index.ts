@@ -1,26 +1,25 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import { CoreFFI } from "shared";
-import type { Effect, Event, RenderOperation } from "shared_types/app";
+import type { Effect, Event, ViewModel } from "shared_types/app";
 import {
-  EffectVariantHttp,
-  EffectVariantKeyValue,
-  EffectVariantLocation,
-  EffectVariantRender,
-  EffectVariantSecret,
-  EffectVariantTime,
   Request,
-  ViewModel,
+  matchEffect,
+  serializeEvent,
+  serializeHttpResult,
+  serializeKeyValueResult,
+  serializeLocationResult,
+  serializeSecretResponse,
+  serializeTimeResponse,
+  deserializeViewModel,
 } from "shared_types/app";
+import type { Serializer } from "shared_types/serde";
 import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
 import * as http from "./http";
 import * as kv from "./kv";
 import * as location from "./location";
 import * as secret from "./secret";
 import * as time from "./time";
-
-// union of all Operation types, only render is needed here
-type Response = RenderOperation;
 
 // ANCHOR: core_base
 export class Core {
@@ -34,7 +33,7 @@ export class Core {
 
   update(event: Event) {
     const serializer = new BincodeSerializer();
-    event.serialize(serializer);
+    serializeEvent(event, serializer);
 
     const effects = this.core.update(serializer.getBytes());
 
@@ -45,51 +44,44 @@ export class Core {
   }
   // ANCHOR_END: core_base
 
-  async resolve(id: number, effect: Effect) {
-    switch (effect.constructor) {
-      case EffectVariantRender: {
+  resolve(id: number, effect: Effect) {
+    matchEffect(effect, {
+      Render: (): void => {
         this.callback(deserializeView(this.core.view()));
-        break;
-      }
+      },
       // ANCHOR: http
-      case EffectVariantHttp: {
-        const request = (effect as EffectVariantHttp).value;
-        const response = await http.request(request);
-        this.respond(id, response);
-        break;
-      }
+      Http: (e): void => {
+        void http
+          .request(e.value)
+          .then((r) => this.respond(id, (s) => serializeHttpResult(r, s)));
+      },
       // ANCHOR_END: http
-      case EffectVariantKeyValue: {
-        const request = (effect as EffectVariantKeyValue).value;
-        const response = await kv.handle(request);
-        this.respond(id, response);
-        break;
-      }
-      case EffectVariantLocation: {
-        const request = (effect as EffectVariantLocation).value;
-        const response = await location.handle(request);
-        this.respond(id, response);
-        break;
-      }
-      case EffectVariantSecret: {
-        const request = (effect as EffectVariantSecret).value;
-        const response = secret.handle(request);
-        this.respond(id, response);
-        break;
-      }
-      case EffectVariantTime: {
-        const request = (effect as EffectVariantTime).value;
-        const response = await time.handle(request);
-        this.respond(id, response);
-        break;
-      }
-    }
+      KeyValue: (e): void => {
+        void kv
+          .handle(e.value)
+          .then((r) => this.respond(id, (s) => serializeKeyValueResult(r, s)));
+      },
+      Location: (e): void => {
+        void location
+          .handle(e.value)
+          .then((r) => this.respond(id, (s) => serializeLocationResult(r, s)));
+      },
+      Secret: (e): void => {
+        const r = secret.handle(e.value);
+        this.respond(id, (s) => serializeSecretResponse(r, s));
+      },
+      Time: (e): void => {
+        void time
+          .handle(e.value)
+          .then((r) => this.respond(id, (s) => serializeTimeResponse(r, s)));
+      },
+    });
   }
 
   // ANCHOR: respond
-  respond(id: number, response: Response) {
+  respond(id: number, serialize: (s: Serializer) => void) {
     const serializer = new BincodeSerializer();
-    response.serialize(serializer);
+    serialize(serializer);
 
     const effects = this.core.resolve(id, serializer.getBytes());
 
@@ -113,7 +105,7 @@ function deserializeRequests(bytes: Uint8Array | number[]) {
 }
 
 function deserializeView(bytes: Uint8Array | number[]) {
-  return ViewModel.deserialize(new BincodeDeserializer(asBytes(bytes)));
+  return deserializeViewModel(new BincodeDeserializer(asBytes(bytes)));
 }
 
 function asBytes(bytes: Uint8Array | number[]): Uint8Array {
