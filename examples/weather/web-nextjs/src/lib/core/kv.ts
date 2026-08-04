@@ -19,9 +19,7 @@ export async function handle(
       console.debug("kv get:", key);
       const stored = localStorage.getItem(key);
       const bytes = stored ? Array.from(new TextEncoder().encode(stored)) : [];
-      return Promise.resolve(
-        keyValueResultOk(keyValueResponseGet(valueBytes(bytes))),
-      );
+      return keyValueResultOk(keyValueResponseGet(valueBytes(bytes)));
     },
     Set: (op) => {
       const { key, value } = op;
@@ -32,9 +30,7 @@ export async function handle(
         : [];
       const valueStr = new TextDecoder().decode(new Uint8Array(value));
       localStorage.setItem(key, valueStr);
-      return Promise.resolve(
-        keyValueResultOk(keyValueResponseSet(valueBytes(prevBytes))),
-      );
+      return keyValueResultOk(keyValueResponseSet(valueBytes(prevBytes)));
     },
     Delete: (op) => {
       const key = op.key;
@@ -44,15 +40,13 @@ export async function handle(
         ? Array.from(new TextEncoder().encode(previous))
         : [];
       localStorage.removeItem(key);
-      return Promise.resolve(
-        keyValueResultOk(keyValueResponseDelete(valueBytes(prevBytes))),
-      );
+      return keyValueResultOk(keyValueResponseDelete(valueBytes(prevBytes)));
     },
     Exists: (op) => {
       const key = op.key;
       const exists = localStorage.getItem(key) !== null;
       console.debug("kv exists:", key, exists);
-      return Promise.resolve(keyValueResultOk(keyValueResponseExists(exists)));
+      return keyValueResultOk(keyValueResponseExists(exists));
     },
     ListKeys: (op) => {
       const { prefix } = op;
@@ -64,9 +58,7 @@ export async function handle(
           keys.push(key);
         }
       }
-      return Promise.resolve(
-        keyValueResultOk(keyValueResponseListKeys(keys, BigInt(0))),
-      );
+      return keyValueResultOk(keyValueResponseListKeys(keys, BigInt(0)));
     },
   });
 }

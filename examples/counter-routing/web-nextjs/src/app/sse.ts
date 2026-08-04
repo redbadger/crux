@@ -3,9 +3,7 @@ import {
   SseRequest,
   sseResponseDone,
   sseResponseChunk,
-  serializeSseResponse,
 } from "shared_types/app";
-import type { Serializer } from "shared_types/serde";
 
 export async function* request({
   url,
@@ -29,11 +27,4 @@ export async function* request({
   } finally {
     reader.releaseLock();
   }
-}
-
-export function serializeResponse(
-  response: SseResponse,
-  serializer: Serializer,
-): void {
-  serializeSseResponse(response, serializer);
 }

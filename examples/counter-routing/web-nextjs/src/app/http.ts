@@ -1,11 +1,5 @@
 import type { HttpRequest, HttpResult } from "shared_types/app";
-import {
-  HttpResponse,
-  HttpHeader,
-  httpResultOk,
-  serializeHttpResult,
-} from "shared_types/app";
-import type { Serializer } from "shared_types/serde";
+import { HttpResponse, HttpHeader, httpResultOk } from "shared_types/app";
 
 export async function request({
   url,
@@ -29,11 +23,4 @@ export async function request({
   return httpResultOk(
     new HttpResponse(response.status, responseHeaders, new Uint8Array(body)),
   );
-}
-
-export function serializeResult(
-  result: HttpResult,
-  serializer: Serializer,
-): void {
-  serializeHttpResult(result, serializer);
 }

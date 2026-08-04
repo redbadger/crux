@@ -8,6 +8,8 @@ import {
   ViewModel,
   matchEffect,
   serializeEvent,
+  serializeHttpResult,
+  serializeSseResponse,
 } from "shared_types/app";
 import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
 import type { Serializer } from "shared_types/serde";
@@ -45,24 +47,23 @@ export class Core {
   }
 
   resolve(id: number, effect: Effect): void {
-    matchEffect<void>(effect, {
-      Render: (_e) => {
+    matchEffect(effect, {
+      Render: (): void => {
         this.callback(deserializeView(new Uint8Array(this.core.view())));
       },
-      Http: (e) => {
-        (async () => {
-          const response = await http.request(e.value);
-          this.respond(id, (s) => http.serializeResult(response, s));
-        })();
+      Http: (e): void => {
+        void http
+          .request(e.value)
+          .then((r) => this.respond(id, (s) => serializeHttpResult(r, s)));
       },
-      ServerSentEvents: (e) => {
-        (async () => {
-          for await (const response of sse.request(e.value)) {
-            this.respond(id, (s) => sse.serializeResponse(response, s));
+      ServerSentEvents: (e): void => {
+        void (async () => {
+          for await (const r of sse.request(e.value)) {
+            this.respond(id, (s) => serializeSseResponse(r, s));
           }
         })();
       },
-      Random: (e) => {
+      Random: (e): void => {
         const min = Number(e.value.field0);
         const max = Number(e.value.field1);
         const result = Math.floor(Math.random() * (max - min)) + min;
