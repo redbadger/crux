@@ -178,7 +178,7 @@ jobs:
       - uses: taiki-e/install-action@just
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.2' --locked
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
         env:
           RUSTFLAGS: ""
 
@@ -266,7 +266,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.2' --locked
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
         env:
           RUSTFLAGS: ""
 
@@ -318,7 +318,7 @@ jobs:
         run: cargo install cargo-swift --version '=0.9'
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.2' --locked
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
         env:
           RUSTFLAGS: ""
 
@@ -366,7 +366,7 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.2' --locked
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
         env:
           RUSTFLAGS: ""
 
