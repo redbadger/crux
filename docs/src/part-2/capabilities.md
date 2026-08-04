@@ -16,6 +16,8 @@ The weather app's current-weather fetch shows the same pattern in production cod
 
 `Http::get(...)` starts a builder, `.expect_json::<T>()` pins down the response type, `.query(...)` adds URL parameters, `.build()` produces a `RequestBuilder`, and `.map(...)` translates the shell's `Result<Response, HttpError>` into the more convenient `Result<CurrentWeatherResponse, WeatherError>`. The caller finishes it off with `.then_send(SomeEvent)` — `fetch` returns a builder, not a command, so callers can hook it into their own event type.
 
+Note that a 4xx or 5xx response arrives on the **`Err`** side of that `Result`, never as an `Ok(Response)` carrying an error status — see [Handling `crux_http` rejections](../guide/http-rejections.md) for how to read one and how to test it.
+
 That's how a capability gets used. But where do these APIs come from? Let's build one.
 
 ## A simple custom capability: Location
