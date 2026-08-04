@@ -524,7 +524,8 @@ dependencies = [
 [[package]]
 name = "facet-generate-attrs"
 version = "0.17.0"
-source = "git+https://github.com/redbadger/facet-generate?branch=feat%2Ftypescript-discriminated-unions#f557b2f8944ee7f96b8a0c9ed5688e4a0b67438d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b430b495d59ffcf07dabe103a796d8d3ba809d12bb25a5960b605883835b3de"
 dependencies = [
  "facet",
 ]
@@ -576,8 +577,9 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.17.2"
-source = "git+https://github.com/redbadger/facet-generate?branch=feat%2Ftypescript-discriminated-unions#f557b2f8944ee7f96b8a0c9ed5688e4a0b67438d"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4c7ecce0761dfa28c527bb006a4391336618bd5088c16c8a61ae9bf1f6c0d2f"
 dependencies = [
  "derive_builder",
  "facet",
