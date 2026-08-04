@@ -1,7 +1,7 @@
 package com.crux.examples.counter.routing.core
 
 import android.util.Log
-import com.crux.examples.counter.routing.CoreFfi
+import com.crux.examples.counter.routing.CoreFFI
 import com.crux.examples.counter.routing.CruxShell
 import com.crux.examples.counter.routing.Effect
 import com.crux.examples.counter.routing.Event
@@ -22,7 +22,7 @@ class Core(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val coreFfi = CoreFfi(object : CruxShell {
+    private val coreFfi = CoreFFI(object : CruxShell {
         override fun processEffects(bytes: ByteArray) {
             scope.launch {
                 handleEffects(bytes)

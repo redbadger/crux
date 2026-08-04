@@ -196,6 +196,7 @@ jobs:
 
           mkdir -p "$RUNNER_TEMP/binaryen"
           tar -xzf "$archive_path" --strip-components=1 -C "$RUNNER_TEMP/binaryen"
+          export PATH="$RUNNER_TEMP/binaryen/bin:$PATH"
           echo "$RUNNER_TEMP/binaryen/bin" >> "$GITHUB_PATH"
           wasm-opt --version
 
@@ -267,7 +268,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc
+          targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
           components: clippy, rustfmt
 
       - uses: mozilla-actions/sccache-action@v0.0.9
