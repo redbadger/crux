@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 open class Core : androidx.lifecycle.ViewModel() {
-    private var core: CoreFfi = CoreFfi()
+    private var core: CoreFFI = CoreFFI()
 
     var view: ViewModel by mutableStateOf(
         ViewModel.bincodeDeserialize(core.view())

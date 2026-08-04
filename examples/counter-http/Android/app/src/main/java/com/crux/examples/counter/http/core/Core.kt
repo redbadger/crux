@@ -6,7 +6,7 @@ import com.crux.examples.counter.Event
 import com.crux.examples.counter.Request
 import com.crux.examples.counter.Requests
 import com.crux.examples.counter.ViewModel
-import com.crux.examples.counter.http.CoreFfi
+import com.crux.examples.counter.http.CoreFFI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,7 +19,7 @@ class Core(
     private val httpClient: HttpClient,
     private val sseClient: SseClient,
 ) {
-    private val coreFfi = CoreFfi()
+    private val coreFfi = CoreFFI()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val _viewModel: MutableStateFlow<ViewModel> = MutableStateFlow(getViewModel())
