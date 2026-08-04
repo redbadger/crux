@@ -181,6 +181,12 @@ and this project adheres to
   rejection can only be handled on the `Err` side. The `Response` docs carry the
   correct match shape as a compiled example.
 
+- `command::RequestBuilder::middleware` now warns that it is a **no-op**: nothing on the
+  command API executes a middleware stack, so middleware pushed there — `Redirect`
+  included — is accepted and silently ignored. Its example previously implied redirects
+  were followed. This documents existing behaviour; the underlying gap is
+  [#556](https://github.com/redbadger/crux/issues/556).
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_http-v0.18.0...crux_http-v0.19.0) - 2026-07-06
 
 > **📖 See the [Migrating `crux_http` to native `http` types](https://redbadger.github.io/crux/guide/migrate-crux-http.html)

@@ -338,6 +338,19 @@ where
 
     /// Push middleware onto a per-request middleware stack.
     ///
+    /// # Warning: middleware does not run on this API
+    ///
+    /// Nothing executes the stack this pushes onto. [`build`](Self::build) turns the request
+    /// straight into a protocol request for the shell, and the only executor of a middleware
+    /// stack is `Client::send`, reachable solely from the deprecated capability API. So
+    /// middleware added here is accepted and then silently ignored — including
+    /// [`Redirect`](crate::middleware::Redirect), which means redirects are **not** followed
+    /// and a 3xx arrives at your app as a `Response` with a `Location` header.
+    ///
+    /// Until [issue #556](https://github.com/redbadger/crux/issues/556) is resolved, treat
+    /// this method as a no-op rather than a way to intercept requests. `Config` (base URL,
+    /// per-client default headers) is skipped on this API for the same reason.
+    ///
     /// **Important**: Setting per-request middleware incurs extra allocations.
     /// Creating a `Client` with middleware is recommended.
     ///
@@ -358,6 +371,7 @@ where
     /// # enum Effect { Http(HttpRequest) }
     /// # type Http = crux_http::command::Http<Effect, Event>;
     /// Http::get("https://httpbin.org/redirect/2")
+    ///     // accepted, but never run — the two redirects are not followed
     ///     .middleware(crux_http::middleware::Redirect::default())
     ///     .build()
     ///     .then_send(Event::ReceiveResponse);
