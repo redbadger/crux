@@ -32,6 +32,8 @@ impl CoreFFI {
     /// If the event cannot be deserialized.
     /// In production you should handle the error properly.
     #[must_use]
+    // BoltFFI's C# wire model requires owned byte buffers at the FFI boundary.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn update(&self, data: Vec<u8>) -> Vec<u8> {
         let mut effects = Vec::new();
         match self.core.update(&data, &mut effects) {
@@ -45,6 +47,8 @@ impl CoreFFI {
     /// If the `data` cannot be deserialized into an effect or the `effect_id` is invalid.
     /// In production you should handle the error properly.
     #[must_use]
+    // BoltFFI's C# wire model requires owned byte buffers at the FFI boundary.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn resolve(&self, id: u32, data: Vec<u8>) -> Vec<u8> {
         let mut effects = Vec::new();
         match self.core.resolve(EffectId(id), &data, &mut effects) {
