@@ -122,15 +122,14 @@ pub enum HttpError {
 
     /// The response body had already been taken.
     ///
-    /// A caller error rather than anything the server did: [`body_bytes`], [`body_string`],
-    /// [`body_json`] and [`body_form`] each *take* the body, so only the first call can
-    /// succeed. It carries nothing, because the caller still holds the
-    /// [`Response`](crate::Response) and so already has its status and headers.
+    /// A caller error rather than anything the server did: [`body_bytes`], [`body_string`]
+    /// and [`body_json`] all *take* the body, so only the first call can succeed. It carries
+    /// nothing, because the caller still holds the [`Response`](crate::Response) and so
+    /// already has its status and headers.
     ///
     /// [`body_bytes`]: crate::Response::body_bytes
     /// [`body_string`]: crate::Response::body_string
     /// [`body_json`]: crate::Response::body_json
-    /// [`body_form`]: crate::Response::body_form
     #[error("response body had already been taken")]
     #[serde(skip)]
     #[facet(skip)]
@@ -307,19 +306,6 @@ impl HttpError {
             .body()
             .ok_or_else(|| Self::Json("error has no response body".to_string()))?;
         serde_json::from_slice(body).map_err(Self::from)
-    }
-}
-
-#[cfg(feature = "http-types")]
-impl From<http_types::Error> for HttpError {
-    fn from(e: http_types::Error) -> Self {
-        Self::Http {
-            code: e.status().into(),
-            message: e.to_string(),
-            // An `http_types::Error` is a status and a message; it has no response.
-            headers: None,
-            body: None,
-        }
     }
 }
 

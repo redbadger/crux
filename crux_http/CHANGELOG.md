@@ -130,6 +130,16 @@ and this project adheres to
   **not** `#[non_exhaustive]`, so a new failure mode is a compile error you get to think
   about, rather than something that silently lands in a wildcard.
 
+- **`From<http_types::Error> for HttpError` is gone** (`http-types` feature only). It mapped
+  a middleware error onto `HttpError::Http`, which now means only a server rejection, and it
+  has no callers inside the crate. `http-types` middleware must map its own errors
+  explicitly.
+
+  It isn't rehomed onto a new variant because **the `http-types` feature is slated for
+  removal in full** — `http` is the only HTTP type system `crux_http` will keep. This is the
+  first piece to go; `crux_http::compat` and the `pub use http_types` re-export follow in
+  their own release. If you still depend on the feature, now is the time to say so.
+
 - **`HttpError::Http` has a new `headers` field**, so that a rejection's headers reach the
   app (see `HttpError::header` above). It is `Option<Box<HeaderMap>>`, boxed only because a
   bare `HeaderMap` is 96 bytes and this type is the
