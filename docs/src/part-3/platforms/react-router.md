@@ -38,6 +38,12 @@ brew install binaryen # provides wasm-opt
 
 The crate is `boltffi_cli`; it installs the `boltffi` binary used below.
 
+Binaryen must be version 123 or newer — BoltFFI passes `--enable-bulk-memory-opt`
+to `wasm-opt`, which older releases don't understand. Check with
+`wasm-opt --version`; distribution packages are often well behind, so prefer a
+[release from GitHub](https://github.com/WebAssembly/binaryen/releases) if your
+package manager ships something older.
+
 Now that we have `boltffi` installed, we can build our `shared` library to
 WebAssembly for the browser.
 

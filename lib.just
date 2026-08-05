@@ -3,6 +3,9 @@
 
 boltffi_version := "0.29.3"
 
+# Minimum Binaryen release providing --enable-bulk-memory-opt, which BoltFFI passes
+binaryen_version := "123"
+
 # Check if a tool is installed, report status (does not fail build)
 [no-cd]
 [script('bash')]
@@ -74,6 +77,18 @@ _check-java-version:
         echo "  {{ style("error") }}✗ java version $ver — need 17–24 (Gradle does not support 25+){{ NORMAL }}"
     fi
 
+# (internal) check Binaryen's wasm-opt is new enough for BoltFFI
+[no-cd]
+[script('bash')]
+_check-wasm-opt-version:
+    if ! command -v wasm-opt >/dev/null 2>&1; then exit 0; fi
+    ver=$(wasm-opt --version 2>/dev/null | head -n 1 | sed -E 's/.*version ([0-9]+).*/\1/')
+    if [ "$ver" -ge {{ binaryen_version }} ] 2>/dev/null; then
+        echo "  ✓ wasm-opt version $ver (>= {{ binaryen_version }})"
+    else
+        echo "  {{ style("error") }}✗ wasm-opt version $ver — need {{ binaryen_version }}+ (BoltFFI passes --enable-bulk-memory-opt, added in Binaryen {{ binaryen_version }}){{ NORMAL }}"
+    fi
+
 # Check tools for Apple shells
 [no-cd]
 check-apple:
@@ -129,6 +144,7 @@ check-web-wasm:
     @just lib::check-tool cargo "https://rustup.rs"
     @just lib::check-boltffi
     @just lib::check-tool wasm-opt "install Binaryen: brew install binaryen"
+    @just lib::_check-wasm-opt-version
     @just lib::check-tool node "https://nodejs.org"
     @just lib::check-tool pnpm "npm install -g pnpm"
     @just lib::check-rust-target wasm32-unknown-unknown
