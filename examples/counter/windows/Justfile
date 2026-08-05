@@ -6,7 +6,9 @@ default: dev
 # --------------------------------------------------------------------------
 
 # Platform for the .NET build. WinUI3 apps are never AnyCPU; default to x64.
-# Use `just build platform=ARM64` to build the ARM64 app.
+# Use `just platform=ARM64 build` to build the ARM64 app — just only accepts
+# variable overrides *before* the recipe name, so `just build platform=ARM64`
+# fails with "justfile does not contain recipe `platform=ARM64`".
 platform := "x64"
 boltffi_version := "0.29.3"
 rust_target_x64 := "x86_64-pc-windows-msvc"
