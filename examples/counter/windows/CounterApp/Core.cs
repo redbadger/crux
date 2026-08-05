@@ -8,16 +8,16 @@ namespace CounterApp;
 // no observable state (see CounterViewModel).
 public sealed class Core : IDisposable
 {
-    private readonly CoreFFI ffi = new();
+    private readonly CoreFfi ffi = new();
 
     public ViewModel View() =>
         ViewModel.BincodeDeserialize(ffi.View());
 
     public IReadOnlyList<Request> Update(Event @event) =>
-        Requests.BincodeDeserialize(ffi.UpdateBytes(EventBincode.BincodeSerialize(@event))).Value;
+        Requests.BincodeDeserialize(ffi.Update(EventBincode.BincodeSerialize(@event))).Value;
 
     public IReadOnlyList<Request> Resolve(uint id, byte[] data) =>
-        Requests.BincodeDeserialize(ffi.ResolveBytes(id, data)).Value;
+        Requests.BincodeDeserialize(ffi.Resolve(id, data)).Value;
 
     public void Dispose() => ffi.Dispose();
 }

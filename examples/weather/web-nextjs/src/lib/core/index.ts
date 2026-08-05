@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { CoreFFI } from "shared";
+import { CoreFfi } from "shared";
 import type { Effect, Event, ViewModel } from "shared_types/app";
 import {
   Request,
@@ -23,12 +23,12 @@ import * as time from "./time";
 
 // ANCHOR: core_base
 export class Core {
-  core: CoreFFI;
+  core: CoreFfi;
   callback: Dispatch<SetStateAction<ViewModel>>;
 
   constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
     this.callback = callback;
-    this.core = CoreFFI.new();
+    this.core = CoreFfi.new();
   }
 
   update(event: Event) {

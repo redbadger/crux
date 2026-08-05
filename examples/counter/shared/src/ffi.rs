@@ -8,18 +8,18 @@ use crux_core::{
 use crate::Counter;
 
 /// The main interface used by the shell
-pub struct CoreFFI {
+pub struct CoreFfi {
     core: Bridge<Counter>,
 }
 
-impl Default for CoreFFI {
+impl Default for CoreFfi {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[boltffi::export]
-impl CoreFFI {
+impl CoreFfi {
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -51,26 +51,6 @@ impl CoreFFI {
             Ok(()) => effects,
             Err(e) => panic!("{e}"),
         }
-    }
-
-    /// Send an event to the app using owned bytes for generated C# bindings.
-    /// # Panics
-    /// If the event cannot be deserialized.
-    /// In production you should handle the error properly.
-    #[must_use]
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn update_bytes(&self, data: Vec<u8>) -> Vec<u8> {
-        self.update(&data)
-    }
-
-    /// Resolve an effect using owned bytes for generated C# bindings.
-    /// # Panics
-    /// If the `data` cannot be deserialized into an effect or the `effect_id` is invalid.
-    /// In production you should handle the error properly.
-    #[must_use]
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn resolve_bytes(&self, id: u32, data: Vec<u8>) -> Vec<u8> {
-        self.resolve(id, &data)
     }
 
     /// Get the current `ViewModel`.

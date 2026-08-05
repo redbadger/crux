@@ -8,18 +8,18 @@ use crux_core::{
 use crate::NoteEditor;
 
 /// The main interface used by the shell
-pub struct CoreFFI {
+pub struct CoreFfi {
     core: Bridge<NoteEditor>,
 }
 
-impl Default for CoreFFI {
+impl Default for CoreFfi {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[boltffi::export]
-impl CoreFFI {
+impl CoreFfi {
     #[must_use]
     pub fn new() -> Self {
         Self {

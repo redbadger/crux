@@ -7,8 +7,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Drop a real app.ico into Assets/ to get a taskbar / title-bar icon. -->
     <ApplicationIcon Condition="Exists('Assets\app.ico')">Assets\app.ico</ApplicationIcon>
-    <Platforms>x64</Platforms>
-    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <!-- EnableMsixTooling=true enables resources.pri generation (required so
          ms-appx:/// can resolve XAML theme resources); WindowsPackageType=None
@@ -35,8 +35,8 @@
 
   <ItemGroup>
     <!-- CounterApp.Shared.Ffi is the local NuGet produced by `boltffi pack csharp`
-         in the windows/Justfile; it carries the FFI bindings and the native
-         shared.dll under runtimes/win-x64/native. -->
+         in the windows/Justfile; it carries the FFI bindings and native
+         shared.dll assets under runtimes/win-x64/native and win-arm64/native. -->
     <PackageReference Include="CounterApp.Shared.Ffi" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />

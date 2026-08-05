@@ -3,7 +3,7 @@
 //! This crate is the portable core of the app: a pure `update`/`view` pipeline
 //! built on [Crux](https://crux-rs.github.io/). The native and web shells
 //! (`apple/`, `android/`, `web-leptos/`, `web-nextjs/`) drive it through the
-//! BoltFFI-generated `CoreFFI` bindings and render the resulting [`ViewModel`].
+//! BoltFFI-generated `CoreFfi` bindings and render the resulting [`ViewModel`].
 //!
 //! # Where to start
 //!
@@ -40,4 +40,4 @@ pub use effects::Effect;
 pub use model::Event;
 pub use view::ViewModel;
 
-pub use ffi::CoreFFI;
+pub use ffi::CoreFfi;

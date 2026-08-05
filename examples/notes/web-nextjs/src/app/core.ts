@@ -4,7 +4,7 @@
 // is what guarantees the patch is installed before the WASM module loads.
 import "./wasm-getrandom";
 
-import { CoreFFI } from "shared";
+import { CoreFfi } from "shared";
 import type { Effect, Event } from "shared_types/app";
 import {
   ViewModel,
@@ -37,7 +37,7 @@ export type SyncMessage = {
 };
 
 export class Core {
-  core: CoreFFI | null = null;
+  core: CoreFfi | null = null;
   setState: Dispatch<SetStateAction<ViewModel>>;
   setTimers: Dispatch<SetStateAction<Timers>>;
   channel: RefObject<BroadcastChannel>;
@@ -49,7 +49,7 @@ export class Core {
     channel: RefObject<BroadcastChannel>,
     subscriptionId: RefObject<number | null>,
   ) {
-    // Don't initialize CoreFFI here - wait for WASM to be loaded
+    // Don't initialize CoreFfi here - wait for WASM to be loaded
     this.setState = setState;
     this.setTimers = setTimers;
     this.channel = channel;
@@ -58,7 +58,7 @@ export class Core {
 
   initialize() {
     if (!this.core) {
-      this.core = CoreFFI.new();
+      this.core = CoreFfi.new();
     }
   }
 
