@@ -17,7 +17,7 @@ required-features = ["codegen"]
 
 [features]
 default = ["ffi"]
-# The BoltFFI surface (CoreFFI + CruxShell callback trait). Enabled by default
+# The BoltFFI surface (CoreFfi + CruxShell callback trait). Enabled by default
 # for the native (Android/Apple) and web-nextjs builds. The Leptos shell links
 # `shared` directly into its own wasm binary and must build with this feature
 # disabled, because `#[boltffi::export]` on the callback trait emits `"env"`

@@ -15,11 +15,11 @@ class Core: ObservableObject {
     @Published var view: ViewModel
 
     private var handler: EffectHandler
-    private var core: CoreFFI
+    private var core: CoreFfi
 
     init() {
         self.handler = EffectHandler()
-        self.core = CoreFFI(shell: handler)
+        self.core = CoreFfi(shell: handler)
         // swiftlint:disable:next force_try
         self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
 

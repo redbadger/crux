@@ -1,7 +1,7 @@
 package com.crux.examples.counter.middleware.core
 
 import android.util.Log
-import com.crux.examples.counter.middleware.CoreFFI
+import com.crux.examples.counter.middleware.CoreFfi
 import com.crux.examples.counter.middleware.CruxShell
 import com.crux.examples.counter.middleware.Effect
 import com.crux.examples.counter.middleware.Event
@@ -22,7 +22,7 @@ class Core(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val coreFfi = CoreFFI(object : CruxShell {
+    private val coreFfi = CoreFfi(object : CruxShell {
         override fun processEffects(bytes: ByteArray) {
             scope.launch {
                 handleEffects(bytes)

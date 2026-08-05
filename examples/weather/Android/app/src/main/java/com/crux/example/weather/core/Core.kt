@@ -2,7 +2,7 @@ package com.crux.example.weather.core
 
 import android.util.Log
 import com.crux.example.weather.ActiveViewModel
-import com.crux.example.weather.CoreFFI
+import com.crux.example.weather.CoreFfi
 import com.crux.example.weather.Effect
 import com.crux.example.weather.Event
 import com.crux.example.weather.FavoritesViewModel
@@ -36,7 +36,7 @@ class Core
         private val secretStore: SecretStore,
         private val timeHandler: TimeHandler,
     ) {
-        private val coreFfi = CoreFFI()
+        private val coreFfi = CoreFfi()
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
         private val _viewModel: MutableStateFlow<ViewModel> = MutableStateFlow(getViewModel())
