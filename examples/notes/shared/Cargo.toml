@@ -32,7 +32,7 @@ boltffi.workspace = true
 crux_core.workspace = true
 crux_kv.workspace = true
 crux_time.workspace = true
-facet = "=0.44"
+facet = "=0.46.5"
 futures = "0.3"
 serde = { workspace = true, features = ["derive"] }
 

@@ -80,10 +80,10 @@
       "allowedVersions": "0.29.3"
     },
     {
-      "description": "Pin facet to 0.44 — facet_generate 0.18 depends on facet =0.44",
+      "description": "Pin facet to 0.46.5 — facet_generate 0.19 depends on facet =0.46.5. Held to lib.just by `just check-versions`.",
       "matchPackageNames": ["facet"],
       "matchManagers": ["cargo"],
-      "allowedVersions": "0.44"
+      "allowedVersions": "0.46.5"
     },
     {
       "description": "Pin bincode to 1.x — 2.x has incompatible API; plan is to replace bincode entirely as it is unmaintained",

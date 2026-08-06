@@ -35,7 +35,7 @@ codegen = [
 
 # ANCHOR: typegen_deps
 [dependencies]
-facet = { version = "=0.44", features = ["chrono"] }
+facet = { version = "=0.46.5", features = ["chrono"] }
 # ANCHOR_END: typegen_deps
 boltffi.workspace = true
 crux_core.workspace = true
