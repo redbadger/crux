@@ -6,6 +6,12 @@ boltffi_version := "0.29.3"
 # Minimum Binaryen release providing --enable-bulk-memory-opt, which BoltFFI passes
 binaryen_version := "123"
 
+# facet is pinned exactly, and every pin must agree. facet_generate depends on
+# `facet =<this>`, so the two are locked together; a partial bump puts two
+# facet_core versions in one graph and fails with `Facet<'_> is not satisfied`
+# rather than as a version conflict.
+facet_version := "0.46.5"
+
 # Check if a tool is installed, report status (does not fail build)
 [no-cd]
 [script('bash')]

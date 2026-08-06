@@ -23,12 +23,20 @@ check: check-versions
     cargo check --all-features
     cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
-# Verify every BoltFFI and Binaryen version pin agrees with lib.just.
+# Verify every BoltFFI, Binaryen and facet version pin agrees with lib.just.
 #
 # The versions are spread across workspace manifests, package.json files, CI,
 # the book and renovate.json, and they all have to move together — a partial
 # bump leaves the toolchain silently mismatched rather than failing loudly.
 # lib.just is the single source of truth; this recipe holds everything to it.
+#
+# facet is the worst of the three to get wrong. It is pinned in ten places (the
+# workspace manifest, all six example shared crates, the book, and two lines of
+# renovate.json), and a partial bump does not surface as a version conflict —
+# cargo happily resolves two facet_core versions, and you get
+# `RenderOperation: Facet<'_> is not satisfied` from whichever crate ended up on
+# the wrong side. The facet pin is also locked to facet_generate, which itself
+# depends on `facet =<facet_version>`, so the two can only move together.
 [script('bash')]
 check-versions:
     set -euo pipefail
@@ -36,7 +44,8 @@ check-versions:
 
     boltffi=$(sed -nE 's/^boltffi_version := "(.*)"/\1/p' lib.just)
     binaryen=$(sed -nE 's/^binaryen_version := "(.*)"/\1/p' lib.just)
-    if [ -z "$boltffi" ] || [ -z "$binaryen" ]; then
+    facet=$(sed -nE 's/^facet_version := "(.*)"/\1/p' lib.just)
+    if [ -z "$boltffi" ] || [ -z "$binaryen" ] || [ -z "$facet" ]; then
         echo "  {{ style("error") }}✗ could not read the expected versions from lib.just{{ NORMAL }}"
         exit 1
     fi
@@ -61,6 +70,29 @@ check-versions:
     $(grep -A2 -H '"boltffi", "boltffi_cli"' renovate.json | grep -E 'allowedVersions' || true)
     PINS
 
+    facet_checked=0
+    while IFS= read -r hit; do
+        [ -n "$hit" ] || continue
+        file=${hit%%:*}
+        found=$(printf '%s' "${hit#*:}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+        facet_checked=$((facet_checked + 1))
+        if [ "$found" != "$facet" ]; then
+            echo "  {{ style("error") }}✗ $file pins facet $found, expected $facet{{ NORMAL }}"
+            status=1
+        fi
+    done <<FACET_PINS
+    $(grep -HoE '^facet = "=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/shared/Cargo.toml || true)
+    $(grep -HoE '^facet = \{ version = "=[0-9]+\.[0-9]+\.[0-9]+"' examples/*/shared/Cargo.toml || true)
+    $(grep -rHoE '^facet = "=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
+    $(grep -HoE 'Pin facet to [0-9]+\.[0-9]+\.[0-9]+' renovate.json || true)
+    $(grep -F -A3 -H '"matchPackageNames": ["facet"],' renovate.json | grep -E 'allowedVersions' || true)
+    FACET_PINS
+
+    if [ "$facet_checked" -lt 10 ]; then
+        echo "  {{ style("error") }}✗ only found $facet_checked facet pins, expected at least 10 — has a pin site moved or been renamed?{{ NORMAL }}"
+        status=1
+    fi
+
     ci_binaryen=$(sed -nE 's/^ *binaryen_version=([0-9]+).*/\1/p' .github/workflows/examples.yaml | head -n 1)
     if [ "$ci_binaryen" != "$binaryen" ]; then
         echo "  {{ style("error") }}✗ examples.yaml installs Binaryen $ci_binaryen, expected $binaryen{{ NORMAL }}"
@@ -68,7 +100,7 @@ check-versions:
     fi
 
     if [ "$status" -eq 0 ]; then
-        echo "  ✓ $checked BoltFFI pins at $boltffi, Binaryen at $binaryen"
+        echo "  ✓ $checked BoltFFI pins at $boltffi, Binaryen at $binaryen, $facet_checked facet pins at $facet"
     fi
     exit $status
 
