@@ -4,6 +4,22 @@
 //! `crux_http` allows Crux apps to make HTTP requests by asking the Shell to perform them.
 //!
 //! This is still work in progress and large parts of HTTP are not yet supported.
+//!
+//! # Errors and rejections
+//!
+//! A request resolves to a [`Result<Response<T>>`](Result), and a 4xx or 5xx response is
+//! on the **`Err`** side of it: `crux_http` turns those into
+//! [`HttpError::Http`] — headers and body included — before the event reaches the app, so
+//! [`Response::status`] is never an error status. Read the server's own explanation of a
+//! rejection with [`HttpError::body`] or [`HttpError::body_json`], and whatever policy it
+//! put in the headers (`Retry-After`, `WWW-Authenticate`) with [`HttpError::header`].
+//! [`Response`] documents the shape to write, and [`testing`] the two values a test
+//! should build.
+//!
+//! `HttpError::Http` means a rejection and nothing else, so [`HttpError::code`] returning
+//! `Some` is the test for one. The crate's own failures are separate variants —
+//! [`HttpError::Json`], [`HttpError::BodyAlreadyTaken`], [`HttpError::InvalidStatusCode`] —
+//! as are the shell's ([`HttpError::Url`], [`HttpError::Io`], [`HttpError::Timeout`]).
 // #![warn(missing_docs)]
 
 mod config;
