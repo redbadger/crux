@@ -100,10 +100,16 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **Now requires `facet_generate` 0.18** (was 0.17), under the `facet_typegen` feature.
-  This is what the release is for: 0.19.0 requires `facet_generate ^0.17`, so a project
-  wanting `facet_generate` 0.18 of its own would resolve two incompatible copies of it in
-  one tree.
+- **Now requires `facet_generate` 0.19 and `facet` 0.46.5** (were 0.17 and 0.44), under
+  the `facet_typegen` feature. This is what the release is for: 0.19.0 requires
+  `facet_generate ^0.17`, so a project wanting a newer `facet_generate` of its own would
+  resolve two incompatible copies of it in one tree. The upgrade itself needed no source
+  changes, and generated Swift, Kotlin, C# and TypeScript are byte-for-byte unchanged.
+
+  Note that `facet` is pinned exactly (`=0.46.5`), because `facet_generate` 0.19 pins it
+  too. Anything else in your tree that depends on `facet` has to agree, or you get two
+  `facet_core` versions and a confusing `Facet<'_> is not satisfied` error rather than a
+  version conflict.
 - The `crux_platform` reference is gone from the README; the crate is deprecated and no
   longer part of Crux.
 - Dependency updates.

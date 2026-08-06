@@ -548,6 +548,8 @@ dependencies = [
 [[package]]
 name = "facet-generate-attrs"
 version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8759a95863bc332c2cdbdacdbe2595573aa3431ce42609b66a1eccf62f1ee1bb"
 dependencies = [
  "facet",
 ]
@@ -600,6 +602,8 @@ dependencies = [
 [[package]]
 name = "facet_generate"
 version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3799ad16bb15772f993add1355154bea812a99c37307cd8035bf8692ce145ad0"
 dependencies = [
  "derive_builder",
  "facet",

@@ -21,15 +21,10 @@ keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
 [workspace.dependencies]
 anyhow = "1.0"
 facet = "=0.46.5"
-# TEMPORARY: facet_generate 0.19.0 and facet-generate-attrs 0.18.0 are not on
-# crates.io yet — see https://github.com/redbadger/facet-generate/pull/117.
-# These path deps let `just ci` run in the meantime. Swap the two lines below
-# back to the registry versions before publishing: `cargo publish` cannot
-# resolve a path dependency outside this workspace.
-# facet_generate = "0.19"
-# facet-generate-attrs = "0.18"
-facet_generate = { path = "../facet-generate/crates/facet_generate" }
-facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
+facet_generate = "0.19"
+facet-generate-attrs = "0.18"
+# facet_generate = { path = "../facet-generate/crates/facet_generate" }
+# facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
 serde = "1.0"
 thiserror = "2.0"
 uniffi_bindgen = "=0.29.4"
