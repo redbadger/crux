@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
+
 ### 💥 Breaking Changes
 
 - **`crux_core::effects::EffectId` is renamed to `ParkedEffectId`.** There were two public
@@ -95,6 +97,16 @@ and this project adheres to
   Streaming requests still hold their entry after the stream ends — the registry is not
   told when a `Many` finishes. That needs `ResolveSerialized` to report completion, and
   is left for its own change.
+
+### ⚙️ Miscellaneous Tasks
+
+- **Now requires `facet_generate` 0.18** (was 0.17), under the `facet_typegen` feature.
+  This is what the release is for: 0.19.0 requires `facet_generate ^0.17`, so a project
+  wanting `facet_generate` 0.18 of its own would resolve two incompatible copies of it in
+  one tree.
+- The `crux_platform` reference is gone from the README; the crate is deprecated and no
+  longer part of Crux.
+- Dependency updates.
 
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-06-08
 

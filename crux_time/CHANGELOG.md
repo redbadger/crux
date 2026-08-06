@@ -8,6 +8,16 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.18.0](https://github.com/redbadger/crux/compare/crux_time-v0.17.0...crux_time-v0.18.0) - 2026-08-06
+
+### ⚙️ Miscellaneous Tasks
+
+- Align with `crux_core` 0.20.0. No public API changes. Released in lockstep because each
+  capability crate requires a specific `crux_core` minor: a capability left on `crux_core`
+  0.19 alongside one on 0.20 would pull two incompatible `crux_core` versions into the
+  same tree.
+- Dependency updates.
+
 ## [0.17.0](https://github.com/redbadger/crux/compare/crux_time-v0.16.0...crux_time-v0.17.0) - 2026-05-31
 
 ### ⚙️ Miscellaneous Tasks

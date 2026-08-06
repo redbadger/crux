@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.20.0](https://github.com/redbadger/crux/compare/crux_http-v0.19.0...crux_http-v0.20.0) - 2026-08-06
+
 ### Added
 
 - **`HttpError::body`, `HttpError::body_json` and `HttpError::code`** — read what the
@@ -225,6 +227,13 @@ and this project adheres to
   included — is accepted and silently ignored. Its example previously implied redirects
   were followed. This documents existing behaviour; the underlying gap is
   [#556](https://github.com/redbadger/crux/issues/556).
+
+### ⚙️ Miscellaneous Tasks
+
+- Align with `crux_core` 0.20.0. Upgrade the other capability crates
+  (`crux_kv` 0.14.0, `crux_time` 0.18.0) together with this one — a capability left on
+  `crux_core` 0.19 would pull a second, incompatible `crux_core` into the same tree.
+- Dependency updates, including `http` 1.4 -> 1.5.
 
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_http-v0.18.0...crux_http-v0.19.0) - 2026-07-06
 
