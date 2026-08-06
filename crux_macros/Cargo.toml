@@ -13,12 +13,12 @@ keywords.workspace = true
 proc-macro = true
 
 [dependencies]
-darling = "0.23"
+darling = "0.24"
 heck = "0.5"
 proc-macro2 = "1.0"
 proc-macro-error = "1.0"
 quote = "1.0"
-syn = "2.0"
+syn = "3.0"
 
 [dev-dependencies]
 crux_core = { path = "../crux_core" }
@@ -26,7 +26,7 @@ crux_http = { path = "../crux_http" }
 facet = { workspace = true }
 facet-generate-attrs = { workspace = true }
 insta = "1.48.0"
-prettyplease = "0.2"
+prettyplease = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 
 [features]

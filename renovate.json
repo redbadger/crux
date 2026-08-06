@@ -69,7 +69,7 @@
     },
     {
       "description": "Pin UniFFI compatibility dependencies during the BoltFFI migration window",
-      "matchPackageNames": ["uniffi", "uniffi_bindgen"],
+      "matchPackageNames": ["uniffi_bindgen"],
       "matchManagers": ["cargo"],
       "allowedVersions": "0.29.4"
     },
@@ -80,7 +80,7 @@
       "allowedVersions": "0.29.3"
     },
     {
-      "description": "Pin facet to 0.44 — aligns with facet_generate 0.17",
+      "description": "Pin facet to 0.44 — facet_generate 0.18 depends on facet =0.44",
       "matchPackageNames": ["facet"],
       "matchManagers": ["cargo"],
       "allowedVersions": "0.44"

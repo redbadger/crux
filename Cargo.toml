@@ -27,7 +27,6 @@ facet-generate-attrs = "0.17"
 # facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
 serde = "1.0"
 thiserror = "2.0"
-uniffi = "=0.29.4"
 uniffi_bindgen = "=0.29.4"
 boltffi = "=0.29.3"
 
