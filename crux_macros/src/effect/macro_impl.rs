@@ -341,7 +341,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 let operation = &effect.operation;
 
                 quote! {
-                    #operation::register_types(generator)?;
+                    <#operation>::register_types(generator)?;
                 }
             });
             quote! {
@@ -365,7 +365,7 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 let operation = &effect.operation;
 
                 quote! {
-                    let generator = #operation::register_types_facet(generator)
+                    let generator = <#operation>::register_types_facet(generator)
                         .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(err.to_string()))?;
                 }
             });

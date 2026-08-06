@@ -126,7 +126,7 @@ fn single_with_typegen() {
             generator: &mut ::crux_core::type_generation::serde::TypeGen,
         ) -> ::crux_core::type_generation::serde::Result {
             use ::crux_core::capability::Operation;
-            RenderOperation::register_types(generator)?;
+            <RenderOperation>::register_types(generator)?;
             generator.register_type::<EffectFfi>()?;
             generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
             Ok(())
@@ -238,7 +238,7 @@ fn single_with_new_name() {
             generator: &mut ::crux_core::type_generation::serde::TypeGen,
         ) -> ::crux_core::type_generation::serde::Result {
             use ::crux_core::capability::Operation;
-            RenderOperation::register_types(generator)?;
+            <RenderOperation>::register_types(generator)?;
             generator.register_type::<MyEffectFfi>()?;
             generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
             Ok(())
@@ -359,7 +359,7 @@ fn single_with_facet_typegen() {
             ::crux_core::type_generation::facet::TypeGenError,
         > {
             use ::crux_core::capability::Operation;
-            let generator = RenderOperation::register_types_facet(generator)
+            let generator = <RenderOperation>::register_types_facet(generator)
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
@@ -494,7 +494,7 @@ fn single_facet_typegen_with_new_name() {
             ::crux_core::type_generation::facet::TypeGenError,
         > {
             use ::crux_core::capability::Operation;
-            let generator = RenderOperation::register_types_facet(generator)
+            let generator = <RenderOperation>::register_types_facet(generator)
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
@@ -767,8 +767,8 @@ fn multiple_with_typegen() {
             generator: &mut ::crux_core::type_generation::serde::TypeGen,
         ) -> ::crux_core::type_generation::serde::Result {
             use ::crux_core::capability::Operation;
-            RenderOperation::register_types(generator)?;
-            HttpRequest::register_types(generator)?;
+            <RenderOperation>::register_types(generator)?;
+            <HttpRequest>::register_types(generator)?;
             generator.register_type::<EffectFfi>()?;
             generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
             Ok(())
@@ -952,11 +952,11 @@ fn multiple_with_facet_typegen() {
             ::crux_core::type_generation::facet::TypeGenError,
         > {
             use ::crux_core::capability::Operation;
-            let generator = RenderOperation::register_types_facet(generator)
+            let generator = <RenderOperation>::register_types_facet(generator)
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
-            let generator = HttpRequest::register_types_facet(generator)
+            let generator = <HttpRequest>::register_types_facet(generator)
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
@@ -1323,7 +1323,7 @@ fn facet_typegen_with_namespace_attribute() {
             ::crux_core::type_generation::facet::TypeGenError,
         > {
             use ::crux_core::capability::Operation;
-            let generator = RenderOperation::register_types_facet(generator)
+            let generator = <RenderOperation>::register_types_facet(generator)
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
@@ -1344,4 +1344,35 @@ fn facet_typegen_with_namespace_attribute() {
         }
     }
     "#);
+}
+
+/// A generic operation type has to be registered through a *qualified* path.
+///
+/// `#operation` is a `syn::Type`, and every other use of it in the expansion is
+/// in type position, where a generic argument list is unambiguous. These two are
+/// in expression position, where `Navigate<Route>::register_types(generator)`
+/// parses as a chain of comparisons instead — the generated code does not
+/// compile, and the error surfaces inside macro output rather than at the
+/// definition. `<Navigate<Route>>::register_types(generator)` parses for any
+/// type, generic or not.
+///
+/// `pretty_print` parses the expansion, so this test panics rather than fails
+/// when the qualification is missing.
+#[test]
+fn a_generic_operation_registers_through_a_qualified_path() {
+    for kind in ["typegen", "facet_typegen"] {
+        let args = Some(format_ident!("{}", kind));
+        let input = parse_quote! {
+            pub enum Effect {
+                Navigate(Navigate<Route>),
+            }
+        };
+
+        let expanded = pretty_print(&effect_impl(args, input));
+
+        assert!(
+            expanded.contains("<Navigate<Route>>::register_types"),
+            "{kind} should register a generic operation through a qualified path:\n{expanded}"
+        );
+    }
 }
