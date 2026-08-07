@@ -1,8 +1,15 @@
-# Windows coverage for the counter example's Android and Tauri shells.
+# Windows coverage for the counter example.
 #
 # examples.yaml's `windows` job only exercises the WinUI3 shell, and its
 # `android` and `tauri` jobs both run on Ubuntu, so without these nothing checks
 # the [windows] recipe variants in the Justfiles.
+#
+# There is deliberately no Android job. `boltffi pack android` cannot complete
+# on Windows as of boltffi 0.29.3: its scan_crate step hands `cargo metadata` a
+# verbatim `\\?\...` manifest path, so Cargo resolves the nested workspace to
+# the repo root and `crux_core.workspace = true` in examples/counter/shared
+# fails to inherit. Cross-compilation itself succeeds — it is only the metadata
+# scan that fails. Tracked upstream; restore the job once it is fixed.
 #
 # Separate from examples.yaml only because `paths` is a workflow-level trigger,
 # not a job-level one. Co-locating these would mean running them unfiltered, and
@@ -95,42 +102,6 @@ jobs:
           # $LASTEXITCODE is still non-zero from the last injected failure, and
           # GitHub's pwsh wrapper would propagate it as the step's status.
           exit 0
-
-  windows-android:
-    runs-on: windows-latest
-
-    defaults:
-      run:
-        working-directory: examples/counter
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Remove rust-toolchain.toml
-        run: rm ../../rust-toolchain.toml
-        shell: bash
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
-
-      - uses: mozilla-actions/sccache-action@v0.0.9
-      - uses: taiki-e/install-action@just
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - uses: android-actions/setup-android@v3
-
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.29.3' --locked
-        env:
-          RUSTFLAGS: ""
-
-      - name: CI
-        run: just Android/ci
 
   windows-tauri:
     runs-on: windows-latest
