@@ -1,10 +1,10 @@
+# The command interpreter just uses on Windows. Unrelated to the Crux shells
+# below — and note one of those is itself called "windows".
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 mod lib '../../lib.just'
 
 default: dev
-
-# The command interpreter just uses on Windows. Unrelated to the Crux shells
-# below — and note one of those is itself called "windows".
-set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
 # The Crux shells: the platform-specific UI layers wrapping the shared core,
 # each a subdirectory with its own Justfile.

@@ -1,8 +1,8 @@
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 mod lib '../lib.just'
 
 default: dev
-
-set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
 examples := "counter counter-http counter-middleware counter-routing notes weather"
 

@@ -1,7 +1,8 @@
 # Shared justfile helpers for Crux.
 # Import with: mod lib '../lib.just' (adjust path as needed)
 
-set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 boltffi_version := "0.29.3"
 
 # Minimum Binaryen release providing --enable-bulk-memory-opt, which BoltFFI passes
