@@ -13,4 +13,4 @@ pub use capabilities::{RandomNumber, RandomNumberRequest, sse};
 pub use crux_core::Core;
 
 #[cfg(feature = "ffi")]
-pub use ffi::CoreFFI;
+pub use ffi::CoreFfi;

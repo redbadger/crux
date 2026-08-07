@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@boltffi/runtime':
-        specifier: 0.25.2
-        version: 0.25.2
+      specifier: 0.29.3
+      version: 0.29.3
       bulma:
         specifier: ^1.0.4
         version: 1.0.4
@@ -118,8 +118,8 @@ packages:
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
 
-  '@boltffi/runtime@0.25.2':
-    resolution: {integrity: sha512-WnqrAeMAWp5VYKnZVwTWRhU3QFIVfA9iHHW5Lo9tg9w2SR0TTaIwiTCOuFeMNa2gEX8Qix5WoCOhPn6TOwwDJg==}
+  '@boltffi/runtime@0.29.3':
+    resolution: {integrity: sha512-sISMTrEQxGsKmD/QVRLI0U8C22z2UkDSv5/+PfIrkT+Vfj8Q3lyFDv9FjHwhII/Zc3swlVCS8PlD7hcvC5s1RA==}
 
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
@@ -1873,7 +1873,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@boltffi/runtime@0.25.2': {}
+  '@boltffi/runtime@0.29.3': {}
 
   '@emnapi/core@1.10.0':
     dependencies:
@@ -3453,7 +3453,7 @@ snapshots:
 
   shared@file:generated/pkg:
     dependencies:
-      '@boltffi/runtime': 0.25.2
+      '@boltffi/runtime': 0.29.3
 
   sharp@0.34.5:
     dependencies:

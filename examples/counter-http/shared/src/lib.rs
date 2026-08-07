@@ -7,4 +7,4 @@ pub use app::*;
 pub use crux_core::Core;
 pub use crux_http as http;
 
-pub use ffi::CoreFFI;
+pub use ffi::CoreFfi;

@@ -68,7 +68,7 @@ codegen = [
 ]
 
 [dependencies]
-boltffi = "=0.25.2"
+boltffi = "=0.29.3"
 facet = "=0.44"
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -186,14 +186,14 @@ Now we need to add the Rust side of the bindings into our code. Update your `lib
 ```
 
 This code exposes the `ffi.rs` module, where BoltFFI sees the byte-oriented
-`CoreFFI` class. Let's look at it closer:
+`CoreFfi` class. Let's look at it closer:
 
 ```rust,noplayground
 // shared/src/ffi.rs
 {{#include ../../../examples/counter/shared/src/ffi.rs}}
 ```
 
-Broad strokes: `CoreFFI` holds a `Bridge` wrapping `Counter` and exposes the
+Broad strokes: `CoreFfi` holds a `Bridge` wrapping `Counter` and exposes the
 core API as methods taking and returning byte buffers.
 
 The translation between Rust types and byte buffers is the bridge's job. It

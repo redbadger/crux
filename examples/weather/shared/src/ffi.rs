@@ -8,18 +8,18 @@ use crux_core::{
 use crate::app::Weather;
 
 /// The main interface used by the shell
-pub struct CoreFFI {
+pub struct CoreFfi {
     core: Bridge<Weather>,
 }
 
-impl Default for CoreFFI {
+impl Default for CoreFfi {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[boltffi::export]
-impl CoreFFI {
+impl CoreFfi {
     #[must_use]
     pub fn new() -> Self {
         Self {

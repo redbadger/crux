@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { CoreFFI } from "shared";
+import { CoreFfi } from "shared";
 import * as sharedWasm from "shared";
 import type { Effect, Event } from "shared_types/app";
 import {
@@ -15,12 +15,12 @@ const wasmInitialized = (
 ).initialized;
 
 export class Core {
-  core: CoreFFI | null = null;
+  core: CoreFfi | null = null;
   initializing: Promise<void> | null = null;
   setState: Dispatch<SetStateAction<ViewModel>>;
 
   constructor(setState: Dispatch<SetStateAction<ViewModel>>) {
-    // Don't initialize CoreFFI here - wait for WASM to be loaded
+    // Don't initialize CoreFfi here - wait for WASM to be loaded
     this.setState = setState;
   }
 
@@ -34,7 +34,7 @@ export class Core {
 
       this.initializing = load
         .then(() => {
-          this.core = CoreFFI.new();
+          this.core = CoreFfi.new();
           this.setState(this.view());
         })
         .catch((error) => {

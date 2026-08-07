@@ -17,11 +17,60 @@ build:
     cargo build --all-features
 
 # Check formatting, types, and linting in the root workspace
-check:
+check: check-versions
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt --all --check
     cargo check --all-features
     cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+
+# Verify every BoltFFI and Binaryen version pin agrees with lib.just.
+#
+# The versions are spread across workspace manifests, package.json files, CI,
+# the book and renovate.json, and they all have to move together — a partial
+# bump leaves the toolchain silently mismatched rather than failing loudly.
+# lib.just is the single source of truth; this recipe holds everything to it.
+[script('bash')]
+check-versions:
+    set -euo pipefail
+    echo '{{ style("command") }}check-versions:{{ NORMAL }}'
+
+    boltffi=$(sed -nE 's/^boltffi_version := "(.*)"/\1/p' lib.just)
+    binaryen=$(sed -nE 's/^binaryen_version := "(.*)"/\1/p' lib.just)
+    if [ -z "$boltffi" ] || [ -z "$binaryen" ]; then
+        echo "  {{ style("error") }}✗ could not read the expected versions from lib.just{{ NORMAL }}"
+        exit 1
+    fi
+
+    status=0
+    checked=0
+    while IFS= read -r hit; do
+        [ -n "$hit" ] || continue
+        file=${hit%%:*}
+        found=$(printf '%s' "${hit#*:}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+        checked=$((checked + 1))
+        if [ "$found" != "$boltffi" ]; then
+            echo "  {{ style("error") }}✗ $file pins BoltFFI $found, expected $boltffi{{ NORMAL }}"
+            status=1
+        fi
+    done <<PINS
+    $(grep -HoE '^boltffi = "=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/Cargo.toml || true)
+    $(grep -HoE '"@boltffi/runtime": "[0-9]+\.[0-9]+\.[0-9]+"' examples/*/*/package.json || true)
+    $(grep -rHoE "boltffi_cli --version '=[0-9]+\.[0-9]+\.[0-9]+'" .github/workflows docs/src lib.just || true)
+    $(grep -rHoE '^boltffi = "=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
+    $(grep -HoE '^boltffi_version := "[0-9]+\.[0-9]+\.[0-9]+"' examples/counter/windows/Justfile || true)
+    $(grep -A2 -H '"boltffi", "boltffi_cli"' renovate.json | grep -E 'allowedVersions' || true)
+    PINS
+
+    ci_binaryen=$(sed -nE 's/^ *binaryen_version=([0-9]+).*/\1/p' .github/workflows/examples.yaml | head -n 1)
+    if [ "$ci_binaryen" != "$binaryen" ]; then
+        echo "  {{ style("error") }}✗ examples.yaml installs Binaryen $ci_binaryen, expected $binaryen{{ NORMAL }}"
+        status=1
+    fi
+
+    if [ "$status" -eq 0 ]; then
+        echo "  ✓ $checked BoltFFI pins at $boltffi, Binaryen at $binaryen"
+    fi
+    exit $status
 
 # Check formatting and lint in all examples (heavy — needs every platform toolchain)
 check-examples:

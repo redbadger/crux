@@ -10,6 +10,72 @@ and this project adheres to
 
 ### Added
 
+- **`HttpError::body`, `HttpError::body_json` and `HttpError::code`** — read what the
+  server said when it rejected a request, without destructuring the variant.
+
+  A 4xx/5xx arrives as `Err(HttpError::Http { code, message, body })`, and `body` has
+  always held the server's own explanation. But `Display` shows only the status
+  (`"HTTP error 409: 409 Conflict"`), so getting at the message meant hand-rolling
+  this in every app:
+
+  ```rust
+  // before
+  let crux_http::HttpError::Http { body: Some(body), .. } = error else { return None };
+  serde_json::from_slice::<serde_json::Value>(body)
+      .ok()
+      .and_then(|b| b.get("error").and_then(|e| e.as_str()).map(String::from))
+
+  // after
+  error.body_json::<serde_json::Value>().ok()
+      .and_then(|b| b["error"].as_str().map(String::from))
+  ```
+
+  `body_json` deserializes into whatever shape your API uses — your own envelope, an
+  RFC 7807 `problem+json` struct, or `serde_json::Value`. Note that body decoding is
+  skipped for an error status, so the raw error body survives even for a request
+  built with `expect_json::<T>()`; there is now a test pinning that.
+
+- **`HttpError::header`, `HttpError::headers` and `HttpError::content_type`** — read the
+  headers of the response that was rejected.
+
+  A rejection's *policy* often lives only in its headers, and none of it is recoverable
+  from the status or the body: `Retry-After` on a 429 or 503, `WWW-Authenticate` on a 401
+  (expired token vs insufficient scope), rate-limit headers, or the `Content-Type` that
+  says whether an error body is JSON, an RFC 7807 document, or a proxy's HTML page.
+  `Response::new` used to drop the `HeaderMap` on the error branch, and since `crux_http`
+  middleware does not run in the command API, an app had no way to see any of it.
+
+  ```rust
+  if let Some(retry_after) = error.header("retry-after") { /* back off politely */ }
+  ```
+
+  This adds a `headers` field to `HttpError::Http` — see the breaking change below.
+
+- **`crux_http::testing::rejection(status, body)`** — builds the
+  `crux_http::Result<Response<Body>>` a feature receives when the server rejects a
+  request, via the same conversion a real shell response takes:
+
+  ```rust
+  let event = Event::Saved(crux_http::testing::rejection(409, r#"{"error":"…"}"#));
+  ```
+
+  Use it wherever you would previously have fabricated `Ok(response_with_409)` (see
+  the breaking change below).
+
+- **`crux_http::testing::rejection_from(HttpResponse)`** — the header-carrying form,
+  taking the same protocol response you would resolve a request with in an end-to-end
+  test, so both styles of test describe a rejection the same way:
+
+  ```rust
+  let result = rejection_from(HttpResponse::status(429).header("retry-after", "30").build());
+  ```
+
+  `rejection(status, body)` is unchanged, and is now sugar over it.
+
+- `crux_http::testing` now has module docs, stating the invariant the builders divide:
+  `ResponseBuilder` for the `Ok(Response)` of a successful exchange, `rejection` /
+  `rejection_from` for the `Err` of a rejection. There is no third case.
+
 - `HttpRequestBuilder::body_json`, which sets a JSON body **and**
   `content-type: application/json`, mirroring what
   `command::RequestBuilder::body_json` puts on the wire.
@@ -37,6 +103,128 @@ and this project adheres to
   protocol-layer values, so they must stay able to express a JSON body with no
   `content-type` (or a malformed one), and changing `json` would silently break
   tests that already add the header themselves.
+
+### 💥 Breaking Changes
+
+- **`HttpError` has two new variants, and `HttpError::Http` now means only a server
+  rejection.** Two things that were not rejections used to report themselves as one:
+
+  | Was | Is now |
+  | --- | --- |
+  | `Response::body_bytes` on an already-taken body → `Http { code: <the success status>, headers: <that response's>, .. }` | `HttpError::BodyAlreadyTaken` |
+  | A shell status outside 100–999 → `Http { code: 999, .. }` | `HttpError::InvalidStatusCode(999)` |
+
+  So `error.code()` could return `Some(200)`, and `matches!(err, HttpError::Http { .. })`
+  was not a reliable test for "the server rejected this". Both now are:
+
+  ```rust
+  // `Some` if and only if the server rejected the request
+  if let Some(code) = error.code() { … }
+  ```
+
+  `BodyAlreadyTaken` carries nothing: the caller still holds the `Response`, so the status
+  and headers the old error reported were already in hand — and they described a *successful*
+  response, which is what made them misleading.
+
+  An exhaustive `match` on `HttpError` needs two new arms. That is deliberate: the enum is
+  **not** `#[non_exhaustive]`, so a new failure mode is a compile error you get to think
+  about, rather than something that silently lands in a wildcard.
+
+- **`From<http_types::Error> for HttpError` is gone** (`http-types` feature only). It mapped
+  a middleware error onto `HttpError::Http`, which now means only a server rejection, and it
+  has no callers inside the crate. `http-types` middleware must map its own errors
+  explicitly.
+
+  It isn't rehomed onto a new variant because **the `http-types` feature is slated for
+  removal in full** — `http` is the only HTTP type system `crux_http` will keep. This is the
+  first piece to go; `crux_http::compat` and the `pub use http_types` re-export follow in
+  their own release. If you still depend on the feature, now is the time to say so.
+
+- **`HttpError::Http` has a new `headers` field**, so that a rejection's headers reach the
+  app (see `HttpError::header` above). It is `Box<HeaderMap>`, boxed only because a bare
+  `HeaderMap` is 96 bytes and this type is the `Err` of nearly every function in the crate —
+  inline, it pushed `HttpError` to 160 bytes and tripped `clippy::result_large_err` across
+  the crate.
+
+  Neither `headers` nor `body` is optional, and `body` is now a plain `Vec<u8>` rather than
+  `Option<Vec<u8>>`. `Response::new` is the variant's only constructor and always supplies
+  both, so the `Option`s described states that could not arise. Both types are
+  niche-optimised, so this costs nothing at runtime — `HttpError` stays 72 bytes — and the
+  accessors are unchanged: `body()` still returns `None` for an empty body, and `headers()`
+  still returns `None`, but now that means simply "not a rejection".
+
+  `match` arms that name only the fields they use are unaffected:
+
+  ```rust
+  Err(HttpError::Http { code, .. }) if code == 401 => { … }      // still compiles
+  ```
+
+  The variant is also now **`#[non_exhaustive]`**, so this is the last time a new field
+  breaks you: only `crux_http` constructs it, and what a rejection carries can grow behind
+  the accessors. Code that *constructed* it — in practice, tests — must switch to
+  `crux_http::testing::rejection` / `rejection_from`, which build it through the real
+  conversion:
+
+  ```rust
+  // before
+  let error = HttpError::Http { code: 409, message: "409 Conflict".into(), body: Some(body) };
+  // after
+  let error = crux_http::testing::rejection::<Vec<u8>>(409, body).unwrap_err();
+  ```
+
+  Note that `HttpError`'s `PartialEq` now compares headers too, so two rejections that
+  differ only in what the server sent in its headers are no longer equal. Compare against
+  `rejection` / `rejection_from` rather than a value assembled by hand.
+
+- **`ResponseBuilder::with_status` now panics for a 4xx or 5xx status.** It could
+  previously build a `Response` carrying an error status — a value no app can ever
+  receive, because `crux_http` converts those responses into
+  `Err(HttpError::Http { .. })` before the event is sent.
+
+  This mattered in practice. A downstream app had eight call sites shaped like this:
+
+  ```rust
+  match result {
+      Ok(mut response) => {
+          if response.status().is_success() { /* … */ }
+          else { show(api::error_reason(&mut response)) }  // unreachable
+      }
+      Err(error) => fail(&error),  // "HTTP error 409: 409 Conflict"
+  }
+  ```
+
+  The `else` branch cannot run, so users saw the bare status instead of the sentence
+  the service had written for them. Seven of those sites had **passing tests** for the
+  message, because each test built the impossible value —
+  `Ok(ResponseBuilder::with_status(409).body(…).build())` — and asserted the dead
+  branch. Code review passed all eight.
+
+  The panic turns exactly those tests red, with a message naming the replacement.
+  Migration is mechanical:
+
+  ```rust
+  // before — asserts a state the app can never observe
+  let result = Ok(ResponseBuilder::with_status(409).body(body).build());
+  // after — what the app really receives
+  let result = crux_http::testing::rejection(409, body);
+  ```
+
+  Non-error statuses (1xx, 2xx, 3xx) are unaffected, including non-standard ones.
+  Nothing about the runtime behaviour of a request changes — this is a test-helper
+  guard rail plus documentation of an invariant `crux_http` already had.
+
+### Documentation
+
+- `Response`, `Response::status`, `HttpError::Http` and the crate root now state the
+  invariant plainly: an `Ok(Response)` never carries a 4xx or 5xx status, so a
+  rejection can only be handled on the `Err` side. The `Response` docs carry the
+  correct match shape as a compiled example.
+
+- `command::RequestBuilder::middleware` now warns that it is a **no-op**: nothing on the
+  command API executes a middleware stack, so middleware pushed there — `Redirect`
+  included — is accepted and silently ignored. Its example previously implied redirects
+  were followed. This documents existing behaviour; the underlying gap is
+  [#556](https://github.com/redbadger/crux/issues/556).
 
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_http-v0.18.0...crux_http-v0.19.0) - 2026-07-06
 

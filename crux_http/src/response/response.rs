@@ -5,6 +5,42 @@ use serde::de::DeserializeOwned;
 use std::{fmt, ops::Index};
 
 /// An HTTP Response that will be passed to an app's update function.
+///
+/// # A `Response` never carries an error status
+///
+/// Holding one of these means the server did **not** reject the request. `crux_http`
+/// converts every 4xx and 5xx response into an [`HttpError::Http`](crate::HttpError::Http)
+/// — keeping the headers and body — and delivers it on the `Err` side, so
+/// [`status`](Self::status) is always a 1xx, 2xx or 3xx. A `match` arm that checks it for
+/// failure is dead code:
+///
+/// ```
+/// # use crux_http::{HttpError, Response};
+/// # fn saved() {}
+/// # fn show_error(_message: &str) {}
+/// fn on_result(result: crux_http::Result<Response<Vec<u8>>>) {
+///     match result {
+///         // this arm cannot see a 4xx or 5xx, so don't test the status here
+///         Ok(_response) => saved(),
+///         Err(error) => {
+///             // the server's own message, e.g. {"error": "…"}, not just "409 Conflict"
+///             let message = error
+///                 .body_json::<serde_json::Value>()
+///                 .ok()
+///                 .and_then(|body| body["error"].as_str().map(str::to_string))
+///                 .unwrap_or_else(|| error.to_string());
+///             show_error(&message);
+///         }
+///     }
+/// }
+///
+/// // a rejection, as a feature receives it
+/// on_result(crux_http::testing::rejection(409, r#"{"error":"already booked"}"#));
+/// ```
+///
+/// The matching testing rule: build success cases with
+/// [`ResponseBuilder`](crate::testing::ResponseBuilder), and rejections with
+/// [`rejection`](crate::testing::rejection).
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Response<Body> {
     #[serde(skip, default)]
@@ -18,19 +54,24 @@ pub struct Response<Body> {
 
 impl<Body> Response<Body> {
     /// Create a new instance.
+    ///
+    /// A 4xx or 5xx status is not a response as far as the app is concerned: it becomes
+    /// [`HttpError::Http`], carrying the headers and body so the caller can still read what
+    /// the server said. This is the single place that invariant is established — see the
+    /// [type docs](Response) for what it means for app and test code.
     pub(crate) fn new(mut res: super::RawResponse) -> Result<Response<Vec<u8>>> {
         let body = res.body_bytes()?;
         let status = res.status();
+        let headers = res.as_ref().clone();
 
         if status.is_client_error() || status.is_server_error() {
             return Err(HttpError::Http {
                 code: status.as_u16(),
                 message: status.to_string(),
-                body: Some(body),
+                headers: Box::new(headers),
+                body,
             });
         }
-
-        let headers = res.as_ref().clone();
 
         Ok(Response {
             status,
@@ -41,6 +82,11 @@ impl<Body> Response<Body> {
     }
 
     /// Get the HTTP status code.
+    ///
+    /// Never a client (4xx) or server (5xx) error: those are delivered as an
+    /// [`HttpError::Http`](crate::HttpError::Http) on the `Err` side, not as a `Response`,
+    /// so there is nothing to be learned by testing this for failure. Handle rejections
+    /// there instead — see the [type docs](Response).
     ///
     /// # Examples
     ///
@@ -218,7 +264,8 @@ impl Response<Vec<u8>> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the body has already been taken.
+    /// Returns [`HttpError::BodyAlreadyTaken`] if the body has already been taken — this and
+    /// the other `body_*` readers each take it, so only the first call can succeed.
     ///
     /// # Examples
     ///
@@ -232,11 +279,7 @@ impl Response<Vec<u8>> {
     /// # Ok(()) }
     /// ```
     pub fn body_bytes(&mut self) -> Result<Vec<u8>> {
-        self.body.take().ok_or_else(|| HttpError::Http {
-            code: self.status().as_u16(),
-            message: "Body had no bytes".to_string(),
-            body: None,
-        })
+        self.body.take().ok_or(HttpError::BodyAlreadyTaken)
     }
 
     /// Reads the entire response body into a string.
@@ -489,19 +532,15 @@ mod tests {
     }
 
     #[test]
-    fn response_builder_with_non_standard_status_499() {
-        let res: Response<Vec<u8>> = ResponseBuilder::with_status(499).build();
-        assert_eq!(res.status().as_u16(), 499);
-    }
-
-    #[test]
     fn response_serde_roundtrip_with_non_standard_status() {
-        let res: Response<Vec<u8>> = ResponseBuilder::with_status(499)
+        // 299 is non-standard but not an error, so it is a status a Response can hold —
+        // a non-standard 4xx/5xx becomes HttpError::Http instead (see the tests above).
+        let res: Response<Vec<u8>> = ResponseBuilder::with_status(299)
             .body(b"test".to_vec())
             .build();
         let json = serde_json::to_string(&res).expect("should serialize");
         let back: Response<Vec<u8>> = serde_json::from_str(&json).expect("should deserialize");
-        assert_eq!(back.status().as_u16(), 499);
+        assert_eq!(back.status().as_u16(), 299);
     }
 
     #[test]
@@ -509,7 +548,11 @@ mod tests {
         let mut res: Response<Vec<u8>> = ResponseBuilder::ok().body(b"hello".to_vec()).build();
         let _ = res.body_bytes().unwrap();
         let err = res.body_bytes().expect_err("second call must fail");
-        assert!(matches!(err, HttpError::Http { .. }));
+
+        // Not a rejection: the server answered 200. It used to report itself as
+        // `Http { code: 200, .. }`, which made `code()` unusable as a rejection test.
+        assert!(matches!(err, HttpError::BodyAlreadyTaken), "got: {err:?}");
+        assert_eq!(err.code(), None);
     }
 
     #[test]

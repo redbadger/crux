@@ -178,14 +178,27 @@ jobs:
       - uses: taiki-e/install-action@just
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.2' --locked
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
         env:
           RUSTFLAGS: ""
 
       - name: Install wasm-opt
         run: |
-          sudo apt-get update
-          sudo apt-get install -y binaryen
+          # BoltFFI 0.29.3 passes --enable-bulk-memory-opt, which was added in Binaryen 123.
+          binaryen_version=123
+          archive="binaryen-version_${binaryen_version}-x86_64-linux.tar.gz"
+          url="https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/${archive}"
+          archive_path="$RUNNER_TEMP/$archive"
+
+          curl --fail --location --retry 3 "$url" --output "$archive_path"
+          curl --fail --location --retry 3 "$url.sha256" --output "$archive_path.sha256"
+          (cd "$RUNNER_TEMP" && sha256sum --check "$archive.sha256")
+
+          mkdir -p "$RUNNER_TEMP/binaryen"
+          tar -xzf "$archive_path" --strip-components=1 -C "$RUNNER_TEMP/binaryen"
+          export PATH="$RUNNER_TEMP/binaryen/bin:$PATH"
+          echo "$RUNNER_TEMP/binaryen/bin" >> "$GITHUB_PATH"
+          wasm-opt --version
 
       - uses: actions/setup-node@v6
         with:
@@ -255,7 +268,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc
+          targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
           components: clippy, rustfmt
 
       - uses: mozilla-actions/sccache-action@v0.0.9
@@ -266,7 +279,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.2' --locked
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
         env:
           RUSTFLAGS: ""
 
@@ -318,7 +331,7 @@ jobs:
         run: cargo install cargo-swift --version '=0.9'
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.2' --locked
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
         env:
           RUSTFLAGS: ""
 
@@ -366,7 +379,7 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.25.2' --locked
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
         env:
           RUSTFLAGS: ""
 

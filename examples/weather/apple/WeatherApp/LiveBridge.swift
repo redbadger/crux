@@ -6,15 +6,15 @@ import os
 
 private let logger = Logger(subsystem: "com.crux.examples.weather", category: "live-bridge")
 
-/// Wraps `CoreFFI` to communicate with the Rust core. Handles bincode
+/// Wraps `CoreFfi` to communicate with the Rust core. Handles bincode
 /// serialization/deserialization so that `Core` works with Swift types only.
 /// This lives in the app target (not WeatherKit) so that SwiftUI previews
 /// don't need to load the Rust framework.
 struct LiveBridge: CoreBridge {
-    private let ffi: CoreFFI
+    private let ffi: CoreFfi
 
     init() {
-        ffi = CoreFFI()
+        ffi = CoreFfi()
     }
 
     func processEvent(_ event: Event) -> [Request] {
