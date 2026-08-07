@@ -1,0 +1,139 @@
+# Opt-in Windows coverage for the counter example's Android and Tauri shells.
+#
+# Kept out of examples.yaml so these do not appear as permanently-skipped checks
+# on every pull request. Trigger from the Actions tab, or:
+#
+#   gh workflow run examples-windows.yaml --ref <branch>
+#
+# examples.yaml's `windows` job only exercises the WinUI3 shell, and its
+# `android` and `tauri` jobs both run on Ubuntu, so without these nothing checks
+# the [windows] recipe variants in the Justfiles.
+name: examples (windows)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: "-D warnings"
+  RUST_BACKTRACE: short
+  CI: 1
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+  windows-justfiles:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@just
+
+      # PowerShell 5.1 decodes a BOM-less .ps1 using the legacy ANSI codepage,
+      # so a [script('powershell')] body containing ✓ / ✗ / — comes out as
+      # mojibake. `chcp 65001` does not help: the parser uses GetACP(), not the
+      # console codepage. The lib.just helpers avoid this by running as plain
+      # recipes under windows-shell, where just passes the recipe as a process
+      # argument instead of a temp file. This guards that.
+      - name: doctor output is not mangled
+        shell: pwsh
+        run: |
+          $out = just Android/doctor 2>&1 | Out-String
+          Write-Host $out
+          if ($out -match 'Ã|â€|ï¿½') { throw "mojibake in doctor output" }
+          if ($out -notmatch '[✓✗]') { throw "no check marks in doctor output" }
+
+      # The bash recipes run under `set -euo pipefail`. Their PowerShell twins
+      # need an explicit $LASTEXITCODE check, or a mid-loop failure is silently
+      # swallowed and the recipe exits 0. Two entries with the failing one
+      # FIRST is what discriminates: with a single entry the failure is also
+      # the last command, so a broken recipe would pass this by accident.
+      - name: aggregate recipes fail when a child fails
+        shell: pwsh
+        run: |
+          foreach ($recipe in 'fix', 'check', 'ci', 'clean') {
+            just subprojects="nope shared" $recipe *> $null
+            if ($LASTEXITCODE -eq 0) { throw "$recipe swallowed a child failure" }
+            Write-Host "  ok: $recipe propagated (exit $LASTEXITCODE)"
+          }
+
+  windows-android:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install BoltFFI CLI
+        run: cargo install boltffi_cli --version '=0.29.3' --locked
+        env:
+          RUSTFLAGS: ""
+
+      - name: CI
+        run: just Android/ci
+
+  windows-tauri:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+
+      # No GTK/WebKit step: windows-latest ships the WebView2 runtime.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: CI
+        run: just tauri/ci
+        env:
+          CI: true
