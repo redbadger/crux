@@ -78,7 +78,12 @@ impl<T: FfiFormat> ResolveRegistry<T> {
             let mut outstanding = self.0.lock().expect("Registry Mutex poisoned.");
             let id = outstanding.issue_id();
 
-            outstanding.entries.insert(id, resolve);
+            // A request that cannot be resolved has nothing worth keeping: storing
+            // one would add an entry per fire-and-forget effect — every render, for
+            // the life of the process — that nothing would ever remove.
+            if !matches!(resolve, ResolveSerialized::Never) {
+                outstanding.entries.insert(id, resolve);
+            }
 
             id
         };
@@ -92,8 +97,9 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 
     /// Resume a previously registered effect.
     ///
-    /// Fails with [`ResolveError::NotFound`] if `id` is not outstanding, either
-    /// because it was never issued or because it has already been resolved.
+    /// Fails with [`ResolveError::NotFound`] if `id` is not outstanding —
+    /// because it was never issued, because it has already been resolved, or
+    /// because it belongs to a request that never expected a response.
     ///
     /// # Errors
     ///

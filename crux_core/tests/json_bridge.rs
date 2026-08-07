@@ -151,8 +151,11 @@ mod tests {
         );
     }
 
+    /// A fire-and-forget request has no continuation to store, so its id is
+    /// simply not outstanding — resolving it is the same "not found" as
+    /// resolving an id that was never issued.
     #[test]
-    fn resolve_error() {
+    fn resolve_fire_and_forget() {
         let bridge = Bridge::new(Core::default());
         let event = b"\"Trigger\"";
 
@@ -180,7 +183,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "could not process response: Attempted to resolve a request that is not expected to be resolved."
+            "could not process response: Request with id 0 not found."
         );
     }
 
