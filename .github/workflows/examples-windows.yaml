@@ -1,16 +1,39 @@
-# Opt-in Windows coverage for the counter example's Android and Tauri shells.
-#
-# Kept out of examples.yaml so these do not appear as permanently-skipped checks
-# on every pull request. Trigger from the Actions tab, or:
-#
-#   gh workflow run examples-windows.yaml --ref <branch>
+# Windows coverage for the counter example's Android and Tauri shells.
 #
 # examples.yaml's `windows` job only exercises the WinUI3 shell, and its
 # `android` and `tauri` jobs both run on Ubuntu, so without these nothing checks
 # the [windows] recipe variants in the Justfiles.
+#
+# Separate from examples.yaml only because `paths` is a workflow-level trigger,
+# not a job-level one. Co-locating these would mean running them unfiltered, and
+# ~93% of recent commits touch neither lib.just nor examples/counter — so most
+# PRs would wait on Windows Gradle and Tauri builds that cannot be affected by
+# them. Ubuntu already covers those shells on every PR in examples.yaml; what is
+# Windows-specific is the [windows] recipe plumbing.
+#
+# A path-filtered workflow reports no check at all when it does not match, so
+# this adds no skipped-check noise — but for the same reason do not make these
+# required in branch protection, or PRs touching nothing here will wait forever.
+#
+# To run against a branch by hand:
+#
+#   gh workflow run examples-windows.yaml --ref <branch>
 name: examples (windows)
 
+# Keep the two paths lists in step; Actions does not support YAML anchors.
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - lib.just
+      - examples/counter/**
+      - .github/workflows/examples-windows.yaml
+  pull_request:
+    paths:
+      - lib.just
+      - examples/counter/**
+      - .github/workflows/examples-windows.yaml
   workflow_dispatch:
 
 concurrency:
