@@ -6,30 +6,35 @@ mod lib '../../lib.just'
 
 default: dev
 
-# The Crux shells: the platform-specific UI layers wrapping the shared core,
-# each a subdirectory with its own Justfile.
-crux_shells_common := "shared tui web-leptos web-yew web-dioxus web-nextjs web-react-router tauri android"
+# The Crux shells: the platform-specific UI layers wrapping the shared core.
+# `apple` and `windows` only build on their own platform.
+crux_shells_common := "tui web-leptos web-yew web-dioxus web-nextjs web-react-router tauri Android"
 crux_shells := if os() == "macos" { crux_shells_common + " apple" } else if os() == "windows" { crux_shells_common + " windows" } else { crux_shells_common }
 pnpm_crux_shells := "web-nextjs web-react-router tauri"
 
-# checks required tools across all Crux shells
+# Every subdirectory with its own Justfile: the shared core is not a shell, but
+# the aggregate recipes below drive it the same way. Core first, so a broken
+# core fails before any shell tries to build against it.
+subprojects := "shared " + crux_shells
+
+# checks required tools across the core and all Crux shells
 [unix]
 [script('bash')]
 doctor:
-    for crux_shell in {{ crux_shells }}; do
-        echo '{{ style("command") }}'"$crux_shell"':{{ NORMAL }}'
-        just "$crux_shell/doctor"
+    for subproject in {{ subprojects }}; do
+        echo '{{ style("command") }}'"$subproject"':{{ NORMAL }}'
+        just "$subproject/doctor"
         echo ''
     done
 
-# no early exit: report every Crux shell's tool status, like the bash version
+# no early exit: report every subproject's tool status, like the bash version
 [windows]
 [script('powershell')]
 doctor:
-    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
-        if ($crux_shell) {
-            Write-Host "{{ style("command") }}${crux_shell}:{{ NORMAL }}"
-            just "$crux_shell/doctor"
+    foreach ($subproject in "{{ subprojects }}".Split(" ")) {
+        if ($subproject) {
+            Write-Host "{{ style("command") }}${subproject}:{{ NORMAL }}"
+            just "$subproject/doctor"
             Write-Host ""
         }
     }
@@ -39,75 +44,75 @@ doctor:
 [script('bash')]
 dev:
     set -euo pipefail
-    for crux_shell in {{ crux_shells }}; do
-        echo '{{ style("command") }}'"$crux_shell"'/dev:{{ NORMAL }}'
-        just "$crux_shell/dev"
+    for subproject in {{ subprojects }}; do
+        echo '{{ style("command") }}'"$subproject"'/dev:{{ NORMAL }}'
+        just "$subproject/dev"
     done
 
 [windows]
 [script('powershell')]
 dev:
     $ErrorActionPreference = 'Stop'
-    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
-        if ($crux_shell) {
-            Write-Host "{{ style("command") }}$crux_shell/dev:{{ NORMAL }}"
-            just "$crux_shell/dev"
+    foreach ($subproject in "{{ subprojects }}".Split(" ")) {
+        if ($subproject) {
+            Write-Host "{{ style("command") }}$subproject/dev:{{ NORMAL }}"
+            just "$subproject/dev"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
-# fix formatting in all Crux shells
+# fix formatting in the core and all Crux shells
 [unix]
 [script('bash')]
 fix:
     set -euo pipefail
-    for crux_shell in {{ crux_shells }}; do
-        echo '{{ style("command") }}'"$crux_shell"'/fix:{{ NORMAL }}'
-        just "$crux_shell/fix"
+    for subproject in {{ subprojects }}; do
+        echo '{{ style("command") }}'"$subproject"'/fix:{{ NORMAL }}'
+        just "$subproject/fix"
     done
 
 [windows]
 [script('powershell')]
 fix:
     $ErrorActionPreference = 'Stop'
-    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
-        if ($crux_shell) {
-            Write-Host "{{ style("command") }}$crux_shell/fix:{{ NORMAL }}"
-            just "$crux_shell/fix"
+    foreach ($subproject in "{{ subprojects }}".Split(" ")) {
+        if ($subproject) {
+            Write-Host "{{ style("command") }}$subproject/fix:{{ NORMAL }}"
+            just "$subproject/fix"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
-# check formatting and lint in all Crux shells
+# check formatting and lint in the core and all Crux shells
 [unix]
 [script('bash')]
 check:
     set -euo pipefail
-    for crux_shell in {{ crux_shells }}; do
-        echo '{{ style("command") }}'"$crux_shell"'/check:{{ NORMAL }}'
-        just "$crux_shell/check"
+    for subproject in {{ subprojects }}; do
+        echo '{{ style("command") }}'"$subproject"'/check:{{ NORMAL }}'
+        just "$subproject/check"
     done
 
 [windows]
 [script('powershell')]
 check:
     $ErrorActionPreference = 'Stop'
-    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
-        if ($crux_shell) {
-            Write-Host "{{ style("command") }}$crux_shell/check:{{ NORMAL }}"
-            just "$crux_shell/check"
+    foreach ($subproject in "{{ subprojects }}".Split(" ")) {
+        if ($subproject) {
+            Write-Host "{{ style("command") }}$subproject/check:{{ NORMAL }}"
+            just "$subproject/check"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
-# clean build artefacts in all Crux shells
+# clean build artefacts in the core and all Crux shells
 [unix]
 [script('bash')]
 clean:
     set -euo pipefail
-    for crux_shell in {{ crux_shells }}; do
-        echo '{{ style("command") }}'"$crux_shell"'/clean:{{ NORMAL }}'
-        just "$crux_shell/clean"
+    for subproject in {{ subprojects }}; do
+        echo '{{ style("command") }}'"$subproject"'/clean:{{ NORMAL }}'
+        just "$subproject/clean"
     done
     cargo clean
     rm -rf target
@@ -116,10 +121,10 @@ clean:
 [script('powershell')]
 clean:
     $ErrorActionPreference = 'Stop'
-    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
-        if ($crux_shell) {
-            Write-Host "{{ style("command") }}$crux_shell/clean:{{ NORMAL }}"
-            just "$crux_shell/clean"
+    foreach ($subproject in "{{ subprojects }}".Split(" ")) {
+        if ($subproject) {
+            Write-Host "{{ style("command") }}$subproject/clean:{{ NORMAL }}"
+            just "$subproject/clean"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
@@ -132,19 +137,19 @@ clean:
 [script('bash')]
 ci:
     set -euo pipefail
-    for crux_shell in {{ crux_shells }}; do
-        echo '{{ style("command") }}'"$crux_shell"'/ci:{{ NORMAL }}'
-        just "$crux_shell/ci"
+    for subproject in {{ subprojects }}; do
+        echo '{{ style("command") }}'"$subproject"'/ci:{{ NORMAL }}'
+        just "$subproject/ci"
     done
 
 [windows]
 [script('powershell')]
 ci:
     $ErrorActionPreference = 'Stop'
-    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
-        if ($crux_shell) {
-            Write-Host "{{ style("command") }}$crux_shell/ci:{{ NORMAL }}"
-            just "$crux_shell/ci"
+    foreach ($subproject in "{{ subprojects }}".Split(" ")) {
+        if ($subproject) {
+            Write-Host "{{ style("command") }}$subproject/ci:{{ NORMAL }}"
+            just "$subproject/ci"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }

@@ -442,7 +442,7 @@ jobs:
         shell: pwsh
         run: |
           foreach ($recipe in 'fix', 'check', 'ci', 'clean') {
-            just crux_shells="nope shared" $recipe *> $null
+            just subprojects="nope shared" $recipe *> $null
             if ($LASTEXITCODE -eq 0) { throw "$recipe swallowed a child failure" }
             Write-Host "  ok: $recipe propagated (exit $LASTEXITCODE)"
           }
