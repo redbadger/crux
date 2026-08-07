@@ -18,7 +18,7 @@ impl<Out> Default for Storage<Out> {
 }
 
 impl<Out> Storage<Out> {
-    pub(crate) fn insert(&mut self, handle: RequestHandle<Out>) -> effect_id::EffectId<Out> {
+    pub(crate) fn insert(&mut self, handle: RequestHandle<Out>) -> effect_id::ParkedEffectId<Out> {
         let entry = self.handles.vacant_entry();
         let index = entry.key();
 
@@ -30,10 +30,13 @@ impl<Out> Storage<Out> {
         let generation = self.generations[index];
         entry.insert(Some(handle));
 
-        effect_id::EffectId::new(index, generation)
+        effect_id::ParkedEffectId::new(index, generation)
     }
 
-    pub(crate) fn take(&mut self, id: effect_id::EffectId<Out>) -> Option<RequestHandle<Out>> {
+    pub(crate) fn take(
+        &mut self,
+        id: effect_id::ParkedEffectId<Out>,
+    ) -> Option<RequestHandle<Out>> {
         if self.generations.get(id.index()).copied()? != id.generation() {
             return None;
         }
@@ -41,7 +44,11 @@ impl<Out> Storage<Out> {
         self.handles.get_mut(id.index())?.take()
     }
 
-    pub(crate) fn reinsert(&mut self, id: effect_id::EffectId<Out>, handle: RequestHandle<Out>) {
+    pub(crate) fn reinsert(
+        &mut self,
+        id: effect_id::ParkedEffectId<Out>,
+        handle: RequestHandle<Out>,
+    ) {
         let Some(entry) = self.handles.get_mut(id.index()) else {
             return;
         };
@@ -52,7 +59,7 @@ impl<Out> Storage<Out> {
         *entry = Some(handle);
     }
 
-    pub(crate) fn remove(&mut self, id: effect_id::EffectId<Out>) {
+    pub(crate) fn remove(&mut self, id: effect_id::ParkedEffectId<Out>) {
         if self.generations.get(id.index()).copied() != Some(id.generation()) {
             return;
         }

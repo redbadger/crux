@@ -3,7 +3,7 @@ use std::sync::{Arc, Weak};
 use crate::{
     Request, ResolveError,
     capability::Operation,
-    effects::{EffectId, EffectRouter, Routes, registry::Registry},
+    effects::{EffectRouter, ParkedEffectId, Routes, registry::Registry},
 };
 
 /// A route for effects handled over a custom, user-owned FFI.
@@ -11,7 +11,7 @@ use crate::{
 /// The "opaque typed" lane is for operations whose payloads or results are
 /// awkward or undesirable to serialize, such as pointer-style handles or large
 /// non-serializable buffers. Instead of bytes, the request is *parked* under an
-/// [`EffectId`] with [`Parked::park`], and the shell receives that id together
+/// [`ParkedEffectId`] with [`Parked::park`], and the shell receives that id together
 /// with the (typed) operation. When the shell has a result, it calls
 /// [`Parked::resolve`] with the id and the typed output.
 ///
@@ -57,7 +57,7 @@ where
     /// been poisoned.
     pub fn resolve(
         &self,
-        id: EffectId<Op::Output>,
+        id: ParkedEffectId<Op::Output>,
         output: Op::Output,
     ) -> Result<(), ResolveError> {
         self.registry.resolve(id, output)?;
@@ -83,7 +83,7 @@ where
     ///
     /// Panics if the internal registry lock has been poisoned.
     #[must_use]
-    pub fn park(&self, request: Request<Op>) -> (EffectId<Op::Output>, Op) {
+    pub fn park(&self, request: Request<Op>) -> (ParkedEffectId<Op::Output>, Op) {
         let (id, operation) = self.registry.register(request);
 
         (id, operation)

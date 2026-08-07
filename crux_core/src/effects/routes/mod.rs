@@ -5,7 +5,7 @@
 //!
 //! - [`Serialized`] is the default, bridge-like lane that exchanges bytes with
 //!   the shell.
-//! - [`Parked`] holds requests under an [`EffectId`](super::EffectId) for a
+//! - [`Parked`] holds requests under a [`ParkedEffectId`](super::ParkedEffectId) for a
 //!   custom, user-owned FFI carrying opaque or non-serializable data.
 //! - [`Buffer`] collects requests for the caller to drain and handle in process.
 

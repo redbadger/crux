@@ -8,6 +8,40 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 💥 Breaking Changes
+
+- **`crux_core::effects::EffectId` is renamed to `ParkedEffectId`.** There were two public
+  types called `EffectId`, and they are not interchangeable:
+
+  | | `crux_core::bridge::EffectId` | was `crux_core::effects::EffectId<T>` |
+  | --- | --- | --- |
+  | Shape | `pub struct EffectId(pub u32)` | opaque `u64`, phantom-typed by `Op::Output` |
+  | Contents | a slab index | slab index **and** generation |
+  | Used by | every shell, on the serialized lane | the `Parked` lane only |
+
+  A shell wiring up both lanes needs both in scope, so one of them has to be aliased —
+  as `crux_core`'s own routing test had to do. The `Parked` one is renamed because it is
+  the newer of the two (0.19.0), is used by no example, and reaches only the handful of
+  people using a custom FFI lane; `EffectId` stays the name of the id in `Request`, which
+  every integration already writes as `EffectId(id)`.
+
+  If you resolve a parked request, rename the type at your call site — the API is
+  otherwise unchanged:
+
+  ```rust
+  // before
+  use crux_core::effects::EffectId;
+  camera.resolve(EffectId::from_raw(id), output)?;
+
+  // after
+  use crux_core::effects::ParkedEffectId;
+  camera.resolve(ParkedEffectId::from_raw(id), output)?;
+  ```
+
+  Nothing crosses the FFI differently: `bridge::EffectId` is `#[serde(transparent)]` and
+  `#[facet(transparent)]`, so generated Swift, Kotlin, TypeScript and C# see a plain
+  `u32` and are unaffected by either name.
+
 ### 🐛 Bug Fixes
 
 - **A resolved request's `EffectId` is no longer handed to a later request.** Ids were
