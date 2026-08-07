@@ -199,7 +199,7 @@ mdbook serve
 - **CI sanity check:** the pages workflow verifies that the ref in `STABLE_REF` names
   a tag that actually exists:
   ```sh
-  git rev-parse --verify "$(cat docs/STABLE_REF)^{tag}"
+  git rev-parse --verify "$(cat docs/STABLE_REF)^{commit}"
   ```
   A typo in `STABLE_REF` fails the build loudly rather than silently deploying the
   wrong thing.
