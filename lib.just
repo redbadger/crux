@@ -1,8 +1,11 @@
 # Shared justfile helpers for Crux.
 # Import with: mod lib '../lib.just' (adjust path as needed)
 
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+
 # Check if a tool is installed, report status (does not fail build)
 [no-cd]
+[unix]
 [script('bash')]
 check-tool tool install_cmd:
     if command -v {{ tool }} >/dev/null 2>&1; then
@@ -11,8 +14,19 @@ check-tool tool install_cmd:
         echo '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}'
     fi
 
+[no-cd]
+[windows]
+[script('powershell')]
+check-tool tool install_cmd:
+    if (Get-Command "{{ tool }}" -ErrorAction SilentlyContinue) {
+        Write-Host "  ✓ {{ tool }}"
+    } else {
+        Write-Host "  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}"
+    }
+
 # Check if a tool is installed, report status, and fail if missing
 [no-cd]
+[unix]
 [script('bash')]
 require-tool tool install_cmd:
     if command -v {{ tool }} >/dev/null 2>&1; then
@@ -22,8 +36,20 @@ require-tool tool install_cmd:
         exit 1
     fi
 
+[no-cd]
+[windows]
+[script('powershell')]
+require-tool tool install_cmd:
+    if (Get-Command "{{ tool }}" -ErrorAction SilentlyContinue) {
+        Write-Host "  ✓ {{ tool }}"
+    } else {
+        Write-Host "  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}"
+        exit 1
+    }
+
 # Check if a file exists, report status (does not fail build)
 [no-cd]
+[unix]
 [script('bash')]
 check-file file setup_cmd:
     if [ -f {{ file }} ]; then
@@ -32,8 +58,19 @@ check-file file setup_cmd:
         echo '  {{ style("error") }}✗ {{ file }}{{ NORMAL }} — create with: {{ setup_cmd }}'
     fi
 
+[no-cd]
+[windows]
+[script('powershell')]
+check-file file setup_cmd:
+    if (Test-Path "{{ file }}" -PathType Leaf) {
+        Write-Host "  ✓ {{ file }}"
+    } else {
+        Write-Host "  {{ style("error") }}✗ {{ file }}{{ NORMAL }} — create with: {{ setup_cmd }}"
+    }
+
 # Check if a Rust target is installed
 [no-cd]
+[unix]
 [script('bash')]
 check-rust-target target:
     if rustup target list --installed 2>/dev/null | grep -q '{{ target }}'; then
@@ -42,8 +79,20 @@ check-rust-target target:
         echo '  {{ style("error") }}✗ {{ target }}{{ NORMAL }} — install with: rustup target add {{ target }}'
     fi
 
+[no-cd]
+[windows]
+[script('powershell')]
+check-rust-target target:
+    $installed = rustup target list --installed 2>$null
+    if ($installed -like '*{{ target }}*') {
+        Write-Host "  ✓ {{ target }}"
+    } else {
+        Write-Host "  {{ style("error") }}✗ {{ target }}{{ NORMAL }} — install with: rustup target add {{ target }}"
+    }
+
 # (internal) check java version is between 17 and 24
 [no-cd]
+[unix]
 [script('bash')]
 _check-java-version:
     if ! command -v java >/dev/null 2>&1; then exit 0; fi
@@ -53,6 +102,23 @@ _check-java-version:
     else
         echo "  {{ style("error") }}✗ java version $ver — need 17–24 (Gradle does not support 25+){{ NORMAL }}"
     fi
+
+[no-cd]
+[windows]
+[script('powershell')]
+_check-java-version:
+    if (!(Get-Command java -ErrorAction SilentlyContinue)) { exit 0 }
+    $ver_str = & java -version 2>&1 | Select-Object -First 1
+    if ($ver_str -match '"([0-9]+)\.') {
+        $ver = [int]$Matches[1]
+        if ($ver -ge 17 -and $ver -le 24) {
+            Write-Host "  ✓ java version $ver (17–24)"
+        } else {
+            Write-Host "  {{ style("error") }}✗ java version $ver — need 17–24 (Gradle does not support 25+){{ NORMAL }}"
+        }
+    } else {
+        Write-Host "  {{ style("error") }}✗ Could not parse java version from: $ver_str{{ NORMAL }}"
+    }
 
 # Check tools for Apple shells
 [no-cd]
@@ -78,6 +144,7 @@ check-windows:
 
 # (internal) check for Visual Studio via vswhere at its canonical install path
 [no-cd]
+[unix]
 [script('bash')]
 _check-vswhere:
     vswhere='/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe'
@@ -86,6 +153,17 @@ _check-vswhere:
     else
         echo '  {{ style("error") }}✗ Visual Studio vswhere{{ NORMAL }} — install Visual Studio 2022+ with the Windows App SDK workload'
     fi
+
+[no-cd]
+[windows]
+[script('powershell')]
+_check-vswhere:
+    $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere -PathType Leaf) {
+        Write-Host '  ✓ Visual Studio (vswhere)'
+    } else {
+        Write-Host "  {{ style('error') }}✗ Visual Studio vswhere{{ NORMAL }} — install Visual Studio 2022+ with the Windows App SDK workload"
+    }
 
 # Check tools for Android shells
 [no-cd]

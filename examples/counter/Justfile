@@ -2,10 +2,13 @@ mod lib '../../lib.just'
 
 default: dev
 
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+
 common := "shared tui web-leptos web-yew web-dioxus web-nextjs web-react-router tauri android"
 shells := if os() == "macos" { common + " apple" } else if os() == "windows" { common + " windows" } else { common }
 
 # checks required tools across all shells
+[unix]
 [script('bash')]
 doctor:
     for shell in {{ shells }}; do
@@ -14,7 +17,19 @@ doctor:
         echo ''
     done
 
+[windows]
+[script('powershell')]
+doctor:
+    foreach ($shell in "{{ shells }}".Split(" ")) {
+        if ($shell) {
+            Write-Host "{{ style("command") }}${shell}:{{ NORMAL }}"
+            just "$shell/doctor"
+            Write-Host ""
+        }
+    }
+
 # local development workflow
+[unix]
 [script('bash')]
 dev:
     set -euo pipefail
@@ -23,7 +38,18 @@ dev:
         just "$shell/dev"
     done
 
+[windows]
+[script('powershell')]
+dev:
+    foreach ($shell in "{{ shells }}".Split(" ")) {
+        if ($shell) {
+            Write-Host "{{ style("command") }}$shell/dev:{{ NORMAL }}"
+            just "$shell/dev"
+        }
+    }
+
 # fix formatting in all shells
+[unix]
 [script('bash')]
 fix:
     set -euo pipefail
@@ -32,7 +58,18 @@ fix:
         just "$shell/fix"
     done
 
+[windows]
+[script('powershell')]
+fix:
+    foreach ($shell in "{{ shells }}".Split(" ")) {
+        if ($shell) {
+            Write-Host "{{ style("command") }}$shell/fix:{{ NORMAL }}"
+            just "$shell/fix"
+        }
+    }
+
 # check formatting and lint in all shells
+[unix]
 [script('bash')]
 check:
     set -euo pipefail
@@ -41,7 +78,18 @@ check:
         just "$shell/check"
     done
 
+[windows]
+[script('powershell')]
+check:
+    foreach ($shell in "{{ shells }}".Split(" ")) {
+        if ($shell) {
+            Write-Host "{{ style("command") }}$shell/check:{{ NORMAL }}"
+            just "$shell/check"
+        }
+    }
+
 # clean build artefacts in all shells
+[unix]
 [script('bash')]
 clean:
     set -euo pipefail
@@ -52,7 +100,20 @@ clean:
     cargo clean
     rm -rf target
 
+[windows]
+[script('powershell')]
+clean:
+    foreach ($shell in "{{ shells }}".Split(" ")) {
+        if ($shell) {
+            Write-Host "{{ style("command") }}$shell/clean:{{ NORMAL }}"
+            just "$shell/clean"
+        }
+    }
+    cargo clean
+    if (Test-Path target) { Remove-Item -Recurse -Force target }
+
 # CI workflow
+[unix]
 [script('bash')]
 ci:
     set -euo pipefail
@@ -61,7 +122,18 @@ ci:
         just "$shell/ci"
     done
 
+[windows]
+[script('powershell')]
+ci:
+    foreach ($shell in "{{ shells }}".Split(" ")) {
+        if ($shell) {
+            Write-Host "{{ style("command") }}$shell/ci:{{ NORMAL }}"
+            just "$shell/ci"
+        }
+    }
+
 # update pnpm dependencies in all pnpm shells
+[unix]
 [script('bash')]
 update-pnpm-deps:
     set -euo pipefail
@@ -69,3 +141,13 @@ update-pnpm-deps:
         echo '{{ style("command") }}'"$shell"'/update-pnpm-deps:{{ NORMAL }}'
         just "$shell/update-pnpm-deps"
     done
+
+[windows]
+[script('powershell')]
+update-pnpm-deps:
+    foreach ($shell in "web-nextjs web-react-router tauri".Split(" ")) {
+        if ($shell) {
+            Write-Host "{{ style("command") }}$shell/update-pnpm-deps:{{ NORMAL }}"
+            just "$shell/update-pnpm-deps"
+        }
+    }

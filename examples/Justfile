@@ -2,9 +2,12 @@ mod lib '../lib.just'
 
 default: dev
 
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+
 examples := "counter counter-http counter-middleware counter-routing notes weather"
 
 # checks required tools across all examples
+[unix]
 [script('bash')]
 doctor:
     for example in {{ examples }}; do
@@ -13,7 +16,19 @@ doctor:
         echo ''
     done
 
+[windows]
+[script('powershell')]
+doctor:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}${example}:{{ NORMAL }}"
+            just "$example/doctor"
+            Write-Host ""
+        }
+    }
+
 # local development workflow
+[unix]
 [script('bash')]
 dev:
     set -euo pipefail
@@ -22,7 +37,18 @@ dev:
         just "$example/dev"
     done
 
+[windows]
+[script('powershell')]
+dev:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/dev:{{ NORMAL }}"
+            just "$example/dev"
+        }
+    }
+
 # fix formatting in all examples
+[unix]
 [script('bash')]
 fix:
     set -euo pipefail
@@ -31,7 +57,18 @@ fix:
         just "$example/fix"
     done
 
+[windows]
+[script('powershell')]
+fix:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/fix:{{ NORMAL }}"
+            just "$example/fix"
+        }
+    }
+
 # check formatting and lint in all examples
+[unix]
 [script('bash')]
 check:
     set -euo pipefail
@@ -40,7 +77,18 @@ check:
         just "$example/check"
     done
 
+[windows]
+[script('powershell')]
+check:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/check:{{ NORMAL }}"
+            just "$example/check"
+        }
+    }
+
 # clean build artefacts in all examples
+[unix]
 [script('bash')]
 clean:
     set -euo pipefail
@@ -51,7 +99,20 @@ clean:
     rm -rf */target */*/target
     rm -rf */*/build */*/dist */*/.next */*/.react-router */*/node_modules */*/.gradle
 
+[windows]
+[script('powershell')]
+clean:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/clean:{{ NORMAL }}"
+            just "$example/clean"
+        }
+    }
+    Get-ChildItem -Path * -Include target -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Get-ChildItem -Path *\* -Include target,build,dist,.next,.react-router,node_modules,.gradle -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
 # update Cargo lockfiles in all examples
+[unix]
 [script('bash')]
 update:
     set -euo pipefail
@@ -60,7 +121,20 @@ update:
         (cd "$example" && cargo update)
     done
 
+[windows]
+[script('powershell')]
+update:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/update:{{ NORMAL }}"
+            Push-Location $example
+            cargo update
+            Pop-Location
+        }
+    }
+
 # upgrade Cargo dependency constraints and update lockfiles in all examples
+[unix]
 [script('bash')]
 update-deps:
     set -euo pipefail
@@ -69,7 +143,21 @@ update-deps:
         (cd "$example" && cargo upgrade --incompatible allow && cargo update)
     done
 
+[windows]
+[script('powershell')]
+update-deps:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/update-deps:{{ NORMAL }}"
+            Push-Location $example
+            cargo upgrade --incompatible allow
+            cargo update
+            Pop-Location
+        }
+    }
+
 # update pnpm dependencies in all examples
+[unix]
 [script('bash')]
 update-pnpm-deps:
     set -euo pipefail
@@ -78,7 +166,18 @@ update-pnpm-deps:
         just "$example/update-pnpm-deps"
     done
 
+[windows]
+[script('powershell')]
+update-pnpm-deps:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/update-pnpm-deps:{{ NORMAL }}"
+            just "$example/update-pnpm-deps"
+        }
+    }
+
 # CI workflow
+[unix]
 [script('bash')]
 ci:
     set -euo pipefail
@@ -86,3 +185,13 @@ ci:
         echo '{{ style("command") }}'"$example"'/ci:{{ NORMAL }}'
         just "$example/ci"
     done
+
+[windows]
+[script('powershell')]
+ci:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/ci:{{ NORMAL }}"
+            just "$example/ci"
+        }
+    }
