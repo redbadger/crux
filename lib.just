@@ -53,6 +53,7 @@ require-tool tool install_cmd:
 
 # Check that the installed BoltFFI CLI matches the version used by the examples
 [no-cd]
+[unix]
 [script('bash')]
 check-boltffi:
     install_cmd="cargo install boltffi_cli --version '={{ boltffi_version }}' --locked"
@@ -68,6 +69,24 @@ check-boltffi:
         if [ -z "$actual" ]; then actual='boltffi (unknown version)'; fi
         echo "  {{ style("error") }}✗ $actual{{ NORMAL }} — expected $expected; install with: $install_cmd"
     fi
+
+[no-cd]
+[windows]
+[script('powershell')]
+check-boltffi:
+    $install_cmd = "cargo install boltffi_cli --version '={{ boltffi_version }}' --locked"
+    if (!(Get-Command boltffi -ErrorAction SilentlyContinue)) {
+        Write-Host "  {{ style("error") }}✗ boltffi{{ NORMAL }} — install with: $install_cmd"
+        exit 0
+    }
+    $actual = & boltffi --version 2>$null | Select-Object -First 1
+    $expected = "boltffi {{ boltffi_version }}"
+    if ($actual -eq $expected) {
+        Write-Host "  ✓ $actual"
+    } else {
+        if (-not $actual) { $actual = 'boltffi (unknown version)' }
+        Write-Host "  {{ style("error") }}✗ $actual{{ NORMAL }} — expected $expected; install with: $install_cmd"
+    }
 
 # Check if a file exists, report status (does not fail build)
 [no-cd]
@@ -144,6 +163,7 @@ _check-java-version:
 
 # (internal) check Binaryen's wasm-opt is new enough for BoltFFI
 [no-cd]
+[unix]
 [script('bash')]
 _check-wasm-opt-version:
     if ! command -v wasm-opt >/dev/null 2>&1; then exit 0; fi
@@ -153,6 +173,24 @@ _check-wasm-opt-version:
     else
         echo "  {{ style("error") }}✗ wasm-opt version $ver — need {{ binaryen_version }}+ (BoltFFI passes --enable-bulk-memory-opt, added in Binaryen {{ binaryen_version }}){{ NORMAL }}"
     fi
+
+[no-cd]
+[windows]
+[script('powershell')]
+_check-wasm-opt-version:
+    if (!(Get-Command wasm-opt -ErrorAction SilentlyContinue)) { exit 0 }
+    $ver_str = & wasm-opt --version 2>$null | Select-Object -First 1
+    if ($ver_str -match 'version ([0-9]+)') {
+        $ver = [int]$Matches[1]
+        if ($ver -ge {{ binaryen_version }}) {
+            Write-Host "  ✓ wasm-opt version $ver (>= {{ binaryen_version }})"
+        } else {
+            Write-Host "  {{ style("error") }}✗ wasm-opt version $ver — need {{ binaryen_version }}+ (BoltFFI passes --enable-bulk-memory-opt, added in Binaryen {{ binaryen_version }}){{ NORMAL }}"
+        }
+    } else {
+        Write-Host "  {{ style("error") }}✗ Could not parse wasm-opt version from: $ver_str{{ NORMAL }}"
+    }
+
 
 # Check tools for Apple shells
 [no-cd]
