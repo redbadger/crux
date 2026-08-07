@@ -92,6 +92,9 @@ jobs:
             if ($LASTEXITCODE -eq 0) { throw "$recipe swallowed a child failure" }
             Write-Host "  ok: $recipe propagated (exit $LASTEXITCODE)"
           }
+          # $LASTEXITCODE is still non-zero from the last injected failure, and
+          # GitHub's pwsh wrapper would propagate it as the step's status.
+          exit 0
 
   windows-android:
     runs-on: windows-latest
