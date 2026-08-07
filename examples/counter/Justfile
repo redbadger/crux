@@ -2,30 +2,34 @@ mod lib '../../lib.just'
 
 default: dev
 
+# The command interpreter just uses on Windows. Unrelated to the Crux shells
+# below — and note one of those is itself called "windows".
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
-common := "shared tui web-leptos web-yew web-dioxus web-nextjs web-react-router tauri android"
-shells := if os() == "macos" { common + " apple" } else if os() == "windows" { common + " windows" } else { common }
-pnpm_shells := "web-nextjs web-react-router tauri"
+# The Crux shells: the platform-specific UI layers wrapping the shared core,
+# each a subdirectory with its own Justfile.
+crux_shells_common := "shared tui web-leptos web-yew web-dioxus web-nextjs web-react-router tauri android"
+crux_shells := if os() == "macos" { crux_shells_common + " apple" } else if os() == "windows" { crux_shells_common + " windows" } else { crux_shells_common }
+pnpm_crux_shells := "web-nextjs web-react-router tauri"
 
-# checks required tools across all shells
+# checks required tools across all Crux shells
 [unix]
 [script('bash')]
 doctor:
-    for shell in {{ shells }}; do
-        echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
-        just "$shell/doctor"
+    for crux_shell in {{ crux_shells }}; do
+        echo '{{ style("command") }}'"$crux_shell"':{{ NORMAL }}'
+        just "$crux_shell/doctor"
         echo ''
     done
 
-# no early exit: report every shell's tool status, like the bash version
+# no early exit: report every Crux shell's tool status, like the bash version
 [windows]
 [script('powershell')]
 doctor:
-    foreach ($shell in "{{ shells }}".Split(" ")) {
-        if ($shell) {
-            Write-Host "{{ style("command") }}${shell}:{{ NORMAL }}"
-            just "$shell/doctor"
+    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
+        if ($crux_shell) {
+            Write-Host "{{ style("command") }}${crux_shell}:{{ NORMAL }}"
+            just "$crux_shell/doctor"
             Write-Host ""
         }
     }
@@ -35,75 +39,75 @@ doctor:
 [script('bash')]
 dev:
     set -euo pipefail
-    for shell in {{ shells }}; do
-        echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
-        just "$shell/dev"
+    for crux_shell in {{ crux_shells }}; do
+        echo '{{ style("command") }}'"$crux_shell"'/dev:{{ NORMAL }}'
+        just "$crux_shell/dev"
     done
 
 [windows]
 [script('powershell')]
 dev:
     $ErrorActionPreference = 'Stop'
-    foreach ($shell in "{{ shells }}".Split(" ")) {
-        if ($shell) {
-            Write-Host "{{ style("command") }}$shell/dev:{{ NORMAL }}"
-            just "$shell/dev"
+    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
+        if ($crux_shell) {
+            Write-Host "{{ style("command") }}$crux_shell/dev:{{ NORMAL }}"
+            just "$crux_shell/dev"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
-# fix formatting in all shells
+# fix formatting in all Crux shells
 [unix]
 [script('bash')]
 fix:
     set -euo pipefail
-    for shell in {{ shells }}; do
-        echo '{{ style("command") }}'"$shell"'/fix:{{ NORMAL }}'
-        just "$shell/fix"
+    for crux_shell in {{ crux_shells }}; do
+        echo '{{ style("command") }}'"$crux_shell"'/fix:{{ NORMAL }}'
+        just "$crux_shell/fix"
     done
 
 [windows]
 [script('powershell')]
 fix:
     $ErrorActionPreference = 'Stop'
-    foreach ($shell in "{{ shells }}".Split(" ")) {
-        if ($shell) {
-            Write-Host "{{ style("command") }}$shell/fix:{{ NORMAL }}"
-            just "$shell/fix"
+    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
+        if ($crux_shell) {
+            Write-Host "{{ style("command") }}$crux_shell/fix:{{ NORMAL }}"
+            just "$crux_shell/fix"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
-# check formatting and lint in all shells
+# check formatting and lint in all Crux shells
 [unix]
 [script('bash')]
 check:
     set -euo pipefail
-    for shell in {{ shells }}; do
-        echo '{{ style("command") }}'"$shell"'/check:{{ NORMAL }}'
-        just "$shell/check"
+    for crux_shell in {{ crux_shells }}; do
+        echo '{{ style("command") }}'"$crux_shell"'/check:{{ NORMAL }}'
+        just "$crux_shell/check"
     done
 
 [windows]
 [script('powershell')]
 check:
     $ErrorActionPreference = 'Stop'
-    foreach ($shell in "{{ shells }}".Split(" ")) {
-        if ($shell) {
-            Write-Host "{{ style("command") }}$shell/check:{{ NORMAL }}"
-            just "$shell/check"
+    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
+        if ($crux_shell) {
+            Write-Host "{{ style("command") }}$crux_shell/check:{{ NORMAL }}"
+            just "$crux_shell/check"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
-# clean build artefacts in all shells
+# clean build artefacts in all Crux shells
 [unix]
 [script('bash')]
 clean:
     set -euo pipefail
-    for shell in {{ shells }}; do
-        echo '{{ style("command") }}'"$shell"'/clean:{{ NORMAL }}'
-        just "$shell/clean"
+    for crux_shell in {{ crux_shells }}; do
+        echo '{{ style("command") }}'"$crux_shell"'/clean:{{ NORMAL }}'
+        just "$crux_shell/clean"
     done
     cargo clean
     rm -rf target
@@ -112,10 +116,10 @@ clean:
 [script('powershell')]
 clean:
     $ErrorActionPreference = 'Stop'
-    foreach ($shell in "{{ shells }}".Split(" ")) {
-        if ($shell) {
-            Write-Host "{{ style("command") }}$shell/clean:{{ NORMAL }}"
-            just "$shell/clean"
+    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
+        if ($crux_shell) {
+            Write-Host "{{ style("command") }}$crux_shell/clean:{{ NORMAL }}"
+            just "$crux_shell/clean"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
@@ -128,41 +132,41 @@ clean:
 [script('bash')]
 ci:
     set -euo pipefail
-    for shell in {{ shells }}; do
-        echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
-        just "$shell/ci"
+    for crux_shell in {{ crux_shells }}; do
+        echo '{{ style("command") }}'"$crux_shell"'/ci:{{ NORMAL }}'
+        just "$crux_shell/ci"
     done
 
 [windows]
 [script('powershell')]
 ci:
     $ErrorActionPreference = 'Stop'
-    foreach ($shell in "{{ shells }}".Split(" ")) {
-        if ($shell) {
-            Write-Host "{{ style("command") }}$shell/ci:{{ NORMAL }}"
-            just "$shell/ci"
+    foreach ($crux_shell in "{{ crux_shells }}".Split(" ")) {
+        if ($crux_shell) {
+            Write-Host "{{ style("command") }}$crux_shell/ci:{{ NORMAL }}"
+            just "$crux_shell/ci"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
-# update pnpm dependencies in all pnpm shells
+# update pnpm dependencies in all pnpm Crux shells
 [unix]
 [script('bash')]
 update-pnpm-deps:
     set -euo pipefail
-    for shell in {{ pnpm_shells }}; do
-        echo '{{ style("command") }}'"$shell"'/update-pnpm-deps:{{ NORMAL }}'
-        just "$shell/update-pnpm-deps"
+    for crux_shell in {{ pnpm_crux_shells }}; do
+        echo '{{ style("command") }}'"$crux_shell"'/update-pnpm-deps:{{ NORMAL }}'
+        just "$crux_shell/update-pnpm-deps"
     done
 
 [windows]
 [script('powershell')]
 update-pnpm-deps:
     $ErrorActionPreference = 'Stop'
-    foreach ($shell in "{{ pnpm_shells }}".Split(" ")) {
-        if ($shell) {
-            Write-Host "{{ style("command") }}$shell/update-pnpm-deps:{{ NORMAL }}"
-            just "$shell/update-pnpm-deps"
+    foreach ($crux_shell in "{{ pnpm_crux_shells }}".Split(" ")) {
+        if ($crux_shell) {
+            Write-Host "{{ style("command") }}$crux_shell/update-pnpm-deps:{{ NORMAL }}"
+            just "$crux_shell/update-pnpm-deps"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
