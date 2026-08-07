@@ -8,6 +8,60 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 🐛 Bug Fixes
+
+- **A resolved request's `EffectId` is no longer handed to a later request.** Ids were
+  slab indices, and the slab reused an index as soon as its request completed. If a shell
+  resolved an id twice — a retry, a race, a bug — the second resolve landed on whichever
+  unrelated request had inherited the slot. When the two outputs happened to deserialize
+  compatibly, which two HTTP requests generally do, it succeeded silently and delivered
+  one request's response to another.
+
+  Ids are now issued in ascending order and not reused, so resolving a completed request
+  is a lookup miss:
+
+  ```
+  Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)))
+  ```
+
+  Nothing changes for a shell that resolves each request once. The counter wraps after
+  `u32::MAX` requests and steps over any id still outstanding, so a live request cannot
+  be displaced even then. `EffectId` is unchanged on the wire — still a transparent
+  `u32` — so no generated types or shell code are affected.
+
+  This also removes the `EffectId overflow` panic: ids are `u32` by construction rather
+  than a `usize` slab index narrowed on the way out.
+
+- **Fire-and-forget requests no longer accumulate in the bridge registry.** Every effect
+  was registered so that the shell could resolve it later, but a fire-and-forget request
+  — `Render`, most of all — has no continuation and is never resolved, and only a resolve
+  removed an entry. So each one occupied a registry slot for the life of the process:
+  five `Trigger` events in a row produced render ids `[0, 1, 2, 3, 4]`, never reusing a
+  slot, because none was ever freed. An app rendering ten times a second leaked roughly a
+  megabyte a day.
+
+  Such a request now takes an id, as before, but stores nothing.
+
+  The observable difference is the error from resolving one. It used to report
+
+  ```
+  Attempted to resolve a request that is not expected to be resolved.
+  ```
+
+  and now reports
+
+  ```
+  Request with id 0 not found.
+  ```
+
+  `ResolveError::Never` is therefore no longer reachable through the bridge; it remains
+  in the enum, and is still produced by the `Core` API. Only a shell resolving an id it
+  was never meant to resolve sees either message.
+
+  Streaming requests still hold their entry after the stream ends — the registry is not
+  told when a `Many` finishes. That needs `ResolveSerialized` to report completion, and
+  is left for its own change.
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-06-08
 
 ### 🚀 Features
