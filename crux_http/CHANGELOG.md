@@ -234,6 +234,8 @@ and this project adheres to
   (`crux_kv` 0.14.0, `crux_time` 0.18.0) together with this one — a capability left on
   `crux_core` 0.19 would pull a second, incompatible `crux_core` into the same tree.
 - Dependency updates, including `http` 1.4 -> 1.5.
+- Dropped the `anyhow` and `pin-project-lite` dependencies, which nothing in the crate
+  referenced, and `categories` added to the crate metadata for crates.io.
 
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_http-v0.18.0...crux_http-v0.19.0) - 2026-07-06
 

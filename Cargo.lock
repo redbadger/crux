@@ -471,7 +471,6 @@ dependencies = [
 name = "crux_http"
 version = "0.20.0"
 dependencies = [
- "anyhow",
  "assert_fs",
  "assert_matches",
  "async-trait",
@@ -486,7 +485,6 @@ dependencies = [
  "http-types-red-badger-temporary-fork",
  "insta",
  "mime",
- "pin-project-lite",
  "serde",
  "serde_bytes",
  "serde_json",

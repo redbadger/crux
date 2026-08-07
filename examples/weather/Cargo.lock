@@ -553,7 +553,6 @@ dependencies = [
 name = "crux_http"
 version = "0.20.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "crux_core",
  "derive_builder",
@@ -563,7 +562,6 @@ dependencies = [
  "futures-util",
  "http",
  "mime",
- "pin-project-lite",
  "serde",
  "serde_bytes",
  "serde_json",

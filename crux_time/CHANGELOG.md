@@ -16,7 +16,7 @@ and this project adheres to
   capability crate requires a specific `crux_core` minor: a capability left on `crux_core`
   0.19 alongside one on 0.20 would pull two incompatible `crux_core` versions into the
   same tree.
-- Dependency updates.
+- Dependency updates, and `categories` added to the crate metadata for crates.io.
 
 ## [0.17.0](https://github.com/redbadger/crux/compare/crux_time-v0.16.0...crux_time-v0.17.0) - 2026-05-31
 

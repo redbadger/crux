@@ -8,6 +8,7 @@ description = "Macros for use with crux_core"
 repository.workspace = true
 license.workspace = true
 keywords.workspace = true
+categories.workspace = true
 
 [lib]
 proc-macro = true

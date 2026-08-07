@@ -9,6 +9,7 @@ readme = "README.md"
 repository.workspace = true
 license.workspace = true
 keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 anyhow.workspace = true

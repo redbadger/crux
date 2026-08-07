@@ -41,6 +41,7 @@ and this project adheres to
   [crates.io](https://crates.io/crates/crux_platform). Its source is gone from this
   repository, and the macro test fixtures and README example no longer mention it.
 - Dependency updates, including `syn` 2 -> 3 and `darling` 0.23 -> 0.24.
+- `categories` added to the crate metadata for crates.io.
 
 ## [0.10.0](https://github.com/redbadger/crux/compare/crux_macros-v0.9.0...crux_macros-v0.10.0) - 2026-05-31
 

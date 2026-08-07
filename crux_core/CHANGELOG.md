@@ -112,7 +112,21 @@ and this project adheres to
   version conflict.
 - The `crux_platform` reference is gone from the README; the crate is deprecated and no
   longer part of Crux.
-- Dependency updates.
+
+### 📝 Documentation
+
+- **The "Integrating with a Shell" section of the crate docs has been rewritten.** It
+  described a UniFFI workflow — `uniffi_macros::include_scaffolding!`, a hand-written
+  `.udl` file, `lazy_static!`, `Core::new::<Capabilities>()` and the `Bridge` methods
+  deprecated in 0.17.0 — none of which is how you integrate a Crux core any more. It now
+  shows the `Bridge`'s `update`/`resolve`/`view` methods wrapped for BoltFFI, matching
+  `examples/counter`. The example was `rust,ignore`, which is how it rotted; it is now a
+  compiled doctest.
+- The same section of the README is updated to match, along with the `App::update`
+  signature (which lost its `caps` argument several releases ago) and the docs on
+  `App::Effect` (which still pointed at the removed `Effect` derive macro rather than
+  `#[effect]`).
+- Dependency updates, and `categories` added to the crate metadata for crates.io.
 
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-06-08
 
