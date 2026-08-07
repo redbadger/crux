@@ -30,14 +30,17 @@ install-targets:
 [windows]
 [script('powershell')]
 install-targets:
+    $ErrorActionPreference = 'Stop'
     Write-Host "{{ style("command") }}install-targets:{{ NORMAL }}"
     $toolchain = $env:RUSTUP_TOOLCHAIN
     if (-not $toolchain) {
         $active = rustup show active-toolchain
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         $toolchain = ($active -split ' ')[0]
     }
     Write-Host "  Toolchain: $toolchain"
     rustup target add --toolchain "$toolchain" aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # auto-fix formatting issues
 fix:
@@ -70,9 +73,11 @@ typegen: package
 [windows]
 [script('powershell')]
 typegen: package
+    $ErrorActionPreference = 'Stop'
     Write-Host "{{ style("command") }}typegen:{{ NORMAL }}"
     $env:RUST_LOG='info'
     cargo run --package shared --bin codegen --features codegen,facet_typegen -- --language kotlin --output-dir generated
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # build the Android debug APK (generates types first)
 build: typegen
@@ -94,8 +99,10 @@ clean:
 [windows]
 [script('powershell')]
 clean:
+    $ErrorActionPreference = 'Stop'
     Write-Host "{{ style("command") }}clean:{{ NORMAL }}"
-    & {{ gradlew }} --no-daemon clean
+    {{ gradlew }} --no-daemon clean
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     if (Test-Path generated) { Remove-Item -Recurse -Force generated }
 
 # local development workflow

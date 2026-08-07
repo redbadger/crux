@@ -16,6 +16,7 @@ doctor:
         echo ''
     done
 
+# no early exit: report every example's tool status, like the bash version
 [windows]
 [script('powershell')]
 doctor:
@@ -40,10 +41,12 @@ dev:
 [windows]
 [script('powershell')]
 dev:
+    $ErrorActionPreference = 'Stop'
     foreach ($example in "{{ examples }}".Split(" ")) {
         if ($example) {
             Write-Host "{{ style("command") }}$example/dev:{{ NORMAL }}"
             just "$example/dev"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
@@ -60,10 +63,12 @@ fix:
 [windows]
 [script('powershell')]
 fix:
+    $ErrorActionPreference = 'Stop'
     foreach ($example in "{{ examples }}".Split(" ")) {
         if ($example) {
             Write-Host "{{ style("command") }}$example/fix:{{ NORMAL }}"
             just "$example/fix"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
@@ -80,10 +85,12 @@ check:
 [windows]
 [script('powershell')]
 check:
+    $ErrorActionPreference = 'Stop'
     foreach ($example in "{{ examples }}".Split(" ")) {
         if ($example) {
             Write-Host "{{ style("command") }}$example/check:{{ NORMAL }}"
             just "$example/check"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
@@ -102,10 +109,12 @@ clean:
 [windows]
 [script('powershell')]
 clean:
+    $ErrorActionPreference = 'Stop'
     foreach ($example in "{{ examples }}".Split(" ")) {
         if ($example) {
             Write-Host "{{ style("command") }}$example/clean:{{ NORMAL }}"
             just "$example/clean"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
     Get-ChildItem -Path * -Include target -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
@@ -124,12 +133,17 @@ update:
 [windows]
 [script('powershell')]
 update:
+    $ErrorActionPreference = 'Stop'
     foreach ($example in "{{ examples }}".Split(" ")) {
         if ($example) {
             Write-Host "{{ style("command") }}$example/update:{{ NORMAL }}"
             Push-Location $example
-            cargo update
-            Pop-Location
+            try {
+                cargo update
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } finally {
+                Pop-Location
+            }
         }
     }
 
@@ -146,13 +160,19 @@ update-deps:
 [windows]
 [script('powershell')]
 update-deps:
+    $ErrorActionPreference = 'Stop'
     foreach ($example in "{{ examples }}".Split(" ")) {
         if ($example) {
             Write-Host "{{ style("command") }}$example/update-deps:{{ NORMAL }}"
             Push-Location $example
-            cargo upgrade --incompatible allow
-            cargo update
-            Pop-Location
+            try {
+                cargo upgrade --incompatible allow
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                cargo update
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } finally {
+                Pop-Location
+            }
         }
     }
 
@@ -169,10 +189,12 @@ update-pnpm-deps:
 [windows]
 [script('powershell')]
 update-pnpm-deps:
+    $ErrorActionPreference = 'Stop'
     foreach ($example in "{{ examples }}".Split(" ")) {
         if ($example) {
             Write-Host "{{ style("command") }}$example/update-pnpm-deps:{{ NORMAL }}"
             just "$example/update-pnpm-deps"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
@@ -189,9 +211,11 @@ ci:
 [windows]
 [script('powershell')]
 ci:
+    $ErrorActionPreference = 'Stop'
     foreach ($example in "{{ examples }}".Split(" ")) {
         if ($example) {
             Write-Host "{{ style("command") }}$example/ci:{{ NORMAL }}"
             just "$example/ci"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }

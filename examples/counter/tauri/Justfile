@@ -51,8 +51,10 @@ clean:
 [windows]
 [script('powershell')]
 clean:
+    $ErrorActionPreference = 'Stop'
     Write-Host "{{ style("command") }}clean:{{ NORMAL }}"
     cargo clean
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     foreach ($path in "node_modules", "dist") {
         if (Test-Path $path) { Remove-Item -Recurse -Force $path }
     }

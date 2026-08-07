@@ -6,6 +6,7 @@ set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
 common := "shared tui web-leptos web-yew web-dioxus web-nextjs web-react-router tauri android"
 shells := if os() == "macos" { common + " apple" } else if os() == "windows" { common + " windows" } else { common }
+pnpm_shells := "web-nextjs web-react-router tauri"
 
 # checks required tools across all shells
 [unix]
@@ -17,6 +18,7 @@ doctor:
         echo ''
     done
 
+# no early exit: report every shell's tool status, like the bash version
 [windows]
 [script('powershell')]
 doctor:
@@ -41,10 +43,12 @@ dev:
 [windows]
 [script('powershell')]
 dev:
+    $ErrorActionPreference = 'Stop'
     foreach ($shell in "{{ shells }}".Split(" ")) {
         if ($shell) {
             Write-Host "{{ style("command") }}$shell/dev:{{ NORMAL }}"
             just "$shell/dev"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
@@ -61,10 +65,12 @@ fix:
 [windows]
 [script('powershell')]
 fix:
+    $ErrorActionPreference = 'Stop'
     foreach ($shell in "{{ shells }}".Split(" ")) {
         if ($shell) {
             Write-Host "{{ style("command") }}$shell/fix:{{ NORMAL }}"
             just "$shell/fix"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
@@ -81,10 +87,12 @@ check:
 [windows]
 [script('powershell')]
 check:
+    $ErrorActionPreference = 'Stop'
     foreach ($shell in "{{ shells }}".Split(" ")) {
         if ($shell) {
             Write-Host "{{ style("command") }}$shell/check:{{ NORMAL }}"
             just "$shell/check"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
@@ -103,13 +111,16 @@ clean:
 [windows]
 [script('powershell')]
 clean:
+    $ErrorActionPreference = 'Stop'
     foreach ($shell in "{{ shells }}".Split(" ")) {
         if ($shell) {
             Write-Host "{{ style("command") }}$shell/clean:{{ NORMAL }}"
             just "$shell/clean"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
     cargo clean
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     if (Test-Path target) { Remove-Item -Recurse -Force target }
 
 # CI workflow
@@ -125,10 +136,12 @@ ci:
 [windows]
 [script('powershell')]
 ci:
+    $ErrorActionPreference = 'Stop'
     foreach ($shell in "{{ shells }}".Split(" ")) {
         if ($shell) {
             Write-Host "{{ style("command") }}$shell/ci:{{ NORMAL }}"
             just "$shell/ci"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
 
@@ -137,7 +150,7 @@ ci:
 [script('bash')]
 update-pnpm-deps:
     set -euo pipefail
-    for shell in web-nextjs web-react-router tauri; do
+    for shell in {{ pnpm_shells }}; do
         echo '{{ style("command") }}'"$shell"'/update-pnpm-deps:{{ NORMAL }}'
         just "$shell/update-pnpm-deps"
     done
@@ -145,9 +158,11 @@ update-pnpm-deps:
 [windows]
 [script('powershell')]
 update-pnpm-deps:
-    foreach ($shell in "web-nextjs web-react-router tauri".Split(" ")) {
+    $ErrorActionPreference = 'Stop'
+    foreach ($shell in "{{ pnpm_shells }}".Split(" ")) {
         if ($shell) {
             Write-Host "{{ style("command") }}$shell/update-pnpm-deps:{{ NORMAL }}"
             just "$shell/update-pnpm-deps"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
