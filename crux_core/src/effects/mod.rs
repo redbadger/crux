@@ -26,7 +26,7 @@
 //! - [`Parked`](routes::Parked) supports payloads and results that are awkward
 //!   or undesirable to serialize (for example opaque pointer-style handles),
 //!   using a custom, user-owned FFI. The request is parked under an
-//!   [`EffectId`] which the shell passes back when resolving.
+//!   [`ParkedEffectId`] which the shell passes back when resolving.
 //! - [`Buffer`](routes::Buffer) collects requests for the caller to drain and
 //!   handle synchronously, which is useful in tests and simple in-process
 //!   handlers.
@@ -55,7 +55,7 @@ use std::sync::{Arc, Weak};
 
 use crate::{Core, Request, Resolvable, ResolveError, capability::Operation};
 
-pub use registry::EffectId;
+pub use registry::ParkedEffectId;
 
 /// Wraps a [`Core`] and routes each emitted effect to a type-specific handler.
 ///

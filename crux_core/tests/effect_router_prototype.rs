@@ -229,9 +229,9 @@ mod app {
 mod ffi {
     use crux_core::{
         Core,
-        bridge::{EffectId as BridgeEffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest},
+        bridge::{EffectId, FfiFormat, JsonFfiFormat, Request as BridgeRequest},
         effects::{
-            EffectId, EffectRouter, Routes,
+            EffectRouter, ParkedEffectId, Routes,
             routes::{Parked, Serialized},
         },
         render::RenderOperation,
@@ -375,7 +375,7 @@ mod ffi {
             self.router
                 .routes
                 .serialized
-                .resolve(BridgeEffectId(id), data)
+                .resolve(EffectId(id), data)
                 .expect("serialized resolve should work");
         }
 
@@ -384,7 +384,7 @@ mod ffi {
             self.router
                 .routes
                 .camera
-                .resolve(EffectId::from_raw(id), output)
+                .resolve(ParkedEffectId::from_raw(id), output)
                 .expect("camera resolve should work");
         }
 
