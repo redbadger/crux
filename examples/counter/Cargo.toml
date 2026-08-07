@@ -26,10 +26,10 @@ empty_docs = "allow"
 unsafe_code = "forbid"
 
 [workspace.dependencies]
-anyhow = "1.0.103"
+anyhow = "1.0.104"
 boltffi = "=0.29.3"
 crux_core = { path = "../../crux_core" }
-serde = "1.0.228"
+serde = "1.0.229"
 
 [profile]
 

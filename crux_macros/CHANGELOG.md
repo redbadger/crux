@@ -8,6 +8,41 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.10.1](https://github.com/redbadger/crux/compare/crux_macros-v0.10.0...crux_macros-v0.10.1) - 2026-08-06
+
+### 🐛 Bug Fixes
+
+- **A generic operation type now registers correctly under typegen.** `#[effect]`
+  interpolated each variant's operation type into *expression* position when
+  generating `register_types`:
+
+  ```rust
+  #operation::register_types(generator)?;
+  ```
+
+  That parses for a bare path, but for a generic operation it does not —
+  `Navigate<Route>::register_types(generator)` parses as a chain of comparisons, so
+  an app declaring one got a syntax error pointing into macro output rather than at
+  its own code. The operation is now interpolated as a qualified path,
+  `<#operation>::register_types(generator)?`, which parses for any type. Both typegen
+  paths were affected, serde and facet.
+
+  Released as a patch deliberately. Both `crux_core` 0.19.0 and 0.20.0 require
+  `crux_macros ^0.10.0`, so 0.10.1 reaches everyone on either one, including people who
+  are not ready to move to `crux_core` 0.20.0. A 0.11.0 would reach neither without a
+  further `crux_core` release.
+
+### ⚙️ Miscellaneous Tasks
+
+- No other public API changes, and nothing consumer-visible in the manifest: this crate's
+  only workspace dependencies (`facet`, `facet-generate-attrs`) are dev-dependencies, so
+  it is unaffected by the `facet_generate` bump that `crux_core` 0.20.0 carries.
+- `crux_platform` has been removed from Crux and is deprecated — see the README on
+  [crates.io](https://crates.io/crates/crux_platform). Its source is gone from this
+  repository, and the macro test fixtures and README example no longer mention it.
+- Dependency updates, including `syn` 2 -> 3 and `darling` 0.23 -> 0.24.
+- `categories` added to the crate metadata for crates.io.
+
 ## [0.10.0](https://github.com/redbadger/crux/compare/crux_macros-v0.9.0...crux_macros-v0.10.0) - 2026-05-31
 
 ### ⚙️ Miscellaneous Tasks

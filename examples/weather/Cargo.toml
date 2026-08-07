@@ -19,14 +19,14 @@ empty_docs = "allow"
 unsafe_code = "forbid"
 
 [workspace.dependencies]
-anyhow = "1.0.103"
+anyhow = "1.0.104"
 boltffi = "=0.29.3"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }
 crux_time = { path = "../../crux_time" }
 
-serde = "1.0.228"
+serde = "1.0.229"
 
 [profile.dev.package]
 insta.opt-level = 3

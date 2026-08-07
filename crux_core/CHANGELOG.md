@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
+
 ### 💥 Breaking Changes
 
 - **`crux_core::effects::EffectId` is renamed to `ParkedEffectId`.** There were two public
@@ -95,6 +97,36 @@ and this project adheres to
   Streaming requests still hold their entry after the stream ends — the registry is not
   told when a `Many` finishes. That needs `ResolveSerialized` to report completion, and
   is left for its own change.
+
+### ⚙️ Miscellaneous Tasks
+
+- **Now requires `facet_generate` 0.19 and `facet` 0.46.5** (were 0.17 and 0.44), under
+  the `facet_typegen` feature. This is what the release is for: 0.19.0 requires
+  `facet_generate ^0.17`, so a project wanting a newer `facet_generate` of its own would
+  resolve two incompatible copies of it in one tree. The upgrade itself needed no source
+  changes, and generated Swift, Kotlin, C# and TypeScript are byte-for-byte unchanged.
+
+  Note that `facet` is pinned exactly (`=0.46.5`), because `facet_generate` 0.19 pins it
+  too. Anything else in your tree that depends on `facet` has to agree, or you get two
+  `facet_core` versions and a confusing `Facet<'_> is not satisfied` error rather than a
+  version conflict.
+- The `crux_platform` reference is gone from the README; the crate is deprecated and no
+  longer part of Crux.
+
+### 📝 Documentation
+
+- **The "Integrating with a Shell" section of the crate docs has been rewritten.** It
+  described a UniFFI workflow — `uniffi_macros::include_scaffolding!`, a hand-written
+  `.udl` file, `lazy_static!`, `Core::new::<Capabilities>()` and the `Bridge` methods
+  deprecated in 0.17.0 — none of which is how you integrate a Crux core any more. It now
+  shows the `Bridge`'s `update`/`resolve`/`view` methods wrapped for BoltFFI, matching
+  `examples/counter`. The example was `rust,ignore`, which is how it rotted; it is now a
+  compiled doctest.
+- The same section of the README is updated to match, along with the `App::update`
+  signature (which lost its `caps` argument several releases ago) and the docs on
+  `App::Effect` (which still pointed at the removed `Effect` derive macro rather than
+  `#[effect]`).
+- Dependency updates, and `categories` added to the crate metadata for crates.io.
 
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-06-08
 

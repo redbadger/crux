@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.14.0](https://github.com/redbadger/crux/compare/crux_kv-v0.13.0...crux_kv-v0.14.0) - 2026-08-06
+
+### ⚙️ Miscellaneous Tasks
+
+- Align with `crux_core` 0.20.0. No public API changes — this crate's source is
+  unchanged since 0.13.0. Released in lockstep because each capability crate requires a
+  specific `crux_core` minor: a capability left on `crux_core` 0.19 alongside one on 0.20
+  would pull two incompatible `crux_core` versions into the same tree, with two distinct
+  `Effect` and `Operation` trait sets.
+- Dependency updates, and `categories` added to the crate metadata for crates.io.
+
 ## [0.13.0](https://github.com/redbadger/crux/compare/crux_kv-v0.12.0...crux_kv-v0.13.0) - 2026-05-31
 
 ### ⚙️ Miscellaneous Tasks
