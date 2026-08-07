@@ -117,8 +117,9 @@ clean:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         }
     }
-    Get-ChildItem -Path * -Include target -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    Get-ChildItem -Path *\* -Include target,build,dist,.next,.react-router,node_modules,.gradle -Recurse -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    foreach ($pattern in '*/target', '*/*/target', '*/*/build', '*/*/dist', '*/*/.next', '*/*/.react-router', '*/*/node_modules', '*/*/.gradle') {
+        Get-Item -Path $pattern -Force -ErrorAction Ignore | Remove-Item -Recurse -Force
+    }
 
 # update Cargo lockfiles in all examples
 [unix]
