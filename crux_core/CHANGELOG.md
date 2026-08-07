@@ -8,6 +8,30 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 🐛 Bug Fixes
+
+- **A resolved request's `EffectId` is no longer handed to a later request.** Ids were
+  slab indices, and the slab reused an index as soon as its request completed. If a shell
+  resolved an id twice — a retry, a race, a bug — the second resolve landed on whichever
+  unrelated request had inherited the slot. When the two outputs happened to deserialize
+  compatibly, which two HTTP requests generally do, it succeeded silently and delivered
+  one request's response to another.
+
+  Ids are now issued in ascending order and not reused, so resolving a completed request
+  is a lookup miss:
+
+  ```
+  Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)))
+  ```
+
+  Nothing changes for a shell that resolves each request once. The counter wraps after
+  `u32::MAX` requests and steps over any id still outstanding, so a live request cannot
+  be displaced even then. `EffectId` is unchanged on the wire — still a transparent
+  `u32` — so no generated types or shell code are affected.
+
+  This also removes the `EffectId overflow` panic: ids are `u32` by construction rather
+  than a `usize` slab index narrowed on the way out.
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-06-08
 
 ### 🚀 Features
