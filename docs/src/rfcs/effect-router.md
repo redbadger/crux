@@ -1,14 +1,17 @@
 # RFC: Effect Router and shell-owned effect handling
 
-This RFC proposes a new approach for mixed effect handling, based on routing effects
+```admonish
+This RFC has been **adopted** and implemented, it's kept
+for future reference as additional context for the design
+choices.
+```
+
+This RFC proposed a new approach for mixed effect handling, based on routing effects
 by type to explicit handlers.
 
-The main goal, similar to middleware, is to support advanced cases where some effects
+The main goal, similar to middleware, was to support advanced cases where some effects
 should be handled inside the Core, or where request/result data is not serializable
 across the FFI boundary, while keeping the default, serialized FFI path simple.
-
-We are primarily looking for feedback on the direction and model, rather than
-the exact public API details (we can iron that out on on a later pull request).
 
 ## Why?
 
@@ -30,13 +33,10 @@ The main design direction of the new approach is that handling is typically alig
 (http, time, files, database, ...), but rarely between requests of the same
 category ("some HTTP requests go one way, other HTTP requests another").
 
-So instead of a middleware pipeline, this RFC proposes a **router with
+So instead of a middleware pipeline, this RFC proposed a **router with
 handlers**, where routing happens by effect type. The main difference is that
 in the middleware, the metaphor was a stack or pipeline where some effects were
 teed off to the side. In this approach, there is an explicit fan out by type.
-
-If this approach lands, the plan is to deprecate the middleware API and replace
-it with effect routing.
 
 ## Design decisions and constraints
 
@@ -59,14 +59,14 @@ it with effect routing.
 
 ### Non-goals
 
-In this RFC we're not looking to:
+This RFC was not looking to:
 
 - Finalise all low-level public API visibility details
 - Design any level of macro sugar
 - Finalise all failure/cancellation policy details
 - Optimise effect registry internals in this phase.
 
-## Proposed architecture
+## Architecture
 
 As with the Middleware approach, the Shell is responsible for creating a
 Core instance and providing an implementation of a Core-defined trait defining
