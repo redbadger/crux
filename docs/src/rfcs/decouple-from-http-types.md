@@ -1,9 +1,9 @@
 # RFC: Decouple `crux_http` from `http-types`
 
 ```admonish
-This RFC is a **proposal** and has not yet been adopted. We are looking for
-feedback on the overall direction and the open questions, rather than the exact
-public API details.
+This RFC has been **adopted** and implemented, it's kept
+for future reference as additional context for the design
+choices.
 ```
 
 Related issues:
