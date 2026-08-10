@@ -29,7 +29,7 @@ For testing, we also recommend to install [`cargo-nextest`](https://nexte.st/), 
 in the examples.
 
 ```sh
-cargo install cargo-nextest
+cargo install cargo-nextest --locked
 ```
 
 ## Create the core crate
