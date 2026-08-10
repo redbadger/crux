@@ -14,13 +14,13 @@ Related issues:
 
 ## Summary
 
-`crux_http` is currently built on top of [`http-types`](https://docs.rs/http-types)
+`crux_http` was previously built on top of [`http-types`](https://docs.rs/http-types)
 (specifically our fork, `http-types-red-badger-temporary-fork`). `http-types` is
 no longer actively maintained, and the Rust ecosystem has converged on the
 [`http`](https://docs.rs/http) crate (the "hyperium" types) as the lingua franca
 for HTTP request/response/header/method/status types.
 
-This document proposes:
+This document proposed:
 
 1. Moving the `http-types` dependency, and all code that touches it, behind an
    opt-in `http-types` Cargo feature.
@@ -30,7 +30,7 @@ This document proposes:
    `From`/`TryInto` conversions to/from `http` types) with first-class, native
    support for `http` types.
 
-The goal, as framed in #357, is that **existing consumers can enable the
+The goal, as framed in #357, was that **existing consumers can enable the
 `http-types` feature and continue as before, while new users get `http`
 compatibility out of the box.**
 
@@ -53,10 +53,10 @@ compatibility out of the box.**
 
 ## Background: what `http-types` gives us vs. what `http` gives us
 
-This migration is **not** a drop-in dependency swap. `http-types` is a rich,
+This migration was **not** a drop-in dependency swap. `http-types` is a rich,
 batteries-included HTTP model, whereas `http` is deliberately a minimal set of
 *type definitions* with no I/O, no body model, and no MIME handling. Knowing the
-gap precisely is the crux of this design.
+gap precisely was the crux of this design.
 
 ### `http-types` API surface currently used by `crux_http`
 
@@ -85,7 +85,7 @@ Gathered from across the crate (`lib.rs`, `request.rs`, `request_builder.rs`,
    `into_bytes()`, `AsyncRead`, MIME tracking, and `Into<Body>` impls for
    `String`, `&str`, `Vec<u8>`, `serde_json::Value`, files, readers, etc. In
    `http`, the body is just the generic parameter `B` — there is no body type at
-   all. As #357 notes, we will need **our own `Body` type** (or to settle on
+   all. As #357 notes, this needed **our own `Body` type** (or to settle on
    `Vec<u8>` / `bytes::Bytes`).
 2. **`Mime`.** Used by `content_type()` and the `body_*` helpers to set
    `Content-Type`. The standalone [`mime`](https://docs.rs/mime) crate is the
@@ -106,7 +106,7 @@ that is ultimately collapsed to bytes in
 
 This matters because it means **the async body model is not load-bearing for the
 core effect contract.** It exists mainly to power the ergonomic builder API and
-the async middleware story. That gives us latitude to replace `Body` with
+the async middleware story. That gave us latitude to replace `Body` with
 something much simpler in the default path.
 
 ## Naming collision warning (breaking change to be managed)
@@ -124,12 +124,12 @@ Code in the wild uses `crux_http::http::mime::HTML`, `crux_http::http::Method`,
 `crux_http::http::{Url, Version}`, etc.
 
 Because features must be **additive** — enabling a feature should only add to a
-crate's API, never change or remove things — `crux_http::http` will always
-re-export the real `http` crate, regardless of whether `http-types` is enabled.
+crate's API, never change or remove things — `crux_http::http` always
+re-exports the real `http` crate, regardless of whether `http-types` is enabled.
 The `http-types` feature adds interop on top; it does not alter the default
-representation. Existing code that imports `crux_http::http::Body`,
-`crux_http::http::mime::HTML`, etc. will need to update its import paths (this is
-a breaking release), but the migration is mechanical and the target is clear.
+representation. Existing code that imported `crux_http::http::Body`,
+`crux_http::http::mime::HTML`, etc. needed to update its import paths (this was
+a breaking release), but the migration was mechanical and the target was clear.
 
 ## Foreign type generation (Swift, Kotlin, TypeScript)
 
@@ -151,7 +151,7 @@ reflection:
 All of these are concrete and contain only primitives, owned strings, byte
 vectors, and each other. The generic `http::Request<B>`/`http::Response<B>`, the
 non-`Facet` `http::Method`/`StatusCode`/`HeaderMap`, and the crux façade types
-(`crux_http::Request`, `Response<Body>`, `ResponseAsync`, and the proposed
+(`crux_http::Request`, `Response<Body>`, `ResponseAsync`, and the
 crux-owned `Body`) are **core-side only** — they are never registered, never
 serialized across the bridge, and never type-generated.
 
@@ -161,10 +161,10 @@ and headers to `Vec<{String, String}>` at the protocol boundary, swapping the
 core-side representation is invisible to foreign type generation, and the
 generated Swift/Kotlin/TypeScript types are byte-for-byte unchanged.
 
-The one detail to keep tidy is `HttpError::Http.code` (see
-"Resolved decisions"): it is `http_types::StatusCode` today, carried with
-`#[facet(opaque)]` because it is not a `Facet` type. We will store it as a plain
-`u16` and drop the `#[facet(opaque)]` attribute. The variant is skipped from
+The one detail that needed tidying up was `HttpError::Http.code`: it was
+`http_types::StatusCode`, carried with `#[facet(opaque)]` because it was not a
+`Facet` type. It is now stored as a plain `u16`, with the `#[facet(opaque)]`
+attribute dropped (see "Resolved decisions"). The variant is skipped from
 generation regardless, so foreign output is unaffected.
 
 ## Goals
@@ -190,11 +190,11 @@ generation regardless, so foreign output is unaffected.
 - Changing the wire protocol or typegen output.
 - Adding real network I/O to `crux_http` (it remains a request-describing
   capability; the shell performs the request).
-- A streaming body model on the default path. Bodies are bounded `Vec<u8>` today
-  at the protocol boundary, and we will keep that.
+- A streaming body model on the default path. Bodies were already bounded
+  `Vec<u8>` at the protocol boundary, and that was kept.
 - Perfectly preserving every `http-types`-specific method signature on the
-  default path. Source-level breakage is expected for users who do not opt into
-  the `http-types` feature; we will provide guidance and conversions.
+  default path. Source-level breakage was expected for users who do not opt into
+  the `http-types` feature; guidance and conversions are provided.
 
 ## Design options considered
 
@@ -245,7 +245,7 @@ the whole crate. Option C remains the fallback if Option B's dual maintenance
 proves "far too messy" (the escape hatch #357 anticipates): we can later
 deprecate and remove the `http-types` feature.
 
-## Proposed design (Option B)
+## Design (Option B)
 
 ### Cargo features
 
@@ -396,7 +396,7 @@ API instead of `http_types::Body::into_bytes`.
 | App has code that constructs or consumes `http_types::Request`/`Response` and needs to pass them to/from `crux_http` | Enable the `http-types` feature; conversion impls are provided. |
 | App relied on streaming `http_types::Body` / `AsyncRead` | The streaming body model is not carried over; refactor to use the in-memory `crux_http::Body`. |
 
-We should ship:
+This shipped with:
 
 - A `CHANGELOG.md` entry calling out the `crux_http::http` re-export change and
   the removal of `http-compat`.
