@@ -255,7 +255,7 @@ use stream::CommandStreamExt as _;
 
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
 pub use context::CommandContext;
-pub(crate) use context::CommandEvent;
+pub(crate) use context::{CommandEffect, CommandEvent};
 pub use executor::AbortHandle;
 pub use stream::CommandOutput;
 
@@ -265,7 +265,7 @@ use crate::capability::Operation;
 // ANCHOR: command
 #[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
 pub struct Command<Effect, Event> {
-    effects: Receiver<Effect>,
+    effects: Receiver<CommandEffect<Effect>>,
     events: Receiver<CommandEvent<Effect, Event>>,
     context: CommandContext<Effect, Event>,
 
@@ -447,8 +447,8 @@ where
         builder::StreamBuilder::new(|ctx| ctx.stream_from_shell(operation))
     }
 
-    /// Run the effect state machine until it settles, then return true
-    /// if there is any more work to do - tasks to run or events or effects to receive
+    /// Run the effect state machine until it settles, then return true when
+    /// no tasks, queued outputs, or external context copies remain.
     pub fn is_done(&mut self) -> bool {
         self.run_until_settled();
 
@@ -463,22 +463,39 @@ where
 
     /// Run the effect state machine until it settles and return an iterator over the effects
     pub fn effects(&mut self) -> impl Iterator<Item = Effect> + '_ {
-        self.run_until_settled();
-
-        self.effects.try_iter()
+        self.effects_with_context().map(CommandEffect::into_effect)
     }
 
     /// Run the effect state machine until it settles and return an iterator over the events
     pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
-        self.events_with_origin().map(CommandEvent::into_event)
+        self.events_with_context().map(CommandEvent::into_event)
     }
 
-    pub(crate) fn events_with_origin(
+    /// Run the command until it settles, then drain queued events with their
+    /// runtime context.
+    ///
+    /// Unlike [`Self::events`], preserves the owner context
+    /// used to attach follow-up commands and the parent event ID assigned by
+    /// observable hosting. The ID is absent until the event crosses that host.
+    pub(crate) fn events_with_context(
         &mut self,
     ) -> impl Iterator<Item = CommandEvent<Effect, Event>> + '_ {
         self.run_until_settled();
 
         self.events.try_iter()
+    }
+
+    /// Run the command until it settles, then drain queued effects with their
+    /// runtime context.
+    ///
+    /// Unlike [`Self::effects`], preserves the parent event ID assigned by
+    /// observable hosting. The ID is absent until the effect crosses that host.
+    pub(crate) fn effects_with_context(
+        &mut self,
+    ) -> impl Iterator<Item = CommandEffect<Effect>> + '_ {
+        self.run_until_settled();
+
+        self.effects.try_iter()
     }
 
     // Combinators
@@ -558,8 +575,9 @@ where
             let owner = ctx.clone();
             self.into_stream_with_origin()
                 .map(move |output| match output {
-                    CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
+                    CommandOutput::Effect(effect) => CommandOutput::Effect(effect.map(&map)),
                     CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
+                        parent_context_id: event.parent_context_id,
                         event: event.into_event(),
                         owner: owner.clone(),
                     }),
@@ -586,6 +604,7 @@ where
                 .map(move |output| match output {
                     CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
                     CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
+                        parent_context_id: event.parent_context_id,
                         event: map(event.into_event()),
                         owner: owner.clone(),
                     }),

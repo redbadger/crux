@@ -1,4 +1,5 @@
 mod effect;
+mod observability;
 mod request;
 mod resolve;
 
@@ -6,8 +7,11 @@ use std::collections::VecDeque;
 use std::sync::{Mutex, RwLock};
 
 pub use effect::{Effect, EffectFFI};
+pub use observability::{CoreRuntimeObserver, RuntimeContextId};
 pub use request::Request;
 pub use resolve::{EffectVariant, OperationKind, RequestHandle, Resolvable, ResolveError};
+
+pub use observability::RuntimeObservationContext;
 
 use crate::{App, Command};
 
@@ -36,6 +40,7 @@ where
 
     // internals
     root_command: Mutex<Command<A::Effect, A::Event>>,
+    observation_context: Option<RuntimeObservationContext>,
 }
 // ANCHOR_END: core
 
@@ -54,10 +59,13 @@ where
     ///
     #[must_use]
     pub fn new() -> Self {
+        let root_command = Command::done();
+
         Self {
             model: RwLock::default(),
             app: A::default(),
-            root_command: Mutex::new(Command::done()),
+            root_command: Mutex::new(root_command),
+            observation_context: None,
         }
     }
 }
@@ -76,11 +84,23 @@ where
     ///
     #[must_use]
     pub fn new_with(app: A, model: A::Model) -> Self {
+        let root_command = Command::done();
+
         Self {
             model: RwLock::new(model),
             app,
-            root_command: Mutex::new(Command::done()),
+            root_command: Mutex::new(root_command),
+            observation_context: None,
         }
+    }
+
+    #[must_use]
+    pub fn with_runtime_observer(
+        mut self,
+        observer: impl CoreRuntimeObserver + Send + Sync + 'static,
+    ) -> Self {
+        self.observation_context = Some(RuntimeObservationContext::new(observer));
+        self
     }
 
     /// Run the app's `update` function with a given `event`, returning a vector of
@@ -92,18 +112,17 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
+        let event_context_id = self.observe_event_start(Some(RuntimeContextId::ROOT));
+
         let mut model = self.model.write().expect("Model RwLock was poisoned.");
-
         let command = self.app.update(event, &mut model);
-
-        // drop the model here, we don't want to hold the lock for the process() call
         drop(model);
 
         let mut root_command = self
             .root_command
             .lock()
             .expect("Capability runtime lock was poisoned");
-        root_command.spawn(|ctx| command.into_future(ctx));
+        root_command.spawn(|ctx| self.host_event_command(command, event_context_id, ctx));
 
         drop(root_command);
 
@@ -147,28 +166,64 @@ where
             .lock()
             .expect("Capability runtime lock was poisoned");
 
-        let mut events: VecDeque<_> = root_command.events_with_origin().collect();
+        let mut events: VecDeque<_> = root_command.events_with_context().collect();
 
         while let Some(command_event) = events.pop_front() {
-            let event_from_commands = command_event.event;
-            // event_owner is the command which emitted the event
             let event_owner = command_event.owner;
-
+            let event_context_id = self.observe_event_start(command_event.parent_context_id);
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            let command = self.app.update(event_from_commands, &mut model);
+            let command = self.app.update(command_event.event, &mut model);
             drop(model);
 
-            // the follow-up command is spawned on the owner to be a logical
-            // part of the original command process
-            event_owner.spawn(|ctx| command.into_future(ctx));
+            // Follow-up work belongs to the command that emitted the event.
+            event_owner.spawn(|ctx| self.host_event_command(command, event_context_id, ctx));
             drop(event_owner);
 
-            events.extend(root_command.events_with_origin());
+            events.extend(root_command.events_with_context());
         }
 
         root_command.effects().collect()
     }
     // ANCHOR_END: process
+
+    /// Allocate an event identity and report its start when observation is enabled.
+    /// Unobserved events need neither an identity nor a parent context ID.
+    fn observe_event_start(
+        &self,
+        parent_context_id: Option<RuntimeContextId>,
+    ) -> Option<RuntimeContextId> {
+        self.observation_context
+            .as_ref()
+            .map(|observation_context| {
+                let context_id = observation_context
+                    .shared_context_id_generator
+                    .next_context_id();
+                observation_context.observer.event_started(
+                    context_id,
+                    parent_context_id.expect("observed event must have a parent context ID"),
+                    std::any::type_name::<A::Event>(),
+                );
+                context_id
+            })
+    }
+
+    /// Add observation only when enabled. Both paths keep the caller's chosen
+    /// owner, so structured concurrency does not depend on observability.
+    fn host_event_command(
+        &self,
+        command: Command<A::Effect, A::Event>,
+        event_context_id: Option<RuntimeContextId>,
+        host_context: crate::command::CommandContext<A::Effect, A::Event>,
+    ) -> impl std::future::Future<Output = ()> + Send + 'static + use<A> {
+        match &self.observation_context {
+            Some(observation_context) => futures::future::Either::Left(command.host_observably(
+                host_context,
+                event_context_id.expect("observed event must have an identity"),
+                observation_context.clone(),
+            )),
+            None => futures::future::Either::Right(command.into_future(host_context)),
+        }
+    }
 
     /// Get the current state of the app's view model.
     ///

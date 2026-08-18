@@ -111,6 +111,7 @@ impl<'a> Next<'a> {
     }
 
     /// Asynchronously execute the remaining middleware chain.
+    #[must_use = "the returned future must be polled to complete the middleware chain"]
     pub fn run(mut self, req: Request, client: Client) -> BoxFuture<'a, Result<RawResponse>> {
         if let Some((current, next)) = self.next_middleware.split_first() {
             self.next_middleware = next;
