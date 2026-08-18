@@ -238,6 +238,7 @@ macro_rules! __crux_core_testing_items {
 
 mod capabilities;
 mod core;
+pub use core::EventName;
 
 pub use capabilities::*;
 pub use command::Command;

@@ -444,6 +444,18 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         }
     };
 
+    let name_arms = effect_names.iter().map(|(ident, name)| {
+        quote! {
+            Self::#ident(_) => #name
+        }
+    });
+
+    let kind_arms = effect_names.iter().map(|(ident, _)| {
+        quote! {
+            Self::#ident(request) => request.handle.kind()
+        }
+    });
+
     let original_enum = quote! {
         #attrs
         pub enum #enum_ident {
@@ -456,7 +468,19 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
 
         #ffi_enum
 
-        impl crux_core::Effect for #enum_ident {}
+        impl crux_core::Effect for #enum_ident {
+            fn name(&self) -> &'static str {
+                match self {
+                    #(#name_arms,)*
+                }
+            }
+
+            fn kind(&self) -> ::crux_core::OperationKind {
+                match self {
+                    #(#kind_arms,)*
+                }
+            }
+        }
 
         #effect_ffi_derive
 

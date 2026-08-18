@@ -1,4 +1,5 @@
 mod effect;
+mod event;
 mod request;
 mod resolve;
 
@@ -6,6 +7,7 @@ use std::collections::VecDeque;
 use std::sync::{Mutex, RwLock};
 
 pub use effect::{Effect, EffectFFI};
+pub use event::EventName;
 pub use request::Request;
 pub use resolve::{EffectVariant, OperationKind, RequestHandle, Resolvable, ResolveError};
 

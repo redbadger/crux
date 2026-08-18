@@ -101,7 +101,18 @@ fn single_with_facet_typegen() {
     pub enum EffectFfi {
         Render(RenderOperation),
     }
-    impl crux_core::Effect for Effect {}
+    impl crux_core::Effect for Effect {
+        fn name(&self) -> &'static str {
+            match self {
+                Self::Render(_) => "Render",
+            }
+        }
+        fn kind(&self) -> ::crux_core::OperationKind {
+            match self {
+                Self::Render(request) => request.handle.kind(),
+            }
+        }
+    }
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
         const VARIANT_COUNT: u16 = 1u16;
@@ -252,7 +263,18 @@ fn single_facet_typegen_with_new_name() {
     pub enum MyEffectFfi {
         Render(RenderOperation),
     }
-    impl crux_core::Effect for MyEffect {}
+    impl crux_core::Effect for MyEffect {
+        fn name(&self) -> &'static str {
+            match self {
+                Self::Render(_) => "Render",
+            }
+        }
+        fn kind(&self) -> ::crux_core::OperationKind {
+            match self {
+                Self::Render(request) => request.handle.kind(),
+            }
+        }
+    }
     impl crux_core::EffectFFI for MyEffect {
         type Ffi = MyEffectFfi;
         const VARIANT_COUNT: u16 = 1u16;
@@ -391,7 +413,18 @@ fn single_without_typegen() {
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
-    impl crux_core::Effect for Effect {}
+    impl crux_core::Effect for Effect {
+        fn name(&self) -> &'static str {
+            match self {
+                Self::Render(_) => "Render",
+            }
+        }
+        fn kind(&self) -> ::crux_core::OperationKind {
+            match self {
+                Self::Render(request) => request.handle.kind(),
+            }
+        }
+    }
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -491,7 +524,20 @@ fn multiple_with_facet_typegen() {
         Render(RenderOperation),
         Http(HttpRequest),
     }
-    impl crux_core::Effect for Effect {}
+    impl crux_core::Effect for Effect {
+        fn name(&self) -> &'static str {
+            match self {
+                Self::Render(_) => "Render",
+                Self::Http(_) => "Http",
+            }
+        }
+        fn kind(&self) -> ::crux_core::OperationKind {
+            match self {
+                Self::Render(request) => request.handle.kind(),
+                Self::Http(request) => request.handle.kind(),
+            }
+        }
+    }
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
         const VARIANT_COUNT: u16 = 2u16;
@@ -698,7 +744,20 @@ fn multiple_without_typegen() {
         Render(::crux_core::Request<RenderOperation>),
         Http(::crux_core::Request<HttpRequest>),
     }
-    impl crux_core::Effect for Effect {}
+    impl crux_core::Effect for Effect {
+        fn name(&self) -> &'static str {
+            match self {
+                Self::Render(_) => "Render",
+                Self::Http(_) => "Http",
+            }
+        }
+        fn kind(&self) -> ::crux_core::OperationKind {
+            match self {
+                Self::Render(request) => request.handle.kind(),
+                Self::Http(request) => request.handle.kind(),
+            }
+        }
+    }
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -842,7 +901,18 @@ fn single_without_typegen_with_attributes() {
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
-    impl crux_core::Effect for Effect {}
+    impl crux_core::Effect for Effect {
+        fn name(&self) -> &'static str {
+            match self {
+                Self::Render(_) => "Render",
+            }
+        }
+        fn kind(&self) -> ::crux_core::OperationKind {
+            match self {
+                Self::Render(request) => request.handle.kind(),
+            }
+        }
+    }
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -940,7 +1010,18 @@ fn facet_typegen_with_namespace_attribute() {
     pub enum EffectFfi {
         Render(RenderOperation),
     }
-    impl crux_core::Effect for Effect {}
+    impl crux_core::Effect for Effect {
+        fn name(&self) -> &'static str {
+            match self {
+                Self::Render(_) => "Render",
+            }
+        }
+        fn kind(&self) -> ::crux_core::OperationKind {
+            match self {
+                Self::Render(request) => request.handle.kind(),
+            }
+        }
+    }
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
         const VARIANT_COUNT: u16 = 1u16;
