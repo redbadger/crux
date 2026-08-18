@@ -1,0 +1,25 @@
+[workspace]
+
+[package]
+name = "counter-observability"
+version = "0.1.0"
+authors = ["Red Badger Consulting Limited"]
+edition = "2024"
+rust-version = "1.90"
+repository = "https://github.com/redbadger/crux/"
+license = "Apache-2.0"
+keywords = ["cross-platform-ui", "crux", "crux_core", "ffi", "wasm"]
+
+[dependencies]
+anyhow = "1.0.104"
+counter-routing = { package = "shared", path = "../counter-routing/shared", default-features = false }
+crux_core = { path = "../../crux_core" }
+tracing = "0.1.44"
+tracing-perfetto = "0.1.5"
+tracing-subscriber = "0.3.23"
+
+[lints.clippy]
+pedantic = "warn"
+
+[lints.rust]
+unsafe_code = "forbid"
