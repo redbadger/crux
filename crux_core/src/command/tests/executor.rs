@@ -91,3 +91,26 @@ fn is_not_done_until_all_contexts_are_dropped() {
 
     assert!(cmd.is_done());
 }
+
+#[test]
+fn into_stream_yields_effects_then_events_and_terminates() {
+    use crate::command::CommandOutput;
+    use futures::StreamExt as _;
+
+    let command = Command::<Effect, Event>::new(|ctx| async move {
+        let count = ctx.request_from_shell(Op).await;
+        ctx.send_event(Event::Count(count));
+    });
+    futures::executor::block_on(async move {
+        let mut stream = command.into_stream();
+        let Some(CommandOutput::Effect(Effect::Effect(mut request))) = stream.next().await else {
+            panic!("expected request");
+        };
+        request.resolve(42).unwrap();
+        assert!(matches!(
+            stream.next().await,
+            Some(CommandOutput::Event(Event::Count(42)))
+        ));
+        assert!(stream.next().await.is_none());
+    });
+}
