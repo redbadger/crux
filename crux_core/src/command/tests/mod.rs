@@ -5,6 +5,7 @@ mod capability_api;
 mod combinators;
 mod composition;
 mod executor;
+mod observability;
 mod structured_concurrency;
 
 mod integration;
