@@ -25,7 +25,19 @@ enum Effect {
     Op(Request<Op>),
 }
 
-impl crate::Effect for Effect {}
+impl crate::Effect for Effect {
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Op(_) => "Op",
+        }
+    }
+
+    fn kind(&self) -> crate::OperationKind {
+        match self {
+            Self::Op(request) => request.handle.kind(),
+        }
+    }
+}
 
 impl From<Request<Op>> for Effect {
     fn from(value: Request<Op>) -> Self {
