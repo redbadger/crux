@@ -255,6 +255,7 @@ use stream::CommandStreamExt as _;
 
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
 pub use context::CommandContext;
+pub(crate) use context::CommandEvent;
 pub use executor::AbortHandle;
 pub use stream::CommandOutput;
 
@@ -265,7 +266,7 @@ use crate::capability::Operation;
 #[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
-    events: Receiver<Event>,
+    events: Receiver<CommandEvent<Effect, Event>>,
     context: CommandContext<Effect, Event>,
 
     // Executor internals
@@ -315,11 +316,14 @@ where
         let (spawn_sender, spawn_receiver) = crossbeam_channel::unbounded();
         let (_, waker_receiver) = crossbeam_channel::unbounded();
 
+        let waker: Arc<AtomicWaker> = Arc::default();
+
         let context = context::CommandContext {
             effects: effect_sender,
             events: event_sender,
             tasks: spawn_sender,
             rc: Arc::default(),
+            host_waker: waker.clone(),
         };
 
         let aborted: Arc<AtomicBool> = Arc::default();
@@ -345,7 +349,7 @@ where
             spawn_queue: spawn_receiver,
             ready_sender,
             tasks,
-            waker: Arc::default(),
+            waker,
             aborted,
         }
     }
@@ -465,6 +469,12 @@ where
 
     /// Run the effect state machine until it settles and return an iterator over the events
     pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
+        self.events_with_origin().map(CommandEvent::into_event)
+    }
+
+    pub(crate) fn events_with_origin(
+        &mut self,
+    ) -> impl Iterator<Item = CommandEvent<Effect, Event>> + '_ {
         self.run_until_settled();
 
         self.events.try_iter()
@@ -478,10 +488,15 @@ where
         Effect: Unpin + Send + 'static,
         Event: Unpin + Send + 'static,
     {
-        self.host(ctx.effects, ctx.events).map(|_| ())
+        self.host(ctx).map(|_| ())
     }
 
-    /// Create a command running self and the other command in sequence
+    /// Create a command running `self` and `other` in sequence.
+    ///
+    /// `other` starts after `self` settles. If `self` emits events and the app
+    /// returns follow-up commands from `App::update` for those events, those
+    /// follow-up commands are hosted by `self` and must also settle before
+    /// `other` starts.
     // RFC: is this actually _useful_? Unlike `.then` on `CommandBuilder` this doesn't allow using
     // the output of the first command in building the second one, it just runs them in sequence,
     // and the benefit is unclear.
@@ -539,12 +554,17 @@ where
         Event: Unpin,
     {
         Command::new(move |ctx| {
-            self.map(move |output| match output {
-                CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
-                CommandOutput::Event(event) => CommandOutput::Event(event),
-            })
-            .host(ctx.effects, ctx.events)
-            .map(|_| ())
+            let owner = ctx.clone();
+            self.into_stream_with_origin()
+                .map(move |output| match output {
+                    CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
+                    CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
+                        event: event.into_event(),
+                        owner: owner.clone(),
+                    }),
+                })
+                .host(ctx)
+                .map(|_| ())
         })
     }
 
@@ -560,12 +580,17 @@ where
         Event: Unpin,
     {
         Command::new(move |ctx| {
-            self.map(move |output| match output {
-                CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
-                CommandOutput::Event(event) => CommandOutput::Event(map(event)),
-            })
-            .host(ctx.effects, ctx.events)
-            .map(|_| ())
+            let owner = ctx.clone();
+            self.into_stream_with_origin()
+                .map(move |output| match output {
+                    CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
+                    CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
+                        event: map(event.into_event()),
+                        owner: owner.clone(),
+                    }),
+                })
+                .host(ctx)
+                .map(|_| ())
         })
     }
 
