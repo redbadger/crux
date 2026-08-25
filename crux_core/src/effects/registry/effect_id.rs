@@ -14,25 +14,25 @@ const INDEX_MASK: u64 = u32::MAX as u64;
 /// callers can pass it over custom FFI boundaries without learning the storage
 /// layout.
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct EffectId<T = ()> {
+pub struct ParkedEffectId<T = ()> {
     pub(crate) raw: u64,
     pub(crate) phantom: PhantomData<fn(T) -> T>,
 }
 
-impl<T> Clone for EffectId<T> {
+impl<T> Clone for ParkedEffectId<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T> Copy for EffectId<T> {}
+impl<T> Copy for ParkedEffectId<T> {}
 
-impl<T> EffectId<T> {
-    /// Reconstruct an `EffectId` from its raw integer representation.
+impl<T> ParkedEffectId<T> {
+    /// Reconstruct a `ParkedEffectId` from its raw integer representation.
     ///
     /// Use this on the resolve path to turn an id received back from a custom
-    /// FFI (as a plain integer) into a typed `EffectId`. The `raw` value must be
-    /// one previously produced by [`EffectId::into_raw`]; arbitrary integers may
+    /// FFI (as a plain integer) into a typed `ParkedEffectId`. The `raw` value must be
+    /// one previously produced by [`ParkedEffectId::into_raw`]; arbitrary integers may
     /// refer to no request, or to a stale slot.
     #[must_use]
     pub const fn from_raw(raw: u64) -> Self {
@@ -46,7 +46,7 @@ impl<T> EffectId<T> {
     /// custom FFI boundary.
     ///
     /// The returned value packs both the slab index and the generation, and can
-    /// be turned back into an `EffectId` with [`EffectId::from_raw`].
+    /// be turned back into a `ParkedEffectId` with [`ParkedEffectId::from_raw`].
     #[must_use]
     pub const fn into_raw(self) -> u64 {
         self.raw

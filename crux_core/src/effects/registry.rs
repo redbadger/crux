@@ -4,14 +4,14 @@ mod storage;
 use std::sync::Mutex;
 
 use crate::{Request, RequestHandle, ResolveError, capability::Operation};
-pub use effect_id::EffectId;
+pub use effect_id::ParkedEffectId;
 
-/// Stores parked effect requests under an [`EffectId`] so they can be resolved
+/// Stores parked effect requests under a [`ParkedEffectId`] so they can be resolved
 /// later, possibly after the request handle has crossed a custom FFI boundary.
 ///
 /// A [`Request`] holds a [`RequestHandle`] continuation that cannot itself cross
 /// an FFI boundary. The registry keeps that continuation on the Rust side and
-/// hands out an opaque [`EffectId`] in its place; the shell passes the id back
+/// hands out an opaque [`ParkedEffectId`] in its place; the shell passes the id back
 /// when it has a result, and [`Registry::resolve`] reconnects it with the parked
 /// handle.
 ///
@@ -42,7 +42,7 @@ where
     ///
     /// Panics if the lock around the underlying storage was poisoned, or if the
     /// storage index exceeds the available ID space.
-    pub fn register(&self, request: Request<Op>) -> (EffectId<Op::Output>, Op) {
+    pub fn register(&self, request: Request<Op>) -> (ParkedEffectId<Op::Output>, Op) {
         let (operation, handle) = request.split();
         let id = self
             .requests
@@ -65,7 +65,7 @@ where
     /// Panics if the lock around the underlying storage was poisoned.
     pub fn resolve(
         &self,
-        id: EffectId<Op::Output>,
+        id: ParkedEffectId<Op::Output>,
         output: Op::Output,
     ) -> Result<(), ResolveError> {
         let mut handle = self

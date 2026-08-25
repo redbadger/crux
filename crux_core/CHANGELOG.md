@@ -8,6 +8,126 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
+
+### 💥 Breaking Changes
+
+- **`crux_core::effects::EffectId` is renamed to `ParkedEffectId`.** There were two public
+  types called `EffectId`, and they are not interchangeable:
+
+  | | `crux_core::bridge::EffectId` | was `crux_core::effects::EffectId<T>` |
+  | --- | --- | --- |
+  | Shape | `pub struct EffectId(pub u32)` | opaque `u64`, phantom-typed by `Op::Output` |
+  | Contents | a slab index | slab index **and** generation |
+  | Used by | every shell, on the serialized lane | the `Parked` lane only |
+
+  A shell wiring up both lanes needs both in scope, so one of them has to be aliased —
+  as `crux_core`'s own routing test had to do. The `Parked` one is renamed because it is
+  the newer of the two (0.19.0), is used by no example, and reaches only the handful of
+  people using a custom FFI lane; `EffectId` stays the name of the id in `Request`, which
+  every integration already writes as `EffectId(id)`.
+
+  If you resolve a parked request, rename the type at your call site — the API is
+  otherwise unchanged:
+
+  ```rust
+  // before
+  use crux_core::effects::EffectId;
+  camera.resolve(EffectId::from_raw(id), output)?;
+
+  // after
+  use crux_core::effects::ParkedEffectId;
+  camera.resolve(ParkedEffectId::from_raw(id), output)?;
+  ```
+
+  Nothing crosses the FFI differently: `bridge::EffectId` is `#[serde(transparent)]` and
+  `#[facet(transparent)]`, so generated Swift, Kotlin, TypeScript and C# see a plain
+  `u32` and are unaffected by either name.
+
+### 🐛 Bug Fixes
+
+- **A resolved request's `EffectId` is no longer handed to a later request.** Ids were
+  slab indices, and the slab reused an index as soon as its request completed. If a shell
+  resolved an id twice — a retry, a race, a bug — the second resolve landed on whichever
+  unrelated request had inherited the slot. When the two outputs happened to deserialize
+  compatibly, which two HTTP requests generally do, it succeeded silently and delivered
+  one request's response to another.
+
+  Ids are now issued in ascending order and not reused, so resolving a completed request
+  is a lookup miss:
+
+  ```
+  Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)))
+  ```
+
+  Nothing changes for a shell that resolves each request once. The counter wraps after
+  `u32::MAX` requests and steps over any id still outstanding, so a live request cannot
+  be displaced even then. `EffectId` is unchanged on the wire — still a transparent
+  `u32` — so no generated types or shell code are affected.
+
+  This also removes the `EffectId overflow` panic: ids are `u32` by construction rather
+  than a `usize` slab index narrowed on the way out.
+
+- **Fire-and-forget requests no longer accumulate in the bridge registry.** Every effect
+  was registered so that the shell could resolve it later, but a fire-and-forget request
+  — `Render`, most of all — has no continuation and is never resolved, and only a resolve
+  removed an entry. So each one occupied a registry slot for the life of the process:
+  five `Trigger` events in a row produced render ids `[0, 1, 2, 3, 4]`, never reusing a
+  slot, because none was ever freed. An app rendering ten times a second leaked roughly a
+  megabyte a day.
+
+  Such a request now takes an id, as before, but stores nothing.
+
+  The observable difference is the error from resolving one. It used to report
+
+  ```
+  Attempted to resolve a request that is not expected to be resolved.
+  ```
+
+  and now reports
+
+  ```
+  Request with id 0 not found.
+  ```
+
+  `ResolveError::Never` is therefore no longer reachable through the bridge; it remains
+  in the enum, and is still produced by the `Core` API. Only a shell resolving an id it
+  was never meant to resolve sees either message.
+
+  Streaming requests still hold their entry after the stream ends — the registry is not
+  told when a `Many` finishes. That needs `ResolveSerialized` to report completion, and
+  is left for its own change.
+
+### ⚙️ Miscellaneous Tasks
+
+- **Now requires `facet_generate` 0.19 and `facet` 0.46.5** (were 0.17 and 0.44), under
+  the `facet_typegen` feature. This is what the release is for: 0.19.0 requires
+  `facet_generate ^0.17`, so a project wanting a newer `facet_generate` of its own would
+  resolve two incompatible copies of it in one tree. The upgrade itself needed no source
+  changes, and generated Swift, Kotlin, C# and TypeScript are byte-for-byte unchanged.
+
+  Note that `facet` is pinned exactly (`=0.46.5`), because `facet_generate` 0.19 pins it
+  too. Anything else in your tree that depends on `facet` has to agree, or you get two
+  `facet_core` versions and a confusing `Facet<'_> is not satisfied` error rather than a
+  version conflict.
+- The `crux_platform` reference is gone from the README; the crate is deprecated and no
+  longer part of Crux.
+
+### 📝 Documentation
+
+- **The "Integrating with a Shell" section of the crate docs has been rewritten.** It
+  described a UniFFI workflow — `uniffi_macros::include_scaffolding!`, a hand-written
+  `.udl` file, `lazy_static!`, `Core::new::<Capabilities>()` and the `Bridge` methods
+  deprecated in 0.17.0 — none of which is how you integrate a Crux core any more. It now
+  shows the `Bridge`'s `update`/`resolve`/`view` methods wrapped for BoltFFI, matching
+  `examples/counter`. The example was `rust,ignore`, which is how it rotted; it is now a
+  compiled doctest.
+- The same section of the README is updated to match, along with the `App::update`
+  signature (which lost its `caps` argument several releases ago) and the docs on
+  `App::Effect` (which still pointed at the removed `Effect` derive macro rather than
+  `#[effect]`).
+- Dependency updates, and `categories` added to the crate metadata for crates.io.
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_core-v0.18.0...crux_core-v0.19.0) - 2026-06-08
 
 ### 🚀 Features

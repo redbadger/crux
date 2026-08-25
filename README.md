@@ -1,6 +1,6 @@
 # [Crux](https://red-badger.com/crux) &middot; [![GitHub license](https://img.shields.io/github/license/redbadger/crux?color=blue)](https://github.com/redbadger/crux/blob/master/LICENSE) [![Crate version](https://img.shields.io/crates/v/crux_core.svg)](https://crates.io/crates/crux_core) [![Docs](https://img.shields.io/badge/docs.rs-crux_core-green)](https://docs.rs/crux_core/) [![Build status](https://img.shields.io/github/actions/workflow/status/redbadger/crux/build.yaml)](https://github.com/redbadger/crux/actions)
 
-<a href="https://red-badger.com/crux"><img src="./crux_core/crux_logo.svg" height="100" /></a>
+<a href="https://red-badger.com/crux"><img src="https://github.com/redbadger/crux/raw/master/docs/src/images/crux_logo.svg" height="100" /></a>
 
 **[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g) | [Read the book](https://redbadger.github.io/crux) | [Read API docs](https://docs.rs/crux_core/latest/crux_core/) | [Join Zulip community](https://crux-community.zulipchat.com)**
 
@@ -28,7 +28,8 @@
 ## Getting Started
 
 Start with the [book](https://redbadger.github.io/crux), then work through the
-[examples](./examples) in order. If you prefer a talk first, watch the
+[examples](https://github.com/redbadger/crux/tree/master/examples) in order.
+If you prefer a talk first, watch the
 [introductory Rust Nation 2023 talk](https://www.youtube.com/watch?v=cWCZms92-1g).
 
 Read the [API documentation](https://docs.rs/crux_core/latest/crux_core/).
@@ -43,7 +44,7 @@ You can also join the friendly conversation on our
 
 ## Architectural Overview
 
-![Logical architecture](./crux_core/architecture.svg)
+![Logical architecture](https://github.com/redbadger/crux/raw/master/docs/src/architecture.svg)
 
 Crux has managed side-effects. It strictly separates pure computational tasks
 from tasks that cause side effects. This is similar to the way
@@ -81,7 +82,7 @@ signature:
 ```rust,ignore
 fn update(
     &self,
-    msg: Event,
+    event: Event,
     model: &mut Model,
 ) -> Command<Effect, Event> {
     // ...
@@ -89,20 +90,20 @@ fn update(
 ```
 
 The job of the `update` function is to process an `Event`, update the model
-accordingly, and potentially request some side-effects.
+accordingly, and request some side-effects by returning a `Command`.
 
 <!--prettier-ignore-->
 > [!NOTE]
 > To learn more about the [`Command` API](https://docs.rs/crux_core/latest/crux_core/command/index.html),
 > see the page in the book that describes [Managed Effects](https://redbadger.github.io/crux/part-2/effects.html),
-> or look at the [examples](./examples):
+> or look at the [examples](https://github.com/redbadger/crux/tree/master/examples):
 >
-> 1. [Counter](./examples/counter) — get the basics
-> 1. [Counter (HTTP)](./examples/counter-http) — understand how to talk to your API
-> 1. [Weather](./examples/weather) — see how a real app works
-> 1. [Notes](./examples/notes) — real-time collaboration
-> 1. [Counter (Middleware)](./examples/counter-middleware) — use middleware for Rust-side effects
-> 1. [Counter (Routing)](./examples/counter-routing) — use effect routing for type-based, per-effect dispatching
+> 1. [Counter](https://github.com/redbadger/crux/tree/master/examples/counter) — get the basics
+> 1. [Counter (HTTP)](https://github.com/redbadger/crux/tree/master/examples/counter-http) — understand how to talk to your API
+> 1. [Weather](https://github.com/redbadger/crux/tree/master/examples/weather) — see how a real app works
+> 1. [Notes](https://github.com/redbadger/crux/tree/master/examples/notes) — real-time collaboration
+> 1. [Counter (Middleware)](https://github.com/redbadger/crux/tree/master/examples/counter-middleware) — use middleware for Rust-side effects
+> 1. [Counter (Routing)](https://github.com/redbadger/crux/tree/master/examples/counter-routing) — use effect routing for type-based, per-effect dispatching
 
 ### Application Shell
 
@@ -131,45 +132,46 @@ The only built-in capability is `Render`. But this repository contains a few
 capabilities at various stages of maturity, and you can easily write your own if
 you want to:
 
-![crux](./docs/src/crux.png)
+![crux](https://github.com/redbadger/crux/raw/master/docs/src/crux.png)
 
 ### Published capabilities
 
 1. `Render` (ask UI to render the ViewModel) —
-   [source](./crux_core/src/capabilities/render.rs), built-in to `crux_core`,
-   request only
-1. `Http` (full HTTP implementation) — [source](./crux_http),
+   [source](https://github.com/redbadger/crux/blob/master/crux_core/src/capabilities/render.rs),
+   built-in to `crux_core`, request only
+1. `Http` (full HTTP implementation) — [source](https://github.com/redbadger/crux/tree/master/crux_http),
    [crate](https://crates.io/crates/crux_http), request/response
-1. `KeyValue` (basic key-value store API) — [source](./crux_kv),
+1. `KeyValue` (basic key-value store API) — [source](https://github.com/redbadger/crux/tree/master/crux_kv),
    [crate](https://crates.io/crates/crux_kv), request/response
 1. `Time` (get current time, notify after duration, notify at instant) —
-   [source](./crux_time), [crate](https://crates.io/crates/crux_time),
+   [source](https://github.com/redbadger/crux/tree/master/crux_time), [crate](https://crates.io/crates/crux_time),
    request/response
 
 ### Example custom capabilities
 
 1. `SSE` (basic Server-Sent Events) —
-   [source](./examples/counter-http/shared/src/sse.rs),
+   [source](https://github.com/redbadger/crux/blob/master/examples/counter-http/shared/src/sse.rs),
    request/streaming
 1. `PubSub` (pub sub with streaming) —
-   [source](./examples/notes/shared/src/capabilities/pub_sub.rs),
+   [source](https://github.com/redbadger/crux/blob/master/examples/notes/shared/src/capabilities/pub_sub.rs),
    request/response/streaming
 
 ### Foreign Function Interface with type generation
 
-The core API interface is very minimal:
+The core API interface is very minimal — the three methods of
+[`Bridge`](https://docs.rs/crux_core/latest/crux_core/bridge/struct.Bridge.html),
+which wraps the `Core` and presents it in serialized form:
 
-- `process_event: Event -> Vec<Request>` - processes a user interaction event
-  and potentially responds with capability requests. This is the API for the
-  _driving_ side in the above diagram.
-- `handle_response: (uuid, SomeResponse) -> Vec<Request>` - handles the response
-  from the capability and potentially follows up with further requests. This is
-  the API for the _driven_ side in the above diagram.
+- `update: Event -> Vec<Request>` - processes a user interaction event and
+  potentially responds with effect requests. This is the API for the _driving_
+  side in the above diagram.
+- `resolve: (EffectId, Output) -> Vec<Request>` - hands the output of a
+  requested effect back to the core, which may follow up with further requests.
+  This is the API for the _driven_ side in the above diagram.
 - `view: () -> ViewModel` - provides the shell with the current data for
   displaying user interface
 
-
-The Foreign Function Interface allowing the shell to call the above functions is
+The Foreign Function Interface allowing the shell to call those methods is
 generated by [BoltFFI](https://www.boltffi.dev/) across native, web, and C#
 shells.
 
@@ -209,7 +211,7 @@ A typical message exchange cycle may look like this:
 
 1. User interaction occurs in the Shell, which results in an event
 1. The Shell handles this event by constructing an `Event`
-1. The Shell calls the Core's `process_event` function passing the `Event` as an
+1. The Shell calls the Core's `update` function passing the `Event` as an
    argument
 1. The Core performs the required processing, updating both its inner state and
    the view model
@@ -234,8 +236,8 @@ as:
 - Whatever else you can think of...
 
 Many of these side-effect-inducing tasks are asynchronous. The Shell is
-responsible for passing responses back to the core (to the `handle_response`
-function), which may respond with further requests.
+responsible for passing responses back to the core (to the `resolve` function),
+which may respond with further requests.
 
 This exchange continues until the core stops requesting further side-effects
 (typically the last side-effect requested would again be `Render`).
@@ -263,7 +265,7 @@ appreciated.
 
 ### Red Badger Consulting Limited
 
-<img src="./docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
+<img src="https://github.com/redbadger/crux/raw/master/docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
 
 [Red Badger](https://red-badger.com/) is the digital product consultancy trusted
 by blue chips and global brands. Our product design and technical pedigree allow
@@ -275,7 +277,7 @@ capabilities to power continuous innovation.
 
 ### Zulip
 
-<img src="./docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
+<img src="https://github.com/redbadger/crux/raw/master/docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
 
 [Zulip](https://zulip.com/) is an open-source modern team chat app designed to
 keep both live and asynchronous conversations organized.

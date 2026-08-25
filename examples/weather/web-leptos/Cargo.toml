@@ -11,10 +11,10 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 console_error_panic_hook = "0.1.7"
-console_log = "1.0.0"
+console_log = "1.1.0"
 crux_core.workspace = true
 crux_time.workspace = true
-futures-util = "0.3.32"
+futures-util = "0.3.33"
 gloo-net = { version = "0.7.0", features = ["http"] }
 gloo-timers = { version = "0.4", features = ["futures"] }
 js-sys = "0.3.103"

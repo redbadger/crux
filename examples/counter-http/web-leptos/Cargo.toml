@@ -11,8 +11,8 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 console_error_panic_hook = "0.1.7"
-console_log = "1.0.0"
-futures-util = "0.3.32"
+console_log = "1.1.0"
+futures-util = "0.3.33"
 gloo-net = { version = "0.7.0", features = ["http"] }
 js-sys = "0.3.103"
 log = "0.4.33"
