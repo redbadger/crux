@@ -311,7 +311,7 @@ impl CursorObserver {
 
 #[cfg(test)]
 mod editing_tests {
-    use crux_core::{App as _, assert_effect};
+    use crux_core::assert_effect;
 
     use super::*;
 
@@ -554,7 +554,7 @@ mod editing_tests {
 
 #[cfg(test)]
 mod save_load_tests {
-    use crux_core::{App as _, assert_effect};
+    use crux_core::assert_effect;
     use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult, value::Value};
     use crux_time::{TimeRequest, TimerId};
 
@@ -742,7 +742,7 @@ mod save_load_tests {
 mod sync_tests {
     use std::collections::VecDeque;
 
-    use crux_core::{App as _, Request};
+    use crux_core::Request;
 
     use crate::capabilities::pub_sub::{Message, PubSubOperation};
 
