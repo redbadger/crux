@@ -16,6 +16,7 @@ The `shared` directory is a crate that implements the shared crux core. It conta
 
 - SwiftUI (iOS/macOS) — `apple/`
 - Android/Kotlin — `android/`
+- Flutter (desktop / mobile via FRB) — `flutter/` (`just generate`, `just run`)
 - WinUI3 / C# (Windows, .NET 10) — `windows/`
 - Leptos — `web-leptos/`
 - NextJS — `web-nextjs/`
@@ -32,5 +33,6 @@ The `shared` directory is a crate that implements the shared crux core. It conta
   tools installed
 3. Run `just dev` to generate code and build that shell
 4. For `apple`, `android`, and `windows` shells, open the IDE (Xcode,
-  Android Studio, or Visual Studio). For `tui`, run `just run`. For others,
+  Android Studio, or Visual Studio). For `flutter`, run `just doctor`
+  then `just run` in `flutter/`. For `tui`, run `just run`. For others,
   run `just serve` in the shell directory.
