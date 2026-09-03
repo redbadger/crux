@@ -1,0 +1,136 @@
+# Windows coverage for the counter example.
+#
+# examples.yaml's `windows` job only exercises the WinUI3 shell, and its
+# `android` and `tauri` jobs both run on Ubuntu, so without these nothing checks
+# the [windows] recipe variants in the Justfiles.
+#
+# There is deliberately no Android job. `boltffi pack android` cannot complete
+# on Windows as of boltffi 0.29.3: its scan_crate step hands `cargo metadata` a
+# verbatim `\\?\...` manifest path, so Cargo resolves the nested workspace to
+# the repo root and `crux_core.workspace = true` in examples/counter/shared
+# fails to inherit. Cross-compilation itself succeeds — it is only the metadata
+# scan that fails. Tracked upstream; restore the job once it is fixed.
+#
+# Separate from examples.yaml only because `paths` is a workflow-level trigger,
+# not a job-level one. Co-locating these would mean running them unfiltered, and
+# ~93% of recent commits touch neither lib.just nor examples/counter — so most
+# PRs would wait on Windows Gradle and Tauri builds that cannot be affected by
+# them. Ubuntu already covers those shells on every PR in examples.yaml; what is
+# Windows-specific is the [windows] recipe plumbing.
+#
+# A path-filtered workflow reports no check at all when it does not match, so
+# this adds no skipped-check noise — but for the same reason do not make these
+# required in branch protection, or PRs touching nothing here will wait forever.
+#
+# To run against a branch by hand:
+#
+#   gh workflow run examples-windows.yaml --ref <branch>
+name: examples (windows)
+
+# Keep the two paths lists in step; Actions does not support YAML anchors.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - lib.just
+      - examples/counter/**
+      - .github/workflows/examples-windows.yaml
+  pull_request:
+    paths:
+      - lib.just
+      - examples/counter/**
+      - .github/workflows/examples-windows.yaml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: "-D warnings"
+  RUST_BACKTRACE: short
+  CI: 1
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
+jobs:
+  windows-justfiles:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@just
+
+      # PowerShell 5.1 decodes a BOM-less .ps1 using the legacy ANSI codepage,
+      # so a [script('powershell')] body containing ✓ / ✗ / — comes out as
+      # mojibake. `chcp 65001` does not help: the parser uses GetACP(), not the
+      # console codepage. The lib.just helpers avoid this by running as plain
+      # recipes under windows-shell, where just passes the recipe as a process
+      # argument instead of a temp file. This guards that.
+      - name: doctor output is not mangled
+        shell: pwsh
+        run: |
+          $out = just Android/doctor 2>&1 | Out-String
+          Write-Host $out
+          if ($out -match 'Ã|â€|ï¿½') { throw "mojibake in doctor output" }
+          if ($out -notmatch '[✓✗]') { throw "no check marks in doctor output" }
+
+      # The bash recipes run under `set -euo pipefail`. Their PowerShell twins
+      # need an explicit $LASTEXITCODE check, or a mid-loop failure is silently
+      # swallowed and the recipe exits 0. Two entries with the failing one
+      # FIRST is what discriminates: with a single entry the failure is also
+      # the last command, so a broken recipe would pass this by accident.
+      - name: aggregate recipes fail when a child fails
+        shell: pwsh
+        run: |
+          foreach ($recipe in 'fix', 'check', 'ci', 'clean') {
+            just subprojects="nope shared" $recipe *> $null
+            if ($LASTEXITCODE -eq 0) { throw "$recipe swallowed a child failure" }
+            Write-Host "  ok: $recipe propagated (exit $LASTEXITCODE)"
+          }
+          # $LASTEXITCODE is still non-zero from the last injected failure, and
+          # GitHub's pwsh wrapper would propagate it as the step's status.
+          exit 0
+
+  windows-tauri:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: taiki-e/install-action@just
+
+      # No GTK/WebKit step: windows-latest ships the WebView2 runtime.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: CI
+        run: just tauri/ci
+        env:
+          CI: true

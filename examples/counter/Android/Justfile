@@ -1,6 +1,10 @@
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 mod lib '../../../lib.just'
 
 default: dev
+
+gradlew := if os() == "windows" { "./gradlew.bat" } else { "./gradlew" }
 
 # --------------------------------------------------------------------------
 # Development
@@ -12,6 +16,7 @@ doctor:
     @just lib::check-android
 
 # install Android Rust cross-compilation targets
+[unix]
 install-targets:
     @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
     TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(rustup show active-toolchain | awk '{print $1}')}" ; \
@@ -22,6 +27,21 @@ install-targets:
         i686-linux-android \
         x86_64-linux-android
 
+[windows]
+[script('powershell')]
+install-targets:
+    $ErrorActionPreference = 'Stop'
+    Write-Host "{{ style("command") }}install-targets:{{ NORMAL }}"
+    $toolchain = $env:RUSTUP_TOOLCHAIN
+    if (-not $toolchain) {
+        $active = rustup show active-toolchain
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $toolchain = ($active -split ' ')[0]
+    }
+    Write-Host "  Toolchain: $toolchain"
+    rustup target add --toolchain "$toolchain" aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 # auto-fix formatting issues
 fix:
     @echo '{{ style("command") }}fix:{{ NORMAL }}'
@@ -30,7 +50,7 @@ fix:
 # validate Android lint checks (requires generated types)
 check: typegen
     @echo '{{ style("command") }}check:{{ NORMAL }}'
-    ./gradlew --no-daemon :app:lintDebug
+    {{ gradlew }} --no-daemon :app:lintDebug
 
 # package the shared library and BoltFFI Kotlin bindings
 [working-directory('../shared')]
@@ -39,6 +59,7 @@ package: install-targets
     boltffi pack android
 
 # generate Kotlin app types
+[unix]
 typegen: package
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
@@ -49,21 +70,40 @@ typegen: package
             --language kotlin \
             --output-dir generated
 
+[windows]
+[script('powershell')]
+typegen: package
+    $ErrorActionPreference = 'Stop'
+    Write-Host "{{ style("command") }}typegen:{{ NORMAL }}"
+    $env:RUST_LOG='info'
+    cargo run --package shared --bin codegen --features codegen,facet_typegen -- --language kotlin --output-dir generated
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 # build the Android debug APK (generates types first)
 build: typegen
     @echo '{{ style("command") }}build:{{ NORMAL }}'
-    ./gradlew --no-daemon :app:assembleDebug
+    {{ gradlew }} --no-daemon :app:assembleDebug
 
 # run Android JVM unit tests
 test:
     @echo '{{ style("command") }}test:{{ NORMAL }}'
-    ./gradlew --no-daemon :app:testDebugUnitTest
+    {{ gradlew }} --no-daemon :app:testDebugUnitTest
 
 # remove build artifacts
+[unix]
 clean:
     @echo '{{ style("command") }}clean:{{ NORMAL }}'
-    ./gradlew --no-daemon clean
+    {{ gradlew }} --no-daemon clean
     rm -rf generated
+
+[windows]
+[script('powershell')]
+clean:
+    $ErrorActionPreference = 'Stop'
+    Write-Host "{{ style("command") }}clean:{{ NORMAL }}"
+    {{ gradlew }} --no-daemon clean
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (Test-Path generated) { Remove-Item -Recurse -Force generated }
 
 # local development workflow
 dev: fix check build test

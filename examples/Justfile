@@ -1,3 +1,5 @@
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 mod lib '../lib.just'
 
 default: dev
@@ -5,6 +7,7 @@ default: dev
 examples := "counter counter-http counter-middleware counter-routing notes weather"
 
 # checks required tools across all examples
+[unix]
 [script('bash')]
 doctor:
     for example in {{ examples }}; do
@@ -13,7 +16,20 @@ doctor:
         echo ''
     done
 
+# no early exit: report every example's tool status, like the bash version
+[windows]
+[script('powershell')]
+doctor:
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}${example}:{{ NORMAL }}"
+            just "$example/doctor"
+            Write-Host ""
+        }
+    }
+
 # local development workflow
+[unix]
 [script('bash')]
 dev:
     set -euo pipefail
@@ -22,7 +38,20 @@ dev:
         just "$example/dev"
     done
 
+[windows]
+[script('powershell')]
+dev:
+    $ErrorActionPreference = 'Stop'
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/dev:{{ NORMAL }}"
+            just "$example/dev"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
+    }
+
 # fix formatting in all examples
+[unix]
 [script('bash')]
 fix:
     set -euo pipefail
@@ -31,7 +60,20 @@ fix:
         just "$example/fix"
     done
 
+[windows]
+[script('powershell')]
+fix:
+    $ErrorActionPreference = 'Stop'
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/fix:{{ NORMAL }}"
+            just "$example/fix"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
+    }
+
 # check formatting and lint in all examples
+[unix]
 [script('bash')]
 check:
     set -euo pipefail
@@ -40,7 +82,20 @@ check:
         just "$example/check"
     done
 
+[windows]
+[script('powershell')]
+check:
+    $ErrorActionPreference = 'Stop'
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/check:{{ NORMAL }}"
+            just "$example/check"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
+    }
+
 # clean build artefacts in all examples
+[unix]
 [script('bash')]
 clean:
     set -euo pipefail
@@ -51,7 +106,23 @@ clean:
     rm -rf */target */*/target
     rm -rf */*/build */*/dist */*/.next */*/.react-router */*/node_modules */*/.gradle
 
+[windows]
+[script('powershell')]
+clean:
+    $ErrorActionPreference = 'Stop'
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/clean:{{ NORMAL }}"
+            just "$example/clean"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
+    }
+    foreach ($pattern in '*/target', '*/*/target', '*/*/build', '*/*/dist', '*/*/.next', '*/*/.react-router', '*/*/node_modules', '*/*/.gradle') {
+        Get-Item -Path $pattern -Force -ErrorAction Ignore | Remove-Item -Recurse -Force
+    }
+
 # update Cargo lockfiles in all examples
+[unix]
 [script('bash')]
 update:
     set -euo pipefail
@@ -60,7 +131,25 @@ update:
         (cd "$example" && cargo update)
     done
 
+[windows]
+[script('powershell')]
+update:
+    $ErrorActionPreference = 'Stop'
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/update:{{ NORMAL }}"
+            Push-Location $example
+            try {
+                cargo update
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } finally {
+                Pop-Location
+            }
+        }
+    }
+
 # upgrade Cargo dependency constraints and update lockfiles in all examples
+[unix]
 [script('bash')]
 update-deps:
     set -euo pipefail
@@ -69,7 +158,27 @@ update-deps:
         (cd "$example" && cargo upgrade --incompatible allow && cargo update)
     done
 
+[windows]
+[script('powershell')]
+update-deps:
+    $ErrorActionPreference = 'Stop'
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/update-deps:{{ NORMAL }}"
+            Push-Location $example
+            try {
+                cargo upgrade --incompatible allow
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                cargo update
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } finally {
+                Pop-Location
+            }
+        }
+    }
+
 # update pnpm dependencies in all examples
+[unix]
 [script('bash')]
 update-pnpm-deps:
     set -euo pipefail
@@ -78,7 +187,20 @@ update-pnpm-deps:
         just "$example/update-pnpm-deps"
     done
 
+[windows]
+[script('powershell')]
+update-pnpm-deps:
+    $ErrorActionPreference = 'Stop'
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/update-pnpm-deps:{{ NORMAL }}"
+            just "$example/update-pnpm-deps"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
+    }
+
 # CI workflow
+[unix]
 [script('bash')]
 ci:
     set -euo pipefail
@@ -86,3 +208,15 @@ ci:
         echo '{{ style("command") }}'"$example"'/ci:{{ NORMAL }}'
         just "$example/ci"
     done
+
+[windows]
+[script('powershell')]
+ci:
+    $ErrorActionPreference = 'Stop'
+    foreach ($example in "{{ examples }}".Split(" ")) {
+        if ($example) {
+            Write-Host "{{ style("command") }}$example/ci:{{ NORMAL }}"
+            just "$example/ci"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
+    }

@@ -15,6 +15,9 @@
 #   android    — 5 entries (all 5 examples, shell is always "Android")
 #
 # Each matrix entry runs: just <shell>/ci  (working dir: examples/<example>)
+#
+# Windows coverage for counter's Android and Tauri shells lives in
+# examples-windows.yaml, which is workflow_dispatch only.
 name: examples
 
 on:

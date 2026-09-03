@@ -1,6 +1,8 @@
 # Shared justfile helpers for Crux.
 # Import with: mod lib '../lib.just' (adjust path as needed)
 
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 boltffi_version := "0.29.3"
 
 # Minimum Binaryen release providing --enable-bulk-memory-opt, which BoltFFI passes
@@ -14,6 +16,7 @@ facet_version := "0.46.5"
 
 # Check if a tool is installed, report status (does not fail build)
 [no-cd]
+[unix]
 [script('bash')]
 check-tool tool install_cmd:
     if command -v {{ tool }} >/dev/null 2>&1; then
@@ -22,8 +25,18 @@ check-tool tool install_cmd:
         echo '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}'
     fi
 
+[no-cd]
+[windows]
+check-tool tool install_cmd:
+    @if (Get-Command "{{ tool }}" -ErrorAction SilentlyContinue) { \
+        Write-Host '  ✓ {{ tool }}' \
+    } else { \
+        Write-Host '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}' \
+    }
+
 # Check if a tool is installed, report status, and fail if missing
 [no-cd]
+[unix]
 [script('bash')]
 require-tool tool install_cmd:
     if command -v {{ tool }} >/dev/null 2>&1; then
@@ -33,8 +46,19 @@ require-tool tool install_cmd:
         exit 1
     fi
 
+[no-cd]
+[windows]
+require-tool tool install_cmd:
+    @if (Get-Command "{{ tool }}" -ErrorAction SilentlyContinue) { \
+        Write-Host '  ✓ {{ tool }}' \
+    } else { \
+        Write-Host '  {{ style("error") }}✗ {{ tool }}{{ NORMAL }} — install with: {{ install_cmd }}' ; \
+        exit 1 \
+    }
+
 # Check that the installed BoltFFI CLI matches the version used by the examples
 [no-cd]
+[unix]
 [script('bash')]
 check-boltffi:
     install_cmd="cargo install boltffi_cli --version '={{ boltffi_version }}' --locked"
@@ -51,8 +75,26 @@ check-boltffi:
         echo "  {{ style("error") }}✗ $actual{{ NORMAL }} — expected $expected; install with: $install_cmd"
     fi
 
+[no-cd]
+[windows]
+check-boltffi:
+    @$install_cmd = "cargo install boltffi_cli --version '={{ boltffi_version }}' --locked" ; \
+    if (!(Get-Command boltffi -ErrorAction SilentlyContinue)) { \
+        Write-Host "  {{ style("error") }}✗ boltffi{{ NORMAL }} — install with: $install_cmd" ; \
+        exit 0 \
+    } ; \
+    $actual = & boltffi --version 2>$null | Select-Object -First 1 ; \
+    $expected = "boltffi {{ boltffi_version }}" ; \
+    if ($actual -eq $expected) { \
+        Write-Host "  ✓ $actual" \
+    } else { \
+        if (-not $actual) { $actual = 'boltffi (unknown version)' } ; \
+        Write-Host "  {{ style("error") }}✗ $actual{{ NORMAL }} — expected $expected; install with: $install_cmd" \
+    }
+
 # Check if a file exists, report status (does not fail build)
 [no-cd]
+[unix]
 [script('bash')]
 check-file file setup_cmd:
     if [ -f {{ file }} ]; then
@@ -61,8 +103,18 @@ check-file file setup_cmd:
         echo '  {{ style("error") }}✗ {{ file }}{{ NORMAL }} — create with: {{ setup_cmd }}'
     fi
 
+[no-cd]
+[windows]
+check-file file setup_cmd:
+    @if (Test-Path "{{ file }}" -PathType Leaf) { \
+        Write-Host '  ✓ {{ file }}' \
+    } else { \
+        Write-Host '  {{ style("error") }}✗ {{ file }}{{ NORMAL }} — create with: {{ setup_cmd }}' \
+    }
+
 # Check if a Rust target is installed
 [no-cd]
+[unix]
 [script('bash')]
 check-rust-target target:
     if rustup target list --installed 2>/dev/null | grep -q '{{ target }}'; then
@@ -71,8 +123,18 @@ check-rust-target target:
         echo '  {{ style("error") }}✗ {{ target }}{{ NORMAL }} — install with: rustup target add {{ target }}'
     fi
 
+[no-cd]
+[windows]
+check-rust-target target:
+    @if ((rustup target list --installed 2>$null) -like '*{{ target }}*') { \
+        Write-Host '  ✓ {{ target }}' \
+    } else { \
+        Write-Host '  {{ style("error") }}✗ {{ target }}{{ NORMAL }} — install with: rustup target add {{ target }}' \
+    }
+
 # (internal) check java version is between 17 and 24
 [no-cd]
+[unix]
 [script('bash')]
 _check-java-version:
     if ! command -v java >/dev/null 2>&1; then exit 0; fi
@@ -83,8 +145,25 @@ _check-java-version:
         echo "  {{ style("error") }}✗ java version $ver — need 17–24 (Gradle does not support 25+){{ NORMAL }}"
     fi
 
+[no-cd]
+[windows]
+_check-java-version:
+    @if (!(Get-Command java -ErrorAction SilentlyContinue)) { exit 0 } ; \
+    $ver_str = & java -version 2>&1 | Select-Object -First 1 ; \
+    if ($ver_str -match '"([0-9]+)') { \
+        $ver = [int]$Matches[1] ; \
+        if ($ver -ge 17 -and $ver -le 24) { \
+            Write-Host "  ✓ java version $ver (17–24)" \
+        } else { \
+            Write-Host "  {{ style("error") }}✗ java version $ver — need 17–24 (Gradle does not support 25+){{ NORMAL }}" \
+        } \
+    } else { \
+        Write-Host "  {{ style("error") }}✗ Could not parse java version from: $ver_str{{ NORMAL }}" \
+    }
+
 # (internal) check Binaryen's wasm-opt is new enough for BoltFFI
 [no-cd]
+[unix]
 [script('bash')]
 _check-wasm-opt-version:
     if ! command -v wasm-opt >/dev/null 2>&1; then exit 0; fi
@@ -94,6 +173,22 @@ _check-wasm-opt-version:
     else
         echo "  {{ style("error") }}✗ wasm-opt version $ver — need {{ binaryen_version }}+ (BoltFFI passes --enable-bulk-memory-opt, added in Binaryen {{ binaryen_version }}){{ NORMAL }}"
     fi
+
+[no-cd]
+[windows]
+_check-wasm-opt-version:
+    @if (!(Get-Command wasm-opt -ErrorAction SilentlyContinue)) { exit 0 } ; \
+    $ver_str = & wasm-opt --version 2>$null | Select-Object -First 1 ; \
+    if ($ver_str -match 'version ([0-9]+)') { \
+        $ver = [int]$Matches[1] ; \
+        if ($ver -ge {{ binaryen_version }}) { \
+            Write-Host "  ✓ wasm-opt version $ver (>= {{ binaryen_version }})" \
+        } else { \
+            Write-Host "  {{ style("error") }}✗ wasm-opt version $ver — need {{ binaryen_version }}+ (BoltFFI passes --enable-bulk-memory-opt, added in Binaryen {{ binaryen_version }}){{ NORMAL }}" \
+        } \
+    } else { \
+        Write-Host "  {{ style("error") }}✗ Could not parse wasm-opt version from: $ver_str{{ NORMAL }}" \
+    }
 
 # Check tools for Apple shells
 [no-cd]
@@ -110,6 +205,7 @@ check-apple:
 
 # Check tools for Windows / WinUI3 shells
 [no-cd]
+[windows]
 check-windows:
     @just lib::check-tool cargo "https://rustup.rs"
     @just lib::check-boltffi
@@ -118,16 +214,18 @@ check-windows:
     @just lib::check-rust-target x86_64-pc-windows-msvc
     @just lib::check-rust-target aarch64-pc-windows-msvc
 
-# (internal) check for Visual Studio via vswhere at its canonical install path
+# (internal) check for Visual Studio via vswhere at its canonical install path.
+# Windows-only: there is no [unix] variant because the check is meaningless off
+# Windows, and [unix] excludes Windows (the attribute keys off just's target OS,
+# not the interpreter, so a bash variant could never run where it matters).
 [no-cd]
-[script('bash')]
+[windows]
 _check-vswhere:
-    vswhere='/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe'
-    if [ -f "$vswhere" ]; then
-        echo '  ✓ Visual Studio (vswhere)'
-    else
-        echo '  {{ style("error") }}✗ Visual Studio vswhere{{ NORMAL }} — install Visual Studio 2022+ with the Windows App SDK workload'
-    fi
+    @if (Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -PathType Leaf) { \
+        Write-Host '  ✓ Visual Studio (vswhere)' \
+    } else { \
+        Write-Host '  {{ style("error") }}✗ Visual Studio vswhere{{ NORMAL }} — install Visual Studio 2022+ with the Windows App SDK workload' \
+    }
 
 # Check tools for Android shells
 [no-cd]
