@@ -8,6 +8,7 @@ use crossbeam_channel::Sender;
 use futures::channel::mpsc;
 use futures::future::Fuse;
 use futures::stream::StreamFuture;
+use futures::task::AtomicWaker;
 use futures::{FutureExt as _, Stream, StreamExt};
 
 use crate::Request;
@@ -20,11 +21,30 @@ use super::executor::{JoinHandle, Task};
 // ANCHOR: command_context
 pub struct CommandContext<Effect, Event> {
     pub(crate) effects: Sender<Effect>,
-    pub(crate) events: Sender<Event>,
+    pub(crate) events: Sender<CommandEvent<Effect, Event>>,
     pub(crate) tasks: Sender<Task>,
     pub(crate) rc: Arc<()>,
+    pub(crate) host_waker: Arc<AtomicWaker>,
 }
 // ANCHOR_END: command_context
+
+/// Event emitted by a Command, alongside the `CommandContext` of the
+/// Command which emitted it, so that follow-up commands can be
+/// spawned back on the same command.
+pub(crate) struct CommandEvent<Effect, Event> {
+    pub(crate) event: Event,
+    pub(crate) owner: CommandContext<Effect, Event>,
+}
+
+impl<Effect, Event> CommandEvent<Effect, Event> {
+    pub(crate) fn into_event(self) -> Event {
+        let Self { event, owner } = self;
+        owner.host_waker.wake();
+        drop(owner);
+
+        event
+    }
+}
 
 // derive(Clone) wants Effect and Event to be clone which is not actually necessary
 impl<Effect, Event> Clone for CommandContext<Effect, Event> {
@@ -34,6 +54,7 @@ impl<Effect, Event> Clone for CommandContext<Effect, Event> {
             events: self.events.clone(),
             tasks: self.tasks.clone(),
             rc: self.rc.clone(),
+            host_waker: self.host_waker.clone(),
         }
     }
 }
@@ -132,7 +153,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     #[allow(clippy::missing_panics_doc)]
     pub fn send_event(&self, event: Event) {
         self.events
-            .send(event)
+            .send(CommandEvent {
+                event,
+                owner: self.clone(),
+            })
             .expect("Command could not send event, event channel disconnected");
     }
 
@@ -169,6 +193,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         self.tasks
             .send(task)
             .expect("Command could not spawn task, tasks channel disconnected");
+
+        // spawn can be called outside of the run loop, we need to make
+        // sure the host of this command knows to poll it again
+        self.host_waker.wake();
 
         handle
     }

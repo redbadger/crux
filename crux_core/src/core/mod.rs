@@ -147,16 +147,23 @@ where
             .lock()
             .expect("Capability runtime lock was poisoned");
 
-        let mut events: VecDeque<_> = root_command.events().collect();
+        let mut events: VecDeque<_> = root_command.events_with_origin().collect();
 
-        while let Some(event_from_commands) = events.pop_front() {
+        while let Some(command_event) = events.pop_front() {
+            let event_from_commands = command_event.event;
+            // event_owner is the command which emitted the event
+            let event_owner = command_event.owner;
+
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
             let command = self.app.update(event_from_commands, &mut model);
             drop(model);
 
-            root_command.spawn(|ctx| command.into_future(ctx));
+            // the follow-up command is spawned on the owner to be a logical
+            // part of the original command process
+            event_owner.spawn(|ctx| command.into_future(ctx));
+            drop(event_owner);
 
-            events.extend(root_command.events());
+            events.extend(root_command.events_with_origin());
         }
 
         root_command.effects().collect()
