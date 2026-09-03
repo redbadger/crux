@@ -8,6 +8,21 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
+  response into the `Response` an app sees, with the same semantics a `crux_http`
+  request gives it.
+
+  This is the conversion `Http` requests already performed internally, where a 4xx or
+  5xx becomes `HttpError::Http` carrying the server's own message. It was
+  `pub(crate)`, so an app-defined `Operation` answering with `HttpResult` — an upload
+  the shell performs, say, whose body the core never held — had no way to reach it and
+  had to re-interpret status codes itself. Now such an effect can hand its result
+  straight through and its callers handle a rejection exactly as they handle one from
+  `Effect::Http`.
+
+
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_http-v0.19.0...crux_http-v0.20.0) - 2026-08-06
 
 ### Added
