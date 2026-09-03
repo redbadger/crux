@@ -35,8 +35,6 @@ impl App for Weather {
 
 #[cfg(test)]
 mod tests {
-    use crux_core::App as _;
-
     use crate::{
         effects::{EffectTestExt, secret},
         model::initializing::InitializingModel,
