@@ -1,3 +1,5 @@
+use facet::Facet;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 // used in docs/internals/runtime.md
@@ -14,6 +16,23 @@ pub enum RequestHandle<Out> {
 }
 // ANCHOR_END: resolve
 
+/// How many times a request expects to be resolved.
+///
+/// Decided by the call that created the request, not by the
+/// [`Operation`](crate::capability::Operation) it carries — one operation type
+/// can be notified in one place and streamed in another.
+#[allow(clippy::unsafe_derive_deserialize)]
+#[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(C)]
+pub enum RequestKind {
+    /// The request will never be resolved, and nothing waits on it.
+    Notify,
+    /// The request expects exactly one response.
+    Request,
+    /// The request expects a sequence of responses.
+    Stream,
+}
+
 pub trait Resolvable<Output> {
     /// Resolve the request with the given output.
     /// # Errors
@@ -28,6 +47,19 @@ impl<Output> Resolvable<Output> for RequestHandle<Output> {
 }
 
 impl<Output> RequestHandle<Output> {
+    /// How many times this request expects to be resolved.
+    ///
+    /// A [`Self::Once`] becomes a [`Self::Never`] as it resolves, so this
+    /// reports [`RequestKind::Notify`] once answered. Read it before resolving.
+    #[must_use]
+    pub const fn kind(&self) -> RequestKind {
+        match self {
+            Self::Never => RequestKind::Notify,
+            Self::Once(_) => RequestKind::Request,
+            Self::Many(_) => RequestKind::Stream,
+        }
+    }
+
     /// Resolve the request with the given output.
     /// # Errors
     /// Returns an error if the request is not expected to be resolved.

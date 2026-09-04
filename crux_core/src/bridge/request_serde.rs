@@ -1,7 +1,7 @@
 use crate::{
     Request,
     capability::Operation,
-    core::{RequestHandle, ResolveError},
+    core::{RequestHandle, RequestKind, ResolveError},
 };
 
 use super::{BridgeError, FfiFormat};
@@ -25,6 +25,15 @@ pub enum ResolveSerialized<T: FfiFormat> {
 // ANCHOR_END: resolve_serialized
 
 impl<T: FfiFormat> ResolveSerialized<T> {
+    /// Mirrors [`RequestHandle::kind`], caveat included.
+    pub(crate) const fn kind(&self) -> RequestKind {
+        match self {
+            Self::Never => RequestKind::Notify,
+            Self::Once(_) => RequestKind::Request,
+            Self::Many(_) => RequestKind::Stream,
+        }
+    }
+
     pub(crate) fn resolve(&mut self, response: &[u8]) -> Result<(), BridgeError<T>> {
         match self {
             Self::Never => Err(BridgeError::ProcessResponse(ResolveError::Never)),
@@ -87,5 +96,44 @@ impl<Out> RequestHandle<Out> {
                 resolve(out).map_err(|()| BridgeError::ProcessResponse(ResolveError::FinishedMany))
             })),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RequestHandle, RequestKind};
+    use crate::bridge::{BridgeError, JsonFfiFormat};
+
+    /// An id is minted from the serializing side, so the two must agree.
+    #[test]
+    fn kind_survives_deserializing() {
+        for handle in [
+            RequestHandle::<()>::Never,
+            RequestHandle::Once(Box::new(|()| {})),
+            RequestHandle::Many(Box::new(|()| Ok(()))),
+        ] {
+            let expected = handle.kind();
+
+            let serialized = handle.deserializing::<_, JsonFfiFormat>(|_response| {
+                Err(BridgeError::ProcessResponse(
+                    crate::core::ResolveError::Never,
+                ))
+            });
+
+            assert_eq!(serialized.kind(), expected);
+        }
+    }
+
+    #[test]
+    fn kinds_are_distinct() {
+        assert_eq!(RequestHandle::<()>::Never.kind(), RequestKind::Notify);
+        assert_eq!(
+            RequestHandle::<()>::Once(Box::new(|()| {})).kind(),
+            RequestKind::Request
+        );
+        assert_eq!(
+            RequestHandle::<()>::Many(Box::new(|()| Ok(()))).kind(),
+            RequestKind::Stream
+        );
     }
 }

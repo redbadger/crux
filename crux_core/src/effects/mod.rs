@@ -55,7 +55,7 @@ use std::sync::{Arc, Weak};
 
 use crate::{Core, Request, Resolvable, ResolveError, capability::Operation};
 
-pub use registry::ParkedEffectId;
+pub use registry::{ParkedEffectId, ParkedRequest};
 
 /// Wraps a [`Core`] and routes each emitted effect to a type-specific handler.
 ///
