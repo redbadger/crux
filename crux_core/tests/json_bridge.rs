@@ -67,7 +67,7 @@ mod tests {
 
     use super::core::Bridge;
     use crux_core::{
-        Core,
+        Core, RequestKind,
         bridge::{EffectId, Request},
     };
     use crux_http::protocol::{HttpResponse, HttpResult};
@@ -151,9 +151,9 @@ mod tests {
         );
     }
 
-    /// A fire-and-forget request has no continuation to store, so its id is
-    /// simply not outstanding — resolving it is the same "not found" as
-    /// resolving an id that was never issued.
+    /// A fire-and-forget request has no continuation to store, so its id is not
+    /// outstanding — but the id says the request was a notification, so the
+    /// error says so too, rather than reporting an id we have never heard of.
     #[test]
     fn resolve_fire_and_forget() {
         let bridge = Bridge::new(Core::default());
@@ -183,8 +183,29 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "could not process response: Request with id 0 not found."
+            "could not process response: Attempted to resolve a request that is not expected to be resolved."
         );
+    }
+
+    /// The kind travels with every request, so a shell can tell what it is
+    /// holding without knowing which operation produced it.
+    #[test]
+    fn requests_carry_their_kind() {
+        let bridge = Bridge::new(Core::default());
+
+        let mut effects_bytes = vec![];
+        bridge
+            .update(b"\"Trigger\"", &mut effects_bytes)
+            .expect("event should process");
+
+        let effects: Vec<Request<EffectFfi>> =
+            serde_json::from_slice(&effects_bytes).expect("to deserialise");
+
+        assert_eq!(effects[0].kind(), Some(RequestKind::Notify));
+
+        let http = request_http(&bridge);
+
+        assert_eq!(http.kind(), Some(RequestKind::Request));
     }
 
     #[test]
