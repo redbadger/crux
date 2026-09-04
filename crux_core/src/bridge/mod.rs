@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::{App, Core, core::ResolveError};
+use crate::{
+    App, Core,
+    core::{RequestKind, ResolveError},
+};
 pub use formats::{BincodeFfiFormat, JsonFfiFormat};
 pub use registry::EffectId;
 pub(crate) use registry::ResolveRegistry;
@@ -53,6 +56,16 @@ where
     pub effect: Eff,
 }
 // ANCHOR_END: request
+
+impl<Eff> Request<Eff>
+where
+    Eff: Serialize,
+{
+    #[must_use]
+    pub const fn kind(&self) -> Option<RequestKind> {
+        self.id.kind()
+    }
+}
 
 /// A batch of effect requests from the Core to the Shell, as serialised by
 /// [`Bridge::update`] and [`Bridge::resolve`].
@@ -263,5 +276,45 @@ where
         A::ViewModel: Serialize,
     {
         Format::serialize(view_out, &self.core.view()).map_err(BridgeError::SerializeView)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BincodeFfiFormat, EffectId, FfiFormat as _, Request, registry::Sequence};
+    use crate::RequestKind;
+
+    fn sequence(sequence: u32) -> Sequence {
+        Sequence::new(sequence).expect("sequence should fit")
+    }
+
+    /// The kind rides inside the id, so a request is still a fixed-width id
+    /// followed by an effect, and older generated shells still parse it.
+    #[test]
+    fn a_request_is_an_id_then_an_effect() {
+        let mut bytes = vec![];
+        BincodeFfiFormat::serialize(
+            &mut bytes,
+            &Request {
+                id: EffectId::new(RequestKind::Notify, sequence(1)),
+                effect: 7u8,
+            },
+        )
+        .expect("to serialize");
+
+        assert_eq!(bytes, [0x01, 0x00, 0x00, 0x00, 0x07]);
+
+        let mut bytes = vec![];
+        BincodeFfiFormat::serialize(
+            &mut bytes,
+            &Request {
+                id: EffectId::new(RequestKind::Stream, sequence(1)),
+                effect: 7u8,
+            },
+        )
+        .expect("to serialize");
+
+        // Same five bytes; only the two kind bits of the id differ.
+        assert_eq!(bytes, [0x01, 0x00, 0x00, 0x80, 0x07]);
     }
 }

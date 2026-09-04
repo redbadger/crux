@@ -240,7 +240,9 @@ mod core;
 
 pub use capabilities::*;
 pub use command::Command;
-pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
+pub use core::{
+    Core, Effect, EffectFFI, Request, RequestHandle, RequestKind, Resolvable, ResolveError,
+};
 #[cfg(feature = "uniffi_compat_bindgen")]
 #[deprecated(
     since = "0.19.0",
