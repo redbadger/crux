@@ -7,7 +7,7 @@ use std::sync::{Mutex, RwLock};
 
 pub use effect::{Effect, EffectFFI};
 pub use request::Request;
-pub use resolve::{RequestHandle, Resolvable, ResolveError};
+pub use resolve::{RequestHandle, RequestKind, Resolvable, ResolveError};
 
 use crate::{App, Command};
 
