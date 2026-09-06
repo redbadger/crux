@@ -1,14 +1,35 @@
 use leptos::prelude::*;
 
+use crux_core::Request;
 use shared::ViewModel;
-use shared::kv::{KeyValueOperation, KeyValueResponse, KeyValueResult, value::Value};
+use shared::kv::{operation, value::Value};
 
-pub(super) fn resolve(
+/// `Get` is answered with a `ValueResult` — nothing else will do.
+pub(super) fn get(
     core: &super::Core,
-    mut request: crux_core::Request<KeyValueOperation>,
+    mut request: Request<operation::Get>,
     render: WriteSignal<ViewModel>,
 ) {
-    let response = handle(&request.operation);
+    let key = &request.operation.key;
+    log::debug!("kv get: {key}");
+    let response = operation::ValueResult::Ok(read(key));
+    super::resolve_effect(core, &mut request, response, render);
+}
+
+/// `Set` is answered with the value it replaced.
+pub(super) fn set(
+    core: &super::Core,
+    mut request: Request<operation::Set>,
+    render: WriteSignal<ViewModel>,
+) {
+    let operation::Set { key, value } = &request.operation;
+    log::debug!("kv set: {key}");
+    let previous = read(key);
+    let value_str = std::str::from_utf8(value).unwrap_or("");
+    if let Some(storage) = local_storage() {
+        let _ = storage.set_item(key, value_str);
+    }
+    let response = operation::ValueResult::Ok(previous);
     super::resolve_effect(core, &mut request, response, render);
 }
 
@@ -16,75 +37,9 @@ fn local_storage() -> Option<web_sys::Storage> {
     web_sys::window()?.local_storage().ok()?
 }
 
-fn handle(operation: &KeyValueOperation) -> KeyValueResult {
-    match operation {
-        KeyValueOperation::Get { key } => {
-            log::debug!("kv get: {key}");
-            let value = local_storage()
-                .and_then(|s| s.get_item(key).ok())
-                .flatten()
-                .map_or(Value::Bytes(vec![]), |v| Value::Bytes(v.into_bytes()));
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Get { value },
-            }
-        }
-        KeyValueOperation::Set { key, value } => {
-            log::debug!("kv set: {key}");
-            let previous = local_storage()
-                .and_then(|s| s.get_item(key).ok())
-                .flatten()
-                .map_or(Value::Bytes(vec![]), |v| Value::Bytes(v.into_bytes()));
-            let value_str = std::str::from_utf8(value).unwrap_or("");
-            if let Some(s) = local_storage() {
-                let _ = s.set_item(key, value_str);
-            }
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Set { previous },
-            }
-        }
-        KeyValueOperation::Delete { key } => {
-            log::debug!("kv delete: {key}");
-            let previous = local_storage()
-                .and_then(|s| s.get_item(key).ok())
-                .flatten()
-                .map_or(Value::Bytes(vec![]), |v| Value::Bytes(v.into_bytes()));
-            if let Some(s) = local_storage() {
-                let _ = s.remove_item(key);
-            }
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Delete { previous },
-            }
-        }
-        KeyValueOperation::Exists { key } => {
-            log::debug!("kv exists: {key}");
-            let is_present = local_storage()
-                .and_then(|s| s.get_item(key).ok())
-                .flatten()
-                .is_some();
-            KeyValueResult::Ok {
-                response: KeyValueResponse::Exists { is_present },
-            }
-        }
-        KeyValueOperation::ListKeys { prefix, cursor } => {
-            log::debug!("kv list_keys: prefix={prefix}");
-            let mut keys = Vec::new();
-            if let Some(s) = local_storage() {
-                let len = s.length().unwrap_or(0);
-                for i in 0..len {
-                    if let Ok(Some(key)) = s.key(i)
-                        && key.starts_with(prefix)
-                    {
-                        keys.push(key);
-                    }
-                }
-            }
-            let _ = cursor;
-            KeyValueResult::Ok {
-                response: KeyValueResponse::ListKeys {
-                    keys,
-                    next_cursor: 0,
-                },
-            }
-        }
-    }
+fn read(key: &str) -> Value {
+    local_storage()
+        .and_then(|s| s.get_item(key).ok())
+        .flatten()
+        .map_or(Value::Bytes(vec![]), |v| Value::Bytes(v.into_bytes()))
 }

@@ -1,44 +1,44 @@
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use crux_core::Request;
 use shared::ViewModel;
-use shared::effects::location::{Location, LocationOperation, LocationResult};
+use shared::effects::location::{GetLocation, IsLocationEnabled, Location};
 
-pub(super) fn resolve(
+/// `IsLocationEnabled` is answered with a bare `bool` — the operation's
+/// output type, so there is nothing to unwrap.
+pub(super) fn is_location_enabled(
     core: &super::Core,
-    mut request: crux_core::Request<LocationOperation>,
+    mut request: Request<IsLocationEnabled>,
+    render: WriteSignal<ViewModel>,
+) {
+    let enabled = web_sys::window()
+        .and_then(|w| w.navigator().geolocation().ok())
+        .is_some();
+    log::debug!("location enabled: {enabled}");
+    super::resolve_effect(core, &mut request, enabled, render);
+}
+
+/// `GetLocation` is answered with `Option<Location>`.
+pub(super) fn get_location(
+    core: &super::Core,
+    mut request: Request<GetLocation>,
     render: WriteSignal<ViewModel>,
 ) {
     let core = core.clone();
     wasm_bindgen_futures::spawn_local(async move {
-        log::debug!("location: {:?}", request.operation);
-
-        let response = handle(&request.operation).await;
-        super::resolve_effect(&core, &mut request, response, render);
-    });
-}
-
-#[allow(clippy::future_not_send)]
-async fn handle(operation: &LocationOperation) -> LocationResult {
-    match operation {
-        LocationOperation::IsLocationEnabled => {
-            let enabled = web_sys::window()
-                .and_then(|w| w.navigator().geolocation().ok())
-                .is_some();
-            log::debug!("location enabled: {enabled}");
-            LocationResult::Enabled(enabled)
-        }
-        LocationOperation::GetLocation => match get_current_position().await {
+        let location = match get_current_position().await {
             Ok((lat, lon)) => {
                 log::debug!("location fetched: {lat}, {lon}");
-                LocationResult::Location(Some(Location { lat, lon }))
+                Some(Location { lat, lon })
             }
             Err(e) => {
                 log::warn!("geolocation failed: {e:?}");
-                LocationResult::Location(None)
+                None
             }
-        },
-    }
+        };
+        super::resolve_effect(&core, &mut request, location, render);
+    });
 }
 
 #[allow(clippy::future_not_send)]

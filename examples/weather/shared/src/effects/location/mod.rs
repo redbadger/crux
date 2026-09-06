@@ -1,13 +1,15 @@
 //! A custom capability for accessing the device's location.
 //!
-//! Two operations — checking whether location services are enabled and
-//! fetching the current coordinates — exchanged with the shell through
-//! [`LocationOperation`] and [`LocationResult`]. The developer-facing
-//! command builders live in the [`command`] submodule.
+//! Two operations, each with its own output: [`IsLocationEnabled`] is answered
+//! with a `bool`, [`GetLocation`] with the coordinates the shell managed to
+//! obtain — or `None` if it couldn't. There is no shared response enum, so
+//! neither the shell nor the core can answer one question with the other's
+//! answer. The developer-facing command builders live in the [`command`]
+//! submodule.
 
 pub mod command;
 
-use crux_core::capability::Operation;
+use crux_core::macros::Operation;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
@@ -18,26 +20,12 @@ pub struct Location {
     pub lon: f64,
 }
 
-/// Operations the core can ask the shell to perform.
-#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[repr(C)]
-pub enum LocationOperation {
-    /// Ask whether location services are currently enabled and authorised.
-    IsLocationEnabled,
-    /// Ask for the device's current coordinates.
-    GetLocation,
-}
+/// Ask whether location services are currently enabled and authorised.
+#[derive(Operation, Facet, Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[operation(request, output = bool)]
+pub struct IsLocationEnabled;
 
-/// Values the shell can return in response to a [`LocationOperation`].
-#[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[repr(C)]
-pub enum LocationResult {
-    /// Whether location services are enabled and authorised.
-    Enabled(bool),
-    /// The current location, or `None` if the shell couldn't determine it.
-    Location(Option<Location>),
-}
-
-impl Operation for LocationOperation {
-    type Output = LocationResult;
-}
+/// Ask for the device's current coordinates.
+#[derive(Operation, Facet, Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[operation(request, output = Option<Location>)]
+pub struct GetLocation;

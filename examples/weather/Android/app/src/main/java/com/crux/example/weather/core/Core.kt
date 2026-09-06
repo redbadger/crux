@@ -2,16 +2,32 @@ package com.crux.example.weather.core
 
 import android.util.Log
 import com.crux.example.weather.ActiveViewModel
+import com.crux.example.weather.Clear
 import com.crux.example.weather.CoreFfi
-import com.crux.example.weather.Effect
+import com.crux.example.weather.Delete
+import com.crux.example.weather.EffectDispatcher
+import com.crux.example.weather.EffectHandler
 import com.crux.example.weather.Event
 import com.crux.example.weather.FavoritesViewModel
+import com.crux.example.weather.Fetch
+import com.crux.example.weather.Get
+import com.crux.example.weather.GetLocation
 import com.crux.example.weather.HomeViewModel
-import com.crux.example.weather.LocationOperation
-import com.crux.example.weather.LocationResult
+import com.crux.example.weather.HttpRequest
+import com.crux.example.weather.HttpResult
+import com.crux.example.weather.IsLocationEnabled
+import com.crux.example.weather.Location
+import com.crux.example.weather.NotifyAfter
 import com.crux.example.weather.OnboardViewModel
+import com.crux.example.weather.RenderOperation
 import com.crux.example.weather.Request
 import com.crux.example.weather.Requests
+import com.crux.example.weather.SecretDeleteResponse
+import com.crux.example.weather.SecretFetchResponse
+import com.crux.example.weather.SecretStoreResponse
+import com.crux.example.weather.Store
+import com.crux.example.weather.TimerId
+import com.crux.example.weather.ValueResult
 import com.crux.example.weather.ViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +40,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.crux.example.weather.Set as KeyValueSet
 
 // ANCHOR: core_base
 @Singleton
@@ -35,9 +52,17 @@ class Core
         private val keyValueHandler: KeyValueHandler,
         private val secretStore: SecretStore,
         private val timeHandler: TimeHandler,
-    ) {
+    ) : EffectHandler {
         private val coreFfi = CoreFfi()
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+        // The generated dispatcher calls the handler method for each effect and
+        // resolves the request with whatever that method returns — never for a
+        // notification, exactly once for a request.
+        private val dispatcher =
+            EffectDispatcher(this) { requestId, data ->
+                scope.launch { resolveAndHandleEffects(requestId, data) }
+            }
 
         private val _viewModel: MutableStateFlow<ViewModel> = MutableStateFlow(getViewModel())
         val viewModel: StateFlow<ViewModel> = _viewModel.asStateFlow()
@@ -70,7 +95,7 @@ class Core
         }
         // ANCHOR_END: core_base
 
-        private suspend fun handleEffects(effects: ByteArray) {
+        private fun handleEffects(effects: ByteArray) {
             if (effects.isEmpty()) {
                 Log.d(TAG, "handleEffects: empty response (no effects)")
                 return
@@ -82,83 +107,43 @@ class Core
         }
 
         // ANCHOR: process_request
-        private suspend fun processRequest(request: Request) {
+        /// Each request gets its own coroutine: `dispatch` suspends for as long
+        /// as the handler method does, and a debounce timer must not hold up the
+        /// requests queued behind it.
+        private fun processRequest(request: Request) {
             Log.d(TAG, "processRequest: $request")
-
-            when (val effect = request.effect) {
-                // ANCHOR: http
-                is Effect.Http -> {
-                    handleHttpEffect(effect, request.id)
-                }
-                // ANCHOR_END: http
-
-                is Effect.KeyValue -> {
-                    handleKeyValueEffect(effect, request.id)
-                }
-
-                is Effect.Location -> {
-                    handleLocationEffect(effect, request.id)
-                }
-
-                is Effect.Secret -> {
-                    handleSecretEffect(effect, request.id)
-                }
-
-                is Effect.Time -> {
-                    // Fire-and-forget: the time handler launches its own coroutines
-                    // and resolves asynchronously when timers fire.
-                    timeHandler.handle(effect.value, request.id, ::resolveAndHandleEffects)
-                }
-
-                is Effect.Render -> {
-                    render()
-                }
-            }
+            scope.launch { dispatcher.dispatch(request) }
         }
         // ANCHOR_END: process_request
 
+        // ANCHOR: http
+        // Every `EffectHandler` method returns the one output its operation is
+        // answered with, and nothing here calls `resolve`.
         // ANCHOR: handle_http
-        private suspend fun handleHttpEffect(
-            effect: Effect.Http,
-            requestId: UInt,
-        ) {
-            val result = httpHandler.request(effect.value)
-            resolveAndHandleEffects(requestId, result.bincodeSerialize())
-        }
+        override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
         // ANCHOR_END: handle_http
+        // ANCHOR_END: http
 
-        private suspend fun handleLocationEffect(
-            effect: Effect.Location,
-            requestId: UInt,
-        ) {
-            val result =
-                when (effect.value) {
-                    LocationOperation.ISLOCATIONENABLED -> {
-                        LocationResult.Enabled(locationHandler.isLocationEnabled())
-                    }
+        override fun render(operation: RenderOperation) = render()
 
-                    LocationOperation.GETLOCATION -> {
-                        LocationResult.Location(locationHandler.getLastLocation())
-                    }
-                }
-            resolveAndHandleEffects(requestId, result.bincodeSerialize())
-        }
+        override suspend fun kvGet(operation: Get): ValueResult = keyValueHandler.get(operation)
 
-        private suspend fun handleKeyValueEffect(
-            effect: Effect.KeyValue,
-            requestId: UInt,
-        ) {
-            val result = keyValueHandler.handleEffect(effect)
-            resolveAndHandleEffects(requestId, result.bincodeSerialize())
-        }
+        override suspend fun kvSet(operation: KeyValueSet): ValueResult = keyValueHandler.set(operation)
 
-        private suspend fun handleSecretEffect(
-            effect: Effect.Secret,
-            requestId: UInt,
-        ) {
-            val result = secretStore.handle(effect.value)
-            resolveAndHandleEffects(requestId, result.bincodeSerialize())
-        }
+        override suspend fun timeNotifyAfter(operation: NotifyAfter): TimerId = timeHandler.notifyAfter(operation)
+
+        override fun timeClear(operation: Clear) = timeHandler.clear(operation)
+
+        override suspend fun isLocationEnabled(operation: IsLocationEnabled): Boolean = locationHandler.isLocationEnabled()
+
+        override suspend fun getLocation(operation: GetLocation): Location? = locationHandler.getLastLocation()
+
+        override suspend fun fetchSecret(operation: Fetch): SecretFetchResponse = secretStore.fetch(operation.value)
+
+        override suspend fun storeSecret(operation: Store): SecretStoreResponse =
+            secretStore.store(operation.field0, operation.field1)
+
+        override suspend fun deleteSecret(operation: Delete): SecretDeleteResponse = secretStore.delete(operation.value)
 
         // ANCHOR: resolve
         private suspend fun resolveAndHandleEffects(
