@@ -18,9 +18,13 @@ pub enum RequestHandle<Out> {
 
 /// How many times a request expects to be resolved.
 ///
-/// Decided by the call that created the request, not by the
-/// [`Operation`](crate::capability::Operation) it carries — one operation type
-/// can be notified in one place and streamed in another.
+/// Where an [`Operation`](crate::capability::Operation) declares
+/// [`KIND`](crate::capability::Operation::KIND), this is a static property of
+/// the operation type, and every request carrying that operation has the same
+/// kind. An operation that has not declared one leaves the kind to the call
+/// that created the request — `notify_shell`, `request_from_shell` or
+/// `stream_from_shell` — so one such operation type can be notified in one
+/// place and streamed in another.
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(C)]
