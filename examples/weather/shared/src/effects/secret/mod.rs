@@ -1,59 +1,37 @@
 //! A custom capability for storing and retrieving secrets (e.g. API keys).
 //!
-//! The shell-facing protocol is intentionally simple: three operations
-//! (fetch, store, delete) with one [`SecretResponse`] enum covering all
-//! outcomes. The developer-facing command builders in the [`command`]
-//! submodule narrow that wide response into smaller per-operation types
-//! ([`SecretFetchResponse`], [`SecretStoreResponse`],
-//! [`SecretDeleteResponse`]) so callers only see the variants that apply.
+//! Three operations — [`Fetch`], [`Store`] and [`Delete`] — each with its own
+//! output type naming only the outcomes that operation can actually have:
+//! [`SecretFetchResponse`], [`SecretStoreResponse`] and
+//! [`SecretDeleteResponse`]. There is no wide response enum shared between
+//! them, so no call site has to rule out variants that cannot happen. The
+//! developer-facing command builders live in the [`command`] submodule.
 
 pub mod command;
 
-use crux_core::capability::Operation;
+use crux_core::macros::Operation;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 /// The key under which the weather API key is stored.
 pub const API_KEY_NAME: &str = "openweather_api_key";
 
-/// Operations the core can ask the shell to perform.
-#[derive(Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[repr(C)]
-pub enum SecretRequest {
-    /// Fetch the secret stored under the given key (if any).
-    Fetch(String),
-    /// Store `value` under `key`, replacing any existing value.
-    Store(String, String),
-    /// Delete the secret stored under the given key.
-    Delete(String),
-}
+/// Fetch the secret stored under the given key (if any).
+#[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[operation(request, output = SecretFetchResponse)]
+pub struct Fetch(pub String);
 
-impl Operation for SecretRequest {
-    type Output = SecretResponse;
-}
+/// Store the second value under the first key, replacing any existing value.
+#[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[operation(request, output = SecretStoreResponse)]
+pub struct Store(pub String, pub String);
 
-/// The shell-facing response — every variant any operation might produce.
-///
-/// The developer-facing command builders narrow this down to the variants
-/// a specific operation can actually return.
-#[derive(Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[repr(C)]
-pub enum SecretResponse {
-    /// Fetch: no secret stored under this key.
-    Missing(String),
-    /// Fetch: here's the key and its stored value.
-    Fetched(String, String),
-    /// Store: the secret was stored successfully.
-    Stored(String),
-    /// Store: storing failed — the string carries the error message.
-    StoreError(String),
-    /// Delete: the secret was removed.
-    Deleted(String),
-    /// Delete: deletion failed — the string carries the error message.
-    DeleteError(String),
-}
+/// Delete the secret stored under the given key.
+#[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[operation(request, output = SecretDeleteResponse)]
+pub struct Delete(pub String);
 
-/// The developer-facing response for [`command::fetch`].
+/// The output of a [`Fetch`].
 #[derive(Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
 pub enum SecretFetchResponse {
@@ -63,7 +41,7 @@ pub enum SecretFetchResponse {
     Fetched(String),
 }
 
-/// The developer-facing response for [`command::store`].
+/// The output of a [`Store`].
 #[derive(Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
 pub enum SecretStoreResponse {
@@ -73,7 +51,7 @@ pub enum SecretStoreResponse {
     StoreError(String),
 }
 
-/// The developer-facing response for [`command::delete`].
+/// The output of a [`Delete`].
 #[derive(Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
 pub enum SecretDeleteResponse {

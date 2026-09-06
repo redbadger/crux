@@ -5,8 +5,9 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.crux.example.weather.SecretRequest
-import com.crux.example.weather.SecretResponse
+import com.crux.example.weather.SecretDeleteResponse
+import com.crux.example.weather.SecretFetchResponse
+import com.crux.example.weather.SecretStoreResponse
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,48 +24,45 @@ class SecretStore
         // Defer until first use so Hilt construction stays off the main thread.
         private val prefs: SharedPreferences by lazy { createEncryptedPrefs(context) }
 
-        suspend fun handle(request: SecretRequest): SecretResponse =
+        // Each operation has its own response type, naming only the outcomes it
+        // can actually produce — no wide response enum to narrow.
+        suspend fun fetch(key: String): SecretFetchResponse =
             withContext(Dispatchers.IO) {
-                Log.d(TAG, "handle: $request")
-                when (request) {
-                    is SecretRequest.Fetch -> fetch(request.value)
-                    is SecretRequest.Store -> store(request.field0, request.field1)
-                    is SecretRequest.Delete -> delete(request.value)
+                val value = prefs.getString(key, null)
+                if (value != null) {
+                    Log.d(TAG, "fetched secret for key: $key")
+                    SecretFetchResponse.Fetched(value)
+                } else {
+                    Log.d(TAG, "no secret found for key: $key")
+                    SecretFetchResponse.Missing(key)
                 }
             }
 
-        private fun fetch(key: String): SecretResponse {
-            val value = prefs.getString(key, null)
-            return if (value != null) {
-                Log.d(TAG, "fetched secret for key: $key")
-                SecretResponse.Fetched(key, value)
-            } else {
-                Log.d(TAG, "no secret found for key: $key")
-                SecretResponse.Missing(key)
-            }
-        }
-
-        private fun store(
+        suspend fun store(
             key: String,
             value: String,
-        ): SecretResponse =
-            try {
-                prefs.edit().putString(key, value).apply()
-                Log.d(TAG, "stored secret for key: $key")
-                SecretResponse.Stored(key)
-            } catch (e: Exception) {
-                Log.w(TAG, "failed to store secret for key $key: ${e.message}")
-                SecretResponse.StoreError(e.message ?: "Unknown error")
+        ): SecretStoreResponse =
+            withContext(Dispatchers.IO) {
+                try {
+                    prefs.edit().putString(key, value).apply()
+                    Log.d(TAG, "stored secret for key: $key")
+                    SecretStoreResponse.Stored(key)
+                } catch (e: Exception) {
+                    Log.w(TAG, "failed to store secret for key $key: ${e.message}")
+                    SecretStoreResponse.StoreError(e.message ?: "Unknown error")
+                }
             }
 
-        private fun delete(key: String): SecretResponse =
-            try {
-                prefs.edit().remove(key).apply()
-                Log.d(TAG, "deleted secret for key: $key")
-                SecretResponse.Deleted(key)
-            } catch (e: Exception) {
-                Log.w(TAG, "failed to delete secret for key $key: ${e.message}")
-                SecretResponse.DeleteError(e.message ?: "Unknown error")
+        suspend fun delete(key: String): SecretDeleteResponse =
+            withContext(Dispatchers.IO) {
+                try {
+                    prefs.edit().remove(key).apply()
+                    Log.d(TAG, "deleted secret for key: $key")
+                    SecretDeleteResponse.Deleted(key)
+                } catch (e: Exception) {
+                    Log.w(TAG, "failed to delete secret for key $key: ${e.message}")
+                    SecretDeleteResponse.DeleteError(e.message ?: "Unknown error")
+                }
             }
 
         companion object {

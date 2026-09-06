@@ -1,15 +1,15 @@
 import App
 import Foundation
 
-private let logger = Log.http
+private nonisolated let logger = Log.http
 
-extension Core {
-    func resolveHttp(request: HttpRequest, requestId: UInt32) {
-        Task {
-            logger.debug("sending \(request.method) \(request.url)")
-            let result = await performHttpRequest(request)
-            resolve(requestId: requestId, serialize: { try result.bincodeSerialize() })
-        }
+nonisolated extension Core {
+    /// The `Http` operation is a request: the shell performs it and answers
+    /// with exactly one `HttpResult`, which the dispatcher serializes and
+    /// resolves for us.
+    public func http(_ operation: HttpRequest) async -> HttpResult {
+        logger.debug("sending \(operation.method) \(operation.url)")
+        return await performHttpRequest(operation)
     }
 
     private func performHttpRequest(_ request: HttpRequest) async -> HttpResult {

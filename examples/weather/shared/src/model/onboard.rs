@@ -174,7 +174,7 @@ impl OnboardModel {
 #[cfg(test)]
 mod tests {
     use crate::effects::EffectTestExt;
-    use crate::effects::secret::{self, SecretRequest};
+    use crate::effects::secret::{self, Store};
     use rstest::rstest;
 
     use super::*;
@@ -230,10 +230,10 @@ mod tests {
         assert!(
             matches!(model.state, OnboardState::Saving { ref api_key } if *api_key == "my_new_key")
         );
-        cmd.expect_only_secret_with(|op| {
+        cmd.expect_only_store_secret_with(|op| {
             assert_eq!(
                 op,
-                &SecretRequest::Store(secret::API_KEY_NAME.to_string(), "my_new_key".to_string())
+                &Store(secret::API_KEY_NAME.to_string(), "my_new_key".to_string())
             );
         });
     }

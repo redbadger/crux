@@ -1,78 +1,48 @@
 package com.crux.example.weather.core
 
 import android.util.Log
-import com.crux.example.weather.Instant
-import com.crux.example.weather.TimeRequest
-import com.crux.example.weather.TimeResponse
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.crux.example.weather.Clear
+import com.crux.example.weather.NotifyAfter
+import com.crux.example.weather.TimerId
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.coroutineContext
 
 @Singleton
 class TimeHandler
     @Inject
     constructor() {
-        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         private val activeTimers = mutableMapOf<ULong, Job>()
 
-        fun handle(
-            request: TimeRequest,
-            requestId: UInt,
-            resolve: suspend (UInt, ByteArray) -> Unit,
-        ) {
-            Log.d(TAG, "handle: $request")
-            when (request) {
-                is TimeRequest.Now -> {
-                    val now = System.currentTimeMillis()
-                    val response =
-                        TimeResponse.Now(
-                            Instant(
-                                seconds = (now / 1000).toULong(),
-                                nanos = ((now % 1000) * 1_000_000).toUInt(),
-                            ),
-                        )
-                    scope.launch { resolve(requestId, response.bincodeSerialize()) }
-                }
+        /// `NotifyAfter` is answered exactly once, with the id of the timer that
+        /// fired.
+        ///
+        /// If `Clear` arrives first the coroutine that is dispatching this
+        /// request is cancelled, so it never answers: `Clear` is a notification,
+        /// which means the core has already stopped waiting for the timer.
+        suspend fun notifyAfter(operation: NotifyAfter): TimerId {
+            val timerId = operation.id.value
+            val delayMs = (operation.duration.nanos / 1_000_000u).toLong()
+            Log.d(TAG, "notifyAfter: $delayMs ms (id=$timerId)")
 
-                is TimeRequest.NotifyAt -> {
-                    val targetMs =
-                        request.instant.seconds.toLong() * 1000 +
-                            request.instant.nanos.toLong() / 1_000_000
-                    val delayMs = (targetMs - System.currentTimeMillis()).coerceAtLeast(0)
-                    val timerId = request.id.value
-                    activeTimers[timerId] =
-                        scope.launch {
-                            delay(delayMs)
-                            activeTimers.remove(timerId)
-                            val response = TimeResponse.InstantArrived(request.id)
-                            resolve(requestId, response.bincodeSerialize())
-                        }
-                }
-
-                is TimeRequest.NotifyAfter -> {
-                    val delayMs = request.duration.nanos / 1_000_000u
-                    val timerId = request.id.value
-                    activeTimers[timerId] =
-                        scope.launch {
-                            delay(delayMs.toLong())
-                            activeTimers.remove(timerId)
-                            val response = TimeResponse.DurationElapsed(request.id)
-                            resolve(requestId, response.bincodeSerialize())
-                        }
-                }
-
-                is TimeRequest.Clear -> {
-                    val timerId = request.id.value
-                    activeTimers.remove(timerId)?.cancel()
-                    val response = TimeResponse.Cleared(request.id)
-                    scope.launch { resolve(requestId, response.bincodeSerialize()) }
-                }
+            activeTimers[timerId] = checkNotNull(coroutineContext[Job]) { "no job to cancel" }
+            try {
+                delay(delayMs)
+            } finally {
+                activeTimers.remove(timerId)
             }
+
+            Log.d(TAG, "timer elapsed (id=$timerId)")
+            return operation.id
+        }
+
+        /// `Clear` is a notification: drop the timer and answer nothing.
+        fun clear(operation: Clear) {
+            val timerId = operation.id.value
+            Log.d(TAG, "clear (id=$timerId)")
+            activeTimers.remove(timerId)?.cancel()
         }
 
         companion object {

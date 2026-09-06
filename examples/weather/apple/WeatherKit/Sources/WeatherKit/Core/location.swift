@@ -3,38 +3,41 @@
 import App
 import Foundation
 
-private let logger = Log.location
+private nonisolated let logger = Log.location
 
-extension Core {
-    func resolveLocation(request: LocationOperation, requestId: UInt32) {
-        Task {
-            let result: LocationResult
-            switch request {
-            case .isLocationEnabled:
-                let enabled = CLLocationManager.locationServicesEnabled()
-                logger.debug("location enabled: \(enabled)")
-                result = .enabled(enabled)
+nonisolated extension Core {
+    /// `IsLocationEnabled` is answered with a bare `Bool` — the operation's
+    /// output type, so there is nothing to unwrap on either side.
+    public func isLocationEnabled(_: IsLocationEnabled) async -> Bool {
+        let enabled = CLLocationManager.locationServicesEnabled()
+        logger.debug("location enabled: \(enabled)")
+        return enabled
+    }
 
-            case .getLocation:
-                do {
-                    let location = try await getCurrentLocation()
-                    logger.debug("location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
-                    result = .location(
-                        Location(
-                            lat: location.coordinate.latitude,
-                            lon: location.coordinate.longitude
-                        )
-                    )
-                } catch {
-                    logger.warning("location failed: \(error.localizedDescription)")
-                    result = .location(nil)
-                }
-            }
+    /// `GetLocation` is answered with `Location?`: the coordinates, or nothing
+    /// if the shell could not get a fix.
+    public func getLocation(_: GetLocation) async -> Location? {
+        guard let coordinate = await currentCoordinate() else {
+            return nil
+        }
+        logger.debug("location: \(coordinate.latitude), \(coordinate.longitude)")
+        return Location(lat: coordinate.latitude, lon: coordinate.longitude)
+    }
 
-            resolve(requestId: requestId, serialize: { try result.bincodeSerialize() })
+    /// CoreLocation's delegate plumbing runs on the main actor; only the
+    /// coordinates come back.
+    @MainActor
+    private func currentCoordinate() async -> (latitude: Double, longitude: Double)? {
+        do {
+            let location = try await getCurrentLocation()
+            return (location.coordinate.latitude, location.coordinate.longitude)
+        } catch {
+            logger.warning("location failed: \(error.localizedDescription)")
+            return nil
         }
     }
 
+    @MainActor
     private func getCurrentLocation() async throws -> CLLocation {
         try await withCheckedThrowingContinuation { continuation in
             let manager = CLLocationManager()
