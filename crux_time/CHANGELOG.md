@@ -8,6 +8,65 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 🚀 Features
+
+- **One type per time operation, in the new `crux_time::operation` module, and a
+  `Clock` capability that sends them.** `TimeRequest` has one output type —
+  `TimeResponse` — for all four of its variants, so the capability has to check that
+  the shell answered the question it was asked:
+
+  ```rust
+  // before
+  let TimeResponse::Cleared { id } =
+      ctx.request_from_shell(TimeRequest::Clear { id }).await
+  else {
+      panic!("Unexpected response to TimeRequest::Clear");
+  };
+  ```
+
+  Each operation is now its own type with exactly one output, so there is nothing to
+  check:
+
+  ```rust
+  // after
+  use crux_time::{Clock, operation};
+
+  #[effect]
+  enum Effect {
+      NotifyAfter(operation::NotifyAfter),
+      Clear(operation::Clear),
+  }
+
+  let (timer, handle) = Clock::notify_after(Duration::from_secs(1));
+  ```
+
+  `Clock` has the same three methods as `Time` — `now`, `notify_at`, `notify_after` —
+  with the same signatures, and shares `TimerHandle`, `CompletedTimerHandle`,
+  `TimerOutcome`, `TimerId`, `Instant` and `Duration` with it. Its bounds are per
+  method, so an app's `Effect` only has to carry the operations it actually uses.
+
+  The wire types:
+
+  | Operation | Fields | Output | Kind |
+  | --- | --- | --- | --- |
+  | `Now` | — | `Instant` | `Request` |
+  | `NotifyAt` | `id: TimerId, instant: Instant` | `TimerId` | `Request` |
+  | `NotifyAfter` | `id: TimerId, duration: Duration` | `TimerId` | `Request` |
+  | `Clear` | `id: TimerId` | `()` | `Notify` |
+
+  **`Clear` is a notification in the new API.** Clearing a timer tells the shell to
+  release the resources behind it, and there is nothing to answer — so
+  `TimerHandle::clear` now sends an `operation::Clear` notification and the timer's
+  future resolves with `TimerOutcome::Cleared` immediately, rather than waiting for a
+  `TimeResponse::Cleared` acknowledgement as `Time` does. A shell serving `Clock` has
+  no response to send for a `Clear`.
+
+  A `NotifyAt` or `NotifyAfter` is answered with the bare `TimerId` it was given,
+  which the core still checks against the timer it started.
+
+  Nothing is deprecated in this release: `Time`, `TimeRequest`, `TimeResponse` and
+  `TimerFuture` are unchanged, and an app can use both APIs side by side.
+
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_time-v0.17.0...crux_time-v0.18.0) - 2026-08-06
 
 ### ⚙️ Miscellaneous Tasks
