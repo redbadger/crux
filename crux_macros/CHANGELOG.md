@@ -16,6 +16,55 @@ and this project adheres to
   `#[effect(facet_typegen)]` are unchanged. The crate's `typegen` feature goes
   with it — `facet_typegen` is the one to enable.
 
+### 🚀 Features
+
+- **`#[derive(Operation)]` declares an operation and what the shell does with
+  it.** An operation used to need a hand-written `Operation` implementation, and
+  now — with `Operation::KIND` and the `crux_core::operation` marker traits —
+  three things that all have to agree. The derive writes all three from one
+  attribute:
+
+  ```rust
+  use crux_core::macros::Operation;
+
+  /// Told to the shell, never answered. `Output` is `()`.
+  #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+  #[operation(notify)]
+  pub struct Publish(pub Vec<u8>);
+
+  /// Answered exactly once.
+  #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+  #[operation(request, output = GetResult)]
+  pub struct Get {
+      pub key: String,
+  }
+
+  /// Answered a sequence of times.
+  #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+  #[operation(stream, output = Message)]
+  pub struct Subscribe;
+  ```
+
+  Each expands to an `impl Operation` with the `Output` and the matching
+  `const KIND`, plus the marker trait — `crux_core::operation::Notify`,
+  `Request` or `Stream` — so sending the operation with the wrong `Command`
+  constructor is a compile error.
+
+  Exactly one of `notify`, `request` and `stream` is required. `notify` takes no
+  `output` (it is always `()`); `request` and `stream` require one, and it can
+  be any type, including an unquoted generic one such as `Option<Vec<u8>>`.
+  Generic operations and `where` clauses pass through to both implementations.
+
+  Structs only, of any shape: named, tuple or unit.
+
+### ⚙️ Miscellaneous Tasks
+
+- **`#[effect(facet_typegen)]` now records the request kind of each variant**,
+  by calling the new `TypeRegistry::register_effect_kinds` after registering the
+  effect's own types. Nothing consumes the kinds yet, so no generated shell code
+  changes; a later release uses them to emit a request-kind property and a typed
+  effect-handler API.
+
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_macros-v0.10.0...crux_macros-v0.10.1) - 2026-08-06
 
 ### 🐛 Bug Fixes
