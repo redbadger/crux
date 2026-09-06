@@ -1,0 +1,24 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "request_kind::<Kotlin>()"
+---
+
+/// How many times the shell is expected to resolve a request.
+enum class RequestKind {
+    /// Never — the core is not waiting for an answer.
+    NOTIFY,
+    /// Exactly once.
+    REQUEST,
+    /// Any number of times, until the shell stops sending.
+    STREAM,
+}
+
+/// How many times the shell resolves a request carrying this effect,
+/// or `null` when the operation leaves that to the call site.
+val Effect.requestKind: RequestKind?
+    get() = when (this) {
+        is Effect.Render -> RequestKind.NOTIFY
+        is Effect.Http -> RequestKind.REQUEST
+        is Effect.Subscribe -> RequestKind.STREAM
+        is Effect.Legacy -> null
+    }

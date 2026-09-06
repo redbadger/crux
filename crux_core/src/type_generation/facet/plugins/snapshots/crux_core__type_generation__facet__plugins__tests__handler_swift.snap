@@ -1,0 +1,82 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "handler::<Swift>()"
+---
+
+/// Receives the items of a streaming effect.
+///
+/// Every item sent is one resolution of the request that started the stream.
+public struct EffectSink<Item>: Sendable {
+    private let _send: @Sendable (Item) -> Void
+
+    public init(_ send: @escaping @Sendable (Item) -> Void) {
+        self._send = send
+    }
+
+    /// Send one item back to the core.
+    public func send(_ item: Item) {
+        self._send(item)
+    }
+}
+
+/// Serializing an effect output cannot fail for any value the core can
+/// accept, so the dispatcher traps rather than making every handler
+/// method throw.
+private func serializeEffectOutput(_ body: (BincodeSerializer) throws -> Void) -> [UInt8] {
+    let serializer = BincodeSerializer.init()
+    try! body(serializer)
+    return serializer.get_bytes()
+}
+
+/// Handles every effect `Effect` can carry.
+///
+/// `EffectDispatcher` resolves each request for you, so there is no
+/// `resolve` to call at the wrong time or with the wrong bytes.
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol EffectHandler: Sendable {
+    func render(_ operation: RenderOperation)
+    func http(_ operation: HttpRequest) async -> HttpResult
+    func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>)
+    func legacy(_ operation: LegacyOperation, requestId: UInt32, resolve: @escaping @Sendable ([UInt8]) -> Void)
+}
+
+/// Routes each request to an `EffectHandler` and resolves it for you:
+/// never for a notification, once for a request, once per item for a
+/// stream.
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct EffectDispatcher: Sendable {
+    private let handler: any EffectHandler
+    private let resolve: @Sendable (UInt32, [UInt8]) -> Void
+
+    public init(handler: any EffectHandler, resolve: @escaping @Sendable (UInt32, [UInt8]) -> Void) {
+        self.handler = handler
+        self.resolve = resolve
+    }
+
+    public func dispatch(_ request: Request) {
+        let handler = self.handler
+        let resolve = self.resolve
+        let id = request.id
+        switch request.effect {
+        case .render(let operation):
+            handler.render(operation)
+        case .http(let operation):
+            Task {
+                let output = await handler.http(operation)
+                resolve(id, serializeEffectOutput { serializer in
+                    try output.serialize(serializer: serializer)
+                })
+            }
+        case .subscribe(let operation):
+            handler.subscribe(operation, into: EffectSink { item in
+                resolve(id, serializeEffectOutput { serializer in
+                    try item.serialize(serializer: serializer)
+                })
+            })
+        case .legacy(let operation):
+            handler.legacy(operation, requestId: id) { bytes in
+                resolve(id, bytes)
+            }
+        }
+    }
+}

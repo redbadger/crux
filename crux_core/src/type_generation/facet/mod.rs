@@ -80,16 +80,22 @@
 //! # Ok(())
 //! # }
 //! ```
+mod effects;
+mod plugins;
+
 use std::{
-    collections::BTreeMap,
     fs::{self, File},
     io::Write,
     process::Command,
     result::Result,
+    sync::Arc,
 };
 
 use facet::Facet;
 pub use facet_generate::generation::{Config, ExternalPackage, PackageLocation};
+/// The shape of a type in the registry, as reflected by facet-generate. Part
+/// of [`EffectVariantMeta`].
+pub use facet_generate::reflection::format::{Format, QualifiedTypeName};
 use facet_generate::{
     Registry,
     generation::{bincode::BincodePlugin, csharp, kotlin, swift, typescript},
@@ -99,6 +105,8 @@ use log::info;
 use serde_json::json;
 use thiserror::Error;
 
+pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
+use self::plugins::{EffectHandlerPlugin, RequestKindPlugin};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -132,18 +140,27 @@ impl Export for () {
     }
 }
 
-/// The request kind of each variant of one effect enum, keyed by variant name
-/// in declaration order. `None` means the operation declares no kind.
-pub type EffectKinds = Vec<(String, Option<crate::RequestKind>)>;
+/// Names the generated effect handler API claims in the root namespace of
+/// every generated package. A registered type using one of these would be
+/// silently shadowed, so [`TypeRegistry::build`] rejects it instead.
+const RESERVED_TYPE_NAMES: &[&str] = &[
+    "RequestKind",
+    "EffectHandler",
+    "IEffectHandler",
+    "EffectSink",
+    "IEffectSink",
+    "EffectDispatcher",
+];
 
 pub struct TypeRegistry {
     builder: RegistryBuilder,
-    effect_kinds: BTreeMap<String, EffectKinds>,
+    effects: Vec<EffectMeta>,
 }
 
 pub struct CodeGenerator {
     registry: Registry,
-    effect_kinds: BTreeMap<String, EffectKinds>,
+    effects: Arc<[EffectMeta]>,
+    handlers: bool,
 }
 
 /// The `TypeRegistry` struct stores the registered types so that they can be generated for foreign languages
@@ -154,7 +171,7 @@ impl TypeRegistry {
     pub fn new() -> Self {
         Self {
             builder: RegistryBuilder::new(),
-            effect_kinds: BTreeMap::new(),
+            effects: Vec::new(),
         }
     }
 
@@ -221,47 +238,92 @@ impl TypeRegistry {
         Ok(self)
     }
 
-    /// Records the [`RequestKind`](crate::RequestKind) each variant of an
-    /// effect enum declares, so that type generation can tell the shell how
-    /// many times it is expected to resolve each request.
+    /// Starts recording what type generation needs to know about the effect
+    /// enum `E`: the [`RequestKind`](crate::RequestKind) each variant declares
+    /// and the type its request resolves with.
     ///
     /// Called by `#[effect(facet_typegen)]`; you should not need to call it
-    /// yourself. `effect` is the name of the effect enum and `kinds` pairs each
-    /// variant name with the `Operation::KIND` of the operation it carries —
-    /// `None` for an operation that declares no kind.
+    /// yourself. Register `E` with [`register_type`](Self::register_type)
+    /// first, so that any `#[facet(rename)]` on it is already known.
+    ///
+    /// ```rust,ignore
+    /// generator
+    ///     .register_effect::<EffectFfi>()?
+    ///     .variant::<RenderOperation>("Render")?
+    ///     .variant::<HttpRequest>("Http")?
+    ///     .finish();
+    /// ```
     ///
     /// # Errors
-    /// Returns a [`TypeGenError`] if the kinds cannot be recorded.
-    pub fn register_effect_kinds(
-        &mut self,
-        effect: &str,
-        kinds: &[(&str, Option<crate::RequestKind>)],
-    ) -> Result<&mut Self, TypeGenError> {
-        self.effect_kinds.insert(
-            effect.to_string(),
-            kinds
-                .iter()
-                .map(|(variant, kind)| ((*variant).to_string(), *kind))
-                .collect(),
-        );
+    /// Returns a [`TypeGenError`] if `E` is not a named type.
+    pub fn register_effect<'a, E: Facet<'a>>(&mut self) -> Result<EffectBuilder<'_>, TypeGenError> {
+        let format = self.builder.format_of::<E>().map_err(|e| {
+            TypeGenError::Generation(format!(
+                "couldn't reflect effect {}: {e}",
+                std::any::type_name::<E>()
+            ))
+        })?;
 
-        Ok(self)
+        let Format::TypeName(name) = format else {
+            return Err(TypeGenError::Generation(format!(
+                "effect {} is not a named type",
+                std::any::type_name::<E>()
+            )));
+        };
+
+        Ok(EffectBuilder::new(self, name))
     }
 
     /// Builds the type registry and returns a [`CodeGenerator`] instance.
     /// # Errors
-    /// Returns a [`TypeGenError`] if the type registration fails.
+    /// Returns a [`TypeGenError`] if the type registration fails, or if a
+    /// registered type or effect variant claims one of the names the generated
+    /// effect handler API uses.
     pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
         let builder = std::mem::take(&mut self.builder);
-        let generator = CodeGenerator {
-            registry: builder
-                .build()
-                .map_err(|e| TypeGenError::Generation(e.to_string()))?,
-            effect_kinds: std::mem::take(&mut self.effect_kinds),
-        };
+        let effects: Arc<[EffectMeta]> = std::mem::take(&mut self.effects).into();
+        let registry = builder
+            .build()
+            .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        Ok(generator)
+        if !effects.is_empty() {
+            validate_names(&registry, &effects)?;
+        }
+
+        Ok(CodeGenerator {
+            registry,
+            effects,
+            handlers: true,
+        })
     }
+}
+
+/// Rejects registered types and effect variants that would collide with the
+/// generated effect handler API.
+fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), TypeGenError> {
+    use facet_generate::reflection::format::Namespace;
+
+    for name in registry.keys() {
+        if name.namespace == Namespace::Root && RESERVED_TYPE_NAMES.contains(&name.name.as_str()) {
+            return Err(TypeGenError::Generation(format!(
+                "`{}` is generated for the effect handler API, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
+                name.name
+            )));
+        }
+    }
+
+    for effect in effects {
+        for variant in &effect.variants {
+            if variant.ident == "RequestKind" {
+                return Err(TypeGenError::Generation(format!(
+                    "effect `{}` has a variant called `RequestKind`, which collides with the generated request kind accessor. Rename the variant.",
+                    effect.effect.name
+                )));
+            }
+        }
+    }
+
+    Ok(())
 }
 
 impl Default for TypeRegistry {
@@ -293,8 +355,14 @@ impl CodeGenerator {
 
         fs::create_dir_all(&path)?;
 
-        swift::Installer::new(&config.package_name, &path)
-            .plugin(BincodePlugin)
+        let mut installer =
+            swift::Installer::new(&config.package_name, &path).plugin(BincodePlugin);
+        if self.handlers {
+            installer = installer
+                .plugin(RequestKindPlugin::new(&self.effects))
+                .plugin(EffectHandlerPlugin::new(&self.effects));
+        }
+        installer
             .external_packages(&config.external_packages)
             .generate(&self.registry)?;
 
@@ -326,8 +394,14 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        kotlin::Installer::new(&config.package_name, &config.out_dir)
-            .plugin(BincodePlugin)
+        let mut installer =
+            kotlin::Installer::new(&config.package_name, &config.out_dir).plugin(BincodePlugin);
+        if self.handlers {
+            installer = installer
+                .plugin(RequestKindPlugin::new(&self.effects))
+                .plugin(EffectHandlerPlugin::new(&self.effects));
+        }
+        installer
             .external_packages(&config.external_packages)
             .generate(&self.registry)?;
 
@@ -359,8 +433,14 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        csharp::Installer::new(&config.package_name, &config.out_dir)
-            .plugin(BincodePlugin)
+        let mut installer =
+            csharp::Installer::new(&config.package_name, &config.out_dir).plugin(BincodePlugin);
+        if self.handlers {
+            installer = installer
+                .plugin(RequestKindPlugin::new(&self.effects))
+                .plugin(EffectHandlerPlugin::new(&self.effects));
+        }
+        installer
             .external_packages(&config.external_packages)
             .generate(&self.registry)?;
 
@@ -387,8 +467,14 @@ impl CodeGenerator {
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
-        typescript::Installer::new(&config.package_name, output_dir)
-            .plugin(BincodePlugin)
+        let mut installer =
+            typescript::Installer::new(&config.package_name, output_dir).plugin(BincodePlugin);
+        if self.handlers {
+            installer = installer
+                .plugin(RequestKindPlugin::new(&self.effects))
+                .plugin(EffectHandlerPlugin::new(&self.effects));
+        }
+        installer
             .external_packages(&config.external_packages)
             .generate(&self.registry)?;
 
@@ -436,10 +522,21 @@ impl CodeGenerator {
         self.registry
     }
 
-    /// The request kind each effect variant declares, keyed by effect enum
-    /// name, as recorded by [`TypeRegistry::register_effect_kinds`].
+    /// What was recorded about each registered effect enum, in registration
+    /// order.
     #[must_use]
-    pub const fn effect_kinds(&self) -> &BTreeMap<String, EffectKinds> {
-        &self.effect_kinds
+    pub fn effects(&self) -> &[EffectMeta] {
+        &self.effects
+    }
+
+    /// Turns off emission of the `RequestKind` type and the effect handler API.
+    ///
+    /// Only the types you registered are generated, exactly as before Crux
+    /// 0.21. Use this if your shell dispatches effects by hand and the extra
+    /// declarations are in the way.
+    #[must_use]
+    pub const fn without_effect_handlers(mut self) -> Self {
+        self.handlers = false;
+        self
     }
 }

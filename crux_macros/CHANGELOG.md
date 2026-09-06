@@ -67,12 +67,21 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **`#[effect(facet_typegen)]` now records the request kind of each variant**,
-  by calling the new `TypeRegistry::register_effect_kinds` after registering the
-  effect's own types. Nothing consumes the kinds yet, so no generated shell code
-  changes; a later release uses them to emit a request-kind property and a typed
-  effect-handler API. `#[effect(typegen)]` — the legacy serde path — is
-  unchanged.
+- **`#[effect(facet_typegen)]` now records each variant's request kind and
+  output type**, by calling the new `TypeRegistry::register_effect` after
+  registering the effect's own types:
+
+  ```rust
+  generator
+      .register_effect::<EffectFfi>()?
+      .variant::<RenderOperation>("Render")?
+      .variant::<HttpRequest>("Http")?
+      .finish();
+  ```
+
+  Type generation uses this to emit a request-kind accessor and a typed effect
+  handler API for each shell language — see the `crux_core` changelog.
+  `#[effect(typegen)]` — the legacy serde path — is unchanged.
 
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_macros-v0.10.0...crux_macros-v0.10.1) - 2026-08-06
 

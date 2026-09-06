@@ -80,7 +80,7 @@
       "allowedVersions": "0.29.3"
     },
     {
-      "description": "Pin facet to 0.46.5 — facet_generate 0.19 depends on facet =0.46.5. Held to lib.just by `just check-versions`.",
+      "description": "Pin facet to 0.46.5 — facet_generate 0.21 depends on facet =0.46.5. Held to lib.just by `just check-versions`.",
       "matchPackageNames": ["facet"],
       "matchManagers": ["cargo"],
       "allowedVersions": "0.46.5"

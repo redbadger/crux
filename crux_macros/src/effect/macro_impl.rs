@@ -369,12 +369,12 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                         .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(err.to_string()))?;
                 }
             });
-            let effect_kinds = effects.map(|effect| {
+            let effect_variants_meta = effects.map(|effect| {
                 let ident_str = effect.ident.to_string();
                 let operation = &effect.operation;
 
                 quote! {
-                    (#ident_str, <#operation as ::crux_core::capability::Operation>::KIND)
+                    .variant::<#operation>(#ident_str)?
                 }
             });
             quote! {
@@ -393,10 +393,10 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                             .register_type::<::crux_core::bridge::Requests<#ffi_enum_ident>>()
                             .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(err.to_string()))?;
 
-                        generator.register_effect_kinds(
-                            #enum_ident_str,
-                            &[#(#effect_kinds),*],
-                        )?;
+                        generator
+                            .register_effect::<#ffi_enum_ident>()?
+                            #(#effect_variants_meta)*
+                            .finish();
 
                         Ok(generator)
                     }
