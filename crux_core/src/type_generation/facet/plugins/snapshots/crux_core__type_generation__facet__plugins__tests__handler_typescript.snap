@@ -1,0 +1,65 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "handler::<TypeScript>()"
+---
+
+/// Receives the items of a streaming effect.
+///
+/// Every item sent is one resolution of the request that started the stream.
+export interface EffectSink<T> {
+    send(item: T): void;
+}
+
+/// Handles every effect `Effect` can carry.
+///
+/// `EffectDispatcher` resolves each request for you, so there is no
+/// `resolve` to call at the wrong time or with the wrong bytes.
+export interface EffectHandler {
+    render(operation: RenderOperation): void;
+    http(operation: HttpRequest): Promise<HttpResult>;
+    subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
+    legacy(operation: LegacyOperation, requestId: uint32, resolve: (bytes: Uint8Array) => void): void;
+}
+
+/// Routes each request to an `EffectHandler` and resolves it for you:
+/// never for a notification, once for a request, once per item for a
+/// stream.
+export class EffectDispatcher {
+    constructor(
+        private readonly handler: EffectHandler,
+        private readonly resolve: (id: uint32, bytes: Uint8Array) => void,
+    ) {}
+
+    public dispatch(request: Request): void {
+        const id = request.id;
+        const effect = request.effect;
+        switch (effect.kind) {
+            case "Render": {
+                this.handler.render(effect.value);
+                break;
+            }
+            case "Http": {
+                void this.handler.http(effect.value).then((output) => {
+                    const serializer = new BincodeSerializer();
+                    serializeHttpResult(output, serializer);
+                    this.resolve(id, serializer.getBytes());
+                });
+                break;
+            }
+            case "Subscribe": {
+                this.handler.subscribe(effect.value, {
+                    send: (item) => {
+                        const serializer = new BincodeSerializer();
+                        item.serialize(serializer);
+                        this.resolve(id, serializer.getBytes());
+                    },
+                });
+                break;
+            }
+            case "Legacy": {
+                this.handler.legacy(effect.value, id, (bytes) => this.resolve(id, bytes));
+                break;
+            }
+        }
+    }
+}

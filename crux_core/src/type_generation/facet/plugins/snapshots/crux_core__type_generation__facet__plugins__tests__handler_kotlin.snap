@@ -1,0 +1,55 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "handler::<Kotlin>()"
+---
+
+/// Receives the items of a streaming effect.
+///
+/// Every item sent is one resolution of the request that started the stream.
+fun interface EffectSink<in T> {
+    fun send(item: T)
+}
+
+private fun effectOutputBytes(body: (Serializer) -> Unit): ByteArray {
+    val serializer = BincodeSerializer()
+    body(serializer)
+    return serializer.get_bytes()
+}
+
+/// Handles every effect `Effect` can carry.
+///
+/// `EffectDispatcher` resolves each request for you, so there is no
+/// `resolve` to call at the wrong time or with the wrong bytes.
+interface EffectHandler {
+    fun render(operation: RenderOperation)
+    suspend fun http(operation: HttpRequest): HttpResult
+    fun subscribe(operation: Subscribe, sink: EffectSink<Message>)
+    fun legacy(operation: LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
+}
+
+/// Routes each request to an `EffectHandler` and resolves it for you:
+/// never for a notification, once for a request, once per item for a
+/// stream.
+class EffectDispatcher(
+    private val handler: EffectHandler,
+    private val resolve: (UInt, ByteArray) -> Unit,
+) {
+    suspend fun dispatch(request: Request) {
+        val id = request.id
+        when (val effect = request.effect) {
+            is Effect.Render -> handler.render(effect.value)
+            is Effect.Http -> {
+                val output = handler.http(effect.value)
+                resolve(id, effectOutputBytes { serializer ->
+                    output.serialize(serializer)
+                })
+            }
+            is Effect.Subscribe -> handler.subscribe(effect.value) { item ->
+                resolve(id, effectOutputBytes { serializer ->
+                    item.serialize(serializer)
+                })
+            }
+            is Effect.Legacy -> handler.legacy(effect.value, id) { bytes -> resolve(id, bytes) }
+        }
+    }
+}

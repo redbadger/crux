@@ -22,7 +22,8 @@ categories = ["gui", "wasm", "development-tools::ffi"]
 [workspace.dependencies]
 anyhow = "1.0"
 facet = "=0.46.5"
-facet_generate = "0.20"
+# TODO(release): switch to facet_generate = "0.21" once published
+facet_generate = { git = "https://github.com/redbadger/facet-generate", rev = "c949b1cc25c2" }
 facet-generate-attrs = "0.18"
 # facet_generate = { path = "../facet-generate/crates/facet_generate" }
 # facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
