@@ -9,7 +9,7 @@
 use std::time::Duration;
 
 use crux_core::{Command, render::render};
-use crux_time::command::{Time, TimerHandle, TimerOutcome};
+use crux_time::{Clock, TimerHandle, TimerOutcome};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
@@ -104,7 +104,7 @@ impl AddFavoriteWorkflow {
                     handle.clear();
                 }
 
-                let (notify, handle) = Time::notify_after(Duration::from_millis(DEBOUNCE_MILLIS));
+                let (notify, handle) = Clock::notify_after(Duration::from_millis(DEBOUNCE_MILLIS));
                 self.timer_handle = Some(handle);
 
                 let cmd = notify.then_send(AddFavoriteEvent::DebounceComplete);
@@ -205,7 +205,7 @@ mod tests {
 
         // should have a time effect (the debounce timer)
         let effect = cmd.effects().next().unwrap();
-        assert!(matches!(effect, Effect::Time(_)));
+        assert!(matches!(effect, Effect::TimeNotifyAfter(_)));
     }
 
     #[test]

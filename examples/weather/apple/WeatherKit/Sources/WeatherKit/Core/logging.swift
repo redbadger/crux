@@ -1,6 +1,6 @@
 import os
 
-enum Log {
+nonisolated enum Log {
     private static let subsystem = "com.crux.examples.weather"
 
     static let core = Logger(subsystem: subsystem, category: "core")

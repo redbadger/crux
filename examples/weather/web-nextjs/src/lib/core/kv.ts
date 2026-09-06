@@ -1,64 +1,20 @@
-import type { KeyValueOperation, KeyValueResult } from "shared_types/app";
-import {
-  matchKeyValueOperation,
-  keyValueResultOk,
-  keyValueResponseGet,
-  keyValueResponseSet,
-  keyValueResponseDelete,
-  keyValueResponseExists,
-  keyValueResponseListKeys,
-  valueBytes,
-} from "shared_types/app";
+import type { Get, Set, ValueResult } from "shared_types/app";
+import { valueBytes, valueResultOk } from "shared_types/app";
 
-export async function handle(
-  operation: KeyValueOperation,
-): Promise<KeyValueResult> {
-  return matchKeyValueOperation(operation, {
-    Get: (op) => {
-      const key = op.key;
-      console.debug("kv get:", key);
-      const stored = localStorage.getItem(key);
-      const bytes = stored ? Array.from(new TextEncoder().encode(stored)) : [];
-      return keyValueResultOk(keyValueResponseGet(valueBytes(bytes)));
-    },
-    Set: (op) => {
-      const { key, value } = op;
-      console.debug("kv set:", key);
-      const previous = localStorage.getItem(key);
-      const prevBytes = previous
-        ? Array.from(new TextEncoder().encode(previous))
-        : [];
-      const valueStr = new TextDecoder().decode(new Uint8Array(value));
-      localStorage.setItem(key, valueStr);
-      return keyValueResultOk(keyValueResponseSet(valueBytes(prevBytes)));
-    },
-    Delete: (op) => {
-      const key = op.key;
-      console.debug("kv delete:", key);
-      const previous = localStorage.getItem(key);
-      const prevBytes = previous
-        ? Array.from(new TextEncoder().encode(previous))
-        : [];
-      localStorage.removeItem(key);
-      return keyValueResultOk(keyValueResponseDelete(valueBytes(prevBytes)));
-    },
-    Exists: (op) => {
-      const key = op.key;
-      const exists = localStorage.getItem(key) !== null;
-      console.debug("kv exists:", key, exists);
-      return keyValueResultOk(keyValueResponseExists(exists));
-    },
-    ListKeys: (op) => {
-      const { prefix } = op;
-      console.debug("kv list_keys: prefix=", prefix);
-      const keys: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(prefix)) {
-          keys.push(key);
-        }
-      }
-      return keyValueResultOk(keyValueResponseListKeys(keys, BigInt(0)));
-    },
-  });
+export async function get(operation: Get): Promise<ValueResult> {
+  console.debug("kv get:", operation.key);
+  return valueResultOk(read(operation.key));
+}
+
+export async function set(operation: Set): Promise<ValueResult> {
+  console.debug("kv set:", operation.key);
+  const previous = read(operation.key);
+  const value = new TextDecoder().decode(new Uint8Array(operation.value));
+  localStorage.setItem(operation.key, value);
+  return valueResultOk(previous);
+}
+
+function read(key: string) {
+  const stored = localStorage.getItem(key);
+  return valueBytes(stored ? Array.from(new TextEncoder().encode(stored)) : []);
 }

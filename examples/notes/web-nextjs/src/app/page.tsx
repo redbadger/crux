@@ -11,7 +11,8 @@ import Textarea, {
 } from "../components/Textarea/Textarea";
 
 import * as sharedWasm from "shared";
-import { SyncMessage, Timers, Core } from "./core";
+import { SyncMessage, Core } from "./core";
+import type { EffectSink } from "shared_types/app";
 import {
   TextCursor,
   matchTextCursor,
@@ -50,14 +51,14 @@ const Home: NextPage = () => {
     new ViewModel("", textCursorPosition(BigInt(0))),
   );
 
-  const [_, setTimers] = useState<Timers>({});
-
   // TODO the state and channel handling should probably get
   // packaged up as a custom hook or something
 
-  const subscriptionId = useRef<number | null>(null);
+  // Set by the core's `subscribe` handler; every peer message becomes one
+  // item on this sink.
+  const subscription = useRef<EffectSink<Message> | null>(null);
   const channel = useRef(new BroadcastChannel("crux-note"));
-  const core = useRef(new Core(setView, setTimers, channel, subscriptionId));
+  const core = useRef(new Core(setView, channel, subscription));
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
     let message = event.data;
@@ -68,13 +69,8 @@ const Home: NextPage = () => {
 
       return;
     } else if (message.kind == "change" && message.data != null) {
-      if (subscriptionId.current == null) return;
-
       // Pass data into the core
-      const data = message.data;
-      core.current.respond(subscriptionId.current, (s) =>
-        new Message(data).serialize(s),
-      );
+      subscription.current?.send(new Message(message.data));
     }
   };
 
