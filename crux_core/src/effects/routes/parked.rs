@@ -3,7 +3,7 @@ use std::sync::{Arc, Weak};
 use crate::{
     Request, ResolveError,
     capability::Operation,
-    effects::{EffectRouter, ParkedEffectId, ParkedRequest, Routes, registry::Registry},
+    effects::{EffectRouter, ParkedEffectId, Routes, registry::Registry},
 };
 
 /// A route for effects handled over a custom, user-owned FFI.
@@ -83,7 +83,9 @@ where
     ///
     /// Panics if the internal registry lock has been poisoned.
     #[must_use]
-    pub fn park(&self, request: Request<Op>) -> ParkedRequest<Op> {
-        self.registry.register(request)
+    pub fn park(&self, request: Request<Op>) -> (ParkedEffectId<Op::Output>, Op) {
+        let (id, operation) = self.registry.register(request);
+
+        (id, operation)
     }
 }
