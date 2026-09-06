@@ -1,0 +1,32 @@
+error[E0080]: evaluation panicked: this operation does not declare RequestKind::Request; send it with notify_shell or stream_from_shell instead
+ --> $RUST/core/src/panic.rs
+  |
+  |           $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `crux_core::command::CommandContext::<Effect, Event>::request_from_shell::<ANotification>::{constant#0}` failed here
+  |
+ ::: src/command/context.rs
+  |
+  | /             assert!(
+  | |                 matches!(Op::KIND, None | Some(RequestKind::Request)),
+  | |                 "this operation does not declare RequestKind::Request; \
+  | |                  send it with notify_shell or stream_from_shell instead"
+  | |             );
+  | |_____________- in this macro invocation
+
+note: erroneous constant encountered
+ --> src/command/context.rs
+  |
+  | /         const {
+  | |             assert!(
+  | |                 matches!(Op::KIND, None | Some(RequestKind::Request)),
+  | |                 "this operation does not declare RequestKind::Request; \
+  | |                  send it with notify_shell or stream_from_shell instead"
+  | |             );
+  | |         }
+  | |_________^
+
+note: the above error was encountered while instantiating `fn CommandContext::<Effect, Event>::request_from_shell::<ANotification>`
+ --> src/command/mod.rs
+  |
+  |         builder::RequestBuilder::new(|ctx| ctx.request_from_shell(operation))
+  |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

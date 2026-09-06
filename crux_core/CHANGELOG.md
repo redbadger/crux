@@ -13,26 +13,16 @@ and this project adheres to
 - **Every request now says how many times it expects to be resolved.** The core
   has always known — `notify_shell` builds a request nothing will answer,
   `request_from_shell` one that takes a single response, `stream_from_shell` one
-  that takes a sequence — but that was erased at the FFI boundary. A shell
-  received `{ id, effect }` and had to know by hand whether to resolve zero, one
-  or many times; getting it wrong either hangs a command forever or resolves
-  something that has finished.
-
-  The new `RequestKind` makes it explicit:
+  that takes a sequence — but there was no way to ask. The new `RequestKind`
+  makes it explicit:
 
   ```rust
   pub enum RequestKind { Notify, Request, Stream }
   ```
 
-  It is read from a request, not declared on an operation, because the kind
-  belongs to the call site rather than the type. One `Operation` can span kinds:
-  a pub/sub operation may be published as a notification and subscribed to as a
-  stream.
+  and it can be read wherever a request is held:
 
   ```rust
-  // the serialized lane
-  let kind = request.kind();               // Option<RequestKind>
-
   // the typed lane
   let kind = handle.kind();                // RequestKind
 
@@ -44,66 +34,39 @@ and this project adheres to
   said to call `resolve` once for a one-shot effect and repeatedly for a
   streaming one, without offering any way to tell which you were holding.
 
-  Nothing about writing a Crux app changes: keep calling `notify_shell`,
-  `request_from_shell` and `stream_from_shell`, and the framework works the kind
-  out for itself.
-
-- **Nothing changes on the wire.** The kind travels in the top two bits of
-  `bridge::EffectId`, which is a fixed-width `u32` under `bincode`, so a request
-  is still exactly an id followed by an effect and generated Swift, Kotlin, C#
-  and TypeScript are byte-for-byte unchanged. A shell generated against 0.20
-  keeps working against this release without regenerating: it treats an id as
-  opaque and echoes it back, and the core looks that id up whole, kind bits
-  included.
-
-  Read the id through `EffectId::kind()` and `EffectId::sequence()` rather than
-  unpacking the `u32`; the encoding is an implementation detail and is expected
-  to change. The one visible consequence is that a shell printing raw ids for
-  debugging sees large numbers for requests and streams — `sequence()` is the
-  small ascending number it used to print.
-
-  That leaves the low 30 bits for the sequence — a billion ids, shared by all
-  three kinds, since the kind bits already keep their ids apart — and it still
-  wraps by stepping over any id that is still outstanding.
-
-### 🐛 Bug Fixes
-
-- **Resolving a fire-and-forget request says so again.** 0.20 stopped storing
-  such a request, which made its id indistinguishable from one that was never
-  issued, so the error regressed from `ResolveError::Never` to
-
-  ```
-  Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)))
-  ```
-
-  The id now carries its kind, so the bridge can recognise a notification
-  without storing anything, and reports
-
-  ```
-  Attempted to resolve a request that is not expected to be resolved.
-  ```
-
-  `ResolveError::Never` is therefore reachable through the bridge once more.
-  Resolving an id that really is unknown, or one that has already been resolved,
-  still reports `NotFound`.
-
-### 💥 Breaking Changes
-
-- **`effects::routes::Parked::park` returns `effects::ParkedRequest` instead of a
-  tuple**, so the kind can travel with the id — a custom FFI lane is precisely
-  where you have to decide whether to answer once, repeatedly, or not at all.
+- **Operations can declare their request kind.** `Operation` gains a `KIND`
+  associated constant, and the new `crux_core::operation` module the three
+  marker traits that go with it:
 
   ```rust
-  // before
-  let (id, operation) = camera.park(request);
+  use crux_core::{RequestKind, capability::Operation, operation};
 
-  // after
-  let parked = camera.park(request);
-  // parked.id, parked.kind, parked.operation
+  impl Operation for Publish {
+      type Output = ();
+      const KIND: Option<RequestKind> = Some(RequestKind::Notify);
+  }
+
+  impl operation::Notify for Publish {}
   ```
 
-  This only affects the `Parked` lane of the effect router, added in 0.19. The
-  serialized lane and the plain `Bridge` are unaffected.
+  An operation that declares a kind can only be sent with the constructor that
+  matches it — `notify_shell` for `Notify`, `request_from_shell` for `Request`,
+  `stream_from_shell` for `Stream`. The wrong one is a compile error:
+
+  ```text
+  error[E0080]: evaluation panicked: this operation does not declare
+  RequestKind::Request; send it with notify_shell or stream_from_shell instead
+  ```
+
+  The check is a constant evaluated after monomorphisation, so it is reported
+  when the code is built — by `cargo build`, `cargo test` or
+  `cargo clippy --all-targets` — rather than by `cargo check`.
+
+  `RenderOperation` now declares `Notify`. Everything else is unchanged:
+  `KIND` defaults to `None`, which means "the call site decides", so every
+  existing `Operation` implementation keeps compiling and keeps behaving
+  exactly as it did. Nothing changes on the wire, and no generated shell code
+  changes.
 
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
 

@@ -340,10 +340,10 @@ mod ffi {
                     // this doesn't necessarily need to rely on the shell instance either, could be another
                     // form of callback to the shell
                     Effect::Camera(request) => {
-                        let parked = routes.camera.park(request);
+                        let (id, operation) = routes.camera.park(request);
                         shell.process_camera_effect(CameraEffect {
-                            id: parked.id.into_raw(),
-                            operation: parked.operation,
+                            id: id.into_raw(),
+                            operation,
                         });
                     }
                     // Original serialized FFI
