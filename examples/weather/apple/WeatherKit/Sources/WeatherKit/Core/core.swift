@@ -1,7 +1,7 @@
 import App
 import Foundation
 
-private let logger = Log.core
+private nonisolated let logger = Log.core
 
 @Observable
 @MainActor
@@ -9,6 +9,7 @@ public class Core {
     public var view: ViewModel
 
     private let bridge: CoreBridge
+    private var dispatcher: EffectDispatcher!
     let keyValueStore: KeyValueStore
     var activeTimers: [UInt64: Timer] = [:]
 
@@ -25,6 +26,17 @@ public class Core {
         }
 
         view = bridge.currentView()
+
+        // ANCHOR: resolve_helper
+        // The dispatcher hands us the serialized output of a handler method,
+        // from whichever task ran it, and we feed it back to the core.
+        dispatcher = EffectDispatcher(handler: self) { [weak self] requestId, responseBytes in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.process(self.bridge.resolve(requestId: requestId, responseBytes: responseBytes))
+            }
+        }
+        // ANCHOR_END: resolve_helper
     }
 
     #if DEBUG
@@ -38,38 +50,23 @@ public class Core {
     #endif
 
     public func update(_ event: Event) {
-        let requests = bridge.processEvent(event)
-        for request in requests {
-            processEffect(request)
-        }
+        process(bridge.processEvent(event))
     }
 
     // ANCHOR: dispatch
-    func processEffect(_ request: Request) {
-        switch request.effect {
-        case .render:
-            view = bridge.currentView()
-        case let .time(timeRequest):
-            resolveTime(request: timeRequest, requestId: request.id)
-        case let .secret(secretRequest):
-            resolveSecret(request: secretRequest, requestId: request.id)
-        case let .http(httpRequest):
-            resolveHttp(request: httpRequest, requestId: request.id)
-        case let .keyValue(kvRequest):
-            resolveKeyValue(request: kvRequest, requestId: request.id)
-        case let .location(locationRequest):
-            resolveLocation(request: locationRequest, requestId: request.id)
+    /// Every request goes to the generated `EffectDispatcher`, which calls the
+    /// matching `EffectHandler` method and resolves the request for us — never
+    /// for a notification, exactly once for a request.
+    private func process(_ requests: [Request]) {
+        for request in requests {
+            dispatcher.dispatch(request)
         }
     }
     // ANCHOR_END: dispatch
 
-    // ANCHOR: resolve_helper
-    func resolve(requestId: UInt32, serialize: () throws -> [UInt8]) {
-        let responseBytes = try! serialize() // swiftlint:disable:this force_try
-        let requests = bridge.resolve(requestId: requestId, responseBytes: responseBytes)
-        for request in requests {
-            processEffect(request)
-        }
+    /// Re-read the view model. `render` is a notification, so there is nothing
+    /// to resolve.
+    func refreshView() {
+        view = bridge.currentView()
     }
-    // ANCHOR_END: resolve_helper
 }

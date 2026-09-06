@@ -5,197 +5,160 @@
 import "./wasm-getrandom";
 
 import { CoreFfi } from "shared";
-import type { Effect, Event } from "shared_types/app";
+import type {
+  Clear,
+  EffectHandler,
+  EffectSink,
+  Event,
+  Get,
+  Message,
+  NotifyAfter,
+  Publish,
+  Set as SetValue,
+  Subscribe,
+  TimerId,
+  ValueResult,
+} from "shared_types/app";
 import {
-  ViewModel,
+  EffectDispatcher,
   Request,
-  matchEffect,
-  matchPubSubOperation,
-  matchTimeRequest,
-  matchKeyValueOperation,
-  timeResponseDurationElapsed,
-  keyValueResultOk,
-  keyValueResponseGet,
-  keyValueResponseSet,
-  valueNone,
-  valueBytes,
+  ViewModel,
   serializeEvent,
-  serializeKeyValueResult,
-  serializeTimeResponse,
+  valueBytes,
+  valueNone,
+  valueResultOk,
 } from "shared_types/app";
 import { BincodeSerializer, BincodeDeserializer } from "shared_types/bincode";
-import type { Serializer } from "shared_types/serde";
 import { Dispatch, RefObject, SetStateAction } from "react";
-
-export type Timers = {
-  [key: number]: number;
-};
 
 export type SyncMessage = {
   kind: "change" | "reset";
   data?: number[];
 };
 
-export class Core {
-  core: CoreFfi | null = null;
+/// The shell's side of the effect protocol.
+///
+/// `Core` implements the generated `EffectHandler`: one method per operation
+/// the app declares, each returning the single output that operation is
+/// answered with. The generated `EffectDispatcher` does the resolving —
+/// nothing here calls `resolve` by hand.
+export class Core implements EffectHandler {
+  private core: CoreFfi | null = null;
+  private readonly dispatcher: EffectDispatcher;
+  private readonly timers = new Map<bigint, number>();
+
   setState: Dispatch<SetStateAction<ViewModel>>;
-  setTimers: Dispatch<SetStateAction<Timers>>;
   channel: RefObject<BroadcastChannel>;
-  subscriptionId: RefObject<number | null>;
+  subscription: RefObject<EffectSink<Message> | null>;
 
   constructor(
     setState: Dispatch<SetStateAction<ViewModel>>,
-    setTimers: Dispatch<SetStateAction<Timers>>,
     channel: RefObject<BroadcastChannel>,
-    subscriptionId: RefObject<number | null>,
+    subscription: RefObject<EffectSink<Message> | null>,
   ) {
     // Don't initialize CoreFfi here - wait for WASM to be loaded
     this.setState = setState;
-    this.setTimers = setTimers;
     this.channel = channel;
-    this.subscriptionId = subscriptionId;
+    this.subscription = subscription;
+    this.dispatcher = new EffectDispatcher(this, (id, bytes) => {
+      this.process(this.ffi().resolve(id, bytes));
+    });
   }
 
   initialize() {
-    if (!this.core) {
-      this.core = CoreFfi.new();
-    }
+    this.core ??= CoreFfi.new();
   }
 
   view(): ViewModel {
-    if (!this.core) {
-      throw new Error("Core not initialized. Call initialize() first.");
-    }
-    return deserializeView(this.core.view());
+    return deserializeView(this.ffi().view());
   }
 
   update(event: Event) {
-    if (!this.core) {
-      throw new Error("Core not initialized. Call initialize() first.");
-    }
     console.log("event", event);
 
     const serializer = new BincodeSerializer();
     serializeEvent(event, serializer);
 
-    const effects = this.core.update(serializer.getBytes());
+    this.process(this.ffi().update(serializer.getBytes()));
+  }
 
-    const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.processEffect(id, effect);
+  private process(effects: Uint8Array | number[]) {
+    for (const request of deserializeRequests(effects)) {
+      console.log("effect", request.effect);
+      this.dispatcher.dispatch(request);
     }
   }
 
-  private processEffect(id: number, effect: Effect) {
-    console.log("effect", effect);
-
-    matchEffect(effect, {
-      Render: () => {
-        this.setState(this.view());
-      },
-
-      PubSub: ({ value: pubSubOp }) => {
-        matchPubSubOperation(pubSubOp, {
-          Publish: (op) => {
-            const message: SyncMessage = {
-              kind: "change",
-              data: op.value,
-            };
-            this.channel.current.postMessage(message);
-          },
-          Subscribe: () => {
-            this.subscriptionId.current = id;
-          },
-        });
-      },
-
-      Time: ({ value: timerOp }) => {
-        matchTimeRequest(timerOp, {
-          Now: () => unsupported("Time::Now"),
-          NotifyAt: () => unsupported("Time::NotifyAt"),
-          NotifyAfter: (op) => {
-            const { id: startId, duration } = op;
-            const milliseconds = Number(duration.nanos) / 1e6;
-
-            const handle = window.setTimeout(() => {
-              // Drop the timer
-              this.setTimers((ts) => {
-                const { [Number(startId.value)]: _, ...rest } = ts;
-                return rest;
-              });
-
-              this.respond(id, (s) =>
-                serializeTimeResponse(timeResponseDurationElapsed(startId), s),
-              );
-            }, milliseconds);
-            this.setTimers((ts) => ({
-              [Number(startId.value)]: handle,
-              ...ts,
-            }));
-          },
-          Clear: (op) => {
-            const cancelId = op.id;
-            this.setTimers((ts) => {
-              const { [Number(cancelId.value)]: handle, ...rest } = ts;
-              window.clearTimeout(handle);
-              return rest;
-            });
-          },
-        });
-      },
-
-      KeyValue: ({ value: request }) => {
-        matchKeyValueOperation(request, {
-          Get: (op) => {
-            const readKey = op.key;
-            const data = window.localStorage.getItem(readKey);
-            const bytes: number[] = data == null ? [] : JSON.parse(data);
-            const value = bytes.length === 0 ? valueNone() : valueBytes(bytes);
-
-            console.log(`Loaded document (${bytes.length} bytes)`);
-            const result = keyValueResultOk(keyValueResponseGet(value));
-            this.respond(id, (s) => serializeKeyValueResult(result, s));
-          },
-          Set: (op) => {
-            const { key: writeKey, value: writeValue } = op;
-            console.log(`Saving document (${writeValue.length} bytes)`);
-            window.localStorage.setItem(
-              writeKey,
-              JSON.stringify(Array.from(writeValue)),
-            );
-            const result = keyValueResultOk(keyValueResponseSet(valueNone()));
-            this.respond(id, (s) => serializeKeyValueResult(result, s));
-          },
-          Delete: () => unsupported("KeyValue::Delete"),
-          Exists: () => unsupported("KeyValue::Exists"),
-          ListKeys: () => unsupported("KeyValue::ListKeys"),
-        });
-      },
-    });
-  }
-
-  respond(id: number, serialize: (s: Serializer) => void) {
+  private ffi(): CoreFfi {
     if (!this.core) {
       throw new Error("Core not initialized. Call initialize() first.");
     }
-    const serializer = new BincodeSerializer();
-    serialize(serializer);
-
-    const effects = this.core.resolve(id, serializer.getBytes());
-    const requests = deserializeRequests(effects);
-
-    for (const { id, effect } of requests) {
-      this.processEffect(id, effect);
-    }
+    return this.core;
   }
-}
 
-// The notes app never issues these operations, but the generated `match`
-// helpers are exhaustive so every variant needs an arm. Throwing beats a silent
-// no-op: an unanswered request leaves the core's command waiting forever, so a
-// future change to the app would hang rather than fail here.
-function unsupported(operation: string): never {
-  throw new Error(`the notes shell does not implement ${operation}`);
+  // --- EffectHandler ------------------------------------------------------
+
+  render(): void {
+    this.setState(this.view());
+  }
+
+  publish(operation: Publish): void {
+    const message: SyncMessage = {
+      kind: "change",
+      data: operation.value,
+    };
+    this.channel.current.postMessage(message);
+  }
+
+  subscribe(_operation: Subscribe, sink: EffectSink<Message>): void {
+    // Every message a peer broadcasts becomes one item on this sink, for as
+    // long as the page lives. See `onMessage` in `page.tsx`.
+    this.subscription.current = sink;
+  }
+
+  kvGet(operation: Get): Promise<ValueResult> {
+    const data = window.localStorage.getItem(operation.key);
+    const bytes: number[] = data == null ? [] : JSON.parse(data);
+
+    console.log(`Loaded document (${bytes.length} bytes)`);
+    return Promise.resolve(
+      valueResultOk(bytes.length === 0 ? valueNone() : valueBytes(bytes)),
+    );
+  }
+
+  kvSet(operation: SetValue): Promise<ValueResult> {
+    console.log(`Saving document (${operation.value.length} bytes)`);
+    window.localStorage.setItem(
+      operation.key,
+      JSON.stringify(Array.from(operation.value)),
+    );
+    return Promise.resolve(valueResultOk(valueNone()));
+  }
+
+  timeNotifyAfter(operation: NotifyAfter): Promise<TimerId> {
+    const milliseconds = Number(operation.duration.nanos) / 1e6;
+    const timerId = operation.id.value;
+
+    return new Promise((resolve) => {
+      const handle = window.setTimeout(() => {
+        this.timers.delete(timerId);
+        resolve(operation.id);
+      }, milliseconds);
+      this.timers.set(timerId, handle);
+    });
+  }
+
+  timeClear(operation: Clear): void {
+    const timerId = operation.id.value;
+    const handle = this.timers.get(timerId);
+    if (handle !== undefined) {
+      window.clearTimeout(handle);
+      this.timers.delete(timerId);
+    }
+    // The promise `timeNotifyAfter` returned is deliberately left pending: the
+    // core has already given up on the timer, so resolving it now would be a
+    // response to a request that no longer exists.
+  }
 }
 
 function deserializeRequests(bytes: Uint8Array | number[]): Request[] {

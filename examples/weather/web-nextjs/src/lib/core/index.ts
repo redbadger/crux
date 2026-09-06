@@ -1,19 +1,32 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import { CoreFfi } from "shared";
-import type { Effect, Event, ViewModel } from "shared_types/app";
-import {
-  Request,
-  matchEffect,
-  serializeEvent,
-  serializeHttpResult,
-  serializeKeyValueResult,
-  serializeLocationResult,
-  serializeSecretResponse,
-  serializeTimeResponse,
-  deserializeViewModel,
+import type {
+  Clear,
+  Delete,
+  EffectHandler,
+  Event,
+  Fetch,
+  Get,
+  HttpRequest,
+  HttpResult,
+  Location,
+  NotifyAfter,
+  SecretDeleteResponse,
+  SecretFetchResponse,
+  SecretStoreResponse,
+  Set as SetValue,
+  Store,
+  TimerId,
+  ValueResult,
+  ViewModel,
 } from "shared_types/app";
-import type { Serializer } from "shared_types/serde";
+import {
+  EffectDispatcher,
+  Request,
+  deserializeViewModel,
+  serializeEvent,
+} from "shared_types/app";
 import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
 import * as http from "./http";
 import * as kv from "./kv";
@@ -22,72 +35,89 @@ import * as secret from "./secret";
 import * as time from "./time";
 
 // ANCHOR: core_base
-export class Core {
+/// The shell's side of the effect protocol.
+///
+/// `Core` implements the generated `EffectHandler`: one method per operation
+/// the app declares, each returning the single output that operation is
+/// answered with. The generated `EffectDispatcher` does the resolving, so
+/// nothing here decides when — or how often — to call `resolve`.
+export class Core implements EffectHandler {
   core: CoreFfi;
   callback: Dispatch<SetStateAction<ViewModel>>;
+  private readonly dispatcher: EffectDispatcher;
 
   constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
     this.callback = callback;
     this.core = CoreFfi.new();
+    this.dispatcher = new EffectDispatcher(this, (id, bytes) =>
+      this.respond(id, bytes),
+    );
   }
 
   update(event: Event) {
     const serializer = new BincodeSerializer();
     serializeEvent(event, serializer);
 
-    const effects = this.core.update(serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.resolve(id, effect);
-    }
+    this.dispatch(this.core.update(serializer.getBytes()));
   }
   // ANCHOR_END: core_base
 
-  resolve(id: number, effect: Effect) {
-    matchEffect(effect, {
-      Render: (): void => {
-        this.callback(deserializeView(this.core.view()));
-      },
-      // ANCHOR: http
-      Http: (e): void => {
-        void http
-          .request(e.value)
-          .then((r) => this.respond(id, (s) => serializeHttpResult(r, s)));
-      },
-      // ANCHOR_END: http
-      KeyValue: (e): void => {
-        void kv
-          .handle(e.value)
-          .then((r) => this.respond(id, (s) => serializeKeyValueResult(r, s)));
-      },
-      Location: (e): void => {
-        void location
-          .handle(e.value)
-          .then((r) => this.respond(id, (s) => serializeLocationResult(r, s)));
-      },
-      Secret: (e): void => {
-        const r = secret.handle(e.value);
-        this.respond(id, (s) => serializeSecretResponse(r, s));
-      },
-      Time: (e): void => {
-        void time
-          .handle(e.value)
-          .then((r) => this.respond(id, (s) => serializeTimeResponse(r, s)));
-      },
-    });
+  render(): void {
+    this.callback(deserializeView(this.core.view()));
+  }
+
+  // ANCHOR: http
+  http(operation: HttpRequest): Promise<HttpResult> {
+    return http.request(operation);
+  }
+  // ANCHOR_END: http
+
+  kvGet(operation: Get): Promise<ValueResult> {
+    return kv.get(operation);
+  }
+
+  kvSet(operation: SetValue): Promise<ValueResult> {
+    return kv.set(operation);
+  }
+
+  timeNotifyAfter(operation: NotifyAfter): Promise<TimerId> {
+    return time.notifyAfter(operation);
+  }
+
+  timeClear(operation: Clear): void {
+    time.clear(operation);
+  }
+
+  isLocationEnabled(): Promise<boolean> {
+    return location.isLocationEnabled();
+  }
+
+  getLocation(): Promise<Location | null> {
+    return location.getLocation();
+  }
+
+  fetchSecret(operation: Fetch): Promise<SecretFetchResponse> {
+    return secret.fetch(operation);
+  }
+
+  storeSecret(operation: Store): Promise<SecretStoreResponse> {
+    return secret.store(operation);
+  }
+
+  deleteSecret(operation: Delete): Promise<SecretDeleteResponse> {
+    return secret.remove(operation);
   }
 
   // ANCHOR: respond
-  respond(id: number, serialize: (s: Serializer) => void) {
-    const serializer = new BincodeSerializer();
-    serialize(serializer);
+  /// The dispatcher calls this with the serialized output of a handler
+  /// method; the core answers with the next batch of requests.
+  private respond(id: number, bytes: Uint8Array) {
+    this.dispatch(this.core.resolve(id, bytes));
+  }
 
-    const effects = this.core.resolve(id, serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.resolve(id, effect);
+  private dispatch(effects: Uint8Array | number[]) {
+    for (const request of deserializeRequests(effects)) {
+      this.dispatcher.dispatch(request);
     }
   }
   // ANCHOR_END: respond
