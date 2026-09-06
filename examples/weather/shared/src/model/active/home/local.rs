@@ -166,7 +166,7 @@ mod tests {
     use crate::{
         effects::{
             EffectTestExt,
-            location::{Location, LocationOperation, LocationResult},
+            location::{GetLocation, IsLocationEnabled, Location},
         },
         model::{ApiKey, Effect},
     };
@@ -253,7 +253,7 @@ mod tests {
             .into_parts();
 
         let event = cmd
-            .resolve_location(|_op| LocationResult::Location(Some(phoenix_location())))
+            .resolve_get_location(|_op| Some(phoenix_location()))
             .expect_event();
 
         local.update(event, &key).expect_continue().into_parts()
@@ -272,8 +272,8 @@ mod tests {
 
         assert!(matches!(local, LocalWeather::FetchingLocation));
 
-        cmd.expect_only_location_with(|op| {
-            assert_eq!(op, &LocationOperation::GetLocation);
+        cmd.expect_only_get_location_with(|op| {
+            assert_eq!(op, &GetLocation);
         });
     }
     // ANCHOR_END: simple_test
@@ -396,8 +396,8 @@ mod tests {
 
         assert!(matches!(local, LocalWeather::CheckingPermission));
 
-        cmd.expect_only_location_with(|op| {
-            assert_eq!(op, &LocationOperation::IsLocationEnabled);
+        cmd.expect_only_is_location_enabled_with(|op| {
+            assert_eq!(op, &IsLocationEnabled);
         });
     }
 }
