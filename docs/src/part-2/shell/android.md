@@ -36,35 +36,45 @@ Kotlin doesn't have a separate bridge file like Swift's `LiveBridge`; the bridgi
 
 ## Handling effects
 
-`handleEffects` deserialises the list of effect requests and dispatches each one:
+`Core` implements the generated `EffectHandler` interface, and every request goes to the generated `EffectDispatcher`:
 
 ```kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:process_request}}
 ```
 
-An exhaustive `when` over the sealed `Effect` class — Kotlin's equivalent of the Swift match, and the compiler enforces the coverage. Each branch delegates to a per-capability handler method.
+There's no `when` over the sealed `Effect` class any more — the dispatcher does that, calls the matching handler method, and resolves the request with whatever it returns. Each request gets its own coroutine, because `dispatch` is `suspend`: a debounce timer suspends for its whole duration, and the requests queued behind it must not wait for it.
 
-Here's the HTTP handler delegation:
+The handler methods are one-liners that delegate to the injected handlers. HTTP, for example:
 
 ```kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:handle_http}}
 ```
 
-`httpHandler.request(...)` is a `suspend` function that wraps OkHttp:
+`suspend fun http(operation: HttpRequest): HttpResult` — the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `Core` calls `resolve`. Compare `override fun render(operation: RenderOperation) = render()`: a notification, so it returns `Unit` and is never resolved. `timeClear` is the other notification.
+
+`httpHandler.request(...)` is the `suspend` function that wraps OkHttp:
 
 ```kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/HttpHandler.kt:request}}
 ```
 
-When it returns, we serialise the result and call `resolveAndHandleEffects`:
+Because the handler interface owns the response types, the per-capability handlers lost their `when` blocks too: `KeyValueHandler.get(operation: Get): ValueResult` takes exactly the operation it serves and returns exactly its output, rather than matching a wide operation enum and constructing a matching response variant.
+
+The dispatcher resolves through the callback `Core` gave it, which calls `coreFfi.resolve(...)` and then **recurses** through `handleEffects` with the new effect requests:
 
 ```kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:resolve}}
 ```
 
-Which calls `coreFfi.resolve(...)` and then **recurses** through `handleEffects` with the new effect requests. Same reason as in the iOS chapter: `Command` is async, and a command with multiple `.await` points produces its next effect only after the previous one is resolved. The shell has to keep looping.
+Same reason as in the iOS chapter: `Command` is async, and a command with multiple `.await` points produces its next effect only after the previous one is resolved. The shell has to keep looping.
 
-The other handlers (`handleKeyValueEffect`, `handleLocationEffect`, `handleSecretEffect`, plus the `timeHandler.handle(...)` delegation) all follow the same pattern.
+```admonish note title="Kotlin name collisions"
+`crux_kv`'s `Set` operation generates a Kotlin class called `Set`, which
+collides with `kotlin.collections.Set`. `Core.kt` imports it as
+`import com.crux.example.weather.Set as KeyValueSet`. The same collision
+appears in Swift and TypeScript, and the same fix — an alias at the import —
+works there.
+```
 
 ## Views driven by the Crux view model
 

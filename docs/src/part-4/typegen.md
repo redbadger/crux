@@ -92,7 +92,10 @@ that the codegen binary needs:
 
 The macro discovers the operation types carried by each variant (e.g.
 `RenderOperation`) and registers them for type generation
-automatically.
+automatically. It also records, per variant, the request kind the
+operation declares and the `Format` of its `Output` — that's the data
+behind the [request kinds and handler API](#request-kinds-and-the-effect-handler-api)
+below.
 
 ### Skipping and opaque types
 
@@ -222,6 +225,172 @@ For each target language, the codegen produces:
   effects and view models.
 - **Helper extensions** — like `Requests.swift`, which provides
   convenience methods for working with effect requests.
+- **A request-kind accessor and a typed effect handler API** — see the
+  next section.
 
 For Swift, Kotlin, TypeScript, and C#, this typegen output sits beside the
 BoltFFI-generated binding package for the byte-oriented core API.
+
+## Request kinds and the effect handler API
+
+A shell holding a `Request { id, effect }` has to know two things that
+are not in the bytes: what type to answer with, and *how many times*.
+Both are static properties of the operation each `Effect` variant
+carries — an operation declares a
+[request kind](../part-2/capabilities.md#one-output-per-operation), notify,
+request or stream, and one `Output` — so type generation emits them.
+
+Next to the generated `Effect`, you get:
+
+- a `RequestKind` type and a per-variant accessor, which is `nil` /
+  `null` / `undefined` for an operation that declares no kind;
+- an `EffectHandler` protocol or interface with one method per variant:
+  a notification's method returns nothing, a request's method returns
+  the operation's `Output`, a stream's method takes an
+  `EffectSink<Output>`, and a legacy variant's method is handed
+  `(operation, requestId, resolve)` exactly as before;
+- an `EffectDispatcher(handler, resolve)` that calls the right method
+  and resolves the request never, once, or once per sink item,
+  serializing each output with the generated bincode serializers.
+
+The `resolve` you hand the dispatcher is your own
+`(requestId, bytes) -> ()` callback around the core's `resolve` FFI —
+the same one you would have called by hand.
+
+Here is what that looks like for an effect with one variant of each
+kind, plus a `Legacy` operation that declares nothing.
+
+**Swift**
+
+```swift
+public enum RequestKind: Hashable, Sendable { case notify, request, stream }
+
+extension Effect {
+    public var requestKind: RequestKind? { /* generated switch */ }
+}
+
+public struct EffectSink<Item>: Sendable {
+    public func send(_ item: Item)
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol EffectHandler: Sendable {
+    func render(_ operation: RenderOperation)
+    func http(_ operation: HttpRequest) async -> HttpResult
+    func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>)
+    func legacy(_ operation: LegacyOperation, requestId: UInt32,
+                resolve: @escaping @Sendable ([UInt8]) -> Void)
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct EffectDispatcher: Sendable {
+    public init(handler: any EffectHandler,
+                resolve: @escaping @Sendable (UInt32, [UInt8]) -> Void)
+    public func dispatch(_ request: Request)
+}
+```
+
+**Kotlin**
+
+```kotlin
+enum class RequestKind { NOTIFY, REQUEST, STREAM }
+
+val Effect.requestKind: RequestKind?
+
+fun interface EffectSink<in T> { fun send(item: T) }
+
+interface EffectHandler {
+    fun render(operation: RenderOperation)
+    suspend fun http(operation: HttpRequest): HttpResult
+    fun subscribe(operation: Subscribe, sink: EffectSink<Message>)
+    fun legacy(operation: LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
+}
+
+class EffectDispatcher(handler: EffectHandler, resolve: (UInt, ByteArray) -> Unit) {
+    suspend fun dispatch(request: Request)
+}
+```
+
+`dispatch` is `suspend`, because a request's handler method may be. Give
+each request its own coroutine if one of them can take a while — a timer,
+for instance — so the rest are not held up behind it.
+
+**TypeScript**
+
+```typescript
+export type RequestKind = "notify" | "request" | "stream";
+export function effectRequestKind(effect: Effect): RequestKind | undefined;
+
+export interface EffectSink<T> { send(item: T): void }
+
+export interface EffectHandler {
+    render(operation: RenderOperation): void;
+    http(operation: HttpRequest): Promise<HttpResult>;
+    subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
+    legacy(operation: LegacyOperation, requestId: uint32,
+           resolve: (bytes: Uint8Array) => void): void;
+}
+
+export class EffectDispatcher {
+    constructor(handler: EffectHandler,
+                resolve: (id: uint32, bytes: Uint8Array) => void);
+    public dispatch(request: Request): void;
+}
+```
+
+The generated union already uses `kind` as its discriminant, so the
+accessor is the free function `effectRequestKind(effect)` rather than a
+property.
+
+**C#**
+
+```csharp
+public enum RequestKind { Notify, Request, Stream }
+
+// emitted inside the generated Effect record, which is not partial
+public RequestKind? RequestKind { get; }
+
+public interface IEffectSink<in T> { void Send(T item); }
+
+public interface IEffectHandler
+{
+    void Render(RenderOperation operation);
+    Task<HttpResult> Http(HttpRequest operation);
+    void Subscribe(Subscribe operation, IEffectSink<Message> sink);
+    void Legacy(LegacyOperation operation, uint requestId, Action<byte[]> resolve);
+}
+
+public sealed class EffectDispatcher
+{
+    public EffectDispatcher(IEffectHandler handler, Action<uint, byte[]> resolve);
+    public void Dispatch(Request request);
+}
+```
+
+### Notes and escape hatches
+
+- The emission is **additive**. A shell that matches on `Effect` and
+  calls `resolve` by hand keeps working unchanged, which is what Crux's
+  Rust shells do — the [Leptos shell](../part-2/shell/leptos.md) matches
+  the enum directly, because in Rust the match is already as precise as
+  a handler interface.
+- The Swift protocol and dispatcher carry
+  `@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)`,
+  because `Task {}` needs those versions and the generated
+  `Package.swift` declares no `platforms:`. A package that declares its
+  own platforms conforms without repeating the annotation. Note also
+  that the generated operation and output types are not `Sendable`, so
+  a `@MainActor` type conforming to the `Sendable` `EffectHandler`
+  needs a `nonisolated` extension — see the
+  [iOS chapter](../part-2/shell/ios.md).
+- `RequestKind`, `EffectSink`, `EffectHandler` and `EffectDispatcher`
+  (and their C# `I`-prefixed forms) are reserved names.
+  `TypeRegistry::build` fails if one of your shared types or effect
+  variants claims one.
+- `CodeGenerator::without_effect_handlers()` turns the handler API off
+  and keeps the kind accessor.
+- Operation names collide with standard library types more often than
+  you'd expect — `crux_kv`'s `Set` shadows `Set` in Swift, Kotlin and
+  TypeScript. Alias it at the import site
+  (`import com.example.Set as KeyValueSet`, `import { Set as SetValue }`).
+- Facet type generation requires `facet_generate` 0.21 or later.

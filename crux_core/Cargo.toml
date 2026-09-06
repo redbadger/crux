@@ -1,6 +1,6 @@
 [package]
 name = "crux_core"
-version = "0.20.0"
+version = "0.21.0"
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -21,7 +21,7 @@ crossbeam-channel = "0.5"
 camino = { version = "1.2", optional = true }
 cargo_metadata = { version = "=0.19", optional = true }
 uniffi_bindgen = { workspace = true, optional = true }
-crux_macros = { version = "0.10.0", path = "../crux_macros", optional = true }
+crux_macros = { version = "0.11.0", path = "../crux_macros", optional = true }
 facet.workspace = true
 facet_generate = { workspace = true, optional = true }
 futures = "0.3"

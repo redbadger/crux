@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.21.0](https://github.com/redbadger/crux/compare/crux_core-v0.20.0...crux_core-v0.21.0) - 2026-09-06
 
 ### 🚀 Features
 
@@ -171,6 +171,17 @@ and this project adheres to
 
   Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
   every top-level type and exposes the helpers these plugins need.
+
+### ⚙️ Miscellaneous Tasks
+
+- **Facet type generation now requires `facet_generate` 0.21.** Only the
+  `facet_typegen` feature is affected — the serde type generation path, and
+  every other feature of this crate, are unchanged.
+- Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.
+- Released in lockstep with `crux_http` 0.21, `crux_kv` 0.15 and `crux_time`
+  0.19. The two capability crates deprecate their enum APIs in favour of the
+  per-operation types; see their changelogs and the
+  [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html).
 
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
 

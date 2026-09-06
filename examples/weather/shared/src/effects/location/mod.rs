@@ -27,5 +27,5 @@ pub struct IsLocationEnabled;
 
 /// Ask for the device's current coordinates.
 #[derive(Operation, Facet, Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[operation(request, output = Option<Location>)]
+#[operation(request, output = Option<Location>, register(Location))]
 pub struct GetLocation;

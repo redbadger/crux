@@ -78,6 +78,7 @@ fn register_extra_types() {
     let actual = operation_impl(&input);
 
     insta::assert_snapshot!(pretty_print(&actual), @r#"
+    #[allow(unexpected_cfgs)]
     impl ::crux_core::capability::Operation for Get {
         type Output = ValueResult;
         const KIND: ::core::option::Option<::crux_core::RequestKind> = ::core::option::Option::Some(
