@@ -1,0 +1,27 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "request_kind::<Swift>()"
+---
+
+/// How many times the shell is expected to resolve a request.
+public enum RequestKind: Hashable, Sendable {
+    /// Never — the core is not waiting for an answer.
+    case notify
+    /// Exactly once.
+    case request
+    /// Any number of times, until the shell stops sending.
+    case stream
+}
+
+extension Effect {
+    /// How many times the shell resolves a request carrying this effect,
+    /// or `nil` when the operation leaves that to the call site.
+    public var requestKind: RequestKind? {
+        switch self {
+        case .render: return .notify
+        case .http: return .request
+        case .subscribe: return .stream
+        case .legacy: return nil
+        }
+    }
+}
