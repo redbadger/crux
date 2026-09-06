@@ -81,6 +81,7 @@
 //! # }
 //! ```
 use std::{
+    collections::BTreeMap,
     fs::{self, File},
     io::Write,
     process::Command,
@@ -131,9 +132,19 @@ impl Export for () {
     }
 }
 
-pub struct TypeRegistry(RegistryBuilder);
+/// The request kind of each variant of one effect enum, keyed by variant name
+/// in declaration order. `None` means the operation declares no kind.
+pub type EffectKinds = Vec<(String, Option<crate::RequestKind>)>;
 
-pub struct CodeGenerator(Registry);
+pub struct TypeRegistry {
+    builder: RegistryBuilder,
+    effect_kinds: BTreeMap<String, EffectKinds>,
+}
+
+pub struct CodeGenerator {
+    registry: Registry,
+    effect_kinds: BTreeMap<String, EffectKinds>,
+}
 
 /// The `TypeRegistry` struct stores the registered types so that they can be generated for foreign languages
 /// use `TypeRegistry::new()` to create an instance
@@ -141,7 +152,10 @@ impl TypeRegistry {
     /// Creates an instance of the `TypeRegistry` struct for registration only
     #[must_use]
     pub fn new() -> Self {
-        Self(RegistryBuilder::new())
+        Self {
+            builder: RegistryBuilder::new(),
+            effect_kinds: BTreeMap::new(),
+        }
     }
 
     /// Register all the types used in app `A` to be shared with the Shell.
@@ -195,8 +209,8 @@ impl TypeRegistry {
     where
         T: Facet<'a>,
     {
-        let builder = std::mem::take(&mut self.0);
-        self.0 = builder.add_type::<T>().map_err(|e| {
+        let builder = std::mem::take(&mut self.builder);
+        self.builder = builder.add_type::<T>().map_err(|e| {
             TypeGenError::Generation(format!(
                 "couldn't register type {}: {e} {}",
                 std::any::type_name::<T>(),
@@ -207,16 +221,44 @@ impl TypeRegistry {
         Ok(self)
     }
 
+    /// Records the [`RequestKind`](crate::RequestKind) each variant of an
+    /// effect enum declares, so that type generation can tell the shell how
+    /// many times it is expected to resolve each request.
+    ///
+    /// Called by `#[effect(facet_typegen)]`; you should not need to call it
+    /// yourself. `effect` is the name of the effect enum and `kinds` pairs each
+    /// variant name with the `Operation::KIND` of the operation it carries —
+    /// `None` for an operation that declares no kind.
+    ///
+    /// # Errors
+    /// Returns a [`TypeGenError`] if the kinds cannot be recorded.
+    pub fn register_effect_kinds(
+        &mut self,
+        effect: &str,
+        kinds: &[(&str, Option<crate::RequestKind>)],
+    ) -> Result<&mut Self, TypeGenError> {
+        self.effect_kinds.insert(
+            effect.to_string(),
+            kinds
+                .iter()
+                .map(|(variant, kind)| ((*variant).to_string(), *kind))
+                .collect(),
+        );
+
+        Ok(self)
+    }
+
     /// Builds the type registry and returns a [`CodeGenerator`] instance.
     /// # Errors
     /// Returns a [`TypeGenError`] if the type registration fails.
     pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
-        let builder = std::mem::take(&mut self.0);
-        let generator = CodeGenerator(
-            builder
+        let builder = std::mem::take(&mut self.builder);
+        let generator = CodeGenerator {
+            registry: builder
                 .build()
                 .map_err(|e| TypeGenError::Generation(e.to_string()))?,
-        );
+            effect_kinds: std::mem::take(&mut self.effect_kinds),
+        };
 
         Ok(generator)
     }
@@ -254,7 +296,7 @@ impl CodeGenerator {
         swift::Installer::new(&config.package_name, &path)
             .plugin(BincodePlugin)
             .external_packages(&config.external_packages)
-            .generate(&self.0)?;
+            .generate(&self.registry)?;
 
         Ok(())
     }
@@ -287,7 +329,7 @@ impl CodeGenerator {
         kotlin::Installer::new(&config.package_name, &config.out_dir)
             .plugin(BincodePlugin)
             .external_packages(&config.external_packages)
-            .generate(&self.0)?;
+            .generate(&self.registry)?;
 
         Ok(())
     }
@@ -320,7 +362,7 @@ impl CodeGenerator {
         csharp::Installer::new(&config.package_name, &config.out_dir)
             .plugin(BincodePlugin)
             .external_packages(&config.external_packages)
-            .generate(&self.0)?;
+            .generate(&self.registry)?;
 
         Ok(())
     }
@@ -348,7 +390,7 @@ impl CodeGenerator {
         typescript::Installer::new(&config.package_name, output_dir)
             .plugin(BincodePlugin)
             .external_packages(&config.external_packages)
-            .generate(&self.0)?;
+            .generate(&self.registry)?;
 
         let ts_config_str = serde_json::to_string_pretty(&json!({
             "compilerOptions": {
@@ -391,6 +433,13 @@ impl CodeGenerator {
     /// Consumes the generator and returns the registry
     #[must_use]
     pub fn registry(self) -> Registry {
-        self.0
+        self.registry
+    }
+
+    /// The request kind each effect variant declares, keyed by effect enum
+    /// name, as recorded by [`TypeRegistry::register_effect_kinds`].
+    #[must_use]
+    pub const fn effect_kinds(&self) -> &BTreeMap<String, EffectKinds> {
+        &self.effect_kinds
     }
 }
