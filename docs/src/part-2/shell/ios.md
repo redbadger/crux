@@ -41,13 +41,21 @@ This is the only place that knows about bincode or `CoreFfi`. Everything else in
 
 ## Handling effects
 
-The `Core` class in WeatherKit owns the bridge and dispatches effect requests:
+`Core` implements the generated `EffectHandler` protocol — one method per operation the app declares — and hands every request to the generated `EffectDispatcher`:
 
 ```swift
 {{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/core.swift:dispatch}}
 ```
 
-An exhaustive match on the effect type. Each branch delegates to a `resolve<Capability>` function defined in its own file (`http.swift`, `kv.swift`, `location.swift`, `secret.swift`, `time.swift`). The handlers are implemented as Swift extensions on `Core`, so they share state (like the `KeyValueStore` and the active timer list) without needing to pass it around.
+No match statement at all: the dispatcher calls the right method and resolves the request afterwards. The conformance itself is a one-liner, in `handler.swift`:
+
+```swift
+{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/handler.swift}}
+```
+
+The rest of the methods live beside the platform code they use (`http.swift`, `keyValue.swift`, `location.swift`, `secret.swift`, `time.swift`), all as Swift extensions on `Core`, so they share state (like the `KeyValueStore` and the active timer list) without passing it around.
+
+Note the `nonisolated`. The generated `EffectHandler` is `Sendable` and its requirements are not actor-isolated, but `Core` is `@MainActor` — so the handler methods are `nonisolated` and hop to the main actor only where they touch main-actor state. URLSession, Keychain and CoreLocation work doesn't belong on the main actor anyway.
 
 Here's the HTTP handler in full:
 
@@ -55,15 +63,17 @@ Here's the HTTP handler in full:
 {{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/http.swift}}
 ```
 
-`resolveHttp` starts a `Task` to run off the main actor, performs the request with `URLSession`, serialises the result, and calls `resolve(requestId:serialize:)`. That call is where things get interesting:
+`http(_:)` is `async` and returns an `HttpResult`. That's the whole contract — the operation declares that it is answered exactly once, with an `HttpResult`, so the method signature says so and the dispatcher does the resolving. There's no request id in sight and no `resolve` call to get wrong. Compare `render(_:)` above: a notification, so it returns nothing and is never resolved.
+
+What the dispatcher resolves *with* is the callback `Core` gave it at construction:
 
 ```swift
 {{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/core.swift:resolve_helper}}
 ```
 
-It passes the bytes to the bridge and then loops over any **new** effect requests that came back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. The shell has to keep processing until the command's task finishes.
+It hops to the main actor, passes the bytes to the bridge, and then loops over any **new** effect requests that came back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. The shell has to keep processing until the command's task finishes.
 
-The other effect handlers follow the same shape — run the work, serialise the response, call `resolve(requestId:serialize:)`.
+The other effect handlers follow the same shape — one method per operation, returning that operation's output. The timer ones are worth a glance: `timeNotifyAfter` waits out the duration and returns the `TimerId`, while `timeClear` is a *notification* — it cancels the pending `Timer` and returns nothing. Resolving a cleared timer afterwards would hand the core an id it no longer knows about.
 
 ## Views driven by the ViewModel
 

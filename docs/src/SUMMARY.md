@@ -48,6 +48,7 @@
 
 1. [Migrating crux_http to native http types](./guide/migrate-crux-http.md)
 1. [Handling crux_http rejections](./guide/http-rejections.md)
+1. [Migrating to per-operation types](./guide/migrate-per-operation-types.md)
 
 # RFCs
 

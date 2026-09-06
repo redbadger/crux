@@ -17,7 +17,11 @@ Let's briefly talk about what we want from this interface. Ideally, in our shell
 - have an equivalent for our `Event`, `Effect` and `ViewModel` types
 - not have to worry about what black magic is happening behind the scenes to make that work
 
-Crux provides code generation support for all of the above.
+Crux provides code generation support for all of the above. It also generates,
+from each effect variant's declared request kind, an `EffectHandler` interface
+and a dispatcher that calls `resolve` for you the right number of times — we
+stick to calling `resolve` by hand in this part, and pick the generated handler
+API up in [Part II](../part-2/shell.md).
 
 ```admonish note
 It isn't in any way actual black magic. What happens is Crux exposes FFI calls taking and returning

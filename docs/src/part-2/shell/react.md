@@ -69,13 +69,13 @@ So the win here is mostly clarity: the stage-picking logic lives in one place, a
 
 ## Handling effects
 
-The FFI bridge is a single class:
+The FFI bridge is a single class, which implements the generated `EffectHandler`:
 
 ```typescript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:core_base}}
 ```
 
-`update` serialises an event with `BincodeSerializer`, calls `CoreFfi.update` (the WASM export), and deserialises the returned bytes into `Request` objects. Each request carries an `id` and an `effect`; we walk them and dispatch each to a per-capability branch.
+`update` serialises an event with `BincodeSerializer`, calls `CoreFfi.update` (the WASM export), deserialises the returned bytes into `Request` objects, and hands each one to the generated `EffectDispatcher`. There is no `switch` over the effect union here: the dispatcher calls the method for the variant it received and resolves the request with what that method returns.
 
 HTTP looks like this:
 
@@ -83,15 +83,42 @@ HTTP looks like this:
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:http}}
 ```
 
-The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest` into a browser `Request` and the `Response` back into the shared `HttpResult`. When it returns, we call `respond`:
+One method, returning a `Promise<HttpResult>` — the operation declares that it is answered exactly once with an `HttpResult`, so that's the signature, and the dispatcher awaits it and resolves. The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest` into a browser `Request` and the `Response` back into the shared `HttpResult`. `render(): void` and `timeClear(operation: Clear): void` are the two notifications — nothing to return, nothing resolved.
+
+What the dispatcher resolves *through* is `respond`:
 
 ```typescript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:respond}}
 ```
 
-Same recursion as the other shells: serialise the response, call `CoreFfi.resolve`, and loop through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
+Same recursion as the other shells: call `CoreFfi.resolve` with the bytes, and loop through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
 
-The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape.
+The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape: one method per operation, returning that operation's output.
+
+```admonish note title="Two TypeScript details"
+`crux_kv`'s `Set` operation generates a type called `Set`, which shadows the
+built-in — `index.ts` imports it as `Set as SetValue`. And the generated union
+already uses `kind` as its discriminant, so the request-kind accessor is a free
+function, `effectRequestKind(effect)`, rather than a property.
+```
+
+The notes example goes one step further and uses a **stream**. Its `Subscribe`
+operation is resolved once per message from a peer, so the generated handler
+method takes a sink instead of returning a value:
+
+```typescript
+subscribe(_operation: Subscribe, sink: EffectSink<Message>): void {
+  // Every message a peer broadcasts becomes one item on this sink, for as
+  // long as the page lives.
+  this.subscription.current = sink;
+}
+```
+
+The shell parks the sink and calls `sink.send(new Message(bytes))` whenever a
+message arrives; each `send` resolves the original request again. Before the
+handler API, that shell had to keep the request id in a ref and remember to
+resolve it repeatedly and never terminate it — the sink is the same thing with
+the bookkeeping generated.
 
 ## Shared components
 

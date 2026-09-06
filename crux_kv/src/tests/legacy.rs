@@ -1,3 +1,6 @@
+//! The tests for the deprecated enum API, kept until it is removed.
+#![allow(deprecated)]
+
 use anyhow::Result;
 use crux_core::{
     App as _, Command,

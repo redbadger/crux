@@ -62,7 +62,9 @@ Here is the Weather app's `Effect` type:
 {{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-The six variants are every side effect the app can produce: rendering the UI, storing key-value data, making HTTP requests, checking location, storing secrets, and setting timers. To add a new kind of effect, you extend this enum.
+Eleven variants, one per operation the app can ask for: rendering the UI, an HTTP request, reading and writing the key-value store, starting and clearing a timer, two location questions, and three secret operations. To add a new kind of effect, you extend this enum.
+
+Note that the enum names *operations*, not capabilities. `crux_kv` offers five operations and this app uses two, so the shell is only ever asked to serve `KvGet` and `KvSet`. Each variant carries an operation type that declares its own output and how many times the shell resolves it — which is what lets the shell code be generated, and checked, per variant.
 
 ## What is a Command
 
@@ -79,7 +81,7 @@ Crux expects a Command to be returned by the `update` function. A basic Command 
 
 Let's look closer at Effects. Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
 
-Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
+Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output and to a *request kind* — how many times the request expects to be resolved: never (a notification), exactly once (a request), or any number of times (a stream). In practice you declare all of that with `#[derive(Operation)]`, which we'll come to in chapter 7. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
 
 The `Effect` type is typically defined with the help of the `#[effect]` macro. Here is the Weather app's effect again:
 
@@ -87,7 +89,7 @@ The `Effect` type is typically defined with the help of the `#[effect]` macro. H
 {{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-The six operations it carries are actually defined by six different _Capabilities_, so let's talk about those.
+The eleven operations it carries come from six different _Capabilities_ — `Render`, `crux_http`, `crux_kv`, `crux_time`, and the app's own Location and Secret — so let's talk about those.
 
 ## Capabilities
 
@@ -151,6 +153,8 @@ Command builders come in three flavours:
 - [StreamBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.StreamBuilder.html) - builds a request expecting a (possibly infinite) sequence of responses from the shell (think WebSockets)
 - [NotificationBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.NotificationBuilder.html) - builds a shell notification, which does not expect a response. The best example is notifying the shell that a new view model is available
 
+Those three flavours are exactly the three request kinds an operation declares, so which builder you get is decided by the operation rather than by the call site: `Command::request_from_shell` only accepts an operation declared `request`, and so on for the other two. Passing the wrong one is a compile error.
+
 All builders share a common API. Request and stream builder can be converted into commands with a `.then_send`.
 
 Both also support `.then_request` and `.then_stream` calls, for chaining on a function which takes the output of the first builder and returns a new builder. This can be used to build things like automatic pagination through an API for example.
@@ -185,12 +189,14 @@ You can create a raw command like this:
 
 ```rust,ignore
 Command::new(|ctx| async move {
-    let output = ctx.request_from_shell(AnOperation::One).await;
+    let output = ctx.request_from_shell(One).await;
     ctx.send_event(Event::Completed(output));
-    let output = ctx.request_from_shell(AnOperation::Two).await;
+    let output = ctx.request_from_shell(Two).await;
     ctx.send_event(Event::Completed(output));
 });
 ```
+
+(`One` and `Two` here are two operation types, each with its own output — see chapter 7. The type of `output` differs between the two `.await`s, and the compiler knows which is which.)
 
 `Command::new` takes a closure, which receives the CommandContext and returns a future, which will become the Command's main task (it is not expected to return anything, its `Output` is `()`. The provided context can be used to start shell requests, streams, and send events back to the app.
 
