@@ -214,6 +214,7 @@ pub mod capability;
 pub mod command;
 pub mod effects;
 pub mod middleware;
+pub mod operation;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 #[cfg(any(feature = "typegen", feature = "facet_typegen"))]
@@ -240,7 +241,9 @@ mod core;
 
 pub use capabilities::*;
 pub use command::Command;
-pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
+pub use core::{
+    Core, Effect, EffectFFI, Request, RequestHandle, RequestKind, Resolvable, ResolveError,
+};
 #[cfg(feature = "uniffi_compat_bindgen")]
 #[deprecated(
     since = "0.19.0",

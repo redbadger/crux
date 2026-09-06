@@ -1,0 +1,32 @@
+error[E0080]: evaluation panicked: this operation does not declare RequestKind::Notify; send it with request_from_shell or stream_from_shell instead
+ --> $RUST/core/src/panic.rs
+  |
+  |           $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `crux_core::command::CommandContext::<Effect, Event>::notify_shell::<ARequest>::{constant#0}` failed here
+  |
+ ::: src/command/context.rs
+  |
+  | /             assert!(
+  | |                 matches!(Op::KIND, None | Some(RequestKind::Notify)),
+  | |                 "this operation does not declare RequestKind::Notify; \
+  | |                  send it with request_from_shell or stream_from_shell instead"
+  | |             );
+  | |_____________- in this macro invocation
+
+note: erroneous constant encountered
+ --> src/command/context.rs
+  |
+  | /         const {
+  | |             assert!(
+  | |                 matches!(Op::KIND, None | Some(RequestKind::Notify)),
+  | |                 "this operation does not declare RequestKind::Notify; \
+  | |                  send it with request_from_shell or stream_from_shell instead"
+  | |             );
+  | |         }
+  | |_________^
+
+note: the above error was encountered while instantiating `fn CommandContext::<Effect, Event>::notify_shell::<ARequest>`
+ --> src/command/mod.rs
+  |
+  |             futures::future::lazy(move |_| ctx.notify_shell(operation))
+  |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^

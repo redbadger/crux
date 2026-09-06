@@ -33,7 +33,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          components: clippy, rustfmt, rust-src
           targets: wasm32-unknown-unknown
 
       - name: Run sccache-cache

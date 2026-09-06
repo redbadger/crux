@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{BridgeError, FfiFormat, Request};
 use crate::bridge::request_serde::ResolveSerialized;
-use crate::{EffectFFI, ResolveError};
+use crate::{EffectFFI, RequestKind, ResolveError};
 
 /// Identifies one request across the FFI boundary, for as long as anything
 /// could still refer to it.
@@ -73,6 +73,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
         Eff: EffectFFI,
     {
         let (effect, resolve) = effect.serialize();
+        let kind = resolve.kind();
 
         let id = {
             let mut outstanding = self.0.lock().expect("Registry Mutex poisoned.");
@@ -81,7 +82,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
             // A request that cannot be resolved has nothing worth keeping: storing
             // one would add an entry per fire-and-forget effect — every render, for
             // the life of the process — that nothing would ever remove.
-            if !matches!(resolve, ResolveSerialized::Never) {
+            if kind != RequestKind::Notify {
                 outstanding.entries.insert(id, resolve);
             }
 

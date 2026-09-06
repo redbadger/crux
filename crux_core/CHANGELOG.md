@@ -8,6 +8,66 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 🚀 Features
+
+- **Every request now says how many times it expects to be resolved.** The core
+  has always known — `notify_shell` builds a request nothing will answer,
+  `request_from_shell` one that takes a single response, `stream_from_shell` one
+  that takes a sequence — but there was no way to ask. The new `RequestKind`
+  makes it explicit:
+
+  ```rust
+  pub enum RequestKind { Notify, Request, Stream }
+  ```
+
+  and it can be read wherever a request is held:
+
+  ```rust
+  // the typed lane
+  let kind = handle.kind();                // RequestKind
+
+  // inside effect middleware
+  let kind = resolver.kind();              // RequestKind
+  ```
+
+  The middleware one closes a gap: `EffectResolver`'s documentation has always
+  said to call `resolve` once for a one-shot effect and repeatedly for a
+  streaming one, without offering any way to tell which you were holding.
+
+- **Operations can declare their request kind.** `Operation` gains a `KIND`
+  associated constant, and the new `crux_core::operation` module the three
+  marker traits that go with it:
+
+  ```rust
+  use crux_core::{RequestKind, capability::Operation, operation};
+
+  impl Operation for Publish {
+      type Output = ();
+      const KIND: Option<RequestKind> = Some(RequestKind::Notify);
+  }
+
+  impl operation::Notify for Publish {}
+  ```
+
+  An operation that declares a kind can only be sent with the constructor that
+  matches it — `notify_shell` for `Notify`, `request_from_shell` for `Request`,
+  `stream_from_shell` for `Stream`. The wrong one is a compile error:
+
+  ```text
+  error[E0080]: evaluation panicked: this operation does not declare
+  RequestKind::Request; send it with notify_shell or stream_from_shell instead
+  ```
+
+  The check is a constant evaluated after monomorphisation, so it is reported
+  when the code is built — by `cargo build`, `cargo test` or
+  `cargo clippy --all-targets` — rather than by `cargo check`.
+
+  `RenderOperation` now declares `Notify`. Everything else is unchanged:
+  `KIND` defaults to `None`, which means "the call site decides", so every
+  existing `Operation` implementation keeps compiling and keeps behaving
+  exactly as it did. Nothing changes on the wire, and no generated shell code
+  changes.
+
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
 
 ### 💥 Breaking Changes

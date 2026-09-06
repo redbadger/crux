@@ -10,8 +10,8 @@ use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
 
-use crate::Request;
 use crate::capability::Operation;
+use crate::{Request, RequestKind};
 
 use super::executor::{JoinHandle, Task};
 
@@ -40,12 +40,26 @@ impl<Effect, Event> Clone for CommandContext<Effect, Event> {
 
 impl<Effect, Event> CommandContext<Effect, Event> {
     /// Create a one-off notification to the shell. This method returns immediately.
+    ///
+    /// If `Op` declares an [`Operation::KIND`], it must be
+    /// [`RequestKind::Notify`]. The check is a post-monomorphisation constant
+    /// evaluation, so a mismatch is reported when the code is built — by
+    /// `cargo build`, `cargo test` or `cargo clippy --all-targets` — and not by
+    /// `cargo check`.
     #[allow(clippy::missing_panics_doc)]
     pub fn notify_shell<Op>(&self, operation: Op)
     where
         Op: Operation,
         Effect: From<Request<Op>>,
     {
+        const {
+            assert!(
+                matches!(Op::KIND, None | Some(RequestKind::Notify)),
+                "this operation does not declare RequestKind::Notify; \
+                 send it with request_from_shell or stream_from_shell instead"
+            );
+        }
+
         let request = Request::resolves_never(operation);
 
         self.effects
@@ -62,6 +76,12 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// is dropped by the shell. Such cases are detected by the Command and the owning task is aborted.
     /// That is to say - any `.await` point on a `ShellRequest` is a potential abort point for the
     /// enclosing future.
+    ///
+    /// If `Op` declares an [`Operation::KIND`], it must be
+    /// [`RequestKind::Request`]. The check is a post-monomorphisation constant
+    /// evaluation, so a mismatch is reported when the code is built — by
+    /// `cargo build`, `cargo test` or `cargo clippy --all-targets` — and not by
+    /// `cargo check`.
     #[allow(clippy::missing_panics_doc)]
     // ANCHOR: request_from_shell
     pub fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
@@ -69,6 +89,14 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
     {
+        const {
+            assert!(
+                matches!(Op::KIND, None | Some(RequestKind::Request)),
+                "this operation does not declare RequestKind::Request; \
+                 send it with notify_shell or stream_from_shell instead"
+            );
+        }
+
         let (output_sender, output_receiver) = mpsc::unbounded();
 
         let request = Request::resolves_once(operation, move |output| {
@@ -99,12 +127,26 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// is dropped by the shell. Such cases are detected by the Command and the owning task is aborted.
     /// That is to say - any `.await` point on a `ShellRequest` is a potential abort point for the
     /// enclosing future.
+    ///
+    /// If `Op` declares an [`Operation::KIND`], it must be
+    /// [`RequestKind::Stream`]. The check is a post-monomorphisation constant
+    /// evaluation, so a mismatch is reported when the code is built — by
+    /// `cargo build`, `cargo test` or `cargo clippy --all-targets` — and not by
+    /// `cargo check`.
     #[allow(clippy::missing_panics_doc)]
     pub fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
     where
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
     {
+        const {
+            assert!(
+                matches!(Op::KIND, None | Some(RequestKind::Stream)),
+                "this operation does not declare RequestKind::Stream; \
+                 send it with notify_shell or request_from_shell instead"
+            );
+        }
+
         let (output_sender, output_receiver) = mpsc::unbounded();
 
         let request = Request::resolves_many_times(operation, move |output| {
