@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.15.0](https://github.com/redbadger/crux/compare/crux_kv-v0.14.0...crux_kv-v0.15.0) - 2026-09-06
 
 ### 🚀 Features
 
@@ -69,9 +69,30 @@ and this project adheres to
   `DataResult`, `BoolResult` ↔ `StatusResult`, `KeysResult` ↔ `ListResult`), so a shell
   that already speaks one API can serve the other.
 
-  Nothing is deprecated in this release: `KeyValue`, `KeyValueOperation`,
-  `KeyValueResult` and `KeyValueResponse` are unchanged, and an app can use both APIs
-  side by side.
+  The enum API is unchanged and still works — an app can use both side by side, and
+  migrate one call at a time — but it is deprecated from this release; see below.
+
+### ⚠️ Deprecated
+
+- **The enum-shaped API is deprecated in favour of the per-operation types.** Nothing
+  is removed in this release and nothing changes on the wire; each item warns, names
+  its replacement, and will be removed in the next breaking release.
+
+  | Deprecated | Since | Use instead |
+  | --- | --- | --- |
+  | `KeyValue` | 0.15.0 | `KeyValueStore` |
+  | `KeyValueOperation` | 0.15.0 | `operation::{Get, Set, Delete, Exists, ListKeys}` |
+  | `KeyValueResult` | 0.15.0 | `operation::{ValueResult, BoolResult, KeysResult}` |
+  | `KeyValueResponse` | 0.15.0 | the output type of the operation you sent |
+
+  `KeyValueError`, `Value`, `DataResult`, `StatusResult` and `ListResult` are **not**
+  deprecated: both APIs share them.
+
+  Migrating is mostly mechanical — the `KeyValueStore` methods have the same names,
+  signatures and return types as `KeyValue`'s, so the work is in the app's `Effect`
+  enum and in the shells that serve it. The
+  [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html)
+  walks through it, including the shell side.
 
 ## [0.14.0](https://github.com/redbadger/crux/compare/crux_kv-v0.13.0...crux_kv-v0.14.0) - 2026-08-06
 

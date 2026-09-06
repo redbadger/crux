@@ -149,8 +149,10 @@ impl OperationReceiver {
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
         let kind_ident = kind.ident();
         let typegen = self.typegen();
+        let allow_unexpected_cfgs = self.allow_unexpected_cfgs();
 
         Ok(quote! {
+            #allow_unexpected_cfgs
             impl #impl_generics ::crux_core::capability::Operation for #ident #ty_generics #where_clause {
                 type Output = #output;
 
@@ -162,6 +164,21 @@ impl OperationReceiver {
 
             impl #impl_generics ::crux_core::operation::#kind_ident for #ident #ty_generics #where_clause {}
         })
+    }
+
+    /// The type generation hooks are gated on the `typegen` and
+    /// `facet_typegen` features of the crate the derive is used in, and most
+    /// crates that declare operations declare neither. An undeclared feature in
+    /// a `cfg` is an `unexpected_cfgs` warning — fatal under `-D warnings` —
+    /// so the generated `impl` carries an `allow`. A lint attribute on the
+    /// `fn` itself is too late: the item is stripped before the lint is
+    /// levelled, and only the enclosing item's level is consulted.
+    fn allow_unexpected_cfgs(&self) -> TokenStream {
+        if self.register.is_empty() {
+            return quote! {};
+        }
+
+        quote! { #[allow(unexpected_cfgs)] }
     }
 
     /// The type generation hooks, emitted only when `register(..)` names extra

@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.0](https://github.com/redbadger/crux/compare/crux_macros-v0.10.1...crux_macros-v0.11.0) - 2026-09-06
 
 ### 🚀 Features
 
@@ -60,8 +60,18 @@ and this project adheres to
 
   It generates `register_types` and `register_types_facet` overrides, each
   behind the `typegen` and `facet_typegen` features **of the crate the derive is
-  used in**, matching the gates on the trait's own methods. A crate that uses
-  `register(..)` therefore needs those two feature names to exist.
+  used in**, matching the gates on the trait's own methods. A crate that
+  declares neither feature still compiles — the generated `impl` carries
+  `#[allow(unexpected_cfgs)]`, so an undeclared feature name in the `cfg` is not
+  a warning — and simply gets no overrides, which is what a crate that does no
+  type generation wants. To have `register(..)` take effect, declare features of
+  the matching names forwarding to `crux_core`, as `crux_kv` and `crux_time` do:
+
+  ```toml
+  [features]
+  typegen = ["crux_core/typegen"]
+  facet_typegen = ["crux_core/facet_typegen"]
+  ```
 
   Structs only, of any shape: named, tuple or unit.
 

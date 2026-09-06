@@ -1,3 +1,10 @@
+//! The original enum-shaped protocol, deprecated in favour of
+//! [`crux_kv::operation`](crate::operation).
+//!
+//! The types below are deprecated, so the module allows the lint: the derives
+//! and the inherent impls here all name them.
+#![allow(deprecated)]
+
 pub mod value;
 
 use crux_core::capability::Operation;
@@ -10,6 +17,11 @@ pub use value::*;
 /// Supported operations
 #[derive(Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.15.0",
+    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::KeyValueStore; removed in the next breaking release"
+)]
 pub enum KeyValueOperation {
     /// Read bytes stored under a key
     Get { key: String },
@@ -38,6 +50,7 @@ pub enum KeyValueOperation {
     },
 }
 
+#[allow(deprecated)]
 impl std::fmt::Debug for KeyValueOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -75,6 +88,11 @@ impl std::fmt::Debug for KeyValueOperation {
 /// supported across the FFI boundary, when using `typegen` or `facet_typegen`.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[repr(C)]
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.15.0",
+    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::KeyValueStore; removed in the next breaking release"
+)]
 pub enum KeyValueResult {
     Ok { response: KeyValueResponse },
     Err { error: KeyValueError },
@@ -82,6 +100,11 @@ pub enum KeyValueResult {
 
 #[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(C)]
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.15.0",
+    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::KeyValueStore; removed in the next breaking release"
+)]
 pub enum KeyValueResponse {
     /// Response to a `KeyValueOperation::Get`,
     /// returning the value stored under the key, which may be empty
@@ -109,6 +132,7 @@ pub enum KeyValueResponse {
     },
 }
 
+#[allow(deprecated)]
 impl Operation for KeyValueOperation {
     type Output = KeyValueResult;
 
@@ -125,6 +149,7 @@ impl Operation for KeyValueOperation {
     }
 }
 
+#[allow(deprecated)]
 impl KeyValueResult {
     /// Converts a [`KeyValueResult`] into a [`Result`]
     /// # Errors

@@ -1,3 +1,6 @@
+//! The tests for the deprecated `Time` API, kept until it is removed.
+#![allow(deprecated)]
+
 #[cfg(feature = "chrono")]
 mod shared {
     use std::time::SystemTime;

@@ -48,12 +48,18 @@ pub enum TimerOutcome {
 ///
 /// The capability also supports cancellation from the core side, using the [`TimerHandle`]
 /// returned by [`notify_at`](Time::notify_at) and [`notify_after`](Time::notify_after).
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.19.0",
+    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear} and crux_time::Clock; removed in the next breaking release"
+)]
 pub struct Time<Effect, Event> {
     // Allow impl level trait bounds to avoid repetition
     effect: PhantomData<Effect>,
     event: PhantomData<Event>,
 }
 
+#[allow(deprecated)]
 impl<Effect, Event> Time<Effect, Event>
 where
     Effect: Send + From<Request<TimeRequest>> + 'static,
@@ -477,6 +483,11 @@ fn get_timer_id() -> TimerId {
     TimerId(COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.19.0",
+    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear} and crux_time::Clock; removed in the next breaking release"
+)]
 pub struct TimerFuture<F>
 where
     F: Future<Output = TimeResponse> + Unpin,
@@ -486,6 +497,7 @@ where
     future: F,
 }
 
+#[allow(deprecated)]
 impl<F> Future for TimerFuture<F>
 where
     F: Future<Output = TimeResponse> + Unpin,
@@ -526,6 +538,7 @@ static CLEARED_TIMER_IDS: LazyLock<Mutex<HashSet<TimerId>>> =
     LazyLock::new(|| Mutex::new(HashSet::new()));
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod test {
     use super::*;
 

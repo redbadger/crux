@@ -433,7 +433,7 @@ checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 
 [[package]]
 name = "crux_core"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "assert_fs",
@@ -472,7 +472,7 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "assert_fs",
  "assert_matches",
@@ -499,7 +499,7 @@ dependencies = [
 
 [[package]]
 name = "crux_kv"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "crux_core",
@@ -512,7 +512,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "crux_core",
  "crux_http",
@@ -531,7 +531,7 @@ dependencies = [
 
 [[package]]
 name = "crux_time"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "chrono",
  "crux_core",

@@ -113,8 +113,21 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
 /// through. It generates overrides of `Operation::register_types` and
 /// `Operation::register_types_facet`,
 /// each behind the `typegen` and `facet_typegen` **features of the crate the
-/// derive is used in**, mirroring the gates on the trait's own methods. A crate
-/// that uses `register(..)` therefore needs those two feature names to exist.
+/// derive is used in**, mirroring the gates on the trait's own methods.
+///
+/// A crate that declares neither feature still compiles: the generated `impl`
+/// carries `#[allow(unexpected_cfgs)]`, so an undeclared feature name is not a
+/// warning. The overrides are simply never emitted there — which is what you
+/// want, since a crate with no type generation feature does no type
+/// generation. To have `register(..)` take effect, declare a feature of the
+/// matching name that forwards to `crux_core`, as `crux_kv` and `crux_time`
+/// do:
+///
+/// ```toml
+/// [features]
+/// typegen = ["crux_core/typegen"]
+/// facet_typegen = ["crux_core/facet_typegen"]
+/// ```
 #[proc_macro_derive(Operation, attributes(operation))]
 pub fn operation(input: TokenStream) -> TokenStream {
     operation::macro_impl::operation_impl(&parse_macro_input!(input)).into()

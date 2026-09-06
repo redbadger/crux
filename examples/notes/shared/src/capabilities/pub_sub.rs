@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 
 // TODO add topics
 
+// ANCHOR: operations
 /// Broadcast `bytes` to every peer. Nothing is expected in return.
 #[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[operation(notify)]
@@ -32,6 +33,7 @@ pub struct Subscribe;
 /// One published payload, as it arrives from a peer.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Message(pub Vec<u8>);
+// ANCHOR_END: operations
 
 pub struct PubSub<Effect, Event> {
     effect: PhantomData<Effect>,
@@ -42,6 +44,7 @@ impl<Effect, Event> PubSub<Effect, Event>
 where
     Event: Send + 'static,
 {
+    // ANCHOR: builders
     #[must_use]
     pub fn subscribe() -> StreamBuilder<Effect, Event, impl Stream<Item = Vec<u8>>>
     where
@@ -57,4 +60,5 @@ where
     {
         Command::notify_shell(Publish(data))
     }
+    // ANCHOR_END: builders
 }
