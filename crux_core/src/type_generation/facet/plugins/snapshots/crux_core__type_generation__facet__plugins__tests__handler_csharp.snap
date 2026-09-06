@@ -1,0 +1,92 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "handler::<CSharp>()"
+---
+
+/// <summary>
+/// Receives the items of a streaming effect. Every item sent
+/// is one resolution of the request that started the stream.
+/// </summary>
+public interface IEffectSink<in T>
+{
+    void Send(T item);
+}
+
+/// <summary>
+/// Handles every effect <c>Effect</c> can carry.
+///
+/// <c>EffectDispatcher</c> resolves each request for you, so there is
+/// no <c>resolve</c> to call at the wrong time or with the wrong bytes.
+/// </summary>
+public interface IEffectHandler
+{
+    void Render(RenderOperation operation);
+    Task<HttpResult> Http(HttpRequest operation);
+    void Subscribe(Subscribe operation, IEffectSink<Message> sink);
+    void Legacy(LegacyOperation operation, uint requestId, Action<byte[]> resolve);
+}
+
+/// <summary>
+/// Routes each request to an <c>IEffectHandler</c> and resolves it for
+/// you: never for a notification, once for a request, once per item
+/// for a stream.
+/// </summary>
+public sealed class EffectDispatcher
+{
+    private readonly IEffectHandler _handler;
+    private readonly Action<uint, byte[]> _resolve;
+
+    public EffectDispatcher(IEffectHandler handler, Action<uint, byte[]> resolve)
+    {
+        _handler = handler;
+        _resolve = resolve;
+    }
+
+    public void Dispatch(Shared.Request request)
+    {
+        var id = request.Id;
+        switch (request.Effect)
+        {
+            case Shared.Effect.Render render:
+                _handler.Render(render.Value);
+                break;
+            case Shared.Effect.Http http:
+                _ = DispatchHttp(http.Value, id);
+                break;
+            case Shared.Effect.Subscribe subscribe:
+                _handler.Subscribe(subscribe.Value, new DelegateEffectSink<Message>(item =>
+                {
+                    var serializer = new BincodeSerializer();
+                    item.Serialize(serializer);
+                    _resolve(id, serializer.GetBytes());
+                }));
+                break;
+            case Shared.Effect.Legacy legacy:
+                _handler.Legacy(legacy.Value, id, bytes => _resolve(id, bytes));
+                break;
+        }
+    }
+
+    private async Task DispatchHttp(HttpRequest operation, uint id)
+    {
+        var output = await _handler.Http(operation);
+        var serializer = new BincodeSerializer();
+        output.Serialize(serializer);
+        _resolve(id, serializer.GetBytes());
+    }
+
+    private sealed class DelegateEffectSink<T> : IEffectSink<T>
+    {
+        private readonly Action<T> _send;
+
+        public DelegateEffectSink(Action<T> send)
+        {
+            _send = send;
+        }
+
+        public void Send(T item)
+        {
+            _send(item);
+        }
+    }
+}

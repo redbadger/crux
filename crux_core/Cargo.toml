@@ -25,6 +25,7 @@ crux_macros = { version = "0.10.0", path = "../crux_macros", optional = true }
 facet.workspace = true
 facet_generate = { workspace = true, optional = true }
 futures = "0.3"
+heck = { version = "0.5", optional = true }
 include_dir = { version = "0.7", optional = true }
 log = { version = "0.4", optional = true }
 serde = { workspace = true, features = ["derive"] }
@@ -42,6 +43,7 @@ async-channel = "2.5.0"
 crux_http = { path = "../crux_http" }
 crux_time = { path = "../crux_time" }
 doctest_support = { path = "../doctest_support" }
+insta = "1"
 rand = "0.10"
 serde = { workspace = true, features = ["derive"] }
 static_assertions = "1.1"
@@ -54,7 +56,12 @@ uuid = { version = "1.24.0", features = ["serde", "v4"] }
 default = ["crux_macros"]
 # Deprecated compatibility alias. New binding generation should use BoltFFI directly.
 bindgen = ["uniffi_compat_bindgen"]
-facet_typegen = ["crux_macros/facet_typegen", "dep:facet_generate", "dep:log"]
+facet_typegen = [
+    "crux_macros/facet_typegen",
+    "dep:facet_generate",
+    "dep:heck",
+    "dep:log",
+]
 testing = []
 typegen = [
     "crux_macros/typegen",

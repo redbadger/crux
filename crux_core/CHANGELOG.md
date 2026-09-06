@@ -84,19 +84,93 @@ and this project adheres to
 
   See the `crux_macros` changelog for the full description.
 
-- **`TypeRegistry::register_effect_kinds` records the request kind of each
-  effect variant**, and `CodeGenerator::effect_kinds` reads them back:
+- **`TypeRegistry::register_effect` records what type generation needs to know
+  about each effect variant** — the kind it declares and the type its request
+  resolves with — and `CodeGenerator::effects` reads it back:
 
   ```rust
   let generator = TypeRegistry::new().register_app::<App>()?.build()?;
-  let kinds = generator.effect_kinds().get("Effect");
-  // [("Render", Some(RequestKind::Notify)), ("Get", Some(RequestKind::Request))]
+  let variants = &generator.effects()[0].variants;
+  // ident: "Get", kind: Some(RequestKind::Request), output: Some(TypeName("GetResult"))
   ```
 
-  `#[effect(facet_typegen)]` calls it for you. Nothing reads the kinds yet — a
-  later release uses them to generate a request-kind property and a typed
-  effect-handler API for each shell language. Purely additive: no generated
-  shell code changes in this release.
+  `#[effect(facet_typegen)]` calls it for you.
+
+- **Type generation now emits the request kinds and a typed effect handler API
+  for every shell language.** Facet type generation (`facet_typegen`) adds
+  these declarations alongside the generated `Effect`, in Swift, Kotlin,
+  TypeScript and C#. A shell implements the handler; the dispatcher resolves
+  each request for it, so there is no `resolve` left to call the wrong number of
+  times or with bytes of the wrong type — a notification is not resolved at
+  all, a request once with whatever the handler returned, and a stream once per
+  item its sink receives.
+
+  Swift:
+
+  ```swift
+  public enum RequestKind: Hashable, Sendable { case notify, request, stream }
+
+  extension Effect {
+      public var requestKind: RequestKind? { /* ... */ }
+  }
+
+  public struct EffectSink<Item>: Sendable { public func send(_ item: Item) }
+
+  public protocol EffectHandler: Sendable {
+      func render(_ operation: RenderOperation)
+      func http(_ operation: HttpRequest) async -> HttpResult
+      func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>)
+  }
+
+  public struct EffectDispatcher: Sendable {
+      public init(handler: any EffectHandler,
+                  resolve: @escaping @Sendable (UInt32, [UInt8]) -> Void)
+      public func dispatch(_ request: Request)
+  }
+  ```
+
+  TypeScript:
+
+  ```typescript
+  export type RequestKind = "notify" | "request" | "stream";
+  export function effectRequestKind(effect: Effect): RequestKind | undefined;
+
+  export interface EffectHandler {
+      render(operation: RenderOperation): void;
+      http(operation: HttpRequest): Promise<HttpResult>;
+      subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
+  }
+
+  export class EffectDispatcher {
+      constructor(handler: EffectHandler,
+                  resolve: (id: uint32, bytes: Uint8Array) => void);
+      public dispatch(request: Request): void;
+  }
+  ```
+
+  Kotlin gets `enum class RequestKind`, a `val Effect.requestKind` extension
+  property, `fun interface EffectSink<in T>`, an `EffectHandler` interface
+  whose request methods are `suspend`, and
+  `class EffectDispatcher(handler, resolve)` with `suspend fun dispatch`. C#
+  gets `enum RequestKind`, a `RequestKind?` property on the `Effect` record,
+  `IEffectSink<in T>`, `IEffectHandler` with `Task<T>` request methods, and
+  `sealed class EffectDispatcher`.
+
+  An operation that declares no kind keeps the shape it has today: its handler
+  method is handed the request id and a `resolve` callback taking raw bytes, so
+  a shell can adopt the handler API before every capability it uses has
+  migrated.
+
+  This is purely additive — nothing that was generated before has changed, and
+  a shell that matches on `Effect` and calls `resolve` by hand carries on
+  working. If the extra declarations are in the way, turn them off with
+  `CodeGenerator::without_effect_handlers()`. The generated names
+  (`RequestKind`, `EffectSink`/`IEffectSink`, `EffectHandler`/`IEffectHandler`,
+  `EffectDispatcher`) are now reserved: `TypeRegistry::build` reports an error
+  if a shared type or an effect variant claims one.
+
+  Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
+  every top-level type and exposes the helpers these plugins need.
 
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
 
