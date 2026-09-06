@@ -376,6 +376,16 @@ fn single_with_facet_typegen() {
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
+            generator
+                .register_effect_kinds(
+                    "Effect",
+                    &[
+                        (
+                            "Render",
+                            <RenderOperation as ::crux_core::capability::Operation>::KIND,
+                        ),
+                    ],
+                )?;
             Ok(generator)
         }
     }
@@ -511,6 +521,16 @@ fn single_facet_typegen_with_new_name() {
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
+            generator
+                .register_effect_kinds(
+                    "MyEffect",
+                    &[
+                        (
+                            "Render",
+                            <RenderOperation as ::crux_core::capability::Operation>::KIND,
+                        ),
+                    ],
+                )?;
             Ok(generator)
         }
     }
@@ -973,6 +993,17 @@ fn multiple_with_facet_typegen() {
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
+            generator
+                .register_effect_kinds(
+                    "Effect",
+                    &[
+                        (
+                            "Render",
+                            <RenderOperation as ::crux_core::capability::Operation>::KIND,
+                        ),
+                        ("Http", <HttpRequest as ::crux_core::capability::Operation>::KIND),
+                    ],
+                )?;
             Ok(generator)
         }
     }
@@ -1340,6 +1371,16 @@ fn facet_typegen_with_namespace_attribute() {
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
+            generator
+                .register_effect_kinds(
+                    "Effect",
+                    &[
+                        (
+                            "Render",
+                            <RenderOperation as ::crux_core::capability::Operation>::KIND,
+                        ),
+                    ],
+                )?;
             Ok(generator)
         }
     }

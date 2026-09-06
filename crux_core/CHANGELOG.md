@@ -68,6 +68,36 @@ and this project adheres to
   exactly as it did. Nothing changes on the wire, and no generated shell code
   changes.
 
+- **`#[derive(Operation)]` is re-exported as `crux_core::macros::Operation`.**
+  It writes the `Operation` implementation, the `KIND` constant and the marker
+  trait for you, so a capability author declares an operation in one place:
+
+  ```rust
+  use crux_core::macros::Operation;
+
+  #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+  #[operation(request, output = GetResult, register(StoreError))]
+  pub struct Get {
+      pub key: String,
+  }
+  ```
+
+  See the `crux_macros` changelog for the full description.
+
+- **`TypeRegistry::register_effect_kinds` records the request kind of each
+  effect variant**, and `CodeGenerator::effect_kinds` reads them back:
+
+  ```rust
+  let generator = TypeRegistry::new().register_app::<App>()?.build()?;
+  let kinds = generator.effect_kinds().get("Effect");
+  // [("Render", Some(RequestKind::Notify)), ("Get", Some(RequestKind::Request))]
+  ```
+
+  `#[effect(facet_typegen)]` calls it for you. Nothing reads the kinds yet — a
+  later release uses them to generate a request-kind property and a typed
+  effect-handler API for each shell language. Purely additive: no generated
+  shell code changes in this release.
+
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
 
 ### 💥 Breaking Changes
