@@ -3,6 +3,7 @@
 mod capability;
 mod effect;
 mod export;
+mod operation;
 
 use capability::capability_impl;
 use export::export_impl;
@@ -50,6 +51,73 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Option<Ident>);
     let input = parse_macro_input!(input as ItemEnum);
     effect::macro_impl::effect_impl(args, input).into()
+}
+
+/// Implements `crux_core::capability::Operation` for a struct, declaring what
+/// the shell does with it.
+///
+/// Exactly one request kind is required:
+///
+/// * `#[operation(notify)]` — the shell is told, and never answers.
+///   `Operation::Output` is `()`, and the type also implements
+///   `crux_core::operation::Notify`.
+/// * `#[operation(request, output = T)]` — the shell answers exactly once with
+///   a `T`. Also implements `crux_core::operation::Request`.
+/// * `#[operation(stream, output = T)]` — the shell answers a sequence of `T`s.
+///   Also implements `crux_core::operation::Stream`.
+///
+/// Sending an operation with the wrong `Command` constructor is then a compile
+/// error.
+///
+/// ```rust
+/// use crux_core::macros::Operation;
+/// use facet::Facet;
+/// use serde::{Deserialize, Serialize};
+///
+/// /// Told to the shell, never answered.
+/// #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[operation(notify)]
+/// pub struct Publish(pub Vec<u8>);
+///
+/// /// Answered exactly once.
+/// #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[operation(request, output = GetResult, register(StoreError))]
+/// pub struct Get {
+///     pub key: String,
+/// }
+///
+/// /// Answered a sequence of times.
+/// #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[operation(stream, output = Vec<u8>)]
+/// pub struct Subscribe;
+///
+/// #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[repr(C)]
+/// pub enum GetResult {
+///     Ok(Vec<u8>),
+///     Err(StoreError),
+/// }
+///
+/// #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[repr(C)]
+/// pub enum StoreError {
+///     NotFound,
+/// }
+/// ```
+///
+/// # Registering extra types
+///
+/// `register(A, B, ..)` names further types that type generation should emit
+/// alongside the operation and its output — types the output only mentions
+/// behind a `Vec`, an `Option` or another indirection the tracer cannot see
+/// through. It generates overrides of `Operation::register_types` and
+/// `Operation::register_types_facet`,
+/// each behind the `typegen` and `facet_typegen` **features of the crate the
+/// derive is used in**, mirroring the gates on the trait's own methods. A crate
+/// that uses `register(..)` therefore needs those two feature names to exist.
+#[proc_macro_derive(Operation, attributes(operation))]
+pub fn operation(input: TokenStream) -> TokenStream {
+    operation::macro_impl::operation_impl(&parse_macro_input!(input)).into()
 }
 
 #[proc_macro_derive(Export)]
