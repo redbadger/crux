@@ -6,6 +6,7 @@
 //! interface to do so.
 
 pub mod command;
+pub mod operation;
 pub mod protocol;
 
 use std::{
@@ -221,6 +222,196 @@ where
     }
 }
 
+/// Clock API, one operation type at a time.
+///
+/// The same API as [`Time`], built from the per-operation types in
+/// [`operation`]: each method sends its own operation type, whose single
+/// output type the shell cannot get wrong.
+///
+/// Cancellation works as it does with [`Time`] — the [`TimerHandle`] returned
+/// by [`notify_at`](Clock::notify_at) and [`notify_after`](Clock::notify_after)
+/// clears the timer — with one difference: clearing sends
+/// [`operation::Clear`], which is a notification, and the timer's future
+/// resolves with [`TimerOutcome::Cleared`] straight away instead of waiting
+/// for the shell to acknowledge it.
+///
+/// The bounds are per method, so an app's `Effect` only has to carry the
+/// operations it actually uses:
+///
+/// ```
+/// # use crux_core::{Command, macros::effect};
+/// use crux_time::{Clock, TimerOutcome, operation};
+///
+/// #[effect]
+/// enum Effect {
+///     Now(operation::Now),
+///     NotifyAfter(operation::NotifyAfter),
+///     Clear(operation::Clear),
+/// }
+///
+/// # enum Event { Now(std::time::SystemTime), Elapsed(TimerOutcome) }
+/// let now: Command<Effect, Event> = Clock::now().then_send(Event::Now);
+///
+/// let (builder, _handle) = Clock::notify_after(std::time::Duration::from_secs(1));
+/// let timer: Command<Effect, Event> = builder.then_send(Event::Elapsed);
+/// ```
+pub struct Clock<Effect, Event> {
+    // Allow impl level trait bounds to avoid repetition
+    effect: PhantomData<Effect>,
+    event: PhantomData<Event>,
+}
+
+impl<Effect, Event> Clock<Effect, Event>
+where
+    Effect: Send + 'static,
+    Event: Send + 'static,
+{
+    /// Ask for the current wall-clock time.
+    #[must_use]
+    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = time::SystemTime>>
+    where
+        Effect: From<Request<operation::Now>>,
+    {
+        Command::request_from_shell(operation::Now).map(Into::into)
+    }
+
+    /// Ask to receive a notification when the specified
+    /// [`SystemTime`](std::time::SystemTime) has arrived. Returns the `RequestBuilder`
+    /// alongside a [`TimerHandle`], which can be stored and used to clear the timer.
+    ///
+    /// # Panics
+    /// Panics if the timer ID the shell answers with is not the one it was asked about.
+    #[must_use]
+    pub fn notify_at(
+        system_time: time::SystemTime,
+    ) -> (
+        RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
+        TimerHandle,
+    )
+    where
+        Effect: From<Request<operation::NotifyAt>> + From<Request<operation::Clear>>,
+    {
+        let timer_id = get_timer_id();
+        let (sender, mut receiver) = oneshot::channel();
+
+        let handle = TimerHandle {
+            timer_id,
+            abort: sender,
+        };
+
+        let completed_handle = CompletedTimerHandle { timer_id };
+
+        // The `assert`s in the body of the builder would be `unreachable`s in Rust,
+        // but since the shell is involved we can't check for them statically. Either way,
+        // they are a developer error and suggest something quite wrong with the time
+        // implementation in the shell.
+        let builder = RequestBuilder::new(move |ctx| async move {
+            if let Ok(Some(cleared_id)) = receiver.try_recv()
+                && cleared_id == timer_id
+            {
+                return TimerOutcome::Cleared;
+            }
+
+            select_biased! {
+                id = ctx.request_from_shell(
+                    operation::NotifyAt {
+                        id: timer_id,
+                        instant: system_time.into(),
+                    }
+                ).fuse() => {
+                    assert_eq!(id, timer_id, "NotifyAt resolved with an unexpected timer ID");
+
+                    TimerOutcome::Completed(completed_handle)
+                },
+                cleared = receiver => {
+                    // The Err variant would mean the sender was dropped,
+                    // but `receiver` is a fused future,
+                    // which signals `is_terminated` true in that case,
+                    // so this branch of the select will
+                    // never run for the Err case
+                    let cleared_id = cleared.unwrap();
+
+                    assert_eq!(cleared_id, timer_id, "cleared with an unexpected timer ID");
+
+                    // Tell the shell to clear the timer, so it can clean up.
+                    // There is nothing to wait for.
+                    ctx.notify_shell(operation::Clear { id: cleared_id });
+
+                    TimerOutcome::Cleared
+                }
+            }
+        });
+
+        (builder, handle)
+    }
+
+    /// Ask to receive a notification after the specified
+    /// [`Duration`](std::time::Duration) has elapsed. Returns the `RequestBuilder`
+    /// alongside a [`TimerHandle`], which can be stored and used to clear the timer.
+    ///
+    /// # Panics
+    /// Panics if the timer ID the shell answers with is not the one it was asked about.
+    #[must_use]
+    pub fn notify_after(
+        duration: time::Duration,
+    ) -> (
+        RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
+        TimerHandle,
+    )
+    where
+        Effect: From<Request<operation::NotifyAfter>> + From<Request<operation::Clear>>,
+    {
+        let timer_id = get_timer_id();
+        let (sender, mut receiver) = oneshot::channel();
+
+        let handle = TimerHandle {
+            timer_id,
+            abort: sender,
+        };
+
+        let completed_handle = CompletedTimerHandle { timer_id };
+
+        let builder = RequestBuilder::new(move |ctx| async move {
+            if let Ok(Some(cleared_id)) = receiver.try_recv()
+                && cleared_id == timer_id
+            {
+                return TimerOutcome::Cleared;
+            }
+
+            select_biased! {
+                id = ctx.request_from_shell(
+                    operation::NotifyAfter {
+                        id: timer_id,
+                        duration: duration.into(),
+                    }
+                ).fuse() => {
+                    assert_eq!(id, timer_id, "NotifyAfter resolved with an unexpected timer ID");
+
+                    TimerOutcome::Completed(completed_handle)
+                },
+                cleared = receiver => {
+                    // The Err variant would mean the sender was dropped,
+                    // but `receiver` is a fused future,
+                    // which signals `is_terminated` true in that case,
+                    // so this branch of the select will
+                    // never run for the Err case
+                    let cleared_id = cleared.unwrap();
+
+                    assert_eq!(cleared_id, timer_id, "cleared with an unexpected timer ID");
+
+                    // Tell the shell to clear the timer, so it can clean up.
+                    // There is nothing to wait for.
+                    ctx.notify_shell(operation::Clear { id: cleared_id });
+
+                    TimerOutcome::Cleared
+                }
+            }
+        });
+
+        (builder, handle)
+    }
+}
+
 /// A handle to a requested timer. Allows the timer to be cleared. The handle is safe to drop,
 /// in which case the original timer is no longer abortable
 #[derive(Debug)]
@@ -231,11 +422,14 @@ pub struct TimerHandle {
 
 impl TimerHandle {
     /// Clear the associated timer request.
-    /// The shell will be notified that the timer has been cleared
-    /// with `TimeRequest::Clear { id }`,
+    /// The shell will be notified that the timer has been cleared,
     /// so it can clean up associated resources.
-    /// The original task will resolve
-    /// with `TimeResponse::Cleared { id }`.
+    ///
+    /// With [`Time`] that notification is a `TimeRequest::Clear { id }`
+    /// request, and the original task resolves once the shell has answered it
+    /// with `TimeResponse::Cleared { id }`. With [`Clock`] it is an
+    /// [`operation::Clear`] notification, and the original task resolves with
+    /// [`TimerOutcome::Cleared`] immediately.
     pub fn clear(self) {
         let _ = self.abort.send(self.timer_id);
     }
