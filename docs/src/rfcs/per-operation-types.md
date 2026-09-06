@@ -28,27 +28,29 @@ The proposal is to move both facts into the type system:
 
 ```rust
 // One type per operation. The kind and the output are properties of the type.
+#[derive(Operation)]
+#[operation(request, output = ValueResult)]
 pub struct Get { pub key: String }
 
-impl RequestOperation for Get {
-    type Output = Result<Option<Vec<u8>>, KeyValueError>;
-}
-
+#[derive(Operation)]
+#[operation(notify)]
 pub struct Publish(pub Vec<u8>);
 
-impl NotifyOperation for Publish {}
-
+#[derive(Operation)]
+#[operation(stream, output = Message)]
 pub struct Subscribe;
 
-impl StreamOperation for Subscribe {
-    type Item = Message;
+// Or by hand, in the target shape:
+impl Operation for Get {
+    type Output = ValueResult;
+    type Kind = operation::kind::Request;
 }
 ```
 
 With the kind on the type:
 
-- `Command::notify_shell` accepts only `NotifyOperation`, `request_from_shell`
-  only `RequestOperation`, and `stream_from_shell` only `StreamOperation`.
+- `Command::notify_shell` accepts only `operation::Notify`, `request_from_shell`
+  only `operation::Request`, and `stream_from_shell` only `operation::Stream`.
   Sending an operation with the wrong kind stops compiling.
 - The core deserializes a response into the specific `Output` for that
   operation. A wrong response fails at the boundary instead of arriving as a
@@ -177,12 +179,12 @@ information somewhere shells can only reach by unpacking an id whose encoding
 is documented as an implementation detail.
 
 Once the kind is a static property of each operation type, the id no longer
-needs to carry it. The core knows the kind from `Op::KIND` when it registers a
+needs to carry it. The core knows the operation's static kind when it registers a
 request and when it resolves one, and shells know it from the generated
 per-variant table. This RFC therefore **supersedes the id encoding**: the
 `RequestKind` type and the `kind()` accessors on handles, resolvers and parked
 requests from that PR stay, and the two id bits go. If the PR merges first, the
-bits are removed in stage 2 below; if this RFC is accepted first, the PR can
+bits are removed in the compat release below; if this RFC is accepted first, the PR can
 drop the encoding before it lands.
 
 ### Shells inherit both problems
@@ -223,45 +225,73 @@ Swift, Kotlin and TypeScript too.
 
 ## Design
 
-### Three operation traits
+### The kind is an associated type
+
+The target shape puts the kind on `Operation` as an associated type, so that
+the wrong constructor fails with an ordinary trait-bound error:
 
 ```rust
 /// How many times a request expects to be resolved. Introduced by PR #580.
 pub enum RequestKind { Notify, Request, Stream }
 
-/// Common base: a serializable payload the shell can act on. Carries the
-/// typegen registration hooks that `Operation` carries today.
-pub trait Operation: Send + 'static {
-    /// The value the shell resolves with. `()` for notifications.
-    type Output: Send + Unpin + 'static;
+pub mod operation {
+    /// Common base: a serializable payload the shell can act on. Carries the
+    /// typegen registration hooks that `Operation` carries today.
+    pub trait Operation: Send + 'static {
+        /// The value the shell resolves with. `()` for notifications.
+        type Output: Send + Unpin + 'static;
 
-    /// How many times this operation expects to be resolved.
-    const KIND: RequestKind;
+        /// How many times this operation expects to be resolved.
+        type Kind: Kind;
 
-    // register_types / register_types_facet as today
+        // register_types / register_types_facet as today
+    }
+
+    /// One of the three kinds, as a type. Sealed; the only impls are below.
+    pub trait Kind: sealed::Sealed {
+        const VALUE: RequestKind;
+    }
+
+    pub mod kind {
+        pub struct Notify;   // impl Kind { VALUE = RequestKind::Notify }
+        pub struct Request;  // impl Kind { VALUE = RequestKind::Request }
+        pub struct Stream;   // impl Kind { VALUE = RequestKind::Stream }
+    }
+
+    /// Fire and forget. Nothing waits on it.
+    pub trait Notify: Operation<Output = (), Kind = kind::Notify> {}
+    impl<Op: Operation<Output = (), Kind = kind::Notify>> Notify for Op {}
+
+    /// Exactly one response.
+    pub trait Request: Operation<Kind = kind::Request> {}
+    impl<Op: Operation<Kind = kind::Request>> Request for Op {}
+
+    /// Zero or more responses.
+    pub trait Stream: Operation<Kind = kind::Stream> {}
+    impl<Op: Operation<Kind = kind::Stream>> Stream for Op {}
 }
-
-/// Fire and forget. Nothing waits on it.
-pub trait NotifyOperation: Operation<Output = ()> {}
-
-/// Exactly one response.
-pub trait RequestOperation: Operation {}
-
-/// Zero or more responses.
-pub trait StreamOperation: Operation {}
 ```
 
-`Operation` keeps `Output` and gains `KIND`, so `Request<Op>`, the bridge
+`Operation` keeps `Output` and gains `Kind`, so `Request<Op>`, the bridge
 registry, the effect router and middleware keep working against one trait and
-can read the kind statically. The three marker traits exist purely so that
-bounds can name a kind. `Op::KIND` and the marker must agree; a derive macro
-generates both from one declaration, and a debug assertion in the `Command`
-constructors catches hand-written impls that disagree.
+can read the kind statically as `<Op::Kind as Kind>::VALUE`. The three marker
+traits, `operation::{Notify, Request, Stream}`, exist so that bounds can name a
+kind. They are blanket-implemented from `Kind`, so an author declares the kind
+exactly once and nothing can disagree with it. The names deliberately shadow
+`crux_core::Request<Op>` and `futures::Stream`; import the module and write
+`Op: operation::Request`, not the items.
 
-`StreamOperation` uses `Output` for the item type. `type Item` would read
+`operation::Stream` uses `Output` for the item type. `type Item` would read
 better, but it would need a second associated type on `Operation` or a way to
-express "Output is the item" that generic code can use uniformly. Naming is an
-open question below.
+express "Output is the item" that generic code can use uniformly.
+
+**This shape is breaking.** Associated type defaults are unstable (E0658,
+rust-lang/rust#29661), so `type Kind` cannot default to "unspecified" and every
+existing `impl Operation` would have to declare one. The compat release
+therefore ships a transitional shape, described under Migration, and the
+breaking release switches to the one above. The public bounds
+`Op: operation::Notify | Request | Stream` are the same in both, so code written
+against the compat release does not change.
 
 ### The Command constructors take the marker traits
 
@@ -269,23 +299,32 @@ open question below.
 impl<Effect, Event> Command<Effect, Event> {
     pub fn notify_shell<Op>(operation: Op) -> NotificationBuilder<Effect, Event, impl Future<Output = ()>>
     where
-        Op: NotifyOperation,
+        Op: operation::Notify,
         Effect: From<Request<Op>>;
 
     pub fn request_from_shell<Op>(operation: Op) -> RequestBuilder<Effect, Event, impl Future<Output = Op::Output>>
     where
-        Op: RequestOperation,
+        Op: operation::Request,
         Effect: From<Request<Op>>;
 
     pub fn stream_from_shell<Op>(operation: Op) -> StreamBuilder<Effect, Event, impl Stream<Item = Op::Output>>
     where
-        Op: StreamOperation,
+        Op: operation::Stream,
         Effect: From<Request<Op>>;
 }
 ```
 
 The same bounds apply to the `CommandContext` methods used inside `async`
-blocks. Nothing else about `Command` changes.
+blocks. Nothing else about `Command` changes. Passing a notification to
+`request_from_shell` then reads, in `cargo check` and in the editor:
+
+```text
+error[E0277]: the trait bound `Publish: operation::Request` is not satisfied
+  = help: the following other types implement trait `operation::Request`: ...
+```
+
+A `#[diagnostic::on_unimplemented]` attribute on each marker turns that into
+"`Publish` is a notification; send it with `notify_shell`".
 
 ### Declaring operations
 
@@ -294,7 +333,7 @@ five operations, so a derive does it:
 
 ```rust
 #[derive(Facet, Serialize, Deserialize, Operation)]
-#[operation(request, output = Result<Option<Vec<u8>>, KeyValueError>)]
+#[operation(request, output = ValueResult)]
 pub struct Get {
     pub key: String,
 }
@@ -308,8 +347,16 @@ pub struct Publish(pub Vec<u8>);
 pub struct Subscribe;
 ```
 
-The derive generates the `Operation` impl with `Output` and `KIND`, the matching
-marker impl, and the typegen registration that today's impls write by hand.
+The derive generates the `Operation` impl with `Output` and `Kind`, and the
+typegen registration that today's impls write by hand. The marker follows from
+`Kind` by the blanket impls, so there is nothing else to write.
+
+Outputs are concrete types that type generation can emit. `ValueResult` here is
+an `Ok(Value) | Err(KeyValueError)` enum in the style of `HttpResult`, not
+`Result<Option<Vec<u8>>, KeyValueError>`: the generators have no emission for
+`std::result::Result`, and two `Result`s with different parameters would collide
+in one registry. `From` impls convert the wire enum to the developer-facing
+`Result` alias the capability's builders return today.
 
 For a capability with many small operations, the derive can also be applied to
 an enum and split it, so that authors who prefer to see their operations in one
@@ -318,9 +365,9 @@ place can:
 ```rust
 #[derive(Operation)]
 pub enum KeyValue {
-    #[operation(request, output = Result<Option<Vec<u8>>, KeyValueError>)]
+    #[operation(request, output = ValueResult)]
     Get { key: String },
-    #[operation(request, output = Result<Option<Vec<u8>>, KeyValueError>)]
+    #[operation(request, output = ValueResult)]
     Set { key: String, value: Vec<u8> },
     // ...
 }
@@ -351,12 +398,12 @@ pub enum Effect {
 ```
 
 This is the most visible cost of the proposal and is discussed under drawbacks.
-Each variant now carries an operation whose `KIND` and `Output` are known at
+Each variant now carries an operation whose `Kind` and `Output` are known at
 compile time, which is what the rest of the design relies on.
 
 `crux_http` is already in the target shape: one `HttpRequest` type with one
 `HttpResult` output, always requested. Under this RFC it gains
-`impl RequestOperation for HttpRequest {}` and nothing else changes.
+`type Kind = operation::kind::Request;` and nothing else changes.
 
 ### The serialized lane and the wire
 
@@ -364,8 +411,9 @@ compile time, which is what the rest of the design relies on.
 enum has one variant per operation, as it does today, and each variant's kind
 is a compile-time constant on the Rust side.
 
-The bridge registry can therefore read `Op::KIND` when it registers a request
-rather than inspecting the `ResolveSerialized` it was handed. The id goes back
+The bridge registry can therefore read the operation's static kind when it
+registers a request rather than inspecting the `ResolveSerialized` it was
+handed. The id goes back
 to being a plain sequence number: with the kind known statically on both sides
 of the boundary, encoding it into the id as well would duplicate information
 the shell already has from the generated table, and would keep an encoding
@@ -430,11 +478,13 @@ the first phase useful.
 
 ### Effect router and middleware
 
-`EffectResolver<Output>` and `Parked<Op>` already know their `Op`, so they know
-`Op::KIND` statically. The `kind()` accessors added by PR #580 remain as the
-runtime view of the same fact. Routes and middleware written against a specific
-`Op` can be bounded on `RequestOperation` or `StreamOperation` where it matters,
-for example a route that only makes sense for streams.
+`Parked<Op>` already knows its `Op`, so it knows the kind statically.
+`EffectResolver<Output>` is generic over the output rather than the operation,
+so it keeps the runtime `kind()` accessor added by PR #580, as do
+`RequestHandle` and `ResolveSerialized`; those remain the runtime view of the
+same fact. Routes and middleware written against a specific `Op` can be bounded
+on `operation::Request` or `operation::Stream` where it matters, for example a
+route that only makes sense for streams.
 
 ## Drawbacks
 
@@ -469,28 +519,49 @@ open questions.
 
 ## Migration
 
-The change can land in stages so that each release is usable on its own.
+The change lands in two releases so that each is usable on its own.
 
-**Stage 1, additive.** Add `RequestKind` (already in PR #580), the three marker
-traits, `Operation::KIND` with a default so existing impls keep compiling, and
-the `Operation` derive. `Command` keeps its current loose bounds. Type
-generation emits `kind` for operations that declare one. Nothing breaks;
-capabilities can adopt the new declarations at their own pace.
+**Compat release (additive).** Everything a reader needs in order to try the
+design, without breaking anyone:
 
-**Stage 2, breaking.** Split `crux_kv`, `crux_time` and the example
-capabilities into per-operation types. Remove the default on `KIND`. Tighten
-the `Command` and `CommandContext` bounds to the marker traits. Drop the kind
-bits from `EffectId` if PR #580 landed with them, so the id is a plain sequence
-again. Regenerate the example shells. This is the release that delivers goals 1
-to 4.
+- `RequestKind` (from PR #580, minus its id-bit encoding) and the `kind()`
+  accessors on handles and resolvers.
+- The marker traits `operation::{Notify, Request, Stream}`.
+- A transitional kind declaration: `const KIND: Option<RequestKind> = None;` on
+  `Operation`. A const can have a default where an associated type cannot, so
+  every existing impl keeps compiling with `None`, meaning "kind decided by the
+  constructor called, as before".
+- `#[derive(Operation)]`, which emits `KIND = Some(..)` and the matching marker
+  impl together so they cannot disagree.
+- `Command` and `CommandContext` keep `Op: Operation` bounds, and check the
+  declaration with a `const { assert!(..) }` block. Stable Rust has no way to
+  express "declares `Request`, or declares nothing" as a trait bound, so this
+  post-monomorphisation assertion is the only compile-time check available
+  while legacy impls exist. It fails `cargo build` with an E0080 at the call
+  site, but is invisible to `cargo check` and rust-analyzer, and its rendering
+  depends on whether `rust-src` is installed. Both warts are accepted as the
+  price of not breaking anyone in this release.
+- Per-operation rewrites of `crux_kv`, `crux_time` and the example capabilities,
+  alongside the existing enum APIs, which are deprecated.
+- Type generation emits the kind for operations that declare one, and the
+  handler API and dispatcher.
 
-**Stage 3, additive.** Generate the shell-side handler API and dispatcher, and
-migrate the examples to it.
+**Breaking release.** Switch to the target shape:
+
+- `type Kind: operation::Kind` replaces `const KIND`, the markers become
+  blanket impls from `Kind`, and the derive emits `type Kind = kind::Request;`
+  instead of a const and a marker impl.
+- The `Command` and `CommandContext` bounds become the marker traits and the
+  const assertion goes. The wrong constructor is now an ordinary E0277 in
+  `cargo check`, with a `#[diagnostic::on_unimplemented]` message.
+- Remove the deprecated enum APIs, the legacy `None` handling in the bridge and
+  in type generation, and migrate the remaining examples and their shells.
 
 For users' own capabilities, the mechanical migration is: one struct per
 variant, `#[operation(..)]` on each, and replace the response enum with the
-per-operation output types. A `crux_cli` lint or a compile-time deprecation on
-the old bounds could point at the affected call sites.
+per-operation output types. Code written against the compat release's markers
+and derive does not change in the breaking release; only hand-written
+`impl Operation` blocks swap `const KIND` for `type Kind`.
 
 ## Alternatives considered
 
@@ -517,33 +588,41 @@ output type, and the check is a panic rather than a compile error.
 enum variant, so this needs a proxy type per variant anyway, at which point
 per-operation types are simpler.
 
+**Kind as a const with a compile-time assertion, permanently.** This is the
+compat release's transitional shape. It could stay: a defaulted const is the
+only stable way to let undeclared operations coexist with declared ones, and
+the `const { assert!(..) }` does reject the wrong constructor. But the error
+only appears on `cargo build`, never in `cargo check` or the editor, and the
+const and the marker are two declarations that a hand-written impl can make
+disagree. Once the legacy default is gone there is no reason to keep either
+wart, so the breaking release moves the kind to an associated type.
+
 ## Open questions
 
-1. **Naming.** `NotifyOperation`, `RequestOperation` and `StreamOperation` are
-   descriptive but long. Shorter names collide: `Request` with
-   `crux_core::Request<Op>`, `Stream` with `futures::Stream`. A module path such
-   as `crux_core::operation::{Notify, Request, Stream}` is an option.
-2. **`Output` on notifications.** Is `Output = ()` acceptable, or should the base
+1. **`Output` on notifications.** Is `Output = ()` acceptable, or should the base
    trait drop `Output` and each marker define its own, with `Request<Op>`
    becoming generic over the output separately? The second is cleaner to read
    and harder to keep generic.
-3. **Nested effect enums.** Should the effect macro accept
+2. **Nested effect enums.** Should the effect macro accept
    `KeyValue(kv::Effect)` where `kv::Effect` is a capability-provided enum of
    its operations, and flatten it for the FFI? This keeps app-level enums short
    at the cost of a second declaration form.
-4. **The enum-splitting derive.** Worth building, or is one struct per operation
+3. **The enum-splitting derive.** Worth building, or is one struct per operation
    fine in practice?
-5. **Resolving a notification.** Without the kind in the id, the bridge cannot
+4. **Resolving a notification.** Without the kind in the id, the bridge cannot
    tell a resolve of a notification from a resolve of an unknown id unless it
    remembers something per notification. Is reporting both as `NotFound`
    acceptable, or is a bounded record of recent notification ids worth keeping
    so the error can say `Never`?
-6. **Stream termination.** With the kind known, a "stream finished" signal from
+5. **Stream termination.** With the kind known, a "stream finished" signal from
    core to shell becomes natural. Should it be designed alongside this, or
    separately?
-7. **Error conventions.** With one output per operation, should Crux recommend
-   that every `RequestOperation::Output` be a `Result`, so a shell always has a
+6. **Error conventions.** With one output per operation, should Crux recommend
+   that every request's `Output` be an `Ok | Err` enum, so a shell always has a
    way to say it could not do what was asked without stalling the core?
+
+Naming is settled: the markers live at `crux_core::operation::{Notify, Request,
+Stream}` and are used through the module path.
 
 ## Next steps
 
