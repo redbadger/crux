@@ -504,6 +504,7 @@ dependencies = [
  "facet 0.46.5",
  "serde",
  "serde_bytes",
+ "serde_json",
  "thiserror 2.0.19",
 ]
 

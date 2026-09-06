@@ -295,6 +295,8 @@ impl From<Result<HttpResponse>> for HttpResult {
 impl crux_core::capability::Operation for HttpRequest {
     type Output = HttpResult;
 
+    const KIND: Option<crux_core::RequestKind> = Some(crux_core::RequestKind::Request);
+
     #[cfg(feature = "typegen")]
     fn register_types(
         generator: &mut crux_core::type_generation::serde::TypeGen,
@@ -305,6 +307,9 @@ impl crux_core::capability::Operation for HttpRequest {
         Ok(())
     }
 }
+
+/// An `HttpRequest` is answered exactly once, with an [`HttpResult`].
+impl crux_core::operation::Request for HttpRequest {}
 
 #[async_trait]
 pub(crate) trait EffectSender {
