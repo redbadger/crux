@@ -91,6 +91,14 @@ fn emit_handler(
         } else if variant.is_request() {
             let output = render_output(variant, config);
             writeln!(w, "suspend fun {method}(operation: {operation}): {output}")?;
+        } else if variant.render {
+            writeln!(
+                w,
+                "/// `Core` handles `{}` itself, so this does nothing; implement it",
+                variant.name
+            )?;
+            writeln!(w, "/// only if you drive `EffectDispatcher` yourself.")?;
+            writeln!(w, "fun {method}(operation: {operation}) {{}}")?;
         } else {
             writeln!(w, "fun {method}(operation: {operation})")?;
         }

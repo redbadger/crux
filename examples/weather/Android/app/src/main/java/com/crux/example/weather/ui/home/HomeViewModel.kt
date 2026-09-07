@@ -2,9 +2,10 @@ package com.crux.example.weather.ui.home
 
 import androidx.lifecycle.viewModelScope
 import com.crux.example.weather.ActiveEvent
+import com.crux.example.weather.Core
 import com.crux.example.weather.Event
 import com.crux.example.weather.HomeEvent
-import com.crux.example.weather.core.Core
+import com.crux.example.weather.core.homeViewModel
 import com.crux.example.weather.utils.stateInWhileSubscribed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow

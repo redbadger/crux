@@ -4,12 +4,13 @@ import androidx.lifecycle.viewModelScope
 import com.crux.example.weather.ActiveEvent
 import com.crux.example.weather.AddFavoriteEvent
 import com.crux.example.weather.ConfirmDeleteEvent
+import com.crux.example.weather.Core
 import com.crux.example.weather.Event
 import com.crux.example.weather.FavoritesScreenEvent
 import com.crux.example.weather.FavoritesWorkflowEvent
 import com.crux.example.weather.GeocodingResponse
 import com.crux.example.weather.Location
-import com.crux.example.weather.core.Core
+import com.crux.example.weather.core.favoritesViewModel
 import com.crux.example.weather.utils.stateInWhileSubscribed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
