@@ -10,7 +10,7 @@ private nonisolated let logger = Log.secret
     private nonisolated let keychainService = "com.crux.examples.weather"
 #endif
 
-nonisolated extension Core {
+nonisolated extension WeatherHandler {
     /// Each secret operation has its own output, naming only the outcomes it
     /// can actually have — there is no wide response enum to narrow, and no
     /// `unreachable` case to write.

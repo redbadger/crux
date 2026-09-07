@@ -2,10 +2,10 @@ import SwiftUI
 import WeatherKit
 
 struct ContentView: View {
-    @Environment(Core.self) var core
+    @Environment(ViewStore.self) var store
 
     var body: some View {
-        switch core.view {
+        switch store.view {
         case .loading:
             ProgressView("Loading...")
 

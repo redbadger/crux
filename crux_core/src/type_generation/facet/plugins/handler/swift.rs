@@ -9,12 +9,7 @@ use facet_generate::generation::{
     swift::{case_name, render_type},
 };
 
-use super::Matched;
-
-/// The generated package manifest does not declare platforms, so it defaults
-/// to a deployment target older than Swift concurrency. Requests are dispatched
-/// in a `Task`, so the handler API has to say when it is available.
-const AVAILABILITY: &str = "@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)";
+use super::{super::SWIFT_AVAILABILITY as AVAILABILITY, Matched};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
@@ -128,6 +123,38 @@ fn emit_handler(
             writeln!(w, "func {method}(_ operation: {operation})")?;
         }
     }
+    w.unindent();
+    writeln!(w, "}}")?;
+
+    emit_default_render(w, m, config)?;
+
+    Ok(())
+}
+
+/// `Core` handles the render variant itself, so a handler written for it never
+/// implements that method.
+fn emit_default_render(
+    w: &mut dyn IndentWrite,
+    m: &Matched<'_>,
+    config: &CodeGeneratorConfig,
+) -> io::Result<()> {
+    let Some(variant) = m.render_variant() else {
+        return Ok(());
+    };
+    let method = case_name(variant.name);
+    let operation = render_type(variant.operation, config);
+
+    writeln!(w)?;
+    writeln!(
+        w,
+        "/// `Core` handles `{}` itself, so this does nothing; implement it",
+        variant.name
+    )?;
+    writeln!(w, "/// only if you drive `EffectDispatcher` yourself.")?;
+    writeln!(w, "{AVAILABILITY}")?;
+    writeln!(w, "extension EffectHandler {{")?;
+    w.indent();
+    writeln!(w, "public func {method}(_ operation: {operation}) {{}}")?;
     w.unindent();
     writeln!(w, "}}")?;
 

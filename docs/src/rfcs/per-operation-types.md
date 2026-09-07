@@ -473,7 +473,8 @@ value of the wrong variant that later panics inside a capability.
 
 *This section describes what the compat stage implements, which is more than
 the RFC originally proposed: the handler API was a "second phase" here and is
-part of the same stack.*
+part of the same stack, and a generated shell-side `Core` is proposed on top of
+it — see [its own RFC](./generated-core.md).*
 
 Because the kind is static per `EffectFfi` variant, type generation emits it as
 a property of the generated effect type, with no wire cost. It also emits a
@@ -485,9 +486,11 @@ Everything below is emitted next to the generated `Effect`, in Swift, Kotlin,
 TypeScript and C#, by plugins that live in `crux_core`
 (`type_generation::facet::plugins`) rather than in facet-generate. The names
 `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`, `EffectHandler`
-(`IEffectSink` / `IEffectHandler` in C#) and `EffectDispatcher` are reserved:
-`TypeRegistry::build` reports an error if a shared type or an effect variant
-claims one. `CodeGenerator::without_effect_handlers()` turns all of it off.
+(`IEffectSink` / `IEffectHandler` in C#), `EffectDispatcher`, `Core` and
+`CoreBridge` (`ICoreBridge`) are reserved: `TypeRegistry::build` reports an
+error if a shared type or an effect variant claims one.
+`CodeGenerator::without_core()` turns off the generated `Core` and its bridge
+protocol; `without_effect_handlers()` turns all of it off.
 
 Alongside the handler API, the plugins emit an `EffectKind` enum — one case per
 effect variant, valued by its declaration index — and a `RequestId` decoder
@@ -617,6 +620,13 @@ operation that declares no kind — everything that has not migrated — keeps t
 shape it always had: its handler method is handed the request id and a
 `resolve` callback taking raw bytes. Shells that prefer to match on `Effect`
 and resolve by hand are unaffected; the emission is purely additive.
+
+The same plugins also emit a `CoreBridge` protocol over bytes and a `Core`
+that owns the loop around the dispatcher — event in, requests out, resolve and
+repeat — and that handles `Render` itself, which is why `EffectHandler.render`
+has a default that does nothing. An effect enum with no `RenderOperation`
+variant gets no `Core`. The design and its trade-offs are the subject of the
+[generated `Core` RFC](./generated-core.md).
 
 ### Effect router and middleware
 
@@ -800,8 +810,10 @@ Stream}` and are used through the module path.
 
 Steps 1 to 3 are implemented in the compat stack — the traits, the derive, the
 tightened constructors, the per-operation rewrites of `crux_kv` and `crux_time`,
-and kind and handler emission for all four languages — and two examples moved
-across on both sides of the boundary. What remains is the breaking release:
+and kind and handler emission for all four languages, with a
+[generated shell-side `Core`](./generated-core.md) proposed on top — and two
+examples moved across on both sides of the boundary. What remains is the
+breaking release:
 
 1. Move the kind to `type Kind` and make the markers blanket impls, so the
    wrong constructor is an ordinary `cargo check` error rather than an E0080 on
