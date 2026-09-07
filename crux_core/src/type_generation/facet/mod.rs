@@ -106,7 +106,7 @@ use serde_json::json;
 use thiserror::Error;
 
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
-use self::plugins::{EffectHandlerPlugin, OperationKindPlugin};
+use self::plugins::{EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -145,6 +145,8 @@ impl Export for () {
 /// silently shadowed, so [`TypeRegistry::build`] rejects it instead.
 const RESERVED_TYPE_NAMES: &[&str] = &[
     "OperationKind",
+    "EffectKind",
+    "RequestId",
     "EffectHandler",
     "IEffectHandler",
     "EffectSink",
@@ -360,7 +362,8 @@ impl CodeGenerator {
         if self.handlers {
             installer = installer
                 .plugin(OperationKindPlugin::new(&self.effects))
-                .plugin(EffectHandlerPlugin::new(&self.effects));
+                .plugin(EffectHandlerPlugin::new(&self.effects))
+                .plugin(RequestIdPlugin::new(&self.effects));
         }
         installer
             .external_packages(&config.external_packages)
@@ -399,7 +402,8 @@ impl CodeGenerator {
         if self.handlers {
             installer = installer
                 .plugin(OperationKindPlugin::new(&self.effects))
-                .plugin(EffectHandlerPlugin::new(&self.effects));
+                .plugin(EffectHandlerPlugin::new(&self.effects))
+                .plugin(RequestIdPlugin::new(&self.effects));
         }
         installer
             .external_packages(&config.external_packages)
@@ -438,7 +442,8 @@ impl CodeGenerator {
         if self.handlers {
             installer = installer
                 .plugin(OperationKindPlugin::new(&self.effects))
-                .plugin(EffectHandlerPlugin::new(&self.effects));
+                .plugin(EffectHandlerPlugin::new(&self.effects))
+                .plugin(RequestIdPlugin::new(&self.effects));
         }
         installer
             .external_packages(&config.external_packages)
@@ -472,7 +477,8 @@ impl CodeGenerator {
         if self.handlers {
             installer = installer
                 .plugin(OperationKindPlugin::new(&self.effects))
-                .plugin(EffectHandlerPlugin::new(&self.effects));
+                .plugin(EffectHandlerPlugin::new(&self.effects))
+                .plugin(RequestIdPlugin::new(&self.effects));
         }
         installer
             .external_packages(&config.external_packages)
@@ -529,7 +535,8 @@ impl CodeGenerator {
         &self.effects
     }
 
-    /// Turns off emission of the `OperationKind` type and the effect handler API.
+    /// Turns off emission of the `OperationKind` and `EffectKind` types, the
+    /// `RequestId` decoder, and the effect handler API.
     ///
     /// Only the types you registered are generated, exactly as before Crux
     /// 0.21. Use this if your shell dispatches effects by hand and the extra

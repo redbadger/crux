@@ -1,0 +1,55 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "request_id::<Swift>()"
+---
+
+/// Which effect a request id names.
+///
+/// The raw value is the effect's position in `Effect`, which is what the
+/// request id carries.
+public enum EffectKind: UInt8, Hashable, Sendable {
+    case render = 0
+    case http = 1
+    case subscribe = 2
+    case legacy = 3
+}
+
+/// The parts of the id the core issues with every request.
+///
+/// Resolve with `rawValue`, exactly as it arrived — this is for logging,
+/// tracing and assertions. The bit layout is Crux's, so read ids with this
+/// rather than picking the integer apart by hand.
+public struct RequestId: Hashable, Sendable {
+    /// The id as it came from the core, and as it goes back.
+    public let rawValue: UInt32
+
+    public init(_ rawValue: UInt32) {
+        self.rawValue = rawValue
+    }
+
+    /// Every notification shares one reserved id, because the core is not
+    /// waiting on any of them.
+    public var isNotification: Bool {
+        self.rawValue == 0
+    }
+
+    /// Which effect this request carries — `nil` for a notification, whose
+    /// id names none, and for an id naming an effect this generated code
+    /// does not know.
+    public var effectKind: EffectKind? {
+        if self.isNotification { return nil }
+        return EffectKind(rawValue: UInt8(truncatingIfNeeded: self.rawValue >> 24))
+    }
+
+    /// How many times the core expects this request to be resolved.
+    public var requestKind: RequestKind {
+        if self.isNotification { return .notify }
+        return (self.rawValue & 0x800000) == 0 ? .request : .stream
+    }
+
+    /// The ascending number the request was issued with. Zero for a
+    /// notification, the one id that is not sequenced.
+    public var sequence: UInt32 {
+        self.rawValue & 0x7fffff
+    }
+}

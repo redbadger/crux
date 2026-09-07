@@ -84,6 +84,7 @@ impl<Output> RequestHandle<Output> {
 }
 
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ResolveError {
     #[error("Attempted to resolve a request that is not expected to be resolved.")]
     Never,
@@ -91,4 +92,32 @@ pub enum ResolveError {
     FinishedMany,
     #[error("Request with id {0} not found.")]
     NotFound(u64),
+    /// The id names an effect variant the effect enum does not have, so it
+    /// cannot be one the bridge issued.
+    #[error(
+        "Request id {id} names effect variant {index}, but the effect has only {variants} variants."
+    )]
+    NoSuchEffect { id: u32, index: u8, variants: u16 },
+    /// The id's sequence is outstanding, but it was issued for a different
+    /// effect variant.
+    #[error(
+        "Request id {id} names effect variant {actual}, but request {sequence} was issued for effect variant {expected}."
+    )]
+    WrongEffect {
+        id: u32,
+        sequence: u32,
+        expected: u8,
+        actual: u8,
+    },
+    /// The id's sequence is outstanding, but it was issued as a different
+    /// [`RequestKind`].
+    #[error(
+        "Request id {id} is marked as a {actual:?} request, but request {sequence} was issued as a {expected:?}."
+    )]
+    WrongKind {
+        id: u32,
+        sequence: u32,
+        expected: RequestKind,
+        actual: RequestKind,
+    },
 }
