@@ -8,6 +8,9 @@ struct Effect {
     operation: Type,
 }
 
+/// The request id carries the effect's variant index in 8 bits.
+pub const MAX_VARIANTS: usize = 256;
+
 enum TypegenKind {
     Facet,
     None,
@@ -62,6 +65,17 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         }
         TypegenKind::None => quote! {},
     };
+
+    // The bridge packs the variant index into 8 bits of the request id, so an
+    // effect enum can have at most 256 variants.
+    assert!(
+        input.variants.len() <= MAX_VARIANTS,
+        "an effect enum can have at most {MAX_VARIANTS} variants, because the bridge packs the \
+         variant index into 8 bits of the request id, but `{enum_ident}` has {}",
+        input.variants.len()
+    );
+
+    let variant_count = u16::try_from(input.variants.len()).expect("variant count checked above");
 
     let effects = input.variants.into_iter().map(|variant| {
         let ident = variant.ident;
@@ -378,12 +392,25 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         TypegenKind::None => quote! {},
     };
 
+    let variant_index_arms = effect_names.iter().enumerate().map(|(index, (ident, _))| {
+        let index = u8::try_from(index).expect("variant count checked above");
+        quote! {
+            #enum_ident::#ident(_) => #index
+        }
+    });
+
     let effect_ffi_derive = if matches!(typegen_kind, TypegenKind::None) {
         quote! {}
     } else {
         quote! {
             impl crux_core::EffectFFI for #enum_ident {
                 type Ffi = #ffi_enum_ident;
+                const VARIANT_COUNT: u16 = #variant_count;
+                fn variant_index(&self) -> u8 {
+                    match self {
+                        #(#variant_index_arms ,)*
+                    }
+                }
                 fn serialize<T: ::crux_core::bridge::FfiFormat>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
                     match self {
                         #(#match_arms ,)*

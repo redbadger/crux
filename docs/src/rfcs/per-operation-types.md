@@ -183,13 +183,20 @@ information somewhere shells can only reach by unpacking an id whose encoding
 is documented as an implementation detail.
 
 Once the kind is a static property of each operation type, the id no longer
-needs to carry it. The core knows the operation's static kind when it registers a
-request and when it resolves one, and shells know it from the generated
-per-variant table. This RFC therefore **supersedes the id encoding**: the
-`RequestKind` type and the `kind()` accessors on handles, resolvers and parked
-requests from that PR stay, and the two id bits go. If the PR merges first, the
-bits are removed in the compat release below; if this RFC is accepted first, the PR can
-drop the encoding before it lands.
+needs to carry it *for the shell's benefit*. The core knows the operation's
+static kind when it registers a request and when it resolves one, and shells
+know it from the generated per-variant table. This RFC therefore **supersedes
+that id encoding**: the `RequestKind` type and the `kind()` accessors on
+handles, resolvers and parked requests from that PR stay, and the two kind bits
+go.
+
+The compat release does put a structured id back, but for a different reason
+and in a different shape — see [the serialized lane and the
+wire](#the-serialized-lane-and-the-wire). The kind is still declared statically
+per operation and still reaches shells through the generated table; the id now
+also names *which effect* and *which request* a resolve belongs to, which is
+what lets the bridge reject a mangled or stale one by saying what is wrong with
+it rather than "not found".
 
 ### Shells inherit both problems
 
@@ -419,16 +426,38 @@ is a compile-time constant on the Rust side.
 
 The bridge registry can therefore read the operation's static kind when it
 registers a request rather than inspecting the `ResolveSerialized` it was
-handed. The id goes back
-to being a plain sequence number: with the kind known statically on both sides
-of the boundary, encoding it into the id as well would duplicate information
-the shell already has from the generated table, and would keep an encoding
-alive that shells are told not to depend on. The one thing the id encoding
-could do that a static kind cannot is distinguish a resolve of a notification
-from a resolve of an unknown id without storing an entry for every
-notification. The registry can keep that distinction by recording the kind of
-the most recently issued ids in a small ring rather than in the id itself, or
-by accepting that both cases report `NotFound`, which is what 0.20 does today.
+handed.
+
+The id itself became *more* structured in 0.21, not less. An `EffectId` is a
+`u32` holding, from the top: eight bits of effect variant index, one bit that
+is set for a stream and clear for a request, and twenty-three bits of sequence.
+Sequences start at one and wrap within their own bits, stepping over anything
+still outstanding, so the top nine bits can never be disturbed by counting. Id
+`0` is reserved: every notification is issued that one id, and nothing is
+stored for it.
+
+This is not a return to [#580](https://github.com/redbadger/crux/pull/580)'s
+encoding, which recorded the kind *per request instance* so that a shell could
+learn it from the wire. The kind is still static per operation and still
+reaches shells through the generated table. What the structure buys is
+diagnosis on the way back in:
+
+- Resolving a notification is reported as `ResolveError::Never` — "this request
+  was never going to be answered" — rather than as an unknown id, and without
+  the registry storing an entry for every render for the life of the process.
+- An id naming an effect variant the enum does not have, or one whose sequence
+  is outstanding but whose effect index or kind bit disagrees with what was
+  issued, is rejected as exactly that (`NoSuchEffect`, `WrongEffect`,
+  `WrongKind`) before a byte of the response is deserialized. `NotFound` now
+  means only what it says: never issued, or already resolved.
+- A log line or a crash report carrying a bare id says which effect and which
+  request it belonged to.
+
+The layout stays an implementation detail. Shells read ids through the
+generated `EffectKind` enum and `RequestId` decoder, which are emitted from the
+same effect metadata the bridge builds ids from, and resolve with the id
+exactly as it arrived. The effect index is eight bits, so `#[effect]` rejects an
+enum with more than 256 variants.
 
 The `Output` types the bridge deserializes into become specific to the
 operation. A response that does not parse as the expected `Output` is reported
@@ -450,10 +479,16 @@ with what.
 Everything below is emitted next to the generated `Effect`, in Swift, Kotlin,
 TypeScript and C#, by plugins that live in `crux_core`
 (`type_generation::facet::plugins`) rather than in facet-generate. The names
-`RequestKind`, `EffectSink`, `EffectHandler` (`IEffectSink` / `IEffectHandler`
-in C#) and `EffectDispatcher` are reserved: `TypeRegistry::build` reports an
-error if a shared type or an effect variant claims one.
-`CodeGenerator::without_effect_handlers()` turns the handler half off.
+`RequestKind`, `EffectKind`, `RequestId`, `EffectSink`, `EffectHandler`
+(`IEffectSink` / `IEffectHandler` in C#) and `EffectDispatcher` are reserved:
+`TypeRegistry::build` reports an error if a shared type or an effect variant
+claims one. `CodeGenerator::without_effect_handlers()` turns all of it off.
+
+Alongside the handler API, the plugins emit an `EffectKind` enum — one case per
+effect variant, valued by its declaration index — and a `RequestId` decoder
+that reads an id's effect, kind and sequence. Those exist because the id is
+[structured](#the-serialized-lane-and-the-wire), and are for logging and
+assertions: a request is always resolved with the id exactly as it arrived.
 
 Taking an effect with one variant of each kind, plus one legacy operation that
 declares no kind:
@@ -731,13 +766,19 @@ Answered by the compat release, in the order they were asked:
 3. **The enum-splitting derive.** Not built, and not missed. One struct per
    operation is roughly the same number of lines as an enum variant plus its
    response variant, and it is what the rest of the design reads.
-4. **Resolving a notification.** Both cases report `NotFound`, as 0.20 did. The
-   bridge does not store an entry for a notification, so a shell that resolves
-   one is told the id is unknown. The generated dispatcher makes this hard to
-   do by accident — there is no `resolve` in a notification's handler method —
-   and the migration guide calls out the one place it bites: a cleared timer.
+4. **Resolving a notification.** Told apart, without storing anything. Every
+   notification is issued the reserved id `0`, so a shell that resolves one
+   gets `ResolveError::Never` — "this request was never going to be answered" —
+   while an id that was issued and has since been resolved still gets
+   `NotFound`. The generated dispatcher makes the mistake hard to make in the
+   first place — there is no `resolve` in a notification's handler method — and
+   the migration guide calls out the one place it bites: a cleared timer.
 5. **Stream termination.** Still separate. The kind reaching the shell makes it
-   easier to design, and nothing in the compat release forecloses it.
+   easier to design, and nothing in the compat release forecloses it. The
+   structured id does not settle it either: its kind bit says a request *is* a
+   stream, which the shell already knew statically, and says nothing about when
+   one ends. A terminator would still be an item the stream's `Output` can
+   carry, or a new signal on the wire.
 6. **Error conventions.** `crux_kv` and `crux_time`'s new outputs follow the
    `HttpResult` convention — a concrete `Ok`/`Err` enum, never
    `std::result::Result`, which type generation cannot emit — and the

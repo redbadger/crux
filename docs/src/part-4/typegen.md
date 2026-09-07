@@ -251,7 +251,10 @@ Next to the generated `Effect`, you get:
   `(operation, requestId, resolve)` exactly as before;
 - an `EffectDispatcher(handler, resolve)` that calls the right method
   and resolves the request never, once, or once per sink item,
-  serializing each output with the generated bincode serializers.
+  serializing each output with the generated bincode serializers;
+- an `EffectKind` enum and a `RequestId` decoder, for reading the id a
+  request arrived with — see [reading a request
+  id](#reading-a-request-id).
 
 The `resolve` you hand the dispatcher is your own
 `(requestId, bytes) -> ()` callback around the core's `resolve` FFI —
@@ -367,6 +370,49 @@ public sealed class EffectDispatcher
 }
 ```
 
+### Reading a request id
+
+The `id` on a `Request` is not a bare counter. It packs, from the top,
+the effect's variant index, one bit saying whether the shell resolves
+the request once or many times, and an ascending sequence number. Id `0`
+is reserved for notifications, which the core never waits on.
+
+You still resolve with the id exactly as it arrived — the decoder is for
+logging, tracing and assertions, so that a stray id in a crash report
+says *which* effect and *which* request it belonged to. The layout is an
+implementation detail of the bridge, which is why the decoder is
+generated from the same effect metadata the core builds ids from rather
+than written by hand in each shell:
+
+```swift
+public enum EffectKind: UInt8, Hashable, Sendable { case render = 0, http = 1 /* ... */ }
+
+public struct RequestId: Hashable, Sendable {
+    public init(_ rawValue: UInt32)
+    public var rawValue: UInt32 { get }
+    public var isNotification: Bool { get }
+    public var effectKind: EffectKind? { get }   // nil for a notification
+    public var requestKind: RequestKind { get }
+    public var sequence: UInt32 { get }
+}
+```
+
+Kotlin gets `enum class EffectKind(val index: UByte)` with an
+`EffectKind.fromIndex(..)` companion and a `data class RequestId(val
+rawValue: UInt)` carrying the same four properties. C# gets
+`enum EffectKind : byte` and
+`public sealed record RequestId(uint RawValue)`. TypeScript, whose
+effect union already discriminates on the variant name, gets
+`export type EffectKind = "Render" | "Http" | ...` and a
+`decodeRequestId(rawValue: number): RequestId` function.
+
+The bridge checks the same structure on the way back in: resolving a
+notification's id is reported as "not expected to be resolved", and an
+id naming an effect the enum does not have, or disagreeing with the
+request its sequence belongs to, is rejected as that rather than as an
+unknown id. An effect enum is limited to 256 variants, because the
+variant index is eight bits — `#[effect]` rejects a larger one.
+
 ### Notes and escape hatches
 
 - The emission is **additive**. A shell that matches on `Effect` and
@@ -383,12 +429,13 @@ public sealed class EffectDispatcher
   a `@MainActor` type conforming to the `Sendable` `EffectHandler`
   needs a `nonisolated` extension — see the
   [iOS chapter](../part-2/shell/ios.md).
-- `RequestKind`, `EffectSink`, `EffectHandler` and `EffectDispatcher`
-  (and their C# `I`-prefixed forms) are reserved names.
-  `TypeRegistry::build` fails if one of your shared types or effect
-  variants claims one.
-- `CodeGenerator::without_effect_handlers()` turns the handler API off
-  and keeps the kind accessor.
+- `RequestKind`, `EffectKind`, `RequestId`, `EffectSink`,
+  `EffectHandler` and `EffectDispatcher` (and their C# `I`-prefixed
+  forms) are reserved names. `TypeRegistry::build` fails if one of your
+  shared types or effect variants claims one.
+- `CodeGenerator::without_effect_handlers()` turns off the handler API,
+  the kind accessor and the request-id decoder, leaving only the types
+  you registered.
 - Operation names collide with standard library types more often than
   you'd expect — `crux_kv`'s `Set` shadows `Set` in Swift, Kotlin and
   TypeScript. Alias it at the import site
