@@ -1,0 +1,53 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "request_id::<TypeScript>()"
+---
+
+/// Which effect a request id names — the same discriminant `Effect` uses.
+export type EffectKind = "Render" | "Http" | "Subscribe" | "Legacy";
+
+/// The effects in declaration order, indexed by the position a request id
+/// carries.
+const EFFECT_KINDS: EffectKind[] = ["Render", "Http", "Subscribe", "Legacy"];
+
+/// The parts of the id the core issues with every request.
+export interface RequestId {
+    /// The id as it came from the core, and as it goes back.
+    rawValue: number;
+    /// Every notification shares one reserved id, because the core is not
+    /// waiting on any of them.
+    isNotification: boolean;
+    /// Which effect this request carries — `undefined` for a notification,
+    /// whose id names none, and for an id naming an effect this generated
+    /// code does not know.
+    effectKind: EffectKind | undefined;
+    /// How many times the core expects this request to be resolved.
+    requestKind: RequestKind;
+    /// The ascending number the request was issued with. Zero for a
+    /// notification, the one id that is not sequenced.
+    sequence: number;
+}
+
+/// Read a request id.
+///
+/// Resolve with the id exactly as it arrived — this is for logging, tracing
+/// and assertions. The bit layout is Crux's, so decode ids with this rather
+/// than picking the number apart by hand.
+export function decodeRequestId(rawValue: number): RequestId {
+    if (rawValue === 0) {
+        return {
+            rawValue,
+            isNotification: true,
+            effectKind: undefined,
+            requestKind: "notify",
+            sequence: 0,
+        };
+    }
+    return {
+        rawValue,
+        isNotification: false,
+        effectKind: EFFECT_KINDS[(rawValue >>> 24) & 0xff],
+        requestKind: (rawValue & 0x800000) === 0 ? "request" : "stream",
+        sequence: rawValue & 0x7fffff,
+    };
+}

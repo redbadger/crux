@@ -23,6 +23,40 @@ fn bad_args() {
     effect_impl(args, input);
 }
 
+/// The bridge packs the effect's variant index into 8 bits of the request id.
+fn effect_with_variants(count: usize) -> syn::ItemEnum {
+    let variants = (0..count)
+        .map(|i| format!("V{i}(Op{i})"))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    syn::parse_str(&format!("pub enum Effect {{ {variants} }}")).expect("should parse")
+}
+
+#[test]
+fn the_largest_effect_enum_the_id_can_describe() {
+    let actual = effect_impl(
+        Some(format_ident!("facet_typegen")),
+        effect_with_variants(super::macro_impl::MAX_VARIANTS),
+    );
+
+    let actual = pretty_print(&actual);
+
+    assert!(actual.contains("const VARIANT_COUNT: u16 = 256u16;"));
+    assert!(actual.contains("Effect::V255(_) => 255u8,"));
+}
+
+#[test]
+#[should_panic(
+    expected = "an effect enum can have at most 256 variants, because the bridge packs the variant index into 8 bits of the request id, but `Effect` has 257"
+)]
+fn too_many_variants() {
+    effect_impl(
+        Some(format_ident!("facet_typegen")),
+        effect_with_variants(super::macro_impl::MAX_VARIANTS + 1),
+    );
+}
+
 #[test]
 #[should_panic(
     expected = "`#[effect(typegen)]` (serde type generation) was removed in crux_core 0.21; use `#[effect(facet_typegen)]`"
@@ -67,6 +101,12 @@ fn single_with_facet_typegen() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
+        const VARIANT_COUNT: u16 = 1u16;
+        fn variant_index(&self) -> u8 {
+            match self {
+                Effect::Render(_) => 0u8,
+            }
+        }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
             self,
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
@@ -206,6 +246,12 @@ fn single_facet_typegen_with_new_name() {
     impl crux_core::Effect for MyEffect {}
     impl crux_core::EffectFFI for MyEffect {
         type Ffi = MyEffectFfi;
+        const VARIANT_COUNT: u16 = 1u16;
+        fn variant_index(&self) -> u8 {
+            match self {
+                MyEffect::Render(_) => 0u8,
+            }
+        }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
             self,
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
@@ -433,6 +479,13 @@ fn multiple_with_facet_typegen() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
+        const VARIANT_COUNT: u16 = 2u16;
+        fn variant_index(&self) -> u8 {
+            match self {
+                Effect::Render(_) => 0u8,
+                Effect::Http(_) => 1u8,
+            }
+        }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
             self,
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
@@ -868,6 +921,12 @@ fn facet_typegen_with_namespace_attribute() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
+        const VARIANT_COUNT: u16 = 1u16;
+        fn variant_index(&self) -> u8 {
+            match self {
+                Effect::Render(_) => 0u8,
+            }
+        }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
             self,
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
