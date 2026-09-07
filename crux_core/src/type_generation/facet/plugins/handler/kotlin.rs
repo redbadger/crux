@@ -3,11 +3,14 @@
 
 use std::io;
 
-use facet_generate::generation::{
-    CodeGeneratorConfig,
-    bincode::kotlin::write_serialize_value,
-    indent::IndentWrite,
-    kotlin::{render_type, variant_class_name},
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        bincode::kotlin::write_serialize_value,
+        indent::IndentWrite,
+        kotlin::{render_type, variant_class_name},
+    },
+    reflection::format::{Format, FormatHolder as _, Namespace, QualifiedTypeName},
 };
 
 use super::{super::Variant, super::lower_camel, Matched};
@@ -201,8 +204,48 @@ fn emit_resolve(
     Ok(())
 }
 
+/// The output type, as a Kotlin type expression that resolves from inside the
+/// module's own package.
+///
+/// The `Format`s on the effect metadata are recorded during reflection, so —
+/// unlike everything reached through the registry — they have not been through
+/// the Kotlin generator's `update_qualified_names`. A named namespace is
+/// therefore still short, and a signature naming a sibling namespace's type as
+/// a bare `Kit.SecretPresence` does not compile: from inside
+/// `com.example.shared` there is no `Kit` in scope, only
+/// `com.example.shared.Kit`. So apply that same rule here.
+///
+/// `Namespace::Root` is left alone: a root type is emitted into this very
+/// package, so its bare name resolves already. A namespace that *is* this
+/// module's own collapses to the module name, for the same reason the generator
+/// collapses it — `com.example.shared.Kit.Kit.Foo` names nothing.
+///
+/// An externally-packaged namespace configured with its own path is not
+/// handled, because the handler API is only ever emitted for an effect in the
+/// module being generated.
 fn render_output(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> String {
-    variant
-        .output
-        .map_or_else(|| "Unit".to_string(), |format| render_type(format, config))
+    variant.output.map_or_else(
+        || "Unit".to_string(),
+        |format| {
+            let leaf = config
+                .module_name()
+                .rsplit_once('.')
+                .map_or_else(|| config.module_name(), |(_, leaf)| leaf);
+            let mut format = format.clone();
+            let _ = format.visit_mut(&mut |format| {
+                if let Format::TypeName(name) = format
+                    && let Namespace::Named(namespace) = &name.namespace
+                {
+                    let package = if namespace == leaf {
+                        config.module_name().to_string()
+                    } else {
+                        format!("{}.{namespace}", config.root_package())
+                    };
+                    *name = QualifiedTypeName::namespaced(package, name.name.clone());
+                }
+                Ok(())
+            });
+            render_type(&format, config)
+        },
+    )
 }
