@@ -34,6 +34,22 @@ mod facet_shared {
     #[operation(stream, output = Message)]
     pub struct Subscribe;
 
+    /// An operation whose output lives in a namespace of its own, which is what
+    /// the generated handler signature has to be able to name from inside the
+    /// module's own package.
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(request, output = Presence)]
+    #[facet(facet_generate_attrs::namespace = "Kit")]
+    pub struct Probe;
+
+    #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+    #[repr(C)]
+    #[facet(facet_generate_attrs::namespace = "Kit")]
+    pub enum Presence {
+        Present,
+        Absent,
+    }
+
     /// An operation that declares no kind, so the shell resolves it by hand.
     #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
     pub struct Legacy {
@@ -68,6 +84,7 @@ mod facet_shared {
         Get(Get),
         Publish(Publish),
         Subscribe(Subscribe),
+        Probe(Probe),
         Legacy(Legacy),
     }
 
@@ -181,6 +198,7 @@ mod facet_test {
                 ("Get", false),
                 ("Publish", false),
                 ("Subscribe", false),
+                ("Probe", false),
                 ("Legacy", false),
             ]
         );
@@ -213,6 +231,7 @@ mod facet_test {
                 ("Get", Some(RequestKind::Request)),
                 ("Publish", Some(RequestKind::Notify)),
                 ("Subscribe", Some(RequestKind::Stream)),
+                ("Probe", Some(RequestKind::Request)),
                 ("Legacy", None),
             ]
         );
@@ -317,7 +336,7 @@ mod facet_test {
                 "public func dispatch(_ request: Request) {",
                 "public enum EffectKind: UInt8, Hashable, Sendable {",
                 "case render = 0",
-                "case legacy = 4",
+                "case legacy = 5",
                 "public struct RequestId: Hashable, Sendable {",
                 "public var effectKind: EffectKind? {",
                 "public var requestKind: RequestKind {",
@@ -352,13 +371,17 @@ mod facet_test {
                 "fun interface EffectSink<in T> {",
                 "interface EffectHandler {",
                 "suspend fun get(operation: com.example.shared.Get): GetResult",
+                // A sibling namespace has to be named from the root package: a
+                // bare `Kit.Presence` does not resolve from inside
+                // `com.example.shared`.
+                "suspend fun probe(operation: com.example.shared.Kit.Probe): com.example.shared.Kit.Presence",
                 "fun subscribe(operation: com.example.shared.Subscribe, sink: EffectSink<Message>)",
                 "fun legacy(operation: com.example.shared.Legacy, requestId: UInt, resolve: (ByteArray) -> Unit)",
                 "class EffectDispatcher(",
                 "suspend fun dispatch(request: Request) {",
                 "enum class EffectKind(val index: UByte) {",
                 "RENDER(0u),",
-                "LEGACY(4u);",
+                "LEGACY(5u);",
                 "data class RequestId(val rawValue: UInt) {",
                 "val effectKind: EffectKind?",
                 "val requestKind: RequestKind",
@@ -399,7 +422,7 @@ mod facet_test {
                 "public void Dispatch(Example.Shared.Request request)",
                 "public enum EffectKind : byte",
                 "Render = 0,",
-                "Legacy = 4,",
+                "Legacy = 5,",
                 "public sealed record RequestId(uint RawValue)",
                 "public Example.Shared.EffectKind? EffectKind",
                 "public Example.Shared.RequestKind RequestKind",
@@ -439,7 +462,7 @@ mod facet_test {
                 "legacy(operation: Legacy, requestId: uint32, resolve: (bytes: Uint8Array) => void): void;",
                 "export class EffectDispatcher {",
                 "public dispatch(request: Request): void {",
-                r#"export type EffectKind = "Render" | "Get" | "Publish" | "Subscribe" | "Legacy";"#,
+                r#"export type EffectKind = "Render" | "Get" | "Publish" | "Subscribe" | "Probe" | "Legacy";"#,
                 "export interface RequestId {",
                 "export function decodeRequestId(rawValue: number): RequestId {",
                 r#"import { BincodeDeserializer } from "./bincode";"#,

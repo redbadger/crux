@@ -616,7 +616,7 @@ dependencies = [
  "derive_builder",
  "encoding_rs",
  "facet",
- "facet-generate-attrs 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "facet-generate-attrs",
  "futures-util",
  "http",
  "mime",
@@ -908,15 +908,6 @@ dependencies = [
 [[package]]
 name = "facet-generate-attrs"
 version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8759a95863bc332c2cdbdacdbe2595573aa3431ce42609b66a1eccf62f1ee1bb"
-dependencies = [
- "facet",
-]
-
-[[package]]
-name = "facet-generate-attrs"
-version = "0.18.0"
 source = "git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2#c949b1cc25c24c5b763c675f31a96032e19c8233"
 dependencies = [
  "facet",
@@ -974,7 +965,7 @@ source = "git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2#c949b
 dependencies = [
  "derive_builder",
  "facet",
- "facet-generate-attrs 0.18.0 (git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2)",
+ "facet-generate-attrs",
  "heck",
  "include_dir",
  "indent",
