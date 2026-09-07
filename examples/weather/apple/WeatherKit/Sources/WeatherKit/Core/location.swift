@@ -5,7 +5,7 @@ import Foundation
 
 private nonisolated let logger = Log.location
 
-nonisolated extension Core {
+nonisolated extension WeatherHandler {
     /// `IsLocationEnabled` is answered with a bare `Bool` — the operation's
     /// output type, so there is nothing to unwrap on either side.
     public func isLocationEnabled(_: IsLocationEnabled) async -> Bool {

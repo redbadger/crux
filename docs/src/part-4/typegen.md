@@ -225,8 +225,8 @@ For each target language, the codegen produces:
   effects and view models.
 - **Helper extensions** — like `Requests.swift`, which provides
   convenience methods for working with effect requests.
-- **A request-kind accessor and a typed effect handler API** — see the
-  next section.
+- **A request-kind accessor, a typed effect handler API and a `Core`
+  that drives the loop** — see the next sections.
 
 For Swift, Kotlin, TypeScript, and C#, this typegen output sits beside the
 BoltFFI-generated binding package for the byte-oriented core API.
@@ -370,6 +370,110 @@ public sealed class EffectDispatcher
 }
 ```
 
+### The generated Core
+
+With the dispatcher doing the resolving, the loop a shell still has to
+write around it is the same in every Crux app: serialize the `Event`,
+call the core's `update`, deserialize the `Requests`, re-read the view
+when a `Render` arrives, dispatch everything else, and when a request
+is resolved call the core's `resolve` and process the requests that
+come back. Type generation knows every type in that loop, so it emits
+it as a `Core` class, next to the handler API.
+
+`Core` talks to the Rust core through a `CoreBridge` protocol (Swift,
+Kotlin, TypeScript) or `ICoreBridge` interface (C#) with three
+byte-level methods. You implement it around whatever BoltFFI generated
+for your crate — in Swift that means converting `Data` to `[UInt8]` and
+back; in Kotlin and TypeScript the bytes pass straight through — and
+hand it to `Core` with your `EffectHandler`:
+
+```swift
+public protocol CoreBridge: Sendable {
+    func update(_ event: [UInt8]) -> [UInt8]
+    func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8]
+    func view() -> [UInt8]
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@MainActor
+public final class Core {
+    public private(set) var view: ViewModel
+    public init(bridge: any CoreBridge, handler: any EffectHandler,
+                onView: @escaping @MainActor (ViewModel) -> Void)
+    public func update(_ event: Event)
+    public func process(_ requests: [Request])
+    public func process(bytes: [UInt8])
+}
+```
+
+```kotlin
+interface CoreBridge {
+    fun update(event: ByteArray): ByteArray
+    fun resolve(id: UInt, output: ByteArray): ByteArray
+    fun view(): ByteArray
+}
+
+class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
+    val view: StateFlow<ViewModel>
+    fun update(event: Event)
+    fun process(requests: List<Request>)
+    fun process(bytes: ByteArray)
+}
+```
+
+```typescript
+export interface CoreBridge {
+    update(event: Uint8Array): Uint8Array;
+    resolve(id: uint32, output: Uint8Array): Uint8Array;
+    view(): Uint8Array;
+}
+
+export class Core {
+    view: ViewModel;
+    constructor(bridge: CoreBridge, handler: EffectHandler,
+                onView: (view: ViewModel) => void);
+    update(event: Event): void;
+    process(requests: Request[]): void;
+    processBytes(bytes: Uint8Array): void;
+}
+```
+
+C# gets `ICoreBridge` and `sealed class Core(ICoreBridge, IEffectHandler,
+Action<ViewModel>)` with a `View` property, `Update(Event)`,
+`Process(IReadOnlyList<Request>)` and `Process(byte[])`.
+
+Things worth knowing:
+
+- **`Core` owns `Render`.** It recognizes the variant carrying
+  `crux_core::render::RenderOperation`, re-reads the view from the bridge
+  when one arrives, keeps it in `view`, and notifies — through the
+  `onView` callback in Swift, TypeScript and C#, and through the
+  `StateFlow` in Kotlin. The callback is not fired for the initial view;
+  read `view` for that. Because `Core` handles it, `EffectHandler.render`
+  has a default that does nothing (a protocol extension in Swift, a
+  default method in Kotlin and C#, an optional `render?` in TypeScript).
+  Implement it only if you drive `EffectDispatcher` without `Core`.
+- **The view is held, not just forwarded.** That is deliberate: it is
+  where diff-based view updates will be applied when they arrive, without
+  changing how you use `Core`.
+- **`process(bytes)` is for middleware.** A Rust side that pushes
+  effects to the shell asynchronously — the `CruxShell.process_effects`
+  callback in the middleware examples — can hand those bytes straight to
+  `Core`. It tolerates an empty byte array.
+- **Concurrency.** The Swift `Core` is `@MainActor`; the dispatcher's
+  resolve hops back to the main actor before touching the bridge, as the
+  hand-written shells did. The Kotlin `Core` dispatches each request, and
+  processes each resolution, in its own coroutine on the scope you pass.
+  In C#, `onView` may be called on a thread-pool thread after an
+  asynchronous request completes, so marshal to your UI thread in the
+  callback.
+- **No `Render`, no `Core`.** An effect enum without a `RenderOperation`
+  variant has no view loop to own, so only the handler API is emitted
+  for it.
+- **Turning it off.** `CodeGenerator::without_core()` leaves the handler
+  API in place; `without_effect_handlers()` turns off both, because
+  `Core` depends on the dispatcher.
+
 ### Reading a request id
 
 The `id` on a `Request` is not a bare counter. It packs, from the top,
@@ -428,14 +532,23 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   that the generated operation and output types are not `Sendable`, so
   a `@MainActor` type conforming to the `Sendable` `EffectHandler`
   needs a `nonisolated` extension — see the
-  [iOS chapter](../part-2/shell/ios.md).
+  [iOS chapter](../part-2/shell/ios.md). The generated `Core` carries
+  the same `@available`, which is also why it is not `@Observable`: a
+  SwiftUI shell keeps a small `@Observable` holder that `onView` writes
+  to. `CoreBridge` is `Sendable`; an adapter around BoltFFI's
+  non-`Sendable` `CoreFfi` class declares itself `@unchecked Sendable`,
+  which is sound because the Rust bridge guards its state with mutexes.
 - `RequestKind`, `EffectKind`, `RequestId`, `EffectSink`,
-  `EffectHandler` and `EffectDispatcher` (and their C# `I`-prefixed
-  forms) are reserved names. `TypeRegistry::build` fails if one of your
-  shared types or effect variants claims one.
-- `CodeGenerator::without_effect_handlers()` turns off the handler API,
-  the kind accessor and the request-id decoder, leaving only the types
-  you registered.
+  `EffectHandler`, `EffectDispatcher`, `Core` and `CoreBridge` (and their
+  C# `I`-prefixed forms) are reserved names. `TypeRegistry::build` fails
+  if one of your shared types or effect variants claims one.
+- `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`;
+  `CodeGenerator::without_effect_handlers()` turns off those and the
+  handler API, the kind accessor and the request-id decoder, leaving
+  only the types you registered.
+- The generated Kotlin module declares a dependency on
+  `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
+  `StateFlow` and coroutine launches need.
 - Operation names collide with standard library types more often than
   you'd expect — `crux_kv`'s `Set` shadows `Set` in Swift, Kotlin and
   TypeScript. Alias it at the import site

@@ -4,53 +4,58 @@ The Android shell talks to the Rust core the same way the iOS shell does — ser
 
 ## Booting the Core with Hilt
 
-The Android app uses [Dagger Hilt](https://dagger.dev/hilt/) to wire up the core and its dependencies. `WeatherApplication` is annotated `@HiltAndroidApp`, which bootstraps the DI graph, and `MainActivity` is `@AndroidEntryPoint`, which lets it receive `@Inject` field injection. Handlers and the core itself use constructor injection — so the Hilt module is small:
+The Android app uses [Dagger Hilt](https://dagger.dev/hilt/) to wire up the core and its dependencies. `WeatherApplication` is annotated `@HiltAndroidApp`, which bootstraps the DI graph, and `MainActivity` is `@AndroidEntryPoint`, which lets it receive `@Inject` field injection. Handlers use constructor injection, so the module that provides the app's own dependencies is small:
 
 ```kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/AppModule.kt}}
 ```
 
-The only explicit provider is `OkHttpClient`, since it isn't under our control. `Core` and every handler get `@Inject constructor(...)` — Hilt figures out the graph from there.
+The only explicit provider here is `OkHttpClient`, since it isn't under our control; every handler gets `@Inject constructor(...)` and Hilt figures out the graph from there. The generated `Core` is the other thing Hilt can't construct on its own — it has no `@Inject` constructor — so a second module builds it:
 
-`Core` itself takes five injected dependencies — one per capability that needs a real-world implementation: `HttpHandler` (OkHttp), `LocationHandler` (Fused Location Provider + permission flow), `KeyValueHandler` (DataStore-backed), `SecretStore` (AndroidKeyStore-backed), and `TimeHandler` (coroutine timers).
+```kotlin
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/CoreModule.kt:start}}
+```
+
+`Core` takes the three things a shell supplies: a `CoreBridge` (bound to `LiveBridge` in the same module), an `EffectHandler`, and a `CoroutineScope` on the main dispatcher. The `.also` sends the same `Event.Start` we saw in chapter 3 the moment the core exists — it fetches the API key and favourites before anything is drawn.
+
+The handler is `WeatherHandler`, which takes five injected dependencies — one per capability that needs a real-world implementation: `HttpHandler` (OkHttp), `LocationHandler` (Fused Location Provider + permission flow), `KeyValueHandler` (DataStore-backed), `SecretStore` (AndroidKeyStore-backed), and `TimeHandler` (coroutine timers).
 
 One thing to flag upfront: the word "ViewModel" shows up in two senses on Android. Crux's own `ViewModel` is the state projection produced by the core — what the UI ultimately consumes. Android's `androidx.lifecycle.ViewModel` is the lifecycle-aware class that survives configuration changes. The per-screen Android VMs (`HomeViewModel`, `FavoritesViewModel`, `OnboardViewModel`) sit between them: they observe a flow of Crux view models from `Core` and map each one to a Compose-friendly UI state. All three are `@HiltViewModel @Inject constructor(...)`.
 
-`Core` kicks the lifecycle off right in its `init` block:
-
-```kotlin
-{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:start}}
-```
-
-The same `Event.Start` we saw in chapter 3 — the moment the core is constructed, it fetches the API key and favourites.
-
 ## The FFI bridge
 
-Kotlin doesn't have a separate bridge file like Swift's `LiveBridge`; the bridging is inline in `Core.kt`. Here's the top of the class with the FFI instance and the flow the view layer observes:
+`LiveBridge` is the generated `CoreBridge` interface, implemented over BoltFFI's `CoreFfi`:
 
 ```kotlin
-{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:core_base}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/LiveBridge.kt}}
 ```
 
-`update(event)` serialises the event with bincode, calls `coreFfi.update(...)`, and hands the resulting bytes to `handleEffects`. The Crux view-model flow (`_viewModel`) is a `MutableStateFlow<ViewModel>` — a Kotlin coroutines type that always holds a current value, and conflates on equality: when you set the flow's `.value`, collectors are only notified if the new value differs from the previous one. That property keeps identical renders from rippling downstream.
+Bytes in, bytes out. The generated `Core` does the serializing, so this is the only class that knows `CoreFfi` exists. The view layer observes `core.view`, a `StateFlow<ViewModel>` — a Kotlin coroutines type that always holds a current value, and conflates on equality: collectors are only notified if the new value differs from the previous one. That property keeps identical renders from rippling downstream.
+
+One build detail: `Core` uses `StateFlow` and `launch`, so the `shared` Gradle module that compiles the generated sources declares `kotlinx-coroutines-core` as an `api` dependency. The generated `build.gradle.kts` lists it too, but this project pulls the generated sources in directly with `srcDirs` and manages versions in `libs.versions.toml`.
 
 ## Handling effects
 
-`Core` implements the generated `EffectHandler` interface, and every request goes to the generated `EffectDispatcher`:
+The loop is the generated `Core`:
 
 ```kotlin
-{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:process_request}}
+class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
+    val view: StateFlow<ViewModel>
+    fun update(event: Event)
+    fun process(requests: List<Request>)
+    fun process(bytes: ByteArray)
+}
 ```
 
-There's no `when` over the sealed `Effect` class any more — the dispatcher does that, calls the matching handler method, and resolves the request with whatever it returns. Each request gets its own coroutine, because `dispatch` is `suspend`: a debounce timer suspends for its whole duration, and the requests queued behind it must not wait for it.
+`Core` handles `Render` itself — it re-reads the view from the bridge and publishes it on `view` — and hands everything else to the generated `EffectDispatcher`, which calls the matching `EffectHandler` method and resolves the request with whatever it returns. There's no `when` over the sealed `Effect` class anywhere. Each request gets its own coroutine on the scope you pass, because `dispatch` is `suspend`: a debounce timer suspends for its whole duration, and the requests queued behind it must not wait for it. When a request is resolved, `Core` passes the bytes through the bridge and **recurses** with the new requests that come back — same reason as in the iOS chapter: `Command` is async, and a command with multiple `.await` points produces its next effect only after the previous one is resolved. The shell has to keep looping, and now nothing in the shell has to remember to.
 
-The handler methods are one-liners that delegate to the injected handlers. HTTP, for example:
+What the shell writes is the handler, `WeatherHandler`, whose methods are one-liners that delegate to the injected handlers. HTTP, for example:
 
 ```kotlin
-{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:handle_http}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/WeatherHandler.kt:handle_http}}
 ```
 
-`suspend fun http(operation: HttpRequest): HttpResult` — the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `Core` calls `resolve`. Compare `override fun render(operation: RenderOperation) = render()`: a notification, so it returns `Unit` and is never resolved. `timeClear` is the other notification.
+`suspend fun http(operation: HttpRequest): HttpResult` — the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `WeatherHandler` calls `resolve`. There is no `render` override either, because `Core` owns it; `timeClear` is the one notification here, so it returns `Unit` and is never resolved.
 
 `httpHandler.request(...)` is the `suspend` function that wraps OkHttp:
 
@@ -60,17 +65,9 @@ The handler methods are one-liners that delegate to the injected handlers. HTTP,
 
 Because the handler interface owns the response types, the per-capability handlers lost their `when` blocks too: `KeyValueHandler.get(operation: Get): ValueResult` takes exactly the operation it serves and returns exactly its output, rather than matching a wide operation enum and constructing a matching response variant.
 
-The dispatcher resolves through the callback `Core` gave it, which calls `coreFfi.resolve(...)` and then **recurses** through `handleEffects` with the new effect requests:
-
-```kotlin
-{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:resolve}}
-```
-
-Same reason as in the iOS chapter: `Command` is async, and a command with multiple `.await` points produces its next effect only after the previous one is resolved. The shell has to keep looping.
-
 ```admonish note title="Kotlin name collisions"
 `crux_kv`'s `Set` operation generates a Kotlin class called `Set`, which
-collides with `kotlin.collections.Set`. `Core.kt` imports it as
+collides with `kotlin.collections.Set`. `WeatherHandler.kt` imports it as
 `import com.crux.example.weather.Set as KeyValueSet`. The same collision
 appears in Swift and TypeScript, and the same fix — an alias at the import —
 works there.
@@ -78,7 +75,7 @@ works there.
 
 ## Views driven by the Crux view model
 
-`Core` exposes the current view model as a `StateFlow<ViewModel>`, so Compose can collect it with `collectAsState()` and recompose when it changes. The root of the view tree lives in `MainActivity.onCreate`:
+The generated `Core` exposes the current view model as `view: StateFlow<ViewModel>`, so Compose can collect it with `collectAsState()` and recompose when it changes; `core/Projections.kt` adds per-screen extension functions (`core.homeViewModel()` and friends) that narrow it to one branch. The root of the view tree lives in `MainActivity.onCreate`:
 
 ```kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/MainActivity.kt:content_view}}

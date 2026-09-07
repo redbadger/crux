@@ -80,6 +80,7 @@
 //! # Ok(())
 //! # }
 //! ```
+mod app;
 mod effects;
 mod plugins;
 
@@ -105,8 +106,9 @@ use log::info;
 use serde_json::json;
 use thiserror::Error;
 
+pub use self::app::AppMeta;
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
-use self::plugins::{EffectHandlerPlugin, RequestIdPlugin, RequestKindPlugin};
+use self::plugins::{CorePlugin, EffectHandlerPlugin, RequestIdPlugin, RequestKindPlugin};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -140,9 +142,9 @@ impl Export for () {
     }
 }
 
-/// Names the generated effect handler API claims in the root namespace of
-/// every generated package. A registered type using one of these would be
-/// silently shadowed, so [`TypeRegistry::build`] rejects it instead.
+/// Names the generated shell API claims in the root namespace of every
+/// generated package. A registered type using one of these would be silently
+/// shadowed, so [`TypeRegistry::build`] rejects it instead.
 const RESERVED_TYPE_NAMES: &[&str] = &[
     "RequestKind",
     "EffectKind",
@@ -152,17 +154,23 @@ const RESERVED_TYPE_NAMES: &[&str] = &[
     "EffectSink",
     "IEffectSink",
     "EffectDispatcher",
+    "Core",
+    "CoreBridge",
+    "ICoreBridge",
 ];
 
 pub struct TypeRegistry {
     builder: RegistryBuilder,
     effects: Vec<EffectMeta>,
+    app: Option<AppMeta>,
 }
 
 pub struct CodeGenerator {
     registry: Registry,
     effects: Arc<[EffectMeta]>,
+    app: Option<AppMeta>,
     handlers: bool,
+    core: bool,
 }
 
 /// The `TypeRegistry` struct stores the registered types so that they can be generated for foreign languages
@@ -174,6 +182,7 @@ impl TypeRegistry {
         Self {
             builder: RegistryBuilder::new(),
             effects: Vec::new(),
+            app: None,
         }
     }
 
@@ -185,6 +194,10 @@ impl TypeRegistry {
     /// See the section on
     /// [creating the shared types crate](https://redbadger.github.io/crux/getting_started/core.html#create-the-shared-types-crate)
     /// in the Crux book for more information.
+    /// The `Event` and `ViewModel` of the first app registered are also
+    /// recorded as an [`AppMeta`], which is what the generated `Core` names in
+    /// its signatures.
+    ///
     /// # Errors
     /// Returns a [`TypeGenError`] if the type registration fails.
     pub fn register_app<'a, A: App>(&mut self) -> Result<&mut Self, TypeGenError>
@@ -200,7 +213,35 @@ impl TypeRegistry {
             .register_type::<A::ViewModel>()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
+        // The generated `Core` uses fixed names, so — like the handler API,
+        // which is emitted for the first registered effect — the first app
+        // registered is the one it is generated for.
+        if self.app.is_none() {
+            let event = self.named_type::<A::Event>("event")?;
+            let view_model = self.named_type::<A::ViewModel>("view model")?;
+            self.app = Some(AppMeta { event, view_model });
+        }
+
         Ok(self)
+    }
+
+    /// The registry name of `T`, for the metadata the plugins read.
+    fn named_type<'a, T: Facet<'a>>(&self, what: &str) -> Result<QualifiedTypeName, TypeGenError> {
+        let format = self.builder.format_of::<T>().map_err(|e| {
+            TypeGenError::Generation(format!(
+                "couldn't reflect {what} {}: {e}",
+                std::any::type_name::<T>()
+            ))
+        })?;
+
+        let Format::TypeName(name) = format else {
+            return Err(TypeGenError::Generation(format!(
+                "{what} {} is not a named type",
+                std::any::type_name::<T>()
+            )));
+        };
+
+        Ok(name)
     }
 
     /// For each of the types that you want to share with the Shell, call this method:
@@ -295,7 +336,9 @@ impl TypeRegistry {
         Ok(CodeGenerator {
             registry,
             effects,
+            app: self.app.clone(),
             handlers: true,
+            core: true,
         })
     }
 }
@@ -308,7 +351,7 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
     for name in registry.keys() {
         if name.namespace == Namespace::Root && RESERVED_TYPE_NAMES.contains(&name.name.as_str()) {
             return Err(TypeGenError::Generation(format!(
-                "`{}` is generated for the effect handler API, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
+                "`{}` is generated for the shell API, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
                 name.name
             )));
         }
@@ -364,6 +407,9 @@ impl CodeGenerator {
                 .plugin(RequestKindPlugin::new(&self.effects))
                 .plugin(EffectHandlerPlugin::new(&self.effects))
                 .plugin(RequestIdPlugin::new(&self.effects));
+            if let Some(core) = self.core_plugin() {
+                installer = installer.plugin(core);
+            }
         }
         installer
             .external_packages(&config.external_packages)
@@ -404,6 +450,9 @@ impl CodeGenerator {
                 .plugin(RequestKindPlugin::new(&self.effects))
                 .plugin(EffectHandlerPlugin::new(&self.effects))
                 .plugin(RequestIdPlugin::new(&self.effects));
+            if let Some(core) = self.core_plugin() {
+                installer = installer.plugin(core);
+            }
         }
         installer
             .external_packages(&config.external_packages)
@@ -444,6 +493,9 @@ impl CodeGenerator {
                 .plugin(RequestKindPlugin::new(&self.effects))
                 .plugin(EffectHandlerPlugin::new(&self.effects))
                 .plugin(RequestIdPlugin::new(&self.effects));
+            if let Some(core) = self.core_plugin() {
+                installer = installer.plugin(core);
+            }
         }
         installer
             .external_packages(&config.external_packages)
@@ -479,6 +531,9 @@ impl CodeGenerator {
                 .plugin(RequestKindPlugin::new(&self.effects))
                 .plugin(EffectHandlerPlugin::new(&self.effects))
                 .plugin(RequestIdPlugin::new(&self.effects));
+            if let Some(core) = self.core_plugin() {
+                installer = installer.plugin(core);
+            }
         }
         installer
             .external_packages(&config.external_packages)
@@ -535,8 +590,16 @@ impl CodeGenerator {
         &self.effects
     }
 
+    /// The `Event` and `ViewModel` of the first registered app, or `None` if no
+    /// app was registered.
+    #[must_use]
+    pub const fn app(&self) -> Option<&AppMeta> {
+        self.app.as_ref()
+    }
+
     /// Turns off emission of the `RequestKind` and `EffectKind` types, the
-    /// `RequestId` decoder, and the effect handler API.
+    /// `RequestId` decoder, the effect handler API, and — because it is built
+    /// on the dispatcher — the generated `Core`.
     ///
     /// Only the types you registered are generated, exactly as before Crux
     /// 0.21. Use this if your shell dispatches effects by hand and the extra
@@ -545,5 +608,32 @@ impl CodeGenerator {
     pub const fn without_effect_handlers(mut self) -> Self {
         self.handlers = false;
         self
+    }
+
+    /// Turns off emission of `CoreBridge` and `Core`, keeping the effect
+    /// handler API.
+    ///
+    /// Use this if your shell drives `EffectDispatcher` itself. To turn the
+    /// handler API off as well, use
+    /// [`without_effect_handlers`](Self::without_effect_handlers), which
+    /// implies this.
+    #[must_use]
+    pub const fn without_core(mut self) -> Self {
+        self.core = false;
+        self
+    }
+
+    /// The plugin that emits `CoreBridge` and `Core`, if it should be emitted
+    /// at all.
+    ///
+    /// `Core` is built on the dispatcher and names the app's `Event` and
+    /// `ViewModel`, so it needs the handler API and a registered app.
+    fn core_plugin(&self) -> Option<CorePlugin> {
+        if !(self.handlers && self.core) {
+            return None;
+        }
+        self.app
+            .clone()
+            .map(|app| CorePlugin::new(&self.effects, app))
     }
 }

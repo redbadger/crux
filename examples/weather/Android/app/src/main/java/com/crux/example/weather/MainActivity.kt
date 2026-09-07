@@ -16,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.crux.example.weather.core.Core
 import com.crux.example.weather.core.LocationHandler
 import com.crux.example.weather.core.LocationHandler.PermissionRequestListener
 import com.crux.example.weather.ui.failed.FailedScreen
@@ -53,7 +52,7 @@ class MainActivity : ComponentActivity() {
         // ANCHOR: content_view
         setContent {
             WeatherTheme {
-                val state by core.viewModel.collectAsState()
+                val state by core.view.collectAsState()
 
                 BackHandler(enabled = state is ViewModel.Active) {
                     handleBackNavigation(state)

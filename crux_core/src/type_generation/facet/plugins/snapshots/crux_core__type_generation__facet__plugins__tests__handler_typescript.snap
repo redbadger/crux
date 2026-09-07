@@ -15,7 +15,9 @@ export interface EffectSink<T> {
 /// `EffectDispatcher` resolves each request for you, so there is no
 /// `resolve` to call at the wrong time or with the wrong bytes.
 export interface EffectHandler {
-    render(operation: RenderOperation): void;
+    /// `Core` handles `Render` itself, so this is optional; implement it
+    /// only if you drive `EffectDispatcher` yourself.
+    render?(operation: RenderOperation): void;
     http(operation: HttpRequest): Promise<HttpResult>;
     subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
     legacy(operation: LegacyOperation, requestId: uint32, resolve: (bytes: Uint8Array) => void): void;
@@ -35,7 +37,7 @@ export class EffectDispatcher {
         const effect = request.effect;
         switch (effect.kind) {
             case "Render": {
-                this.handler.render(effect.value);
+                this.handler.render?.(effect.value);
                 break;
             }
             case "Http": {

@@ -35,3 +35,11 @@ android {
         }
     }
 }
+
+dependencies {
+    // The generated `Core` runs each request on a `CoroutineScope` and
+    // publishes the view model as a `StateFlow`, so both appear in this
+    // module's API. The typegen's own `build.gradle.kts` declares this, but
+    // these sources come in through `srcDirs` instead, so the module has to.
+    api(libs.kotlinx.coroutines.core)
+}

@@ -18,7 +18,7 @@ mod typescript;
 use std::{io, sync::Arc};
 
 use facet_generate::generation::{
-    CodeGeneratorConfig, PackageLocation,
+    CodeGeneratorConfig,
     csharp::CSharp,
     indent::IndentWrite,
     kotlin::Kotlin,
@@ -27,7 +27,7 @@ use facet_generate::generation::{
     typescript::TypeScript,
 };
 
-use super::{Matched, matched};
+use super::{Matched, bincode_import_path, matched, serializes_output};
 use crate::type_generation::facet::EffectMeta;
 
 /// Emits `EffectSink`, `EffectHandler` and `EffectDispatcher`.
@@ -47,19 +47,6 @@ impl EffectHandlerPlugin {
     /// registered effect only.
     fn matched<'a>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
         matched(&self.effects, ctx).filter(|m| m.primary)
-    }
-
-    /// Whether the dispatcher will serialize an output, which is what needs a
-    /// serializer imported.
-    fn serializes_output(&self) -> bool {
-        self.effects.first().is_some_and(|effect| {
-            effect.variants.iter().any(|variant| {
-                matches!(
-                    variant.kind,
-                    Some(crate::RequestKind::Request | crate::RequestKind::Stream)
-                )
-            })
-        })
     }
 
     /// Whether the handler has an asynchronous method, which is what needs
@@ -90,7 +77,7 @@ impl EmitterPlugin<Kotlin> for EffectHandlerPlugin {
 
 impl EmitterPlugin<TypeScript> for EffectHandlerPlugin {
     fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.serializes_output() {
+        if !serializes_output(&self.effects) {
             return vec![];
         }
         let path = bincode_import_path(config);
@@ -119,22 +106,4 @@ impl EmitterPlugin<CSharp> for EffectHandlerPlugin {
         self.matched(ctx)
             .map_or(Ok(()), |m| csharp::emit(w, &m, ctx.config))
     }
-}
-
-/// Where the TypeScript bincode runtime lives, resolved the same way the
-/// bincode plugin resolves the serde runtime.
-fn bincode_import_path(config: &CodeGeneratorConfig) -> String {
-    config.external_packages.get("bincode").map_or_else(
-        || "./bincode".to_string(),
-        |package| match &package.location {
-            PackageLocation::Path(_) => {
-                let name = &package.for_namespace;
-                package
-                    .module_name
-                    .as_ref()
-                    .map_or_else(|| name.clone(), |module| format!("{name}/{module}"))
-            }
-            PackageLocation::Url(_) => package.for_namespace.clone(),
-        },
-    )
 }

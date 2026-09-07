@@ -7,9 +7,9 @@ import "./wasm-getrandom";
 import { CoreFfi } from "shared";
 import type {
   Clear,
+  CoreBridge,
   EffectHandler,
   EffectSink,
-  Event,
   Get,
   Message,
   NotifyAfter,
@@ -18,89 +18,54 @@ import type {
   Subscribe,
   TimerId,
   ValueResult,
+  ViewModel,
 } from "shared_types/app";
 import {
-  EffectDispatcher,
-  Request,
-  ViewModel,
-  serializeEvent,
+  Core,
   valueBytes,
   valueNone,
   valueResultOk,
 } from "shared_types/app";
-import { BincodeSerializer, BincodeDeserializer } from "shared_types/bincode";
-import { Dispatch, RefObject, SetStateAction } from "react";
+import { RefObject } from "react";
 
 export type SyncMessage = {
   kind: "change" | "reset";
   data?: number[];
 };
 
+/// The generated `CoreBridge`, implemented over the wasm bindings: bytes in,
+/// bytes out, nothing else. `CoreFfi.new()` touches the WASM module, so a
+/// `LiveBridge` may only be built once `wasmInitialized` has resolved.
+export class LiveBridge implements CoreBridge {
+  private readonly ffi = CoreFfi.new();
+
+  update(event: Uint8Array): Uint8Array {
+    return this.ffi.update(event);
+  }
+
+  resolve(id: number, output: Uint8Array): Uint8Array {
+    return this.ffi.resolve(id, output);
+  }
+
+  view(): Uint8Array {
+    return this.ffi.view();
+  }
+}
+
 /// The shell's side of the effect protocol.
 ///
-/// `Core` implements the generated `EffectHandler`: one method per operation
-/// the app declares, each returning the single output that operation is
-/// answered with. The generated `EffectDispatcher` does the resolving —
-/// nothing here calls `resolve` by hand.
-export class Core implements EffectHandler {
-  private core: CoreFfi | null = null;
-  private readonly dispatcher: EffectDispatcher;
+/// `NotesHandler` implements the generated `EffectHandler`: one method per
+/// operation the app declares, each returning the single output that operation
+/// is answered with. The generated `EffectDispatcher` does the resolving —
+/// nothing here calls `resolve` by hand, and there is no `render` method
+/// because the generated `Core` handles `Render` itself.
+export class NotesHandler implements EffectHandler {
   private readonly timers = new Map<bigint, number>();
 
-  setState: Dispatch<SetStateAction<ViewModel>>;
-  channel: RefObject<BroadcastChannel>;
-  subscription: RefObject<EffectSink<Message> | null>;
-
   constructor(
-    setState: Dispatch<SetStateAction<ViewModel>>,
-    channel: RefObject<BroadcastChannel>,
-    subscription: RefObject<EffectSink<Message> | null>,
-  ) {
-    // Don't initialize CoreFfi here - wait for WASM to be loaded
-    this.setState = setState;
-    this.channel = channel;
-    this.subscription = subscription;
-    this.dispatcher = new EffectDispatcher(this, (id, bytes) => {
-      this.process(this.ffi().resolve(id, bytes));
-    });
-  }
-
-  initialize() {
-    this.core ??= CoreFfi.new();
-  }
-
-  view(): ViewModel {
-    return deserializeView(this.ffi().view());
-  }
-
-  update(event: Event) {
-    console.log("event", event);
-
-    const serializer = new BincodeSerializer();
-    serializeEvent(event, serializer);
-
-    this.process(this.ffi().update(serializer.getBytes()));
-  }
-
-  private process(effects: Uint8Array | number[]) {
-    for (const request of deserializeRequests(effects)) {
-      console.log("effect", request.effect);
-      this.dispatcher.dispatch(request);
-    }
-  }
-
-  private ffi(): CoreFfi {
-    if (!this.core) {
-      throw new Error("Core not initialized. Call initialize() first.");
-    }
-    return this.core;
-  }
-
-  // --- EffectHandler ------------------------------------------------------
-
-  render(): void {
-    this.setState(this.view());
-  }
+    private readonly channel: RefObject<BroadcastChannel>,
+    private readonly subscription: RefObject<EffectSink<Message> | null>,
+  ) {}
 
   publish(operation: Publish): void {
     const message: SyncMessage = {
@@ -161,21 +126,17 @@ export class Core implements EffectHandler {
   }
 }
 
-function deserializeRequests(bytes: Uint8Array | number[]): Request[] {
-  const deserializer = new BincodeDeserializer(asBytes(bytes));
-  const len = deserializer.deserializeLen();
-  const requests: Request[] = [];
-  for (let i = 0; i < len; i++) {
-    const request = Request.deserialize(deserializer);
-    requests.push(request);
-  }
-  return requests;
-}
-
-function deserializeView(bytes: Uint8Array | number[]): ViewModel {
-  return ViewModel.deserialize(new BincodeDeserializer(asBytes(bytes)));
-}
-
-function asBytes(bytes: Uint8Array | number[]): Uint8Array {
-  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+/// Everything the shell has to write to run a Crux core: a `CoreBridge` over
+/// the FFI, an `EffectHandler` for the app's operations, and a callback for
+/// the view model. The generated `Core` owns the loop between them.
+export function createCore(
+  onView: (view: ViewModel) => void,
+  channel: RefObject<BroadcastChannel>,
+  subscription: RefObject<EffectSink<Message> | null>,
+): Core {
+  return new Core(
+    new LiveBridge(),
+    new NotesHandler(channel, subscription),
+    onView,
+  );
 }

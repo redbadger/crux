@@ -1,11 +1,12 @@
 # RFC: Per-operation types with static request kinds
 
 ```admonish
-This RFC has been **accepted**. The compat stage shipped in `crux_core` 0.21 —
-see the [migration guide](../guide/migrate-per-operation-types.md) — and the
-breaking stage is scheduled for the next major release. The text below is kept
-as it was written, with the sections describing what shipped brought up to
-date.
+This RFC is **proposed**. Its compat stage is implemented in a stack of pull
+requests alongside this text, so that reviewers can read real code — see the
+[migration guide](../guide/migrate-per-operation-types.md) — and, if accepted,
+would ship as `crux_core` 0.21, with the breaking stage following in the next
+major release. The text below is kept as it was written, with the sections
+describing the implementation brought up to date.
 ```
 
 This RFC proposes that each operation a capability can ask the shell to perform
@@ -387,7 +388,7 @@ pub enum KeyValue {
 This would generate one struct per variant, in a module named after the enum.
 Whether this second form is worth the macro complexity is an open question. The
 first form is the proposal; the second is sugar. *It was not built: the derive
-that shipped is struct-only, and one struct per operation reads well enough
+as implemented is struct-only, and one struct per operation reads well enough
 that nobody has asked for the sugar.*
 
 ### The Effect enum
@@ -428,7 +429,7 @@ The bridge registry can therefore read the operation's static kind when it
 registers a request rather than inspecting the `ResolveSerialized` it was
 handed.
 
-The id itself became *more* structured in 0.21, not less. An `EffectId` is a
+The id itself becomes *more* structured in the compat stage, not less. An `EffectId` is a
 `u32` holding, from the top: eight bits of effect variant index, one bit that
 is set for a stream and clear for a request, and twenty-three bits of sequence.
 Sequences start at one and wrap within their own bits, stepping over anything
@@ -466,9 +467,10 @@ value of the wrong variant that later panics inside a capability.
 
 ### Type generation
 
-*This section describes what shipped in 0.21, which is more than the RFC
-originally proposed: the handler API was a "second phase" here and landed in the
-same release.*
+*This section describes what the compat stage implements, which is more than
+the RFC originally proposed: the handler API was a "second phase" here and is
+part of the same stack, and a generated shell-side `Core` is proposed on top of
+it — see [its own RFC](./generated-core.md).*
 
 Because the kind is static per `EffectFfi` variant, type generation emits it as
 a property of the generated effect type, with no wire cost. It also emits a
@@ -480,9 +482,11 @@ Everything below is emitted next to the generated `Effect`, in Swift, Kotlin,
 TypeScript and C#, by plugins that live in `crux_core`
 (`type_generation::facet::plugins`) rather than in facet-generate. The names
 `RequestKind`, `EffectKind`, `RequestId`, `EffectSink`, `EffectHandler`
-(`IEffectSink` / `IEffectHandler` in C#) and `EffectDispatcher` are reserved:
-`TypeRegistry::build` reports an error if a shared type or an effect variant
-claims one. `CodeGenerator::without_effect_handlers()` turns all of it off.
+(`IEffectSink` / `IEffectHandler` in C#), `EffectDispatcher`, `Core` and
+`CoreBridge` (`ICoreBridge`) are reserved: `TypeRegistry::build` reports an
+error if a shared type or an effect variant claims one.
+`CodeGenerator::without_core()` turns off the generated `Core` and its bridge
+protocol; `without_effect_handlers()` turns all of it off.
 
 Alongside the handler API, the plugins emit an `EffectKind` enum — one case per
 effect variant, valued by its declaration index — and a `RequestId` decoder
@@ -613,6 +617,13 @@ shape it always had: its handler method is handed the request id and a
 `resolve` callback taking raw bytes. Shells that prefer to match on `Effect`
 and resolve by hand are unaffected; the emission is purely additive.
 
+The same plugins also emit a `CoreBridge` protocol over bytes and a `Core`
+that owns the loop around the dispatcher — event in, requests out, resolve and
+repeat — and that handles `Render` itself, which is why `EffectHandler.render`
+has a default that does nothing. An effect enum with no `RenderOperation`
+variant gets no `Core`. The design and its trade-offs are the subject of the
+[generated `Core` RFC](./generated-core.md).
+
 ### Effect router and middleware
 
 `Parked<Op>` already knows its `Op`, so it knows the kind statically.
@@ -658,7 +669,7 @@ open questions.
 
 The change lands in two releases so that each is usable on its own.
 
-**Compat release (additive) — shipped in `crux_core` 0.21, `crux_macros` 0.11,
+**Compat release (additive) — proposed as `crux_core` 0.21, `crux_macros` 0.11,
 `crux_http` 0.21, `crux_kv` 0.15 and `crux_time` 0.19.** Everything a reader
 needs in order to try the design, without breaking anyone. The
 [migration guide](../guide/migrate-per-operation-types.md) is the practical
@@ -790,9 +801,10 @@ Stream}` and are used through the module path.
 
 ## Next steps
 
-Steps 1 to 3 are done — the traits, the derive, the tightened constructors, the
-per-operation rewrites of `crux_kv` and `crux_time`, and kind and handler
-emission for all four languages all shipped in the compat release, and two
+Steps 1 to 3 are implemented in the compat stack — the traits, the derive, the
+tightened constructors, the per-operation rewrites of `crux_kv` and `crux_time`,
+and kind and handler emission for all four languages, with a
+[generated shell-side `Core`](./generated-core.md) proposed on top — and two
 examples moved across on both sides of the boundary. What remains is the
 breaking release:
 

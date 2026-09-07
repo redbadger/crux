@@ -11,8 +11,8 @@ import Textarea, {
 } from "../components/Textarea/Textarea";
 
 import * as sharedWasm from "shared";
-import { SyncMessage, Core } from "./core";
-import type { EffectSink } from "shared_types/app";
+import { SyncMessage, createCore } from "./core";
+import type { Core, EffectSink } from "shared_types/app";
 import {
   TextCursor,
   matchTextCursor,
@@ -58,7 +58,7 @@ const Home: NextPage = () => {
   // item on this sink.
   const subscription = useRef<EffectSink<Message> | null>(null);
   const channel = useRef(new BroadcastChannel("crux-note"));
-  const core = useRef(new Core(setView, channel, subscription));
+  const core = useRef<Core | null>(null);
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
     let message = event.data;
@@ -86,8 +86,9 @@ const Home: NextPage = () => {
           try {
             await wasmInitialized;
 
-            // Initialize the Core with WASM after module is loaded
-            core.current.initialize();
+            // `CoreFfi.new()` needs the WASM module, so the core can only be
+            // built once it has loaded.
+            core.current = createCore(setView, channel, subscription);
 
             // Subscribe to the BroadcastChannel
             channel.current.onmessage = onMessage;
@@ -120,7 +121,7 @@ const Home: NextPage = () => {
   const onChange = ({ start, end, text }: ChangeEvent): void => {
     log(`onChange ${start} ${end} "${text}"`);
 
-    core.current.update(eventReplace(BigInt(start), BigInt(end), text));
+    core.current?.update(eventReplace(BigInt(start), BigInt(end), text));
   };
 
   const onSelect = ({ start, end }: SelectEvent): void => {
@@ -131,7 +132,7 @@ const Home: NextPage = () => {
         ? eventMoveCursor(BigInt(end))
         : eventSelect(BigInt(start), BigInt(end));
 
-    core.current.update(event);
+    core.current?.update(event);
   };
 
   const [inputLog, updateLog] = useState<string[]>([]);

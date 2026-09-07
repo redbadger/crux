@@ -1,0 +1,78 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "core::<CSharp>()"
+---
+
+/// <summary>
+/// The core's FFI surface, as bytes. Implement it around the bindings your
+/// Rust crate exports, or with a fake for tests.
+/// </summary>
+public interface ICoreBridge
+{
+    byte[] Update(byte[] @event);
+    byte[] Resolve(uint id, byte[] output);
+    byte[] View();
+}
+
+/// <summary>
+/// The shell's side of the core: it serializes events, dispatches the
+/// requests that come back, and resolves them through the bridge.
+///
+/// <c>Render</c> is handled here, so an <c>IEffectHandler</c> need not
+/// implement it. <c>onView</c> may be called on a thread-pool thread after
+/// an asynchronous request, so marshal to your UI thread inside it.
+/// </summary>
+public sealed class Core
+{
+    private readonly ICoreBridge _bridge;
+    private readonly EffectDispatcher _dispatcher;
+    private readonly Action<ViewModel> _onView;
+
+    /// <summary>
+    /// The view model as of the last <c>Render</c>.
+    /// </summary>
+    public ViewModel View { get; private set; }
+
+    public Core(ICoreBridge bridge, IEffectHandler handler, Action<ViewModel> onView)
+    {
+        _bridge = bridge;
+        _onView = onView;
+        View = ReadView();
+        _dispatcher = new EffectDispatcher(handler, (id, bytes) => Process(_bridge.Resolve(id, bytes)));
+    }
+
+    /// <summary>
+    /// Send an event to the core and run the loop it starts.
+    /// </summary>
+    public void Update(Event @event)
+    {
+        var serializer = new BincodeSerializer();
+        @event.Serialize(serializer);
+        Process(_bridge.Update(serializer.GetBytes()));
+    }
+
+    /// <summary>
+    /// Serialized requests, as returned by the bridge or pushed by middleware.
+    /// </summary>
+    public void Process(byte[] bytes)
+    {
+        if (bytes.Length == 0) { return; }
+        Process(Shared.Requests.BincodeDeserialize(bytes).Value);
+    }
+
+    public void Process(IReadOnlyList<Shared.Request> requests)
+    {
+        foreach (var request in requests)
+        {
+            if (request.Effect is Shared.Effect.Render)
+            {
+                View = ReadView();
+                _onView(View);
+                continue;
+            }
+            _dispatcher.Dispatch(request);
+        }
+    }
+
+    private ViewModel ReadView() => ViewModel.BincodeDeserialize(_bridge.View());
+}

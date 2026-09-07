@@ -21,7 +21,9 @@ private fun effectOutputBytes(body: (Serializer) -> Unit): ByteArray {
 /// `EffectDispatcher` resolves each request for you, so there is no
 /// `resolve` to call at the wrong time or with the wrong bytes.
 interface EffectHandler {
-    fun render(operation: RenderOperation)
+    /// `Core` handles `Render` itself, so this does nothing; implement it
+    /// only if you drive `EffectDispatcher` yourself.
+    fun render(operation: RenderOperation) {}
     suspend fun http(operation: HttpRequest): HttpResult
     fun subscribe(operation: Subscribe, sink: EffectSink<Message>)
     fun legacy(operation: LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)

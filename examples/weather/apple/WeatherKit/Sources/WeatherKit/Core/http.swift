@@ -3,7 +3,7 @@ import Foundation
 
 private nonisolated let logger = Log.http
 
-nonisolated extension Core {
+nonisolated extension WeatherHandler {
     /// The `Http` operation is a request: the shell performs it and answers
     /// with exactly one `HttpResult`, which the dispatcher serializes and
     /// resolves for us.

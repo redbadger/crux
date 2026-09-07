@@ -29,8 +29,9 @@ Otherwise, in this order:
    for `Clock`, and list the operations you use in your `Effect` enum.
 3. **Your `Effect` enum** — one variant per operation, which renames the
    generated `is_` / `into_` / `expect_*` test helpers.
-4. **Regenerate your shells** and either adopt the generated `EffectHandler`, or
-   widen the match you already have.
+4. **Regenerate your shells** and let the generated `Core` drive the loop, or
+   adopt just the generated `EffectHandler`, or widen the match you already
+   have.
 5. **Check the [traps](#traps-worth-knowing-about)** — cleared timers, Swift
    actor isolation, and `Set` name collisions.
 
@@ -356,6 +357,30 @@ Adopting it is optional. **Matching on `Effect` and calling `resolve` by hand
 keeps working**, and is the right choice for Rust shells — see
 [keeping a flat match](#keeping-a-flat-match).
 
+### Letting the generated Core own the loop
+
+You also get a `Core` class and a `CoreBridge` protocol (`ICoreBridge` in C#).
+`Core` is the loop you used to write around the dispatcher — serialize the event,
+call the FFI, deserialize the requests, re-read the view on `Render`, dispatch the
+rest, resolve and repeat — and it handles `Render` itself, so your handler no
+longer implements `render` at all. See
+[the generated Core](../part-4/typegen.md#the-generated-core) for the shapes.
+
+With it, a shell writes two things:
+
+1. **A bridge adapter.** A type conforming to `CoreBridge` whose three methods
+   call the `update`, `resolve` and `view` that BoltFFI generated for your
+   crate. Three lines of body in Swift (converting `Data` to `[UInt8]`), and
+   pass-through in Kotlin and TypeScript.
+2. **An effect handler.** The `EffectHandler` methods that used to live on your
+   hand-written core object, and whatever state they need, on a plain class of
+   their own. Delete `render`.
+
+Then delete the hand-written loop and construct `Core(bridge, handler, ...)`,
+with a callback that publishes the view in Swift, TypeScript and C#, or by
+collecting `core.view` in Kotlin. The per-language sections below show the
+result for the notes and weather examples.
+
 ### TypeScript
 
 Implement the handler on the class that already owned the effect loop, and let
@@ -384,17 +409,17 @@ private processEffect(id: number, effect: Effect) {
 ```
 
 ```typescript
-// After — one method per operation, returning its output
-export class Core implements EffectHandler {
-  private readonly dispatcher: EffectDispatcher;
+// After — a bridge over the FFI, a handler with one method per operation, and
+// the generated Core owning the loop between them
+export class LiveBridge implements CoreBridge {
+  private readonly ffi = CoreFfi.new();
+  update(event: Uint8Array): Uint8Array { return this.ffi.update(event); }
+  resolve(id: number, output: Uint8Array): Uint8Array { return this.ffi.resolve(id, output); }
+  view(): Uint8Array { return this.ffi.view(); }
+}
 
-  constructor(/* … */) {
-    this.dispatcher = new EffectDispatcher(this, (id, bytes) => this.respond(id, bytes));
-  }
-
-  render(): void {
-    this.setState(this.view());
-  }
+export class NotesHandler implements EffectHandler {
+  constructor(/* the refs the handlers need */) {}
 
   publish(operation: Publish): void {
     this.channel.current.postMessage({ kind: "change", data: operation.value });
@@ -410,13 +435,20 @@ export class Core implements EffectHandler {
     return Promise.resolve(valueResultOk(bytes.length === 0 ? valueNone() : valueBytes(bytes)));
   }
 }
+
+// once the WASM module has initialised:
+const core = new Core(new LiveBridge(), new NotesHandler(/* … */), setView);
+core.update(eventOpen());
 ```
 
 `matchEffect`, the `unsupported()` helper for operations the app never issues,
-the hand-built response constructors and the stashed request id all go. The
-stream is the biggest win: instead of remembering a `subscriptionId` and
+the hand-built response constructors, the stashed request id, `render`, the
+hand-rolled `deserializeRequests` and the resolve-and-recurse callback all go.
+The stream is the biggest win: instead of remembering a `subscriptionId` and
 resolving it repeatedly by hand, the shell parks the `EffectSink` and calls
-`sink.send(new Message(bytes))` per message.
+`sink.send(new Message(bytes))` per message. Note that `CoreFfi.new()` needs the
+WASM module initialised, and `Core`'s constructor reads the view straight away,
+so construct both after awaiting `initialized` — not in a `useRef` initialiser.
 
 ### Swift
 
@@ -436,23 +468,21 @@ func processEffect(_ request: Request) {
 ```
 
 ```swift
-// After — the dispatcher does the switching and the resolving
-dispatcher = EffectDispatcher(handler: self) { [weak self] requestId, responseBytes in
-    Task { @MainActor [weak self] in
-        guard let self else { return }
-        self.process(self.bridge.resolve(requestId: requestId, responseBytes: responseBytes))
-    }
+// After — a bridge over the FFI, a handler with one method per operation, and
+// the generated Core owning the loop between them
+nonisolated struct LiveBridge: CoreBridge, @unchecked Sendable {
+    private let ffi = CoreFfi()
+    func update(_ event: [UInt8]) -> [UInt8] { [UInt8](ffi.update(data: Data(event))) }
+    func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8] { [UInt8](ffi.resolve(id: id, data: Data(output))) }
+    func view() -> [UInt8] { [UInt8](ffi.view()) }
 }
 
-private func process(_ requests: [Request]) {
-    for request in requests { dispatcher.dispatch(request) }
+@MainActor public final class WeatherHandler {
+    let keyValueStore: KeyValueStore
+    var activeTimers: [UInt64: Timer] = [:]
 }
 
-nonisolated extension Core: EffectHandler {
-    public func render(_: RenderOperation) {
-        Task { @MainActor in refreshView() }
-    }
-
+nonisolated extension WeatherHandler: EffectHandler {
     public func http(_ operation: HttpRequest) async -> HttpResult {
         await performHttpRequest(operation)
     }
@@ -461,33 +491,59 @@ nonisolated extension Core: EffectHandler {
         keychainGet(key: operation.value).map { .fetched($0) } ?? .missing(operation.value)
     }
 }
+
+// in the app:
+let store = ViewStore()
+let core = Core(bridge: LiveBridge(), handler: WeatherHandler()) { store.view = $0 }
+core.update(.start)
 ```
 
 Each per-capability `switch` over an operation enum collapses into one method per
-operation, and every `resolve(requestId:serialize:)` call disappears.
+operation, every `resolve(requestId:serialize:)` call disappears, and so do the
+loop, the resolve-and-recurse callback and `render` — the generated `Core`
+intercepts `Render` and hands the new view to the closure you give it. `Core`
+carries the same `@available` as the dispatcher, so it can't be `@Observable`;
+keep a small `@Observable` holder (`ViewStore` above) for SwiftUI to read.
 
 ### Kotlin
 
-`Core` implements the interface and delegates:
+A bridge over the FFI, a handler that delegates, and the generated `Core`
+provided by Hilt:
 
 ```kotlin
-class Core @Inject constructor(/* … */) : EffectHandler {
-    private val dispatcher = EffectDispatcher(this) { requestId, data ->
-        scope.launch { resolveAndHandleEffects(requestId, data) }
-    }
+@Singleton
+class LiveBridge @Inject constructor() : CoreBridge {
+    private val coreFfi = CoreFfi()
+    override fun update(event: ByteArray): ByteArray = coreFfi.update(event)
+    override fun resolve(id: UInt, output: ByteArray): ByteArray = coreFfi.resolve(id, output)
+    override fun view(): ByteArray = coreFfi.view()
+}
 
-    private fun processRequest(request: Request) {
-        // one coroutine per request: `dispatch` suspends for as long as the
-        // handler does, and a timer must not hold up what's queued behind it
-        scope.launch { dispatcher.dispatch(request) }
-    }
-
-    override fun render(operation: RenderOperation) = render()
+@Singleton
+class WeatherHandler @Inject constructor(/* … */) : EffectHandler {
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
     override suspend fun kvGet(operation: Get): ValueResult = keyValueHandler.get(operation)
     override fun timeClear(operation: Clear) = timeHandler.clear(operation)
 }
+
+@Module @InstallIn(SingletonComponent::class)
+object CoreModule {
+    @Provides @Singleton fun provideCoreBridge(bridge: LiveBridge): CoreBridge = bridge
+
+    @Provides @Singleton
+    fun provideCore(bridge: CoreBridge, handler: WeatherHandler): Core =
+        Core(bridge, handler, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+            .also { it.update(Event.Start) }
+}
 ```
+
+The generated `Core` has no `@Inject` constructor, hence the module; it
+dispatches each request in its own coroutine on the scope you give it, publishes
+the view on `core.view: StateFlow<ViewModel>`, and needs no `render` override.
+Because `Core` uses `StateFlow` and `launch`, the Gradle module that compiles the
+generated sources needs `kotlinx-coroutines-core` on its classpath — the
+generated `build.gradle.kts` declares it, but if you pull the sources in with
+`srcDirs`, add it yourself.
 
 The injected handlers lose their `when` blocks too: `KeyValueHandler.get` takes a
 `Get` and returns a `ValueResult`, rather than matching a wide operation enum and
@@ -550,7 +606,7 @@ fire:
 Under `Time`, by contrast, the shell answered a `Clear` with
 `TimeResponse::Cleared`. Delete that response.
 
-### Swift: `EffectHandler` is `Sendable`, your `Core` is probably `@MainActor`
+### Swift: `EffectHandler` and `CoreBridge` are `Sendable`, your handler is probably `@MainActor`
 
 The generated operation and output types are not `Sendable`, so a `@MainActor`
 class cannot witness the `Sendable` protocol's non-isolated requirements. The
@@ -558,15 +614,21 @@ pattern that works is a `nonisolated` extension that hops to the main actor only
 where it touches main-actor state:
 
 ```swift
-nonisolated extension Core: EffectHandler {
-    public func render(_: RenderOperation) {
-        Task { @MainActor in refreshView() }
+nonisolated extension WeatherHandler: EffectHandler {
+    public func kvGet(_ operation: Get) async -> ValueResult {
+        await MainActor.run { keyValueStore.get(operation.key) }
     }
 }
 ```
 
 URLSession, Keychain and CoreLocation work does not belong on the main actor
 anyway, so this is usually an improvement. Only `Sendable` values cross back.
+
+The bridge has the same shape of problem from the other side: `CoreBridge` is
+`Sendable`, but BoltFFI's `CoreFfi` is a class Swift can't prove safe. Declare
+the adapter `nonisolated` (if your target defaults to `MainActor` isolation)
+and `@unchecked Sendable` — sound, because the Rust `Bridge` behind the handle
+guards its state with mutexes.
 
 ### `Set` collides with the standard library
 

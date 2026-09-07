@@ -8,14 +8,17 @@
 //!   resolving.
 //! * [`RequestIdPlugin`] emits `EffectKind` and `RequestId`, which read the
 //!   structured request id the core issues.
+//! * [`CorePlugin`] emits `CoreBridge` and `Core` — the loop that carries
+//!   events into the core, requests out of it, and the view back to the shell.
 //!
-//! Both act only when the container being emitted is a registered effect enum
-//! (see [`Matched`]), and both write everything through the `after_type` hook,
+//! They act only when the container being emitted is a registered effect enum
+//! (see [`Matched`]), and they write everything through the `after_type` hook,
 //! so the generated declarations land beside the effect they belong to. The
 //! one exception is C#, where the request-kind accessor is a property *inside*
 //! the `Effect` record and so goes through `type_body` — the emitter does not
 //! declare the record `partial`, so it cannot be re-opened from outside.
 
+mod core;
 mod handler;
 mod request_id;
 mod request_kind;
@@ -23,17 +26,24 @@ mod request_kind;
 mod tests;
 
 use facet_generate::{
-    generation::plugin::EmitContext,
+    generation::{CodeGeneratorConfig, PackageLocation, plugin::EmitContext},
     reflection::format::{ContainerFormat, Format, VariantFormat},
 };
 use heck::ToLowerCamelCase;
 
+pub(super) use core::CorePlugin;
 pub(super) use handler::EffectHandlerPlugin;
 pub(super) use request_id::RequestIdPlugin;
 pub(super) use request_kind::RequestKindPlugin;
 
 use super::{EffectMeta, EffectVariantMeta};
 use crate::RequestKind;
+
+/// The generated Swift package manifest does not declare platforms, so it
+/// defaults to a deployment target older than Swift concurrency. Requests are
+/// dispatched in a `Task`, so the generated API has to say when it is
+/// available.
+pub const SWIFT_AVAILABILITY: &str = "@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)";
 
 /// One variant of an effect enum, as the plugins see it: the registry's view
 /// of the variant (its emitted name and payload type) paired with what the
@@ -49,6 +59,9 @@ pub struct Variant<'a> {
     pub output: Option<&'a Format>,
     /// The operation type the variant carries.
     pub operation: &'a Format,
+    /// Whether the operation is `crux_core::render::RenderOperation`, which the
+    /// generated `Core` handles itself.
+    pub render: bool,
 }
 
 /// The effect enum a plugin hook was called for.
@@ -92,6 +105,7 @@ pub fn matched<'a>(effects: &'a [EffectMeta], ctx: &EmitContext<'a>) -> Option<M
             kind: meta.kind,
             output: output_of(meta),
             operation: operation.as_ref(),
+            render: meta.render,
         });
     }
 
@@ -118,6 +132,47 @@ const fn output_of(meta: &EffectVariantMeta) -> Option<&Format> {
 /// for a member derived from a type or variant name.
 pub fn lower_camel(name: &str) -> String {
     name.to_lower_camel_case()
+}
+
+/// Whether the dispatcher will serialize an output, which is what needs a
+/// serializer imported.
+pub fn serializes_output(effects: &[EffectMeta]) -> bool {
+    effects.first().is_some_and(|effect| {
+        effect.variants.iter().any(|variant| {
+            matches!(
+                variant.kind,
+                Some(RequestKind::Request | RequestKind::Stream)
+            )
+        })
+    })
+}
+
+/// Where the TypeScript bincode runtime lives, resolved the same way the
+/// bincode plugin resolves the serde runtime.
+pub fn bincode_import_path(config: &CodeGeneratorConfig) -> String {
+    config.external_packages.get("bincode").map_or_else(
+        || "./bincode".to_string(),
+        |package| match &package.location {
+            PackageLocation::Path(_) => {
+                let name = &package.for_namespace;
+                package
+                    .module_name
+                    .as_ref()
+                    .map_or_else(|| name.clone(), |module| format!("{name}/{module}"))
+            }
+            PackageLocation::Url(_) => package.for_namespace.clone(),
+        },
+    )
+}
+
+impl<'a> Matched<'a> {
+    /// The variant carrying `RenderOperation`, if the effect has one.
+    ///
+    /// The generated `Core` is only emitted for an effect that has one, since
+    /// its whole job is to own the view loop.
+    pub fn render_variant(&self) -> Option<&Variant<'a>> {
+        self.variants.iter().find(|variant| variant.render)
+    }
 }
 
 impl Variant<'_> {

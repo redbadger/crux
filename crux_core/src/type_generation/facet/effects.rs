@@ -7,6 +7,8 @@
 //! [`RequestKind`](crate::RequestKind) each variant declares and the type its
 //! request resolves with — have to come from the operation types themselves.
 
+use std::any::TypeId;
+
 use facet::Facet;
 use facet_generate::reflection::format::{Format, QualifiedTypeName};
 
@@ -38,6 +40,11 @@ pub struct EffectVariantMeta {
     /// The format of `Operation::Output`, or `None` for a notification (which
     /// is never resolved, so its `()` output is not worth naming).
     pub output: Option<Format>,
+    /// Whether the variant carries [`RenderOperation`](crate::render::RenderOperation).
+    ///
+    /// The generated `Core` handles that variant itself — it re-reads the view
+    /// instead of dispatching — so it has to be able to pick it out.
+    pub render: bool,
 }
 
 /// Records the variants of one effect enum.
@@ -96,6 +103,7 @@ impl<'a> EffectBuilder<'a> {
             ident: ident.to_string(),
             kind,
             output,
+            render: TypeId::of::<Op>() == TypeId::of::<crate::render::RenderOperation>(),
         });
 
         Ok(self)

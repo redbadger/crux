@@ -30,7 +30,7 @@ let previewWeatherResponse = CurrentWeatherResponse(
 struct PreviewEnvironment: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .environment(Core.forPreviewing())
+            .environment(ViewStore())
             .environment(CoreUpdater.forPreview())
     }
 }
