@@ -1,0 +1,20 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "request_kind::<TypeScript>()"
+---
+
+/// How many times the shell is expected to resolve a request:
+/// `notify` never, `request` exactly once, `stream` any number of times.
+export type RequestKind = "notify" | "request" | "stream";
+
+/// How many times the shell resolves a request carrying this effect,
+/// or `undefined` when the operation leaves that to the call site.
+export function effectRequestKind(effect: Effect): RequestKind | undefined {
+    switch (effect.kind) {
+        case "Render": return "notify";
+        case "Http": return "request";
+        case "Subscribe": return "stream";
+        case "Legacy": return undefined;
+        default: return undefined;
+    }
+}
