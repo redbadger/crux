@@ -15,7 +15,6 @@ rust-version.workspace = true
 default = ["encoding"]
 # requires web-sys for TextDecoder on wasm
 encoding = ["encoding_rs", "web-sys"]
-typegen = ["crux_core/typegen"]
 facet_typegen = ["crux_core/facet_typegen"]
 # Enable this feature to interoperate with the legacy `http-types` crate.
 http-types = ["dep:http-types"]

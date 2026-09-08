@@ -2,10 +2,9 @@
 
 mod capability;
 mod effect;
-mod export;
+mod operation;
 
 use capability::capability_impl;
-use export::export_impl;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use syn::{Ident, ItemEnum, parse_macro_input};
@@ -13,7 +12,7 @@ use syn::{Ident, ItemEnum, parse_macro_input};
 /// Generates an effect type matching the enum definition provided,
 /// whilst supplying all the necessary decorations and additional trait implementations.
 ///
-/// Use `typegen` as an argument if you want to opt in to the built-in foreign type generation.
+/// Use `facet_typegen` as an argument if you want to opt in to the built-in foreign type generation.
 ///
 /// e.g.
 /// ```rust
@@ -39,7 +38,7 @@ use syn::{Ident, ItemEnum, parse_macro_input};
 /// #         unimplemented!()
 /// #     }
 /// # }
-/// #[effect(typegen)]
+/// #[effect(facet_typegen)]
 /// pub enum MyEffect {
 ///     Render(RenderOperation),
 ///     Http(HttpRequest),
@@ -52,10 +51,60 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     effect::macro_impl::effect_impl(args, input).into()
 }
 
-#[proc_macro_derive(Export)]
-#[proc_macro_error]
-pub fn export(input: TokenStream) -> TokenStream {
-    export_impl(&parse_macro_input!(input)).into()
+/// Implements `crux_core::capability::Operation` for a struct, declaring what
+/// the shell does with it.
+///
+/// Exactly one request kind is required:
+///
+/// * `#[operation(notify)]` — the shell is told, and never answers.
+///   `Operation::Output` is `()`, and the type also implements
+///   `crux_core::operation::Notify`.
+/// * `#[operation(request, output = T)]` — the shell answers exactly once with
+///   a `T`. Also implements `crux_core::operation::Request`.
+/// * `#[operation(stream, output = T)]` — the shell answers a sequence of `T`s.
+///   Also implements `crux_core::operation::Stream`.
+///
+/// Sending an operation with the wrong `Command` constructor is then a compile
+/// error.
+///
+/// ```rust
+/// use crux_core::macros::Operation;
+/// use facet::Facet;
+/// use serde::{Deserialize, Serialize};
+///
+/// /// Told to the shell, never answered.
+/// #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[operation(notify)]
+/// pub struct Publish(pub Vec<u8>);
+///
+/// /// Answered exactly once.
+/// #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[operation(request, output = GetResult)]
+/// pub struct Get {
+///     pub key: String,
+/// }
+///
+/// /// Answered a sequence of times.
+/// #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[operation(stream, output = Vec<u8>)]
+/// pub struct Subscribe;
+///
+/// #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[repr(C)]
+/// pub enum GetResult {
+///     Ok(Vec<u8>),
+///     Err(StoreError),
+/// }
+///
+/// #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[repr(C)]
+/// pub enum StoreError {
+///     NotFound,
+/// }
+/// ```
+#[proc_macro_derive(Operation, attributes(operation))]
+pub fn operation(input: TokenStream) -> TokenStream {
+    operation::macro_impl::operation_impl(&parse_macro_input!(input)).into()
 }
 
 /// Deprecated: use the `effect` attribute macro instead.
