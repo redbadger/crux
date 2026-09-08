@@ -22,6 +22,13 @@ and this project adheres to
   straight through and its callers handle a rejection exactly as they handle one from
   `Effect::Http`.
 
+### 💥 Breaking Changes
+
+- **The `typegen` feature is removed**, together with the serde-based type
+  generation in `crux_core` 0.21. Enable this crate's `facet_typegen` feature
+  instead; the types it sends over the bridge already derive `Facet`. See
+  [Type generation](https://redbadger.github.io/crux/part-4/typegen.html).
+
 
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_http-v0.19.0...crux_http-v0.20.0) - 2026-08-06
 

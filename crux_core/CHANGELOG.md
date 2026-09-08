@@ -8,6 +8,29 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 💥 Breaking Changes
+
+- **The serde-based type generation is removed.** The `typegen` feature, the
+  `crux_core::type_generation::serde` module and its `crux_core::typegen`
+  alias, `Operation::register_types`, the `Export` derive and
+  `#[effect(typegen)]` are all gone, along with the `serde-generate`,
+  `serde-reflection` and `include_dir` dependencies and the bundled
+  `typegen_extensions/` runtimes.
+
+  Facet type generation (`facet_typegen`) has been the documented path since
+  0.19 and is now the only one. To move over: enable `facet_typegen` in place
+  of `typegen`, derive `Facet` on the types that cross the bridge, write
+  `#[effect(facet_typegen)]` on the effect enum, and generate from
+  `TypeRegistry` and `CodeGenerator` as described in
+  [Type generation](https://redbadger.github.io/crux/part-4/typegen.html). `#[effect(typegen)]` is now a compile
+  error that says as much, so a crate still on the old path cannot silently
+  lose its generated types.
+
+  Nothing about the facet path changes in this release, and
+  `Operation::register_types_facet` keeps its name. This closes the last phase
+  of the [type generation RFC](https://redbadger.github.io/crux/rfcs/typegen.html):
+  retiring the legacy backend.
+
 ### 🚀 Features
 
 - **Every request now says how many times it expects to be resolved.** The core

@@ -35,20 +35,6 @@ pub trait Operation: Send + 'static {
     /// from [`crux_core::operation`](crate::operation).
     const KIND: Option<crate::RequestKind> = None;
 
-    #[cfg(feature = "typegen")]
-    #[allow(clippy::missing_errors_doc)]
-    fn register_types(
-        generator: &mut crate::type_generation::serde::TypeGen,
-    ) -> crate::type_generation::serde::Result
-    where
-        Self: serde::Serialize + for<'de> serde::de::Deserialize<'de>,
-        Self::Output: for<'de> serde::de::Deserialize<'de>,
-    {
-        generator.register_type::<Self>()?;
-        generator.register_type::<Self::Output>()?;
-        Ok(())
-    }
-
     #[cfg(feature = "facet_typegen")]
     #[allow(clippy::missing_errors_doc)]
     fn register_types_facet<'a>(

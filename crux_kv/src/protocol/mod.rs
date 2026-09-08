@@ -72,7 +72,7 @@ impl std::fmt::Debug for KeyValueOperation {
 /// The result of an operation on the store.
 ///
 /// Note: we can't use [`core::result::Result`] here because it is not currently
-/// supported across the FFI boundary, when using `typegen` or `facet_typegen`.
+/// supported across the FFI boundary, when using `facet_typegen`.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum KeyValueResult {
@@ -111,18 +111,6 @@ pub enum KeyValueResponse {
 
 impl Operation for KeyValueOperation {
     type Output = KeyValueResult;
-
-    #[cfg(feature = "typegen")]
-    fn register_types(
-        generator: &mut crux_core::type_generation::serde::TypeGen,
-    ) -> crux_core::type_generation::serde::Result {
-        generator.register_type::<KeyValueResponse>()?;
-        generator.register_type::<KeyValueError>()?;
-        generator.register_type::<Value>()?;
-        generator.register_type::<Self>()?;
-        generator.register_type::<Self::Output>()?;
-        Ok(())
-    }
 }
 
 impl KeyValueResult {

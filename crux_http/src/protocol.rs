@@ -294,16 +294,6 @@ impl From<Result<HttpResponse>> for HttpResult {
 
 impl crux_core::capability::Operation for HttpRequest {
     type Output = HttpResult;
-
-    #[cfg(feature = "typegen")]
-    fn register_types(
-        generator: &mut crux_core::type_generation::serde::TypeGen,
-    ) -> crux_core::type_generation::serde::Result {
-        generator.register_type::<HttpError>()?;
-        generator.register_type::<Self>()?;
-        generator.register_type::<Self::Output>()?;
-        Ok(())
-    }
 }
 
 #[async_trait]

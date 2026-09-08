@@ -62,7 +62,7 @@
 //!}
 //!
 //!// Effects the Core will request from the Shell
-//!#[effect(typegen)]
+//!#[effect(facet_typegen)]
 //!pub enum Effect {
 //!    Render(RenderOperation),
 //!}
@@ -113,7 +113,7 @@
 //! # pub enum Event {
 //! #     Increment,
 //! # }
-//! # #[effect(typegen)]
+//! # #[effect(facet_typegen)]
 //! # pub enum Effect {
 //! #     Render(RenderOperation),
 //! # }
@@ -217,7 +217,7 @@ pub mod middleware;
 pub mod operation;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
-#[cfg(any(feature = "typegen", feature = "facet_typegen"))]
+#[cfg(feature = "facet_typegen")]
 pub mod type_generation;
 
 #[doc(hidden)]
@@ -252,8 +252,6 @@ pub use core::{
 pub mod bindgen;
 #[cfg(feature = "default")]
 pub use crux_macros as macros;
-#[cfg(feature = "typegen")]
-pub use type_generation::serde as typegen;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
 /// as the type argument to [`Core`] or [`Bridge`](crate::bridge::Bridge).

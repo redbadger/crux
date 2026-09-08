@@ -21,7 +21,7 @@ mod app {
         Settle,
     }
 
-    #[effect(typegen)]
+    #[effect(facet_typegen)]
     pub enum Effect {
         Http(HttpRequest),
         Render(RenderOperation),
