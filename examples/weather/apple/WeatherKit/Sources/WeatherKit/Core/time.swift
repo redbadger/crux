@@ -1,68 +1,60 @@
 import App
 import Foundation
 
-private let logger = Log.time
+private nonisolated let logger = Log.time
 
-extension Core {
-    func resolveTime(request: TimeRequest, requestId: UInt32) {
-        switch request {
-        case .now:
-            let now = Date()
-            logger.debug("sending current time")
-            let response = TimeResponse.now(
-                instant: Instant(
-                    seconds: UInt64(now.timeIntervalSince1970),
-                    nanos: UInt32(
-                        (now.timeIntervalSince1970.truncatingRemainder(dividingBy: 1))
-                            * 1_000_000_000)
-                )
-            )
-            resolve(requestId: requestId, serialize: { try response.bincodeSerialize() })
+nonisolated extension Core {
+    /// `TimeNotifyAfter` is a request: it is answered exactly once, with the
+    /// id of the timer that fired.
+    ///
+    /// If `timeClear` arrives first this method never returns. `Clear` is a
+    /// notification, so by the time the shell sees it the core has already
+    /// stopped waiting for the timer — answering it then would be answering a
+    /// question nobody is asking.
+    public func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId {
+        let id = operation.id.value
+        let interval = TimeInterval(operation.duration.nanos) / 1_000_000_000
 
-        case let .notifyAt(id: timerId, instant: instant):
-            let targetDate = Date(timeIntervalSince1970: Double(instant.seconds))
-            let interval = max(targetDate.timeIntervalSinceNow, 0)
-            scheduleTimer(id: timerId, interval: interval, requestId: requestId) { id in
-                TimeResponse.instantArrived(id: TimerId(value: id))
+        await withUnsafeContinuation { continuation in
+            Task { @MainActor in
+                scheduleTimer(id: id, interval: interval, elapsed: continuation)
             }
-
-        case let .notifyAfter(id: timerId, duration: duration):
-            let interval = TimeInterval(duration.nanos) / 1_000_000_000
-            scheduleTimer(id: timerId, interval: interval, requestId: requestId) { id in
-                TimeResponse.durationElapsed(id: TimerId(value: id))
-            }
-
-        case let .clear(id: timerId):
-            let id = timerId.value
-            logger.debug("clearing timer (\(id))")
-            activeTimers[id]?.invalidate()
-            activeTimers.removeValue(forKey: id)
-            let response = TimeResponse.cleared(id: timerId)
-            resolve(requestId: requestId, serialize: { try response.bincodeSerialize() })
         }
+
+        return operation.id
     }
 
+    /// `TimeClear` is a notification: release the timer and answer nothing.
+    public func timeClear(_ operation: Clear) {
+        let id = operation.id.value
+        Task { @MainActor in cancelTimer(id: id) }
+    }
+
+    /// `Timer` needs a run loop, so the timer table lives on the main actor.
+    @MainActor
     private func scheduleTimer(
-        id timerId: TimerId,
+        id: UInt64,
         interval: TimeInterval,
-        requestId: UInt32,
-        response: @Sendable @escaping (UInt64) -> TimeResponse
+        elapsed: UnsafeContinuation<Void, Never>
     ) {
-        let id = timerId.value
         logger.debug("scheduling timer (\(id)) for \(interval)s")
-        let timer = Timer.scheduledTimer(
+        activeTimers[id] = Timer.scheduledTimer(
             withTimeInterval: interval, repeats: false
         ) { _ in
             Task { @MainActor in
                 logger.debug("timer (\(id)) elapsed")
-                let resp = response(id)
-                self.resolve(
-                    requestId: requestId,
-                    serialize: { try resp.bincodeSerialize() }
-                )
                 self.activeTimers.removeValue(forKey: id)
+                elapsed.resume()
             }
         }
-        activeTimers[id] = timer
+    }
+
+    /// Invalidating the timer releases its closure, and with it the
+    /// continuation `timeNotifyAfter` is suspended on — which is exactly what
+    /// we want, because nothing is expecting an answer any more.
+    @MainActor
+    private func cancelTimer(id: UInt64) {
+        logger.debug("clearing timer (\(id))")
+        activeTimers.removeValue(forKey: id)?.invalidate()
     }
 }

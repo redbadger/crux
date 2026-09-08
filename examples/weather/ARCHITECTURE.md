@@ -84,7 +84,7 @@ shared/src/
 │       ├── home.rs                 # HomeViewModel with local weather + favorites
 │       └── favorites.rs            # FavoritesViewModel with workflows
 └── effects/
-    ├── mod.rs                      # Effect enum: Render, KeyValue, Http, Location, Secret, Time
+    ├── mod.rs                      # Effect enum: one variant per operation
     ├── http/
     │   ├── mod.rs                  # Http module exports
     │   ├── location.rs             # Geocoding API — search locations by name
@@ -92,10 +92,10 @@ shared/src/
     │       ├── mod.rs              # Current weather API — fetch by lat/lon
     │       └── model/              # Response types (CurrentWeatherResponse, etc.)
     ├── location/
-    │   ├── mod.rs                  # Location types, LocationOperation, LocationResult
+    │   ├── mod.rs                  # Location, IsLocationEnabled, GetLocation operations
     │   └── command.rs              # is_location_enabled(), get_location() builders
     └── secret/
-        ├── mod.rs                  # SecretRequest/Response types, API_KEY_NAME constant
+        ├── mod.rs                  # Fetch/Store/Delete operations + their responses, API_KEY_NAME
         └── command.rs              # fetch(), store(), delete() command builders
 ```
 
@@ -113,15 +113,16 @@ apple/
 └── WeatherKit/                     # Swift package with all views + effect handlers
     └── Sources/WeatherKit/
         ├── Core/
-        │   ├── core.swift          # Core class — processes events + dispatches effects
+        │   ├── core.swift          # Core class — processes events, feeds EffectDispatcher
+        │   ├── handler.swift       # `extension Core: EffectHandler` — one method per operation
         │   ├── bridge.swift        # CoreBridge protocol
         │   ├── update.swift        # CoreUpdater — environment object for sending events
-        │   ├── http.swift          # HTTP effect handler (URLSession)
-        │   ├── kv.swift            # KeyValue effect handler
+        │   ├── http.swift          # HTTP (URLSession)
+        │   ├── keyValue.swift      # KeyValue operations
         │   ├── KeyValueStore.swift # Core Data–backed KV store
-        │   ├── location.swift      # Location effect handler (CoreLocation)
-        │   ├── secret.swift        # Secret effect handler (Keychain)
-        │   ├── time.swift          # Time effect handler (timers)
+        │   ├── location.swift      # Location operations (CoreLocation)
+        │   ├── secret.swift        # Secret operations (Keychain)
+        │   ├── time.swift          # Timers
         │   └── logging.swift       # os.log categories
         ├── OnboardView.swift       # API key input screen
         ├── ActiveView.swift        # Dispatches to Home or Favorites
@@ -252,28 +253,45 @@ Each level unwraps and dispatches to the appropriate sub-model.
 
 ## Effects
 
-The `Effect` enum defines six effect types:
+The `Effect` enum defines eleven effect types — one per operation the app
+uses. Each operation type declares its own output and its own request kind,
+so nothing on either side of the boundary has to guess:
 
 ```rust
 #[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
-    KeyValue(KeyValueOperation),
     Http(HttpRequest),
-    Location(LocationOperation),
-    Secret(SecretRequest),
-    Time(TimeRequest),
+    KvGet(kv::Get),
+    KvSet(kv::Set),
+    TimeNotifyAfter(time::NotifyAfter),
+    TimeClear(time::Clear),
+    IsLocationEnabled(IsLocationEnabled),
+    GetLocation(GetLocation),
+    FetchSecret(Fetch),
+    StoreSecret(Store),
+    DeleteSecret(Delete),
 }
 ```
 
-| Effect     | Purpose                                      | Shell Implementation (Apple)         |
-|------------|----------------------------------------------|--------------------------------------|
-| `Render`   | Trigger UI refresh with new ViewModel        | Calls `bridge.currentView()`         |
-| `Http`     | Weather + geocoding API calls                | `URLSession`                         |
-| `KeyValue` | Persist/restore favorites                    | Core Data                            |
-| `Location` | Check permission, get device coordinates     | `CLLocationManager`                  |
-| `Secret`   | Store/fetch/delete API key                   | Keychain (`SecItem*`)                |
-| `Time`     | Debounce timers for search input             | `Timer` with `MainActor` dispatch    |
+| Effect              | Output                 | Kind     | Purpose                                  | Shell Implementation (Apple)      |
+|---------------------|------------------------|----------|------------------------------------------|-----------------------------------|
+| `Render`            | —                      | notify   | Trigger UI refresh with new ViewModel    | Calls `bridge.currentView()`      |
+| `Http`              | `HttpResult`           | request  | Weather + geocoding API calls            | `URLSession`                      |
+| `KvGet`             | `ValueResult`          | request  | Restore favorites                        | Core Data                         |
+| `KvSet`             | `ValueResult`          | request  | Persist favorites                        | Core Data                         |
+| `TimeNotifyAfter`   | `TimerId`              | request  | Debounce timers for search input         | `Timer` with `MainActor` dispatch |
+| `TimeClear`         | —                      | notify   | Cancel a debounce timer                  | `Timer.invalidate()`              |
+| `IsLocationEnabled` | `bool`                 | request  | Check location permission                | `CLLocationManager`               |
+| `GetLocation`       | `Location?`            | request  | Get device coordinates                   | `CLLocationManager`               |
+| `FetchSecret`       | `SecretFetchResponse`  | request  | Read the API key                         | Keychain (`SecItem*`)             |
+| `StoreSecret`       | `SecretStoreResponse`  | request  | Write the API key                        | Keychain (`SecItem*`)             |
+| `DeleteSecret`      | `SecretDeleteResponse` | request  | Delete the API key                       | Keychain (`SecItem*`)             |
+
+Type generation turns this enum into an `EffectHandler` protocol / interface
+with one method per variant, plus an `EffectDispatcher` that resolves each
+request for the shell. Notifications are never resolved; requests are
+resolved exactly once, with the operation's output.
 
 ## Testing
 
@@ -290,7 +308,7 @@ let (transition, mut cmd) = outcome.expect_complete().into_parts();
 **Effect inspection:**
 ```rust
 let request = cmd.expect_one_effect().expect_http();
-let request = cmd.expect_one_effect().expect_secret();
+let request = cmd.expect_one_effect().expect_fetch_secret();
 ```
 
 **Effect resolution (driving the event loop in tests):**

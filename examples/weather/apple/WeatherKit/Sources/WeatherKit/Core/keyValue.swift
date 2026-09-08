@@ -1,53 +1,44 @@
 import App
 import Foundation
 
-private let logger = Log.keyValue
+private nonisolated let logger = Log.keyValue
 
-extension Core {
-    func resolveKeyValue(request: KeyValueOperation, requestId: UInt32) {
-        logger.debug("Processing KeyValue effect: \(String(describing: request))")
-        let result = processKeyValueOperation(request)
-        resolve(requestId: requestId, serialize: { try result.bincodeSerialize() })
+nonisolated extension Core {
+    /// `KvGet` is answered with a `ValueResult` — the value stored under the
+    /// key, or the error that stopped us reading it.
+    public func kvGet(_ operation: App.Get) async -> ValueResult {
+        logger.debug("Getting value for key: \(operation.key)")
+        let value = await read(key: operation.key)
+        logger.debug("Retrieved value: \(value.isEmpty ? "empty" : value)")
+        return .ok(value.asValue)
     }
 
-    private func processKeyValueOperation(_ keyValue: KeyValueOperation) -> KeyValueResult {
-        switch keyValue {
-        case let .get(key):
-            logger.debug("Getting value for key: \(key)")
-            let value = keyValueStore.get(key: key)
-            logger.debug("Retrieved value: \(value.isEmpty ? "empty" : value)")
-            let valueData = value.data(using: .utf8) ?? Data()
-            return .ok(response: .get(value: .bytes([UInt8](valueData))))
+    /// `KvSet` is answered with the value it replaced.
+    public func kvSet(_ operation: App.Set) async -> ValueResult {
+        logger.debug("Setting value for key: \(operation.key)")
+        let value = String(bytes: operation.value, encoding: .utf8) ?? ""
+        let previous = await write(key: operation.key, value: value)
+        logger.debug("Value stored successfully")
+        return .ok(previous.asValue)
+    }
 
-        case let .set(key, value):
-            logger.debug("Setting value for key: \(key)")
-            let valueString = String(bytes: value, encoding: .utf8) ?? ""
-            logger.debug("Value to store: \(valueString)")
-            let previousValue = keyValueStore.get(key: key)
-            let previousData = previousValue.data(using: .utf8) ?? Data()
-            keyValueStore.set(key: key, value: valueString)
-            logger.debug("Value stored successfully")
-            return .ok(response: .set(previous: .bytes([UInt8](previousData))))
+    /// The Core Data stack is confined to the main queue, so the store is only
+    /// touched from the main actor. Only `String`s cross back.
+    @MainActor
+    private func read(key: String) -> String {
+        keyValueStore.get(key: key)
+    }
 
-        case let .delete(key):
-            logger.debug("Deleting key: \(key)")
-            let previousValue = keyValueStore.get(key: key)
-            let previousData = previousValue.data(using: .utf8) ?? Data()
-            keyValueStore.delete(key: key)
-            logger.debug("Key deleted successfully")
-            return .ok(response: .delete(previous: .bytes([UInt8](previousData))))
+    @MainActor
+    private func write(key: String, value: String) -> String {
+        let previous = keyValueStore.get(key: key)
+        keyValueStore.set(key: key, value: value)
+        return previous
+    }
+}
 
-        case let .exists(key):
-            logger.debug("Checking existence of key: \(key)")
-            let exists = keyValueStore.exists(key: key)
-            logger.debug("Key exists: \(exists)")
-            return .ok(response: .exists(isPresent: exists))
-
-        case let .listKeys(prefix, cursor):
-            logger.debug("Listing keys with prefix: \(prefix), cursor: \(String(describing: cursor))")
-            let keys = keyValueStore.listKeys(prefix: prefix, cursor: String(cursor))
-            logger.debug("Found keys: \(keys)")
-            return .ok(response: .listKeys(keys: keys, nextCursor: 0))
-        }
+private nonisolated extension String {
+    var asValue: Value {
+        .bytes([UInt8](data(using: .utf8) ?? Data()))
     }
 }

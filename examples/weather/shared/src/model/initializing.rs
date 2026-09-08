@@ -7,7 +7,7 @@
 //! - `InitializingTransition::Active(api_key, favorites)` - fully initialized.
 
 use crux_core::{Command, render::render};
-use crux_kv::command::KeyValue;
+use crux_kv::KeyValueStore;
 use crux_kv::error::KeyValueError;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
@@ -79,7 +79,7 @@ impl InitializingModel {
         let fetch_secret = secret::command::fetch(secret::API_KEY_NAME)
             .then_send(|r| Event::Initializing(InitializingEvent::SecretFetched(r)));
         // ANCHOR: kv_example
-        let fetch_favorites = KeyValue::get(FAVORITES_KEY)
+        let fetch_favorites = KeyValueStore::get(FAVORITES_KEY)
             .then_send(|r| Event::Initializing(InitializingEvent::FavoritesLoaded(r)));
         // ANCHOR_END: kv_example
 
