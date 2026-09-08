@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 /// `Value::None` is used to represent the absence of a value.
 ///
 /// Note: we can't use `Option` here because generics are not currently
-/// supported across the FFI boundary, when using the builtin typegen.
+/// supported across the FFI boundary, when using `facet_typegen`.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum Value {

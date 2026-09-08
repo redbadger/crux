@@ -25,18 +25,14 @@ crux_macros = { version = "0.10.0", path = "../crux_macros", optional = true }
 facet.workspace = true
 facet_generate = { workspace = true, optional = true }
 futures = "0.3"
-include_dir = { version = "0.7", optional = true }
 log = { version = "0.4", optional = true }
 serde = { workspace = true, features = ["derive"] }
-serde-generate = { version = "=0.26", optional = true }
-serde-reflection = { version = "=0.4", optional = true }
 serde_json = "1.0"
 slab = "0.4"
 thiserror.workspace = true
 
 [dev-dependencies]
 crux_core = { path = ".", features = ["testing"] }
-assert_fs = "1.1.4"
 assert_matches = "1.5"
 async-channel = "2.5.0"
 crux_http = { path = "../crux_http" }
@@ -48,7 +44,6 @@ static_assertions = "1.1"
 tempfile = "3.27.0"
 trybuild = "1"
 url = "2.5.8"
-uuid = { version = "1.24.0", features = ["serde", "v4"] }
 
 [features]
 default = ["crux_macros"]
@@ -56,12 +51,6 @@ default = ["crux_macros"]
 bindgen = ["uniffi_compat_bindgen"]
 facet_typegen = ["crux_macros/facet_typegen", "dep:facet_generate", "dep:log"]
 testing = []
-typegen = [
-    "crux_macros/typegen",
-    "dep:serde-generate",
-    "dep:serde-reflection",
-    "dep:include_dir",
-]
 uniffi_compat_bindgen = [
     "dep:camino",
     "dep:cargo_metadata",

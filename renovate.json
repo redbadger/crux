@@ -56,13 +56,6 @@
       "commitMessagePrefix": "chore(ci):"
     },
     {
-      "description": "Group typegen extension npm updates",
-      "matchFileNames": ["crux_core/typegen_extensions/**"],
-      "matchManagers": ["npm"],
-      "groupName": "typegen-npm",
-      "commitMessagePrefix": "chore(core):"
-    },
-    {
       "description": "Update Cargo lockfiles even when the version range is already satisfied",
       "matchManagers": ["cargo"],
       "rangeStrategy": "update-lockfile"

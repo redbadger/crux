@@ -3,7 +3,9 @@
 ```admonish
 This RFC has been **adopted** and implemented, it's kept
 for future reference as additional context for the design
-choices.
+choices. Its final phase — retiring the legacy `serde-generate`
+backend — landed in `crux_core` 0.21, which removed the `typegen`
+feature; `facet_typegen` is the only type generation now.
 ```
 
 ```admonish warning
