@@ -67,7 +67,7 @@ mod tests {
 
     use super::core::Bridge;
     use crux_core::{
-        Core,
+        Core, RequestKind,
         bridge::{EffectId, Request},
     };
     use crux_http::protocol::{HttpResponse, HttpResult};
@@ -151,9 +151,9 @@ mod tests {
         );
     }
 
-    /// A fire-and-forget request has no continuation to store, so its id is
-    /// simply not outstanding — resolving it is the same "not found" as
-    /// resolving an id that was never issued.
+    /// Every fire-and-forget request is issued the reserved id `0`, and
+    /// nothing is stored for one — so the bridge can say what a shell
+    /// resolving it actually did, rather than reporting a lookup miss.
     #[test]
     fn resolve_fire_and_forget() {
         let bridge = Bridge::new(Core::default());
@@ -174,6 +174,8 @@ mod tests {
 
         let value = b"\"Hi\"";
 
+        assert_eq!(render.id, EffectId::NOTIFICATION);
+
         // Render does not expect a value!
         let result = bridge.resolve(render.id, value, &mut effects_bytes);
 
@@ -183,7 +185,80 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "could not process response: Request with id 0 not found."
+            "could not process response: Attempted to resolve a request that is not expected to be resolved."
+        );
+    }
+
+    /// An id says which effect it belongs to, so a resolve for the wrong one
+    /// is rejected before the bytes are even looked at.
+    #[test]
+    fn resolve_with_the_wrong_effect_variant() {
+        let bridge = Bridge::new(Core::default());
+
+        let http = request_http(&bridge);
+        assert_eq!(http.id.effect_index(), 0, "Http is the first variant");
+        assert_eq!(http.id.kind(), RequestKind::Request);
+
+        // The same request, relabelled as the `Render` variant.
+        let mangled = EffectId(http.id.0 | (1 << 24));
+
+        let Err(error) = resolve_http(&bridge, mangled) else {
+            panic!("expected resolving under the wrong effect to fail");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            format!(
+                "could not process response: Request id {} names effect variant 1, but request {} was issued for effect variant 0.",
+                mangled.0,
+                http.id.sequence()
+            )
+        );
+    }
+
+    /// So is a resolve claiming a kind the request was not issued with.
+    #[test]
+    fn resolve_with_the_wrong_kind_bit() {
+        let bridge = Bridge::new(Core::default());
+
+        let http = request_http(&bridge);
+
+        // The same request, relabelled as a stream.
+        let mangled = EffectId(http.id.0 | (1 << 23));
+        assert_eq!(mangled.kind(), RequestKind::Stream);
+
+        let Err(error) = resolve_http(&bridge, mangled) else {
+            panic!("expected resolving with the wrong kind to fail");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            format!(
+                "could not process response: Request id {} is marked as a Stream request, but request {} was issued as a Request.",
+                mangled.0,
+                http.id.sequence()
+            )
+        );
+    }
+
+    /// An effect index the enum does not have cannot be one the bridge issued.
+    #[test]
+    fn resolve_with_an_effect_variant_that_does_not_exist() {
+        let bridge = Bridge::new(Core::default());
+
+        let http = request_http(&bridge);
+        let mangled = EffectId(http.id.0 | (9 << 24));
+
+        let Err(error) = resolve_http(&bridge, mangled) else {
+            panic!("expected resolving an unknown effect variant to fail");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            format!(
+                "could not process response: Request id {} names effect variant 9, but the effect has only 2 variants.",
+                mangled.0
+            )
         );
     }
 

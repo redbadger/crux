@@ -22,7 +22,7 @@ use facet_generate::{
     },
 };
 
-use super::{EffectHandlerPlugin, RequestKindPlugin};
+use super::{EffectHandlerPlugin, RequestIdPlugin, RequestKindPlugin};
 use crate::{
     RequestKind,
     capability::Operation,
@@ -166,6 +166,16 @@ where
     })
 }
 
+fn request_id<L>() -> String
+where
+    RequestIdPlugin: EmitterPlugin<L>,
+{
+    emit(|w, ctx, effects| {
+        let plugin = RequestIdPlugin::new(&effects.to_vec().into());
+        EmitterPlugin::<L>::after_type(&plugin, w, ctx)
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Request kind
 // ---------------------------------------------------------------------------
@@ -215,6 +225,48 @@ fn handler_csharp() {
 }
 
 // ---------------------------------------------------------------------------
+// Request id
+// ---------------------------------------------------------------------------
+
+#[test]
+fn request_id_swift() {
+    insta::assert_snapshot!(request_id::<Swift>());
+}
+
+#[test]
+fn request_id_kotlin() {
+    insta::assert_snapshot!(request_id::<Kotlin>());
+}
+
+#[test]
+fn request_id_typescript() {
+    insta::assert_snapshot!(request_id::<TypeScript>());
+}
+
+#[test]
+fn request_id_csharp() {
+    insta::assert_snapshot!(request_id::<CSharp>());
+}
+
+/// The decoder has to agree with the ids `EffectId` actually issues, so both
+/// read their constants from the same place.
+#[test]
+fn the_emitted_layout_matches_the_ids_the_bridge_issues() {
+    use super::request_id::{EFFECT_SHIFT, SEQUENCE_MASK, STREAM_BIT};
+    use crate::bridge::EffectId;
+
+    let stream = EffectId(0x0300_0001 | STREAM_BIT);
+
+    assert_eq!(u32::from(stream.effect_index()), stream.0 >> EFFECT_SHIFT);
+    assert_eq!(stream.kind(), RequestKind::Stream);
+    assert_eq!(stream.sequence(), stream.0 & SEQUENCE_MASK);
+
+    let request = EffectId(0x0300_0001);
+    assert_eq!(request.kind(), RequestKind::Request);
+    assert_eq!(request.0 & STREAM_BIT, 0);
+}
+
+// ---------------------------------------------------------------------------
 // The plugins keep out of the way of everything else
 // ---------------------------------------------------------------------------
 
@@ -238,6 +290,8 @@ fn nothing_is_emitted_for_a_type_that_is_not_the_effect() {
         EmitterPlugin::<Swift>::after_type(&RequestKindPlugin::new(&effects), &mut w, &ctx)
             .expect("should write nothing");
         EmitterPlugin::<Swift>::after_type(&EffectHandlerPlugin::new(&effects), &mut w, &ctx)
+            .expect("should write nothing");
+        EmitterPlugin::<Swift>::after_type(&RequestIdPlugin::new(&effects), &mut w, &ctx)
             .expect("should write nothing");
     }
 

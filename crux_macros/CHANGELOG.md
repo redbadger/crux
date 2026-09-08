@@ -73,6 +73,21 @@ and this project adheres to
 
   Type generation uses this to emit a request-kind accessor and a typed effect
   handler API for each shell language — see the `crux_core` changelog.
+
+- **`#[effect]` reports each variant's declaration index to the bridge**, by
+  implementing `EffectFFI::variant_index` and `EffectFFI::VARIANT_COUNT`, which
+  are defaulted on the trait. The bridge packs the index into the request id so
+  that a resolve coming back names the effect it belongs to.
+
+  The index is eight bits, so an effect enum is limited to 256 variants. A
+  larger one is now a compile error:
+
+  ```text
+  error: proc macro panicked: an effect enum can have at most 256 variants,
+  because the bridge packs the variant index into 8 bits of the request id,
+  but `Effect` has 257
+  ```
+
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_macros-v0.10.0...crux_macros-v0.10.1) - 2026-08-06
 
 ### 🐛 Bug Fixes

@@ -1,4 +1,4 @@
-//! The two `EmitterPlugin`s Crux adds on top of facet-generate's
+//! The `EmitterPlugin`s Crux adds on top of facet-generate's
 //! [`BincodePlugin`](facet_generate::generation::bincode::BincodePlugin).
 //!
 //! * [`RequestKindPlugin`] emits the `RequestKind` type and the accessor that
@@ -6,6 +6,8 @@
 //! * [`EffectHandlerPlugin`] emits `EffectSink`, `EffectHandler` and
 //!   `EffectDispatcher` — a shell writes the handler, the dispatcher does the
 //!   resolving.
+//! * [`RequestIdPlugin`] emits `EffectKind` and `RequestId`, which read the
+//!   structured request id the core issues.
 //!
 //! Both act only when the container being emitted is a registered effect enum
 //! (see [`Matched`]), and both write everything through the `after_type` hook,
@@ -15,6 +17,7 @@
 //! declare the record `partial`, so it cannot be re-opened from outside.
 
 mod handler;
+mod request_id;
 mod request_kind;
 #[cfg(test)]
 mod tests;
@@ -26,6 +29,7 @@ use facet_generate::{
 use heck::ToLowerCamelCase;
 
 pub(super) use handler::EffectHandlerPlugin;
+pub(super) use request_id::RequestIdPlugin;
 pub(super) use request_kind::RequestKindPlugin;
 
 use super::{EffectMeta, EffectVariantMeta};

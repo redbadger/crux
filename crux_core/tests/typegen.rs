@@ -230,6 +230,13 @@ mod facet_test {
                 "func legacy(_ operation: Legacy, requestId: UInt32,",
                 "public struct EffectDispatcher: Sendable {",
                 "public func dispatch(_ request: Request) {",
+                "public enum EffectKind: UInt8, Hashable, Sendable {",
+                "case render = 0",
+                "case legacy = 4",
+                "public struct RequestId: Hashable, Sendable {",
+                "public var effectKind: EffectKind? {",
+                "public var requestKind: RequestKind {",
+                "public var sequence: UInt32 {",
             ],
         );
     }
@@ -256,6 +263,13 @@ mod facet_test {
                 "fun legacy(operation: com.example.shared.Legacy, requestId: UInt, resolve: (ByteArray) -> Unit)",
                 "class EffectDispatcher(",
                 "suspend fun dispatch(request: Request) {",
+                "enum class EffectKind(val index: UByte) {",
+                "RENDER(0u),",
+                "LEGACY(4u);",
+                "data class RequestId(val rawValue: UInt) {",
+                "val effectKind: EffectKind?",
+                "val requestKind: RequestKind",
+                "val sequence: UInt",
             ],
         );
     }
@@ -282,6 +296,13 @@ mod facet_test {
                 "void Legacy(Example.Shared.Legacy operation, uint requestId, Action<byte[]> resolve);",
                 "public sealed class EffectDispatcher",
                 "public void Dispatch(Example.Shared.Request request)",
+                "public enum EffectKind : byte",
+                "Render = 0,",
+                "Legacy = 4,",
+                "public sealed record RequestId(uint RawValue)",
+                "public Example.Shared.EffectKind? EffectKind",
+                "public Example.Shared.RequestKind RequestKind",
+                "public uint Sequence => RawValue & 0x7fffffu;",
             ],
         );
     }
@@ -311,6 +332,9 @@ mod facet_test {
                 "legacy(operation: Legacy, requestId: uint32, resolve: (bytes: Uint8Array) => void): void;",
                 "export class EffectDispatcher {",
                 "public dispatch(request: Request): void {",
+                r#"export type EffectKind = "Render" | "Get" | "Publish" | "Subscribe" | "Legacy";"#,
+                "export interface RequestId {",
+                "export function decodeRequestId(rawValue: number): RequestId {",
             ],
         );
 
@@ -336,6 +360,8 @@ mod facet_test {
 
         assert!(!source.contains("RequestKind"));
         assert!(!source.contains("EffectHandler"));
+        assert!(!source.contains("EffectKind"));
+        assert!(!source.contains("RequestId"));
     }
 }
 

@@ -1,0 +1,78 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "request_id::<CSharp>()"
+---
+
+/// <summary>
+/// Which effect a request id names. The value is the
+/// effect's position in <c>Effect</c>, which is what the request
+/// id carries.
+/// </summary>
+public enum EffectKind : byte
+{
+    Render = 0,
+    Http = 1,
+    Subscribe = 2,
+    Legacy = 3,
+}
+
+/// <summary>
+/// The parts of the id the core issues with every request.
+///
+/// Resolve with <c>RawValue</c>, exactly as it arrived — this is for
+/// logging, tracing and assertions. The bit layout is Crux's, so read
+/// ids with this rather than picking the integer apart by hand.
+/// </summary>
+public sealed record RequestId(uint RawValue)
+{
+    /// <summary>
+    /// Every notification shares one reserved id, because the core is
+    /// not waiting on any of them.
+    /// </summary>
+    public bool IsNotification => RawValue == 0;
+
+    /// <summary>
+    /// Which effect this request carries — <c>null</c> for a notification,
+    /// whose id names none, and for an id naming an effect this generated
+    /// code does not know.
+    /// </summary>
+    public Shared.EffectKind? EffectKind
+    {
+        get
+        {
+            if (IsNotification)
+            {
+                return null;
+            }
+            return (RawValue >> 24) switch
+            {
+                0u => Shared.EffectKind.Render,
+                1u => Shared.EffectKind.Http,
+                2u => Shared.EffectKind.Subscribe,
+                3u => Shared.EffectKind.Legacy,
+                _ => null,
+            };
+        }
+    }
+
+    /// <summary>
+    /// How many times the core expects this request to be resolved.
+    /// </summary>
+    public Shared.RequestKind RequestKind
+    {
+        get
+        {
+            if (IsNotification)
+            {
+                return Shared.RequestKind.Notify;
+            }
+            return (RawValue & 0x800000u) == 0 ? Shared.RequestKind.Request : Shared.RequestKind.Stream;
+        }
+    }
+
+    /// <summary>
+    /// The ascending number the request was issued with. Zero for a
+    /// notification, the one id that is not sequenced.
+    /// </summary>
+    public uint Sequence => RawValue & 0x7fffffu;
+}

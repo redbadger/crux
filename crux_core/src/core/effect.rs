@@ -24,6 +24,26 @@ pub trait EffectFFI: Effect {
     /// but instead of carrying a `Request<Op>` they carry the `Op` directly
     type Ffi: Serialize;
 
+    /// How many variants the effect enum has.
+    ///
+    /// The [`Bridge`](crate::bridge::Bridge) uses it to reject a request id
+    /// naming a variant that does not exist. The default pairs with the
+    /// default [`variant_index`](Self::variant_index): one variant, index
+    /// zero.
+    const VARIANT_COUNT: u16 = 1;
+
+    /// Which variant of the effect enum this is, counting from zero in
+    /// declaration order.
+    ///
+    /// The [`Bridge`](crate::bridge::Bridge) puts it in the request id, so
+    /// that a resolve coming back names the effect it belongs to. The default
+    /// reports every effect as variant zero, so that a hand-written
+    /// implementation keeps compiling; its ids simply carry no useful effect
+    /// index.
+    fn variant_index(&self) -> u8 {
+        0
+    }
+
     /// Converts the `Effect` into its FFI counterpart and returns it alongside
     /// a deserializing version of the resolve callback for the request that the
     /// original `Effect` was carrying.
