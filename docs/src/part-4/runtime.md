@@ -31,6 +31,14 @@ results, and continue their work when the result has arrived. The call to
 request returned from the current core "transaction" (one call to
 `process_event` or `resolve`).
 
+Which of the three constructors a given operation may be sent with is
+decided by the operation type itself: an operation declares a
+`RequestKind` — notify, request or stream — and the other two constructors
+stop compiling for it. That declaration is also what the runtime records
+on the `RequestHandle` it builds, and what type generation hands to shells.
+An operation that declares nothing keeps the older behaviour, where the
+kind is whatever the call site chose.
+
 ```admonish note
 In this chapter, we will focus on the runtime and the core interface and ignore
 the serialisation, bridge and FFI, and return to them in the following sections.
@@ -241,7 +249,11 @@ the sending ends of channels for effects and events. When a task
 calls `request_from_shell`, the context creates a `Request`
 containing the operation and a resolve callback, wraps it in the
 app's `Effect` type (via the `From` trait), and sends it through the
-effects channel. The `Command` collects these effects and surfaces
+effects channel. The callback the `Request` carries is what fixes how
+many times the request can be resolved — never, once, or repeatedly —
+and the `RequestHandle` remembers it as a `RequestKind`, readable with
+`handle.kind()`. Notifications are never registered at all, so
+resolving one reports `NotFound`. The `Command` collects these effects and surfaces
 them to the `Core`.
 
 Looking at the core itself:

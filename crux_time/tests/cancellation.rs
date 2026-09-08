@@ -1,3 +1,6 @@
+//! The tests for the deprecated `Time` API, kept until it is removed.
+#![allow(deprecated)]
+
 use std::time::Duration;
 
 use crux_core::{App, Command, macros::effect};

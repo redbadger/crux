@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.0](https://github.com/redbadger/crux/compare/crux_macros-v0.10.1...crux_macros-v0.11.0) - 2026-09-06
 
 ### 💥 Breaking Changes
 
@@ -73,7 +73,6 @@ and this project adheres to
 
   Type generation uses this to emit a request-kind accessor and a typed effect
   handler API for each shell language — see the `crux_core` changelog.
-
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_macros-v0.10.0...crux_macros-v0.10.1) - 2026-08-06
 
 ### 🐛 Bug Fixes
