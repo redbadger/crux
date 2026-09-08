@@ -11,10 +11,10 @@ import {
 } from "react";
 
 import * as sharedWasm from "shared";
-import type { Event, ViewModel } from "shared_types/app";
+import type { Core, Event, ViewModel } from "shared_types/app";
 import { eventStart, viewModelLoading } from "shared_types/app";
 
-import { Core } from "./";
+import { createCore } from "./";
 
 const wasmInitialized = (
   sharedWasm as unknown as { initialized: Promise<void> }
@@ -46,7 +46,7 @@ export function CoreProvider({ children }: { children: ReactNode }) {
 
     wasmInitialized.then(() => {
       if (!coreRef.current) {
-        coreRef.current = new Core(setView);
+        coreRef.current = createCore(setView);
       }
       coreRef.current.update(eventStart());
     });

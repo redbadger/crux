@@ -1,50 +1,29 @@
 import App
 import Foundation
 import Shared
-import WeatherKit
-import os
 
-private let logger = Logger(subsystem: "com.crux.examples.weather", category: "live-bridge")
+/// The generated `CoreBridge`, implemented over BoltFFI's `CoreFfi`: bytes in,
+/// bytes out, nothing else. This is the only file in the app that knows the
+/// Rust core exists, and it lives in the app target (not WeatherKit) so that
+/// SwiftUI previews don't need to load the Rust framework.
+///
+/// `nonisolated` because the target builds with `MainActor` as its default
+/// isolation, and `CoreBridge`'s requirements are not actor-isolated.
+/// `@unchecked Sendable` because `CoreFfi` is a class Swift cannot prove
+/// `Sendable`; its state is a handle into a mutex-guarded `Bridge` on the Rust
+/// side, so calling it from any task is safe.
+nonisolated struct LiveBridge: CoreBridge, @unchecked Sendable {
+    private let ffi = CoreFfi()
 
-/// Wraps `CoreFfi` to communicate with the Rust core. Handles bincode
-/// serialization/deserialization so that `Core` works with Swift types only.
-/// This lives in the app target (not WeatherKit) so that SwiftUI previews
-/// don't need to load the Rust framework.
-struct LiveBridge: CoreBridge {
-    private let ffi: CoreFfi
-
-    init() {
-        ffi = CoreFfi()
+    func update(_ event: [UInt8]) -> [UInt8] {
+        [UInt8](ffi.update(data: Data(event)))
     }
 
-    func processEvent(_ event: Event) -> [Request] {
-        let eventBytes = try! event.bincodeSerialize()  // swiftlint:disable:this force_try
-        logger.debug("sending \(eventBytes.count) event bytes")
-
-        let effects = [UInt8](ffi.update(data: Data(eventBytes)))
-        logger.debug("received \(effects.count) effect bytes")
-
-        return deserializeRequests(effects)
+    func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8] {
+        [UInt8](ffi.resolve(id: id, data: Data(output)))
     }
 
-    func resolve(requestId: UInt32, responseBytes: [UInt8]) -> [Request] {
-        logger.debug("resolve: id=\(requestId) sending \(responseBytes.count) bytes")
-
-        let effects = [UInt8](ffi.resolve(id: requestId, data: Data(responseBytes)))
-        return deserializeRequests(effects)
-    }
-
-    func currentView() -> ViewModel {
-        // swiftlint:disable:next force_try
-        try! .bincodeDeserialize(input: [UInt8](ffi.view()))
-    }
-
-    private func deserializeRequests(_ bytes: [UInt8]) -> [Request] {
-        if bytes.isEmpty { return [] }
-        if bytes.count < 8 {
-            logger.error("response too short (\(bytes.count) bytes)")
-            return []
-        }
-        return try! Requests.bincodeDeserialize(input: bytes).value  // swiftlint:disable:this force_try
+    func view() -> [UInt8] {
+        [UInt8](ffi.view())
     }
 }

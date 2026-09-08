@@ -39,6 +39,10 @@ async-channel = "2.5.0"
 crux_http = { path = "../crux_http" }
 crux_time = { path = "../crux_time" }
 doctest_support = { path = "../doctest_support" }
+# The `fg::namespace` grammar, so the typegen test can put an operation's output
+# in a namespace of its own — which is where the generated Kotlin signature has
+# to name it from the module's own package rather than as a bare `Kit.Presence`.
+facet-generate-attrs = { workspace = true }
 insta = "1"
 rand = "0.10"
 serde = { workspace = true, features = ["derive"] }

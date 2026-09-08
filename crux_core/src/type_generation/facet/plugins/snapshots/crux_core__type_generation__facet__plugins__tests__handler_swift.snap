@@ -40,6 +40,13 @@ public protocol EffectHandler: Sendable {
     func legacy(_ operation: LegacyOperation, requestId: UInt32, resolve: @escaping @Sendable ([UInt8]) -> Void)
 }
 
+/// `Core` handles `Render` itself, so this does nothing; implement it
+/// only if you drive `EffectDispatcher` yourself.
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension EffectHandler {
+    public func render(_ operation: RenderOperation) {}
+}
+
 /// Routes each request to an `EffectHandler` and resolves it for you:
 /// never for a notification, once for a request, once per item for a
 /// stream.

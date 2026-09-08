@@ -70,17 +70,40 @@ can tell the shell. Every generated `Effect` gains a `requestKind` accessor
 
 A shell that implements the handler and lets `EffectDispatcher` do the
 resolving cannot resolve the wrong number of times or with the wrong type,
-because there is no `resolve` call left for it to get wrong. Its `resolve`
-argument is the shell's own callback around the core's `resolve` FFI.
+because there is no `resolve` call left for it to get wrong. If you drive the
+dispatcher yourself, its `resolve` argument is your own callback around the
+core's `resolve` FFI.
 
-The `id` you pass back is the one that arrived, untouched. It is not a bare
+## Who drives the loop
+
+You don't have to. Once the dispatcher does the resolving, what remains of the
+shell's core loop is the same in every app: serialize the `Event`, call the
+core's `update`, deserialize the requests, re-read the view when a `Render`
+arrives, hand everything else to the dispatcher, and when a request is
+resolved call the core's `resolve` and loop over the requests *that* returns.
+Type generation knows every type in that loop, so it emits it too, as a
+`Core` class, together with a `CoreBridge` protocol over bytes — `update`,
+`resolve` and `view` — that the shell satisfies with a few lines around the
+BoltFFI bindings.
+
+With the generated `Core`, a shell writes two things: the bridge adapter and
+the `EffectHandler`. `Core` handles `Render` itself and hands the new view to
+a callback (Swift, TypeScript, C#) or publishes it on a `StateFlow` (Kotlin),
+so the handler never touches the view at all. See
+[the generated Core](../part-4/typegen.md#the-generated-core) for the exact
+shape in each language, and the [RFC](../rfcs/generated-core.md) for why it
+is built the way it is.
+
+If you do resolve by hand, the `id` you pass back is the one that arrived,
+untouched. It is not a bare
 counter, though: it names the effect, says whether the request is resolved once
 or many times, and carries a sequence number, and type generation emits an
 `EffectKind` enum and a `RequestId` decoder for reading it — useful in a log
 line, never needed to resolve. See
 [reading a request id](../part-4/typegen.md#reading-a-request-id).
 
-Three of the shells that follow do exactly that. The Leptos shell doesn't:
+Three of the shells that follow hand the loop to the generated `Core`. The
+Leptos shell doesn't:
 core and shell are both Rust there, so it matches on the `Effect` enum
 directly, which is just as precise and needs no generated code. Matching by
 hand is still supported everywhere — the generated handler API is additive.

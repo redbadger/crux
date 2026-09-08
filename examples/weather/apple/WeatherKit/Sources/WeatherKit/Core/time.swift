@@ -3,7 +3,7 @@ import Foundation
 
 private nonisolated let logger = Log.time
 
-nonisolated extension Core {
+nonisolated extension WeatherHandler {
     /// `TimeNotifyAfter` is a request: it is answered exactly once, with the
     /// id of the timer that fired.
     ///
