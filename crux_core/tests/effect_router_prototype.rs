@@ -18,6 +18,7 @@ mod app {
     };
     use crux_macros::effect;
     use crux_time::{Time, TimeRequest, TimerOutcome};
+    use facet::Facet;
     use serde::{Deserialize, Serialize};
     use std::time::Duration;
 
@@ -52,12 +53,14 @@ mod app {
         type Output = StoredImageAsset;
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Facet)]
+    #[repr(C)]
     pub enum PermissionRequest {
         Camera,
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Facet)]
+    #[repr(C)]
     pub enum PermissionResponse {
         Granted,
         Denied,
@@ -250,7 +253,7 @@ mod ffi {
     /// Narrowed effect, down to the serialized variants
     ///
     /// This is only necessary if some variants are 'special'
-    #[effect(typegen)]
+    #[effect(facet_typegen)]
     #[derive(Debug)]
     pub enum SerializedEffect {
         Render(RenderOperation),

@@ -35,15 +35,4 @@ pub enum TimeResponse {
 
 impl Operation for TimeRequest {
     type Output = TimeResponse;
-
-    #[cfg(feature = "typegen")]
-    fn register_types(
-        generator: &mut crux_core::type_generation::serde::TypeGen,
-    ) -> crux_core::type_generation::serde::Result {
-        generator.register_type::<Instant>()?;
-        generator.register_type::<Duration>()?;
-        generator.register_type::<Self>()?;
-        generator.register_type::<Self::Output>()?;
-        Ok(())
-    }
 }
