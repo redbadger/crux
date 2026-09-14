@@ -777,8 +777,7 @@ Answered by the compat stage as implemented, in the order they were asked:
    gets `ResolveError::Never` — "this request was never going to be answered" —
    while an id that was issued and has since been resolved still gets
    `NotFound`. The generated dispatcher makes the mistake hard to make in the
-   first place — there is no `resolve` in a notification's handler method — and
-   the migration guide calls out the one place it bites: a cleared timer.
+   first place: there is no `resolve` in a notification's handler method.
 5. **Stream termination.** Still separate. The kind reaching the shell makes it
    easier to design, and nothing in the compat release forecloses it. The
    structured id does not settle it either: its kind bit says a request *is* a
