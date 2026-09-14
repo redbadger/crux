@@ -7,14 +7,12 @@
 //! [`TimeResponse`](crate::TimeResponse) and the capability has to check at
 //! runtime that the shell answered the question it was asked.
 //!
-//! Note that [`Clear`] is a notification: it tells the shell to release the
-//! resources behind a timer and there is nothing to answer. The old API asked
-//! for it with `TimeRequest::Clear` and waited for a `TimeResponse::Cleared`
-//! acknowledgement.
+//! [`Clear`] is a request like the rest: it asks the shell to release the
+//! resources behind a timer, and is answered with the [`TimerId`] it named.
 //!
 //! ```
 //! # use crux_core::{Command, macros::effect};
-//! use crux_time::{Clock, TimerOutcome, operation};
+//! use crux_time::{TimerOutcome, clock::Time, operation};
 //!
 //! #[effect]
 //! enum Effect {
@@ -23,7 +21,7 @@
 //! }
 //!
 //! # enum Event { Elapsed(TimerOutcome) }
-//! let (builder, _handle) = Clock::notify_after(std::time::Duration::from_secs(1));
+//! let (builder, _handle) = Time::notify_after(std::time::Duration::from_secs(1));
 //! let command: Command<Effect, Event> = builder.then_send(Event::Elapsed);
 //! ```
 
@@ -54,10 +52,14 @@ pub struct NotifyAfter {
     pub duration: Duration,
 }
 
-/// Tell the shell that the timer `id` is no longer wanted, so it can clean up
-/// any resources behind it. Nothing is expected in return.
+/// Ask the shell to release the resources behind the timer `id`, because it is
+/// no longer wanted, answering with the same `id`.
+///
+/// The timer's own [`NotifyAt`] or [`NotifyAfter`] request may still be
+/// answered after this one — a shell need not race the two. By then the core
+/// has stopped listening for that answer, and ignores it.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[operation(notify)]
+#[operation(request, output = TimerId)]
 pub struct Clear {
     pub id: TimerId,
 }

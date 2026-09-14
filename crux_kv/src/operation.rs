@@ -9,7 +9,7 @@
 //!
 //! ```
 //! # use crux_core::{Command, macros::effect, render::RenderOperation};
-//! use crux_kv::{KeyValueStore, operation};
+//! use crux_kv::{operation, store::KeyValue};
 //!
 //! #[effect]
 //! enum Effect {
@@ -20,7 +20,7 @@
 //!
 //! # enum Event { Loaded(crux_kv::DataResult) }
 //! let command: Command<Effect, Event> =
-//!     KeyValueStore::get("key").then_send(Event::Loaded);
+//!     KeyValue::get("key").then_send(Event::Loaded);
 //! ```
 //!
 //! The outputs are the wire types the shell resolves with:

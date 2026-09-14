@@ -18,7 +18,7 @@ and this project adheres to
 ### 🚀 Features
 
 - **One type per time operation, in the new `crux_time::operation` module, and a
-  `Clock` capability that sends them.** `TimeRequest` has one output type —
+  `clock::Time` capability that sends them.** `TimeRequest` has one output type —
   `TimeResponse` — for all four of its variants, so the capability has to check that
   the shell answered the question it was asked:
 
@@ -36,7 +36,7 @@ and this project adheres to
 
   ```rust
   // after
-  use crux_time::{Clock, operation};
+  use crux_time::{clock::Time, operation};
 
   #[effect]
   enum Effect {
@@ -44,13 +44,20 @@ and this project adheres to
       Clear(operation::Clear),
   }
 
-  let (timer, handle) = Clock::notify_after(Duration::from_secs(1));
+  let (timer, handle) = Time::notify_after(Duration::from_secs(1));
   ```
 
-  `Clock` has the same three methods as `Time` — `now`, `notify_at`, `notify_after` —
-  with the same signatures, and shares `TimerHandle`, `CompletedTimerHandle`,
-  `TimerOutcome`, `TimerId`, `Instant` and `Duration` with it. Its bounds are per
-  method, so an app's `Effect` only has to carry the operations it actually uses.
+  `clock::Time` has the same three methods as the root `Time` — `now`, `notify_at`,
+  `notify_after` — with the same signatures, and shares `TimerHandle`,
+  `CompletedTimerHandle`, `TimerOutcome`, `TimerId`, `Instant` and `Duration` with it.
+  Its bounds are per method, so an app's `Effect` only has to carry the operations it
+  actually uses.
+
+  The new capability keeps the name `Time` and lives in the `clock` module, so the
+  two coexist: `crux_time::Time` is the enum API and `crux_time::clock::Time` is the
+  per-operation one. The next breaking release removes the root type and re-exports
+  `clock::Time` in its place, so code written against `crux_time::clock::Time` will
+  not need to change.
 
   The wire types:
 
@@ -59,17 +66,15 @@ and this project adheres to
   | `Now` | — | `Instant` | `Request` |
   | `NotifyAt` | `id: TimerId, instant: Instant` | `TimerId` | `Request` |
   | `NotifyAfter` | `id: TimerId, duration: Duration` | `TimerId` | `Request` |
-  | `Clear` | `id: TimerId` | `()` | `Notify` |
+  | `Clear` | `id: TimerId` | `TimerId` | `Request` |
 
-  **`Clear` is a notification in the new API.** Clearing a timer tells the shell to
-  release the resources behind it, and there is nothing to answer — so
-  `TimerHandle::clear` now sends an `operation::Clear` notification and the timer's
-  future resolves with `TimerOutcome::Cleared` immediately, rather than waiting for a
-  `TimeResponse::Cleared` acknowledgement as `Time` does. A shell serving `Clock` has
-  no response to send for a `Clear`.
-
-  A `NotifyAt` or `NotifyAfter` is answered with the bare `TimerId` it was given,
-  which the core still checks against the timer it started.
+  Every operation is answered with the bare `TimerId` it was given, which the core
+  still checks against the timer it started. That includes `Clear`, so clearing a
+  timer is the same round trip it is with the enum API: `TimerHandle::clear` sends an
+  `operation::Clear` request, and the timer's future resolves with
+  `TimerOutcome::Cleared` once the shell has answered it. A shell whose timer fires
+  after the core has cleared it does no harm: the core has stopped waiting for that
+  request and ignores the late answer.
 
   Nothing is deprecated in this release: `Time`, `TimeRequest`, `TimeResponse` and
   `TimerFuture` are unchanged, and an app can use both APIs side by side.

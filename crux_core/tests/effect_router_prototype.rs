@@ -17,7 +17,7 @@ mod app {
         render::{RenderOperation, render},
     };
     use crux_macros::effect;
-    use crux_time::{Clock, TimerOutcome, operation as time};
+    use crux_time::{TimerOutcome, clock::Time, operation as time};
     use facet::Facet;
     use serde::{Deserialize, Serialize};
     use std::time::Duration;
@@ -128,7 +128,7 @@ mod app {
 
     impl SelfieApp {
         pub(crate) fn one_second_timer() -> Command<Effect, Event> {
-            let (timer, _handle) = Clock::notify_after(Duration::from_secs(1));
+            let (timer, _handle) = Time::notify_after(Duration::from_secs(1));
 
             timer.then_send(Event::TimerFired)
         }

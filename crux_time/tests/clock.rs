@@ -1,9 +1,9 @@
-//! The `Clock` API, driven through the per-operation types.
+//! The `clock::Time` API, driven through the per-operation types.
 
 use std::time::{Duration as StdDuration, SystemTime};
 
 use crux_core::{App, Command, macros::effect};
-use crux_time::{Clock, Duration, Instant, TimerHandle, TimerId, TimerOutcome, operation};
+use crux_time::{Duration, Instant, TimerHandle, TimerId, TimerOutcome, clock::Time, operation};
 
 #[effect]
 pub enum Effect {
@@ -57,19 +57,19 @@ impl App for Timer {
         model: &mut Self::Model,
     ) -> Command<Self::Effect, Self::Event> {
         match event {
-            Event::GetNow => Clock::now().then_send(Event::Now),
+            Event::GetNow => Time::now().then_send(Event::Now),
             Event::Now(now) => {
                 model.now = Some(now);
                 Command::done()
             }
             Event::Start => {
-                let (request, handle) = Clock::notify_after(StdDuration::from_secs(1));
+                let (request, handle) = Time::notify_after(StdDuration::from_secs(1));
                 model.handle = Some(handle);
                 model.status = Status::Pending;
                 request.then_send(Event::Completed)
             }
             Event::StartAt(instant) => {
-                let (request, handle) = Clock::notify_at(instant);
+                let (request, handle) = Time::notify_at(instant);
                 model.handle = Some(handle);
                 model.status = Status::Pending;
                 request.then_send(Event::Completed)
@@ -169,7 +169,7 @@ fn notify_at_is_answered_with_its_timer_id() {
 }
 
 #[test]
-fn clearing_a_timer_notifies_the_shell_and_does_not_wait_for_an_answer() {
+fn clearing_a_timer_asks_the_shell_and_waits_for_its_answer() {
     let app = Timer;
     let mut model = Model::default();
 
@@ -186,11 +186,45 @@ fn clearing_a_timer_notifies_the_shell_and_does_not_wait_for_an_answer() {
         .expect_no_effect_or_events();
     assert_eq!(model.status, Status::Pending);
 
-    // ...the original command tells the shell to clear it, as a notification
-    let clear = cmd.expect_one_effect().expect_clear();
+    // ...the original command asks the shell to clear it
+    let mut clear = cmd.expect_one_effect().expect_clear();
     assert_eq!(clear.operation, operation::Clear { id: timer_id });
 
-    // ...and resolves straight away, without the shell answering
+    // ...and nothing happens until the shell has answered
+    cmd.expect_no_events();
+    clear.resolve(timer_id).expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    assert_eq!(event, Event::Completed(TimerOutcome::Cleared));
+
+    app.update(event, &mut model).expect_done();
+    assert_eq!(model.status, Status::Cleared);
+}
+
+#[test]
+fn answering_a_cleared_timer_late_is_ignored() {
+    let app = Timer;
+    let mut model = Model::default();
+
+    // start the timer, and hang on to the shell's side of the request
+    let mut cmd = app.update(Event::Start, &mut model);
+    let mut notify = cmd.expect_one_effect().expect_notify_after();
+    let timer_id = notify.operation.id;
+
+    // cancel it...
+    app.update(Event::Cancel, &mut model)
+        .expect_no_effect_or_events();
+    let mut clear = cmd.expect_one_effect().expect_clear();
+    assert_eq!(clear.operation, operation::Clear { id: timer_id });
+
+    // ...and only then does the shell get round to answering the original
+    // `NotifyAfter`. The core has stopped listening, so the answer is dropped:
+    // resolving succeeds, and produces nothing.
+    notify.resolve(timer_id).expect("effect should resolve");
+    cmd.expect_no_effect_or_events();
+
+    // the `Clear` still resolves as normal
+    clear.resolve(timer_id).expect("effect should resolve");
     let event = cmd.expect_one_event();
     assert_eq!(event, Event::Completed(TimerOutcome::Cleared));
 
@@ -261,5 +295,6 @@ fn outputs_serialize_to_json() {
         r#"{"seconds":1,"nanos":2}"#
     );
 
+    // `NotifyAt`, `NotifyAfter` and `Clear` are all answered with a `TimerId`
     assert_eq!(serde_json::to_string(&TimerId(4)).unwrap(), "4");
 }
