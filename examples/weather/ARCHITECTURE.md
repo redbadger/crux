@@ -280,8 +280,8 @@ pub enum Effect {
 | `Http`              | `HttpResult`           | request  | Weather + geocoding API calls            | `URLSession`                      |
 | `KvGet`             | `ValueResult`          | request  | Restore favorites                        | Core Data                         |
 | `KvSet`             | `ValueResult`          | request  | Persist favorites                        | Core Data                         |
-| `TimeNotifyAfter`   | `TimerId`              | request  | Debounce timers for search input         | `Timer` with `MainActor` dispatch |
-| `TimeClear`         | —                      | notify   | Cancel a debounce timer                  | `Timer.invalidate()`              |
+| `TimeNotifyAfter`   | `TimerId`              | request  | Debounce timers for search input         | `Task.sleep` on a stored `Task`   |
+| `TimeClear`         | `TimerId`              | request  | Cancel a debounce timer                  | `Task.cancel()`                   |
 | `IsLocationEnabled` | `bool`                 | request  | Check location permission                | `CLLocationManager`               |
 | `GetLocation`       | `Location?`            | request  | Get device coordinates                   | `CLLocationManager`               |
 | `FetchSecret`       | `SecretFetchResponse`  | request  | Read the API key                         | Keychain (`SecItem*`)             |

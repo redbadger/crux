@@ -34,10 +34,19 @@ pub(super) fn notify_after(
     TIMERS.with_borrow_mut(|timers| timers.insert(id.0, timeout));
 }
 
-/// `Clear` is a notification: drop the timer and answer nothing. The core has
-/// already stopped waiting, so resolving the `NotifyAfter` now would be
-/// answering a question nobody is asking.
-pub(super) fn clear(operation: operation::Clear) {
-    log::debug!("time: clear (id={:?})", operation.id);
-    TIMERS.with_borrow_mut(|timers| timers.remove(&operation.id.0));
+/// `Clear` is a request: drop the timer and answer with the id it named.
+///
+/// Dropping the [`Timeout`] cancels it, so the `NotifyAfter` request it holds
+/// is never resolved. Resolving it late would be harmless too — the core stops
+/// listening for that request the moment it clears the timer.
+pub(super) fn clear(
+    core: &super::Core,
+    mut request: Request<operation::Clear>,
+    render: WriteSignal<ViewModel>,
+) {
+    let id = request.operation.id;
+    log::debug!("time: clear (id={id:?})");
+    TIMERS.with_borrow_mut(|timers| timers.remove(&id.0));
+
+    super::resolve_effect(core, &mut request, id, render);
 }

@@ -45,7 +45,12 @@ export type SyncMessage = {
 export class Core implements EffectHandler {
   private core: CoreFfi | null = null;
   private readonly dispatcher: EffectDispatcher;
-  private readonly timers = new Map<bigint, number>();
+  /// Live timeouts, so a `Clear` can cancel the one it names — each paired
+  /// with the `resolve` of the `NotifyAfter` promise it belongs to.
+  private readonly timers = new Map<
+    bigint,
+    { handle: number; resolve: (id: TimerId) => void }
+  >();
 
   setState: Dispatch<SetStateAction<ViewModel>>;
   channel: RefObject<BroadcastChannel>;
@@ -135,6 +140,10 @@ export class Core implements EffectHandler {
     return Promise.resolve(valueResultOk(valueNone()));
   }
 
+  /// `NotifyAfter` is answered exactly once, with the id of the timer that
+  /// fired. If `Clear` arrives first the timeout is cancelled and the promise
+  /// settles there and then, answering anyway — harmless, because the core
+  /// stops listening for this request the moment it clears the timer.
   timeNotifyAfter(operation: NotifyAfter): Promise<TimerId> {
     const milliseconds = Number(operation.duration.nanos) / 1e6;
     const timerId = operation.id.value;
@@ -144,20 +153,23 @@ export class Core implements EffectHandler {
         this.timers.delete(timerId);
         resolve(operation.id);
       }, milliseconds);
-      this.timers.set(timerId, handle);
+      this.timers.set(timerId, { handle, resolve });
     });
   }
 
-  timeClear(operation: Clear): void {
+  /// `Clear` is a request: drop the timer and answer with the id it named.
+  timeClear(operation: Clear): Promise<TimerId> {
     const timerId = operation.id.value;
-    const handle = this.timers.get(timerId);
-    if (handle !== undefined) {
-      window.clearTimeout(handle);
+    const timer = this.timers.get(timerId);
+    if (timer !== undefined) {
+      window.clearTimeout(timer.handle);
       this.timers.delete(timerId);
+      // Settle the `timeNotifyAfter` promise rather than leaving it pending.
+      // Nothing acts on it — the core is no longer listening for that request.
+      timer.resolve(operation.id);
     }
-    // The promise `timeNotifyAfter` returned is deliberately left pending: the
-    // core has already given up on the timer, so resolving it now would be a
-    // response to a request that no longer exists.
+
+    return Promise.resolve(operation.id);
   }
 }
 

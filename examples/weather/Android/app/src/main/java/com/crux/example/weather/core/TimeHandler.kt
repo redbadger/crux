@@ -20,8 +20,10 @@ class TimeHandler
         /// fired.
         ///
         /// If `Clear` arrives first the coroutine that is dispatching this
-        /// request is cancelled, so it never answers: `Clear` is a notification,
-        /// which means the core has already stopped waiting for the timer.
+        /// request is cancelled, so it never gets as far as answering. Answering
+        /// late would be harmless anyway — the core stops listening for this
+        /// request the moment it clears the timer, and ignores any answer that
+        /// arrives afterwards.
         suspend fun notifyAfter(operation: NotifyAfter): TimerId {
             val timerId = operation.id.value
             val delayMs = (operation.duration.nanos / 1_000_000u).toLong()
@@ -38,11 +40,13 @@ class TimeHandler
             return operation.id
         }
 
-        /// `Clear` is a notification: drop the timer and answer nothing.
-        fun clear(operation: Clear) {
+        /// `Clear` is a request: drop the timer and answer with the id it named.
+        suspend fun clear(operation: Clear): TimerId {
             val timerId = operation.id.value
             Log.d(TAG, "clear (id=$timerId)")
             activeTimers.remove(timerId)?.cancel()
+
+            return operation.id
         }
 
         companion object {

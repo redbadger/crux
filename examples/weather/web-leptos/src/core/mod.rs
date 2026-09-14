@@ -48,8 +48,8 @@ fn resolve_effect<Output>(
 // ANCHOR: process_effect
 /// One arm per operation. A Rust shell can match the `Effect` enum directly —
 /// each variant carries its operation type, and the compiler knows which
-/// output that request has to be resolved with. `Render` and `TimeClear` are
-/// notifications, so they are never resolved at all.
+/// output that request has to be resolved with. `Render` is a notification, so
+/// it is never resolved at all.
 fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
     match effect {
         Effect::Render(_) => render.set(core.view()),
@@ -57,7 +57,7 @@ fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
         Effect::KvGet(request) => kv::get(core, request, render),
         Effect::KvSet(request) => kv::set(core, request, render),
         Effect::TimeNotifyAfter(request) => time::notify_after(core, request, render),
-        Effect::TimeClear(request) => time::clear(request.operation),
+        Effect::TimeClear(request) => time::clear(core, request, render),
         Effect::IsLocationEnabled(request) => location::is_location_enabled(core, request, render),
         Effect::GetLocation(request) => location::get_location(core, request, render),
         Effect::FetchSecret(request) => secret::fetch(core, request, render),
