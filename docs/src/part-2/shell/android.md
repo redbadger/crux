@@ -55,7 +55,7 @@ What the shell writes is the handler, `WeatherHandler`, whose methods are one-li
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/WeatherHandler.kt:handle_http}}
 ```
 
-`suspend fun http(operation: HttpRequest): HttpResult` — the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `WeatherHandler` calls `resolve`. There is no `render` override either, because `Core` owns it; `timeClear` is the one notification here, so it returns `Unit` and is never resolved.
+`suspend fun http(operation: HttpRequest): HttpResult` — the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `WeatherHandler` calls `resolve`. There is no `render` override either, because `Core` owns it. `timeClear` returns the `TimerId` once the coroutine running the timer has been cancelled, like every other request.
 
 `httpHandler.request(...)` is the `suspend` function that wraps OkHttp:
 
