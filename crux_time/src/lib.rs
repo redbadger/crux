@@ -52,7 +52,7 @@ pub enum TimerOutcome {
 #[allow(deprecated)]
 #[deprecated(
     since = "0.19.0",
-    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear} and crux_time::Clock; removed in the next breaking release"
+    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear} and crux_time::clock::Time; removed in the next breaking release"
 )]
 pub struct Time<Effect, Event> {
     // Allow impl level trait bounds to avoid repetition
@@ -300,7 +300,7 @@ fn get_timer_id() -> TimerId {
 #[allow(deprecated)]
 #[deprecated(
     since = "0.19.0",
-    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear} and crux_time::Clock; removed in the next breaking release"
+    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear} and crux_time::clock::Time; removed in the next breaking release"
 )]
 pub struct TimerFuture<F>
 where

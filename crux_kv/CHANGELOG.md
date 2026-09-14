@@ -93,7 +93,7 @@ and this project adheres to
 
   | Deprecated | Since | Use instead |
   | --- | --- | --- |
-  | `KeyValue` | 0.15.0 | `KeyValueStore` |
+  | `KeyValue` | 0.15.0 | `store::KeyValue` |
   | `KeyValueOperation` | 0.15.0 | `operation::{Get, Set, Delete, Exists, ListKeys}` |
   | `KeyValueResult` | 0.15.0 | `operation::{ValueResult, BoolResult, KeysResult}` |
   | `KeyValueResponse` | 0.15.0 | the output type of the operation you sent |
@@ -101,8 +101,8 @@ and this project adheres to
   `KeyValueError`, `Value`, `DataResult`, `StatusResult` and `ListResult` are **not**
   deprecated: both APIs share them.
 
-  Migrating is mostly mechanical — the `KeyValueStore` methods have the same names,
-  signatures and return types as `KeyValue`'s, so the work is in the app's `Effect`
+  Migrating is mostly mechanical — the `store::KeyValue` methods have the same names,
+  signatures and return types as the root `KeyValue`'s, so the work is in the app's `Effect`
   enum and in the shells that serve it. The
   [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html)
   walks through it, including the shell side.

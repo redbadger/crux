@@ -87,20 +87,20 @@ and this project adheres to
 
   | Deprecated | Since | Use instead |
   | --- | --- | --- |
-  | `Time` | 0.19.0 | `Clock` |
+  | `Time` | 0.19.0 | `clock::Time` |
   | `TimeRequest` | 0.19.0 | `operation::{Now, NotifyAt, NotifyAfter, Clear}` |
-  | `TimeResponse` | 0.19.0 | `Instant` (for `Now`), `TimerId` (for `NotifyAt`/`NotifyAfter`), nothing for `Clear` |
-  | `TimerFuture` | 0.19.0 | nothing — an implementation detail of `Time`; `Clock` needs no equivalent |
+  | `TimeResponse` | 0.19.0 | `Instant` (for `Now`), `TimerId` (for `NotifyAt`, `NotifyAfter` and `Clear`) |
+  | `TimerFuture` | 0.19.0 | nothing — an implementation detail of `Time`; `clock::Time` needs no equivalent |
 
   `TimerHandle`, `CompletedTimerHandle`, `TimerOutcome`, `TimerId`, `Instant` and
   `Duration` are **not** deprecated: both APIs share them.
 
-  One behavioural difference to carry across when you migrate: a `Clock` timer that
-  is cleared is **never resolved**, because `Clear` is a notification. A shell that
-  resolves the original request after clearing it gets a `NotFound` from the core,
-  which the FFI treats as a panic — so drop or cancel the pending timer instead. The
+  Clearing a timer works as it always has: `Clear` is a request answered with its
+  `TimerId`, as `TimeRequest::Clear` was with `TimeResponse::Cleared`, and the cleared
+  outcome arrives once the shell has answered. A shell whose timer fires after the
+  core has cleared it does no harm, because the core ignores the late answer. The
   [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html)
-  covers this and the rest of the shell side.
+  covers the shell side.
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_time-v0.17.0...crux_time-v0.18.0) - 2026-08-06
 
 ### ⚙️ Miscellaneous Tasks

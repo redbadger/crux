@@ -25,14 +25,15 @@ Otherwise, in this order:
 1. **Your own capabilities** — one struct per operation with
    `#[derive(Operation)]`, and one output type per operation instead of a shared
    response enum.
-2. **`crux_kv` and `crux_time`** — swap `KeyValue` for `KeyValueStore` and `Time`
-   for `Clock`, and list the operations you use in your `Effect` enum.
+2. **`crux_kv` and `crux_time`** — import `KeyValue` from `crux_kv::store` and
+   `Time` from `crux_time::clock` instead of from the crate roots, and list the
+   operations you use in your `Effect` enum.
 3. **Your `Effect` enum** — one variant per operation, which renames the
    generated `is_` / `into_` / `expect_*` test helpers.
 4. **Regenerate your shells** and either adopt the generated `EffectHandler`, or
    widen the match you already have.
-5. **Check the [traps](#traps-worth-knowing-about)** — cleared timers, Swift
-   actor isolation, and `Set` name collisions.
+5. **Check the [traps](#traps-worth-knowing-about)** — Swift actor isolation,
+   `Set` name collisions, and what a late timer does.
 
 ---
 
@@ -196,9 +197,10 @@ Three things to watch:
 
 ## `crux_kv`
 
-`KeyValueStore` has the same five methods as `KeyValue`, with the same
-signatures and the same `DataResult` / `StatusResult` / `ListResult` return
-types, so app code barely changes. What changes is the `Effect` enum.
+`crux_kv::store::KeyValue` has the same five methods as `crux_kv::KeyValue`,
+with the same signatures and the same `DataResult` / `StatusResult` /
+`ListResult` return types, so app code barely changes beyond the import. What
+changes is the `Effect` enum.
 
 ```rust,ignore
 // Before
@@ -215,7 +217,7 @@ KeyValue::get("note").then_send(Event::Load)
 
 ```rust,ignore
 // After
-use crux_kv::{KeyValueStore, error::KeyValueError, operation as kv};
+use crux_kv::{error::KeyValueError, operation as kv, store::KeyValue};
 
 #[effect(facet_typegen)]
 pub enum Effect {
@@ -224,7 +226,7 @@ pub enum Effect {
     KvSet(kv::Set),
 }
 
-KeyValueStore::get("note").then_send(Event::Load)
+KeyValue::get("note").then_send(Event::Load)
 ```
 
 The operations and their outputs:
@@ -254,13 +256,26 @@ The wire shapes change, so shells need regenerating: `KeyValueResponse::Get {
 value }` becomes `ValueResult::Ok(value)`, and there is no longer an operation
 enum to switch on.
 
+```admonish note title="Same name, different module"
+The two types share a name on purpose. `crux_kv::KeyValue` at the crate root is
+the enum API and is deprecated; `crux_kv::store::KeyValue` is the per-operation
+one. The next breaking release removes the root type and re-exports
+`store::KeyValue` in its place, so the import you write today keeps working and
+the bare `crux_kv::KeyValue` comes to mean the new type. If one file needs both
+while you migrate, import one of them under an alias:
+`use crux_kv::store::KeyValue as Store;`
+```
+
 ---
 
 ## `crux_time`
 
-`Clock` mirrors `Time`'s three methods — `now`, `notify_at`, `notify_after` —
-with the same signatures, and shares `TimerHandle`, `CompletedTimerHandle`,
-`TimerOutcome`, `TimerId`, `Instant` and `Duration` with it.
+`crux_time::clock::Time` mirrors `crux_time::Time`'s three methods — `now`,
+`notify_at`, `notify_after` — with the same signatures, and shares `TimerHandle`,
+`CompletedTimerHandle`, `TimerOutcome`, `TimerId`, `Instant` and `Duration` with
+it. As with `crux_kv`, the name is the same and the module is the difference:
+the root type is deprecated, and the breaking release re-exports `clock::Time`
+in its place.
 
 ```rust,ignore
 // Before
@@ -276,7 +291,7 @@ let (notify_after, handle) = Time::notify_after(duration);
 
 ```rust,ignore
 // After
-use crux_time::{Clock, TimerHandle, TimerOutcome, operation as time};
+use crux_time::{TimerHandle, TimerOutcome, clock::Time, operation as time};
 
 #[effect(facet_typegen)]
 pub enum Effect {
@@ -284,7 +299,7 @@ pub enum Effect {
     TimeClear(time::Clear),
 }
 
-let (notify_after, handle) = Clock::notify_after(duration);
+let (notify_after, handle) = Time::notify_after(duration);
 ```
 
 | Operation | Fields | Output | Kind |
@@ -292,21 +307,17 @@ let (notify_after, handle) = Clock::notify_after(duration);
 | `operation::Now` | — | `Instant` | request |
 | `operation::NotifyAt` | `id: TimerId, instant: Instant` | `TimerId` | request |
 | `operation::NotifyAfter` | `id: TimerId, duration: Duration` | `TimerId` | request |
-| `operation::Clear` | `id: TimerId` | `()` | **notify** |
+| `operation::Clear` | `id: TimerId` | `TimerId` | request |
 
-Two differences to carry across:
-
-- **A `NotifyAt` / `NotifyAfter` is answered with the bare `TimerId`** it was
-  given, rather than a `TimeResponse::DurationElapsed { id }`. The core still
-  checks it against the timer it started.
-- **`Clear` is a notification.** `TimerHandle::clear` sends an `operation::Clear`
-  and the timer's future resolves with `TimerOutcome::Cleared`
-  **immediately** — it no longer waits for the `TimeResponse::Cleared`
-  acknowledgement `Time` waits for. A shell serving `Clock` has no response to
-  send for a `Clear`, and must not send one; see the trap below.
+One difference to carry across: **every timer operation is answered with the
+bare `TimerId`** it was given, rather than a `TimeResponse::DurationElapsed { id
+}` or `TimeResponse::Cleared { id }`. The core still checks it against the timer
+it started. Clearing works as it always has: `TimerHandle::clear` sends an
+`operation::Clear` request, and the timer's future resolves with
+`TimerOutcome::Cleared` once the shell has answered it.
 
 Note that if you list `TimeClear` in your `Effect` but not `TimeNotifyAfter`,
-nothing will compile — `Clock::notify_after` needs both, since clearing is part
+nothing will compile — `Time::notify_after` needs both, since clearing is part
 of the handle it returns.
 
 ---
@@ -516,7 +527,7 @@ fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
         Effect::KvGet(request) => kv::get(core, request, render),
         Effect::KvSet(request) => kv::set(core, request, render),
         Effect::TimeNotifyAfter(request) => time::notify_after(core, request, render),
-        Effect::TimeClear(request) => time::clear(request.operation),
+        Effect::TimeClear(request) => time::clear(core, request, render),
         Effect::IsLocationEnabled(request) => location::is_location_enabled(core, request, render),
         // …
     }
@@ -532,23 +543,25 @@ concurrency: the emission is additive, and ignoring it costs nothing.
 
 These are the things that actually caught us out migrating the two examples.
 
-### Never resolve a cleared timer
+### A cleared timer can still fire
 
-`operation::Clear` is a notification, so by the time the shell sees it the core
-has already stopped waiting for the timer. Resolving the original
-`NotifyAfter` request afterwards is a `NotFound`, which the FFI surfaces as a
-panic. Each shell has to drop or cancel the pending timer rather than let it
-fire:
+`Clear` is a request like any other: the shell cancels the timer and answers
+with the `TimerId`, and only then does the core's timer future resolve with
+`TimerOutcome::Cleared`. Between the core clearing a timer and the shell acting
+on the `Clear`, the timer can fire, and the shell may answer the original
+`NotifyAfter` as well. That is harmless. The core stopped waiting for that
+request when the timer was cleared, and it ignores the late answer, with no
+event and no error.
 
-- Swift invalidates the `Timer`, which releases the continuation
-  `timeNotifyAfter` is suspended on;
-- Leptos keeps a `HashMap<usize, Timeout>` and removes the entry, since dropping
-  a `gloo_timers::Timeout` cancels it;
-- TypeScript calls `window.clearTimeout` on the stored handle;
-- Kotlin cancels the coroutine running the delay.
+So a shell has two obligations, and neither is about safety: cancel the timer,
+so it does not sit there until it fires, and answer the `Clear`. Under `Time`
+that answer was `TimeResponse::Cleared { id }`; now it is the bare `TimerId`.
 
-Under `Time`, by contrast, the shell answered a `Clear` with
-`TimeResponse::Cleared`. Delete that response.
+What a shell must not do is answer the same request twice, which is a
+`NotFound` from the bridge and a panic in most FFI wrappers, or answer a
+notification. The generated handler API makes both impossible by construction,
+since each request method returns exactly once and a notification method
+returns nothing.
 
 ### Swift: `EffectHandler` is `Sendable`, your `Core` is probably `@MainActor`
 
@@ -581,13 +594,6 @@ import com.example.weather.Set as KeyValueSet
 import type { Set as SetValue } from "shared_types/app";
 ```
 
-### `Clock`'s cleared outcome no longer waits for an ack
-
-`Time::notify_after`'s future resolved `TimerOutcome::Cleared` only once the
-shell had acknowledged the clear. `Clock`'s resolves immediately. If any of your
-core logic relied on the round trip to sequence something after a clear, it now
-happens sooner.
-
 ---
 
 ## Deprecations
@@ -597,13 +603,13 @@ named. All of it is removed in the next breaking release.
 
 | Item | Since | Use instead |
 | --- | --- | --- |
-| `crux_kv::KeyValue` | `crux_kv` 0.15.0 | `crux_kv::KeyValueStore` |
+| `crux_kv::KeyValue` | `crux_kv` 0.15.0 | `crux_kv::store::KeyValue` |
 | `crux_kv::KeyValueOperation` | `crux_kv` 0.15.0 | `crux_kv::operation::{Get, Set, Delete, Exists, ListKeys}` |
 | `crux_kv::KeyValueResult` | `crux_kv` 0.15.0 | `crux_kv::operation::{ValueResult, BoolResult, KeysResult}` |
 | `crux_kv::KeyValueResponse` | `crux_kv` 0.15.0 | the output type of the operation you sent |
-| `crux_time::Time` | `crux_time` 0.19.0 | `crux_time::Clock` |
+| `crux_time::Time` | `crux_time` 0.19.0 | `crux_time::clock::Time` |
 | `crux_time::TimeRequest` | `crux_time` 0.19.0 | `crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear}` |
-| `crux_time::TimeResponse` | `crux_time` 0.19.0 | `Instant`, `TimerId`, or nothing for `Clear` |
+| `crux_time::TimeResponse` | `crux_time` 0.19.0 | `Instant` for `Now`, `TimerId` for the rest |
 | `crux_time::TimerFuture` | `crux_time` 0.19.0 | nothing — an implementation detail of `Time` |
 
 Not deprecated, and shared by both APIs: `crux_kv::{KeyValueError, Value,
@@ -632,6 +638,10 @@ change. What changes:
 - **The deprecated items above are removed**, along with the `command` module
   re-export shims and the legacy "no declared kind" handling in the bridge and in
   type generation. Every operation will have to declare a kind.
+- **`KeyValue` and `Time` return to the crate roots.** With the enum-API types
+  gone, `crux_kv::KeyValue` and `crux_time::Time` become re-exports of
+  `store::KeyValue` and `clock::Time`. The module paths keep working, so nothing
+  written against this release changes.
 - **The remaining examples migrate** — `counter`, `counter-http`,
   `counter-middleware` and `counter-routing`, and their shells.
 

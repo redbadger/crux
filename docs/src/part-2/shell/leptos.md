@@ -116,15 +116,14 @@ Each `move ||` closure tracks only the fields it reads. When `local_weather` cha
 
 Eleven arms, one per operation. The shell and the core share the same Rust types, so the match compiles into a direct call — no serialisation layer between them, and no need for the generated `EffectHandler` the Swift, Kotlin and TypeScript shells use: a flat `match` over typed variants is already as precise as a handler interface. Each arm's `request` knows its own output type, so `core.resolve(&mut request, output)` only compiles with the right one.
 
-Two arms resolve nothing. `Render` writes the current view model into the signal, and `TimeClear` cancels a pending timeout — both are *notifications*, and the core is not waiting on either.
+One arm resolves nothing: `Render` is a notification, and writes the current view model into the signal. `TimeClear` drops the pending `Timeout` and answers with the `TimerId`, like every other timer operation.
 
-```admonish warning title="Never resolve a cleared timer"
-`TimeClear` cancelling a timer means the `TimeNotifyAfter` request that started
-it must never be resolved. Clearing is a notification, so the core has already
-stopped waiting; resolving the original request afterwards reports `NotFound`.
-This shell keeps a registry of live `Timeout` handles keyed by `TimerId` and
-drops the one being cleared, which cancels the pending closure along with the
-resolve it would have performed.
+```admonish note title="A cleared timer can still fire"
+Dropping a `gloo_timers::Timeout` cancels its closure, so a cleared timer never
+answers here. A shell that let one fire anyway would do no harm: the core
+stopped waiting for the `TimeNotifyAfter` request when the timer was cleared,
+and ignores a late answer. The registry of live `Timeout` handles keyed by
+`TimerId` is there to release the timer, not to protect the core.
 ```
 
 Each capability lives in its own file. Here's HTTP:

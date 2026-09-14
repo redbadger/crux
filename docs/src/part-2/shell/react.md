@@ -83,7 +83,7 @@ HTTP looks like this:
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:http}}
 ```
 
-One method, returning a `Promise<HttpResult>` — the operation declares that it is answered exactly once with an `HttpResult`, so that's the signature, and the dispatcher awaits it and resolves. The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest` into a browser `Request` and the `Response` back into the shared `HttpResult`. `render(): void` and `timeClear(operation: Clear): void` are the two notifications — nothing to return, nothing resolved.
+One method, returning a `Promise<HttpResult>` — the operation declares that it is answered exactly once with an `HttpResult`, so that's the signature, and the dispatcher awaits it and resolves. The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest` into a browser `Request` and the `Response` back into the shared `HttpResult`. `render(): void` is the one notification — nothing to return, nothing resolved. `timeClear` is a request like the rest, and answers with the `TimerId` once the timeout is cleared.
 
 What the dispatcher resolves *through* is `respond`:
 
