@@ -50,7 +50,7 @@ The handler methods are one-liners that delegate to the injected handlers. HTTP,
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:handle_http}}
 ```
 
-`suspend fun http(operation: HttpRequest): HttpResult` — the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `Core` calls `resolve`. Compare `override fun render(operation: RenderOperation) = render()`: a notification, so it returns `Unit` and is never resolved. `timeClear` is the other notification.
+`suspend fun http(operation: HttpRequest): HttpResult` — the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `Core` calls `resolve`. Compare `override fun render(operation: RenderOperation) = render()`: a notification, so it returns `Unit` and is never resolved. `timeClear` is a request like the rest, and returns the `TimerId` once the coroutine running the timer has been cancelled.
 
 `httpHandler.request(...)` is the `suspend` function that wraps OkHttp:
 

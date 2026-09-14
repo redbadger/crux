@@ -19,7 +19,7 @@ pub use protocol::*;
 #[allow(deprecated)]
 #[deprecated(
     since = "0.15.0",
-    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::KeyValueStore; removed in the next breaking release"
+    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
 )]
 pub struct KeyValue<Effect, Event> {
     // Allow the impl to declare trait bounds once. Thanks rustc

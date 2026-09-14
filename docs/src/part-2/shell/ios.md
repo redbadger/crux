@@ -73,7 +73,7 @@ What the dispatcher resolves *with* is the callback `Core` gave it at constructi
 
 It hops to the main actor, passes the bytes to the bridge, and then loops over any **new** effect requests that came back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. The shell has to keep processing until the command's task finishes.
 
-The other effect handlers follow the same shape — one method per operation, returning that operation's output. The timer ones are worth a glance: `timeNotifyAfter` waits out the duration and returns the `TimerId`, while `timeClear` is a *notification* — it cancels the pending `Timer` and returns nothing. Resolving a cleared timer afterwards would hand the core an id it no longer knows about.
+The other effect handlers follow the same shape — one method per operation, returning that operation's output. The timer ones are worth a glance: `timeNotifyAfter` waits out the duration and returns the `TimerId`, and `timeClear` cancels the pending timer and returns the same `TimerId`, which is the core's cue that the timer is gone. If the timer fires anyway before the clear reaches the shell, the late answer to `timeNotifyAfter` is ignored: the core stopped waiting for it when the timer was cleared.
 
 ## Views driven by the ViewModel
 

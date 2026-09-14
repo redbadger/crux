@@ -651,7 +651,9 @@ version of this list:
   alongside the existing enum APIs, which are deprecated. `crux_kv::KeyValue`,
   `KeyValueOperation`, `KeyValueResult` and `KeyValueResponse`, and
   `crux_time::Time`, `TimeRequest`, `TimeResponse` and `TimerFuture`, all warn
-  and name their replacement.
+  and name their replacement. The replacements keep the names and move into a
+  module — `crux_kv::store::KeyValue` and `crux_time::clock::Time` — so that
+  both can live in one crate while apps migrate.
 - Type generation emits the kind for operations that declare one, and the
   handler API and dispatcher, in all four languages.
 
@@ -671,6 +673,8 @@ is fine in practice.
   `cargo check`, with a `#[diagnostic::on_unimplemented]` message.
 - Remove the deprecated enum APIs, the legacy `None` handling in the bridge and
   in type generation, and migrate the remaining examples and their shells.
+  Re-export `store::KeyValue` and `clock::Time` at the crate roots, so the
+  original paths name the per-operation types.
 
 For users' own capabilities, the mechanical migration is: one struct per
 variant, `#[operation(..)]` on each, and replace the response enum with the
@@ -735,8 +739,7 @@ Answered by the compat stage as implemented, in the order they were asked:
 4. **Resolving a notification.** Both cases report `NotFound`, as 0.20 did. The
    bridge does not store an entry for a notification, so a shell that resolves
    one is told the id is unknown. The generated dispatcher makes this hard to
-   do by accident — there is no `resolve` in a notification's handler method —
-   and the migration guide calls out the one place it bites: a cleared timer.
+   do by accident: there is no `resolve` in a notification's handler method.
 5. **Stream termination.** Still separate. The kind reaching the shell makes it
    easier to design, and nothing in the compat release forecloses it.
 6. **Error conventions.** `crux_kv` and `crux_time`'s new outputs follow the
@@ -761,6 +764,7 @@ across on both sides of the boundary. What remains is the breaking release:
 2. Tighten the `Command` and `CommandContext` bounds to the markers, with
    `#[diagnostic::on_unimplemented]` messages.
 3. Remove the deprecated enum APIs and the legacy `None` handling in the bridge
-   and in type generation.
+   and in type generation, and re-export `store::KeyValue` and `clock::Time` at
+   the crate roots.
 4. Migrate the remaining four examples and their shells, including the
    FFI-subset-enum question in `counter-routing`.
