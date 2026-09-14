@@ -84,8 +84,8 @@ export class Core implements EffectHandler {
     return time.notifyAfter(operation);
   }
 
-  timeClear(operation: Clear): void {
-    time.clear(operation);
+  timeClear(operation: Clear): Promise<TimerId> {
+    return time.clear(operation);
   }
 
   isLocationEnabled(): Promise<boolean> {

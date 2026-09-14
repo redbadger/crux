@@ -11,7 +11,7 @@ public class Core {
     private let bridge: CoreBridge
     private var dispatcher: EffectDispatcher!
     let keyValueStore: KeyValueStore
-    var activeTimers: [UInt64: Timer] = [:]
+    var activeTimers: [UInt64: Task<Void, Never>] = [:]
 
     public init(bridge: CoreBridge) {
         logger.info("Initializing Core")

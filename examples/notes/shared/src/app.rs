@@ -8,8 +8,8 @@ use crux_core::{
     macros::effect,
     render::{self, RenderOperation},
 };
-use crux_kv::{KeyValueStore, error::KeyValueError, operation as kv};
-use crux_time::{Clock, TimerHandle, TimerOutcome, operation as time};
+use crux_kv::{error::KeyValueError, operation as kv, store::KeyValue};
+use crux_time::{TimerHandle, TimerOutcome, clock::Time, operation as time};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
@@ -209,21 +209,21 @@ impl App for NoteEditor {
                 render::render()
             }
             Event::EditTimerElapsed(TimerOutcome::Completed(_)) => {
-                KeyValueStore::set("note".to_string(), model.note.save()).then_send(Event::Written)
+                KeyValue::set("note".to_string(), model.note.save()).then_send(Event::Written)
             }
             Event::EditTimerElapsed(TimerOutcome::Cleared) => Command::done(),
             Event::Written(_) => {
                 // FIXME assuming successful write
                 Command::done()
             }
-            Event::Open => KeyValueStore::get("note".to_string()).then_send(Event::Load),
+            Event::Open => KeyValue::get("note".to_string()).then_send(Event::Load),
             Event::Load(Ok(value)) => {
                 let mut commands = Vec::new();
                 if value.is_none() {
                     model.note = Note::new();
 
                     commands.push(
-                        KeyValueStore::set("note".to_string(), model.note.save())
+                        KeyValue::set("note".to_string(), model.note.save())
                             .then_send(Event::Written),
                     );
                 } else {
@@ -253,7 +253,7 @@ fn restart_timer(current_handle: &mut Option<TimerHandle>) -> Command<Effect, Ev
     }
 
     let duration = Duration::from_millis(EDIT_TIMER);
-    let (notify_after, handle) = Clock::notify_after(duration);
+    let (notify_after, handle) = Time::notify_after(duration);
     current_handle.replace(handle);
     notify_after.then_send(Event::EditTimerElapsed)
 }
@@ -676,8 +676,9 @@ mod save_load_tests {
         let mut cmd2 = app.update(Event::Replace(1, 2, "a".to_string()), &mut model);
         let mut requests = cmd2.effects().filter_map(Effect::into_time_notify_after);
 
-        // but first, the original request (cmd1) tells the shell to clear the
-        // timer. `Clear` is a notification, so there is nothing to resolve.
+        // but first, the original request (cmd1) asks the shell to clear the
+        // timer. Nothing resolves it here, so the original command stays
+        // pending — that is fine, the test is done with it.
         let cancel_request = cmd1.effects().find_map(Effect::into_time_clear).unwrap();
         assert_eq!(cancel_request.operation.id, first_id);
 
