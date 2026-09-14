@@ -24,7 +24,7 @@ private nonisolated let logger = Log.core
 @MainActor
 public final class WeatherHandler {
     let keyValueStore: KeyValueStore
-    var activeTimers: [UInt64: Timer] = [:]
+    var activeTimers: [UInt64: Task<Void, Never>] = [:]
 
     public init() {
         do {

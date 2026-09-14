@@ -49,7 +49,7 @@ class WeatherHandler
 
         override suspend fun timeNotifyAfter(operation: NotifyAfter): TimerId = timeHandler.notifyAfter(operation)
 
-        override fun timeClear(operation: Clear) = timeHandler.clear(operation)
+        override suspend fun timeClear(operation: Clear): TimerId = timeHandler.clear(operation)
 
         override suspend fun isLocationEnabled(operation: IsLocationEnabled): Boolean = locationHandler.isLocationEnabled()
 

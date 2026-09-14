@@ -490,7 +490,7 @@ nonisolated struct LiveBridge: CoreBridge, @unchecked Sendable {
 
 @MainActor public final class WeatherHandler {
     let keyValueStore: KeyValueStore
-    var activeTimers: [UInt64: Timer] = [:]
+    var activeTimers: [UInt64: Task<Void, Never>] = [:]
 }
 
 nonisolated extension WeatherHandler: EffectHandler {
@@ -534,7 +534,7 @@ class LiveBridge @Inject constructor() : CoreBridge {
 class WeatherHandler @Inject constructor(/* … */) : EffectHandler {
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
     override suspend fun kvGet(operation: Get): ValueResult = keyValueHandler.get(operation)
-    override fun timeClear(operation: Clear) = timeHandler.clear(operation)
+    override suspend fun timeClear(operation: Clear): TimerId = timeHandler.clear(operation)
 }
 
 @Module @InstallIn(SingletonComponent::class)
