@@ -18,7 +18,7 @@ and this project adheres to
 ### 🚀 Features
 
 - **One type per store operation, in the new `crux_kv::operation` module, and a
-  `KeyValueStore` capability that sends them.** `KeyValueOperation` has one output
+  `store::KeyValue` capability that sends them.** `KeyValueOperation` has one output
   type — `KeyValueResult` — for all five of its variants, so a `Get` can be answered
   with a `KeyValueResponse::ListKeys` as far as the type system and the deserializer
   are concerned, and the capability has to check:
@@ -34,7 +34,7 @@ and this project adheres to
 
   ```rust
   // after
-  use crux_kv::{KeyValueStore, operation};
+  use crux_kv::{operation, store::KeyValue};
 
   #[effect]
   enum Effect {
@@ -43,13 +43,19 @@ and this project adheres to
       Render(RenderOperation),
   }
 
-  KeyValueStore::get("key").then_send(Event::Loaded)
+  KeyValue::get("key").then_send(Event::Loaded)
   ```
 
-  `KeyValueStore` has the same five methods as `KeyValue` — `get`, `set`, `delete`,
-  `exists`, `list_keys` — with the same signatures and the same `DataResult`,
+  `store::KeyValue` has the same five methods as the root `KeyValue` — `get`, `set`,
+  `delete`, `exists`, `list_keys` — with the same signatures and the same `DataResult`,
   `StatusResult` and `ListResult` return types. Its bounds are per method, so an app's
   `Effect` only has to carry the operations it actually uses.
+
+  The new capability keeps the name `KeyValue` and lives in the `store` module, so
+  the two coexist: `crux_kv::KeyValue` is the enum API and `crux_kv::store::KeyValue`
+  is the per-operation one. The next breaking release removes the root type and
+  re-exports `store::KeyValue` in its place, so code written against
+  `crux_kv::store::KeyValue` will not need to change.
 
   The wire types:
 

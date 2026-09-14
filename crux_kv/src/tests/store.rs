@@ -1,5 +1,5 @@
-//! The same scenarios as `legacy`, driven through [`KeyValueStore`] and the
-//! per-operation types.
+//! The same scenarios as `legacy`, driven through [`store::KeyValue`](crate::store::KeyValue)
+//! and the per-operation types.
 
 use crux_core::{
     App as _, Command,
@@ -9,10 +9,11 @@ use crux_core::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    DataResult, KeyValueStore, ListResult, StatusResult,
+    DataResult, ListResult, StatusResult,
     error::KeyValueError,
     operation::{self, BoolResult, Keys, KeysResult, ValueResult},
     protocol::Value,
+    store::KeyValue,
 };
 
 #[derive(Default)]
@@ -56,18 +57,18 @@ impl crux_core::App for App {
     fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         let key = "test".to_string();
         match event {
-            Event::Get => KeyValueStore::get(key).then_send(Event::GetResponse),
+            Event::Get => KeyValue::get(key).then_send(Event::GetResponse),
             Event::Set => {
-                KeyValueStore::set(key, 42i32.to_ne_bytes().to_vec()).then_send(Event::SetResponse)
+                KeyValue::set(key, 42i32.to_ne_bytes().to_vec()).then_send(Event::SetResponse)
             }
-            Event::Delete => KeyValueStore::delete(key).then_send(Event::SetResponse),
-            Event::Exists => KeyValueStore::exists(key).then_send(Event::ExistsResponse),
+            Event::Delete => KeyValue::delete(key).then_send(Event::SetResponse),
+            Event::Exists => KeyValue::exists(key).then_send(Event::ExistsResponse),
             Event::ListKeys => {
-                KeyValueStore::list_keys("test:".to_string(), 0).then_send(Event::ListKeysResponse)
+                KeyValue::list_keys("test:".to_string(), 0).then_send(Event::ListKeysResponse)
             }
 
             Event::GetThenSet => Command::new(|ctx| async move {
-                let Result::Ok(Some(value)) = KeyValueStore::get("test_num".to_string())
+                let Result::Ok(Some(value)) = KeyValue::get("test_num".to_string())
                     .into_future(ctx.clone())
                     .await
                 else {
@@ -76,7 +77,7 @@ impl crux_core::App for App {
 
                 let num = i32::from_ne_bytes(value.try_into().unwrap());
                 let result =
-                    KeyValueStore::set("test_num".to_string(), (num + 1).to_ne_bytes().to_vec())
+                    KeyValue::set("test_num".to_string(), (num + 1).to_ne_bytes().to_vec())
                         .into_future(ctx.clone())
                         .await;
 
