@@ -107,17 +107,17 @@ and this project adheres to
 
   See the `crux_macros` changelog for the full description.
 
-- **`TypeRegistry::register_effect_kinds` records the request kind of each
+- **`TypeRegistry::register_effect_kinds` records the operation kind of each
   effect variant**, and `CodeGenerator::effect_kinds` reads them back:
 
   ```rust
   let generator = TypeRegistry::new().register_app::<App>()?.build()?;
   let kinds = generator.effect_kinds().get("Effect");
-  // [("Render", Some(RequestKind::Notify)), ("Get", Some(RequestKind::Request))]
+  // [("Render", Some(OperationKind::Notify)), ("Get", Some(OperationKind::Request))]
   ```
 
   `#[effect(facet_typegen)]` calls it for you. Nothing reads the kinds yet — a
-  later release uses them to generate a request-kind property and a typed
+  later release uses them to generate an operation-kind property and a typed
   effect-handler API for each shell language. Purely additive: no generated
   shell code changes in this release.
 

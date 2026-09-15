@@ -16,8 +16,8 @@ fn notify_unit_struct() {
     insta::assert_snapshot!(pretty_print(&actual), @r"
     impl ::crux_core::capability::Operation for Subscribe {
         type Output = ();
-        const KIND: ::core::option::Option<::crux_core::RequestKind> = ::core::option::Option::Some(
-            ::crux_core::RequestKind::Notify,
+        const KIND: ::core::option::Option<::crux_core::OperationKind> = ::core::option::Option::Some(
+            ::crux_core::OperationKind::Notify,
         );
     }
     impl ::crux_core::operation::Notify for Subscribe {}
@@ -38,8 +38,8 @@ fn request_named_struct_with_generic_output_type() {
     insta::assert_snapshot!(pretty_print(&actual), @"
     impl ::crux_core::capability::Operation for Get {
         type Output = Option<Vec<u8>>;
-        const KIND: ::core::option::Option<::crux_core::RequestKind> = ::core::option::Option::Some(
-            ::crux_core::RequestKind::Request,
+        const KIND: ::core::option::Option<::crux_core::OperationKind> = ::core::option::Option::Some(
+            ::crux_core::OperationKind::Request,
         );
     }
     impl ::crux_core::operation::Request for Get {}
@@ -58,8 +58,8 @@ fn stream_tuple_struct() {
     insta::assert_snapshot!(pretty_print(&actual), @r"
     impl ::crux_core::capability::Operation for Listen {
         type Output = Message;
-        const KIND: ::core::option::Option<::crux_core::RequestKind> = ::core::option::Option::Some(
-            ::crux_core::RequestKind::Stream,
+        const KIND: ::core::option::Option<::crux_core::OperationKind> = ::core::option::Option::Some(
+            ::crux_core::OperationKind::Stream,
         );
     }
     impl ::crux_core::operation::Stream for Listen {}
@@ -86,8 +86,8 @@ fn generic_struct_with_where_clause() {
         T: Send + 'static,
     {
         type Output = Vec<T>;
-        const KIND: ::core::option::Option<::crux_core::RequestKind> = ::core::option::Option::Some(
-            ::crux_core::RequestKind::Request,
+        const KIND: ::core::option::Option<::crux_core::OperationKind> = ::core::option::Option::Some(
+            ::crux_core::OperationKind::Request,
         );
     }
     impl<T> ::crux_core::operation::Request for Fetch<T>
@@ -107,7 +107,7 @@ fn no_kind_declared() {
 
     insta::assert_snapshot!(pretty_print(&operation_impl(&input)), @r#"
     ::core::compile_error! {
-        "an operation must declare its request kind: add `#[operation(notify)]`, `#[operation(request, output = T)]` or `#[operation(stream, output = T)]`"
+        "an operation must declare its kind: add `#[operation(notify)]`, `#[operation(request, output = T)]` or `#[operation(stream, output = T)]`"
     }
     "#);
 }
@@ -121,7 +121,7 @@ fn two_kinds_declared() {
 
     insta::assert_snapshot!(pretty_print(&operation_impl(&input)), @r#"
     ::core::compile_error! {
-        "an operation declares exactly one request kind, but `notify`, `request` were all given"
+        "an operation declares exactly one kind, but `notify`, `request` were all given"
     }
     "#);
 }

@@ -54,7 +54,7 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
 /// Implements `crux_core::capability::Operation` for a struct, declaring what
 /// the shell does with it.
 ///
-/// Exactly one request kind is required:
+/// Exactly one operation kind is required:
 ///
 /// * `#[operation(notify)]` — the shell is told, and never answers.
 ///   `Operation::Output` is `()`, and the type also implements

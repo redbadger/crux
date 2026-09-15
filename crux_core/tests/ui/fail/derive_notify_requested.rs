@@ -1,5 +1,5 @@
 //! `#[derive(Operation)]` with `#[operation(notify)]` declares
-//! `RequestKind::Notify`, so `request_from_shell` is a compile error.
+//! `OperationKind::Notify`, so `request_from_shell` is a compile error.
 
 use crux_core::{Command, Request, macros::Operation};
 use serde::{Deserialize, Serialize};
