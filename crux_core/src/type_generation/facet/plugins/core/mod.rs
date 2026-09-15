@@ -68,6 +68,15 @@ impl CorePlugin {
 }
 
 impl EmitterPlugin<Swift> for CorePlugin {
+    /// `Core` is `@Observable`, which lives in the `Observation` framework and
+    /// is not implicitly available.
+    fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core() {
+            return vec![];
+        }
+        vec!["Observation".to_string()]
+    }
+
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
         self.matched(ctx)
             .map_or(Ok(()), |m| swift::emit(w, &m, &self.app, ctx.config))
@@ -130,6 +139,15 @@ impl EmitterPlugin<TypeScript> for CorePlugin {
 }
 
 impl EmitterPlugin<CSharp> for CorePlugin {
+    /// `Core` raises `PropertyChanged`, so it needs the interface, the delegate
+    /// and the event args.
+    fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core() {
+            return vec![];
+        }
+        vec!["using System.ComponentModel;".to_string()]
+    }
+
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
         self.matched(ctx)
             .map_or(Ok(()), |m| csharp::emit(w, &m, &self.app, ctx.config))

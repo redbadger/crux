@@ -7,7 +7,7 @@ This is the first of the shell chapters. We'll walk through how the Swift side t
 The Apple shell is split into two Swift targets:
 
 - **`WeatherApp`** (the app target) — just a few files: the `@main` struct, the `LiveBridge` that talks to Rust, and `ContentView` as the root view.
-- **`WeatherKit`** (a local Swift Package) — everything else: the `WeatherHandler`, the `ViewStore`, every effect handler, every screen.
+- **`WeatherKit`** (a local Swift Package) — everything else: the `WeatherHandler`, every effect handler, every screen, and the preview helpers.
 
 The split exists because building Swift is much faster than rebuilding the whole Rust framework, and SPM gives you the kind of iteration loop you'd expect from `cargo`. When you're tweaking a view, you only recompile the package. When you're iterating on effect handlers, same — the Rust library (and the Swift bindings it emits) only recompile when the core changes.
 
@@ -21,7 +21,7 @@ Here's the app entry point:
 {{#include ../../../../examples/weather/apple/WeatherApp/WeatherApp.swift:start}}
 ```
 
-Construct a `ViewStore`, build the generated `Core` from a `LiveBridge`, a `WeatherHandler` and a closure that writes each new view model into the store, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in chapter 3.
+Build the generated `Core` from a `LiveBridge` and a `WeatherHandler`, keep it in `@State`, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in chapter 3.
 
 `Core` comes from the generated `App` module, hence the `import App`. `struct WeatherApp: App` still resolves to SwiftUI's protocol — Swift looks for a protocol in that position, not a module — so the two names don't clash.
 
@@ -42,17 +42,17 @@ Two annotations are worth a look. The app target builds with `MainActor` as its 
 The loop — serialize the event, call the bridge, deserialize the requests, dispatch each one, resolve, go round again — is the generated `Core`. Its whole public surface is:
 
 ```swift
-@MainActor public final class Core {
+@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
+@Observable @MainActor public final class Core {
     public private(set) var view: ViewModel
-    public init(bridge: any CoreBridge, handler: any EffectHandler,
-                onView: @escaping @MainActor (ViewModel) -> Void)
+    public init(bridge: any CoreBridge, handler: any EffectHandler)
     public func update(_ event: Event)
     public func process(_ requests: [Request])
     public func process(bytes: [UInt8])
 }
 ```
 
-`Core` handles `Render` itself: when one arrives it re-reads the view from the bridge, keeps it in `view`, and calls the `onView` closure we gave it. Everything else goes to the generated `EffectDispatcher`, which calls the matching `EffectHandler` method and resolves the request afterwards — never for a notification, once for a request. When a request is resolved, `Core` passes the bytes back through the bridge and loops over any **new** requests that come back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. The shell has to keep processing until the command's task finishes — and now nothing in the shell has to remember to.
+`Core` handles `Render` itself: when one arrives it re-reads the view from the bridge and stores it in `view`, which is the class's one observable property. Everything else goes to the generated `EffectDispatcher`, which calls the matching `EffectHandler` method and resolves the request afterwards — never for a notification, once for a request. When a request is resolved, `Core` passes the bytes back through the bridge and loops over any **new** requests that come back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. The shell has to keep processing until the command's task finishes — and now nothing in the shell has to remember to.
 
 What the shell writes is the `EffectHandler`. In WeatherKit that is `WeatherHandler`:
 
@@ -76,7 +76,7 @@ The other effect handlers follow the same shape — one method per operation, re
 
 ## Views driven by the ViewModel
 
-`ViewStore` is a small `@Observable` class holding the latest view model; the `onView` closure in `WeatherApp` writes each new one into it, and SwiftUI views read it directly. The box exists because the generated `Core` can't be `@Observable` itself: it carries an `@available(macOS 10.15, iOS 13.0, …)` annotation, since the generated package declares no platforms, and `@Observable` needs macOS 14 / iOS 17. `@Observable` signals at the property level: when one property changes from render to render, only views attached to that property re-render. The rest of the view hierarchy stays exactly as it was, rather than rebuilding wholesale each time the model updates.
+The generated `Core` is `@Observable`, so `WeatherApp` puts it straight into the SwiftUI environment and views read it with `@Environment(Core.self)`. There is no shell-side box in between. Every `Render` replaces `view` wholesale, so every view that reads `core.view` is invalidated and SwiftUI diffs the resulting view tree; that is cheap, and it is the same granularity a callback into a store would give. Finer-grained invalidation — only the screen whose slice changed — would need the view model itself to be observable, which is where diff-based view updates would come in later.
 
 The root `ContentView` dispatches on the top-level `ViewModel` variants:
 
@@ -90,10 +90,10 @@ When the user taps a button, the view sends an event via the `CoreUpdater` that 
 
 ## Previewing without the core
 
-Because WeatherKit never touches the FFI, previews don't need the Rust framework — or a `Core` at all. A view reads its state from `ViewStore`, so a preview constructs one with whatever `ViewModel` it wants to show, plus a `CoreUpdater.forPreview()` that swallows events:
+Because WeatherKit never touches the FFI, previews don't need the Rust framework. They do need a `Core`, since that is what the views read from, so `PreviewCore.swift` provides the two things a real `Core` is built from: a `CoreBridge` that answers `view()` with a fixed view model and returns no requests, and an `EffectHandler` whose methods never run, because a preview never sends an event. With those and a `CoreUpdater.forPreview()` that swallows events, a preview builds a genuine generated `Core` and injects it:
 
 ```swift
-{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/ViewStore.swift}}
+{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Preview/PreviewCore.swift}}
 ```
 
 Previews run as fast as regular SwiftUI previews, no FFI boundary to cross.

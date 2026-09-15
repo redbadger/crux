@@ -87,38 +87,32 @@ fn emit_core(
     )?;
     writeln!(
         w,
-        "/// implement it. <c>onView</c> may be called on a thread-pool thread after"
+        "/// implement it. <c>PropertyChanged</c> may be raised on a thread-pool"
     )?;
     writeln!(
         w,
-        "/// an asynchronous request, so marshal to your UI thread inside it."
+        "/// thread after an asynchronous request, so marshal to your UI thread in"
     )?;
+    writeln!(w, "/// the handler.")?;
     writeln!(w, "/// </summary>")?;
-    writeln!(w, "public sealed class Core")?;
+    writeln!(w, "public sealed class Core : INotifyPropertyChanged")?;
     writeln!(w, "{{")?;
     w.indent();
     writeln!(w, "private readonly ICoreBridge _bridge;")?;
     writeln!(w, "private readonly EffectDispatcher _dispatcher;")?;
-    writeln!(w, "private readonly Action<{view_model}> _onView;")?;
-    writeln!(w)?;
-    writeln!(w, "/// <summary>")?;
-    writeln!(
-        w,
-        "/// The view model as of the last <c>{}</c>.",
-        render.name
-    )?;
-    writeln!(w, "/// </summary>")?;
-    writeln!(w, "public {view_model} View {{ get; private set; }}")?;
+    writeln!(w, "private {view_model} _view;")?;
     writeln!(w)?;
     writeln!(
         w,
-        "public Core(ICoreBridge bridge, IEffectHandler handler, Action<{view_model}> onView)"
+        "public event PropertyChangedEventHandler? PropertyChanged;"
     )?;
+    emit_view_property(w, render.name, &view_model)?;
+    writeln!(w)?;
+    writeln!(w, "public Core(ICoreBridge bridge, IEffectHandler handler)")?;
     writeln!(w, "{{")?;
     w.indent();
     writeln!(w, "_bridge = bridge;")?;
-    writeln!(w, "_onView = onView;")?;
-    writeln!(w, "View = ReadView();")?;
+    writeln!(w, "_view = ReadView();")?;
     writeln!(
         w,
         "_dispatcher = new EffectDispatcher(handler, (id, bytes) => Process(_bridge.Resolve(id, bytes)));"
@@ -140,6 +134,33 @@ fn emit_core(
             view_model_bincode: &view_model_bincode,
         },
     )?;
+    w.unindent();
+    writeln!(w, "}}")?;
+
+    Ok(())
+}
+
+/// `View` is a property rather than an auto-property so that replacing it
+/// raises `PropertyChanged`, which is how a shell learns the core rendered.
+fn emit_view_property(w: &mut dyn IndentWrite, render: &str, view_model: &str) -> io::Result<()> {
+    writeln!(w)?;
+    writeln!(w, "/// <summary>")?;
+    writeln!(w, "/// The view model as of the last <c>{render}</c>.")?;
+    writeln!(w, "/// </summary>")?;
+    writeln!(w, "public {view_model} View")?;
+    writeln!(w, "{{")?;
+    w.indent();
+    writeln!(w, "get => _view;")?;
+    writeln!(w, "private set")?;
+    writeln!(w, "{{")?;
+    w.indent();
+    writeln!(w, "_view = value;")?;
+    writeln!(
+        w,
+        "PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(View)));"
+    )?;
+    w.unindent();
+    writeln!(w, "}}")?;
     w.unindent();
     writeln!(w, "}}")?;
 
@@ -217,7 +238,6 @@ fn emit_methods(
     writeln!(w, "{{")?;
     w.indent();
     writeln!(w, "View = ReadView();")?;
-    writeln!(w, "_onView(View);")?;
     writeln!(w, "continue;")?;
     w.unindent();
     writeln!(w, "}}")?;

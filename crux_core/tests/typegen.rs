@@ -343,9 +343,13 @@ mod facet_test {
                 "public var sequence: UInt32 {",
                 "extension EffectHandler {",
                 "public func render(_ operation: RenderOperation) {}",
+                "import Observation",
                 "public protocol CoreBridge: Sendable {",
+                "@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)",
+                "@Observable",
                 "public final class Core {",
-                "public init(bridge: any CoreBridge, handler: any EffectHandler, onView: @escaping @MainActor (ViewModel) -> Void) {",
+                "public private(set) var view: ViewModel",
+                "public init(bridge: any CoreBridge, handler: any EffectHandler) {",
                 "public func update(_ event: Event) {",
                 "public func process(bytes: [UInt8]) {",
                 "public func process(_ requests: [Request]) {",
@@ -427,9 +431,11 @@ mod facet_test {
                 "public Example.Shared.EffectKind? EffectKind",
                 "public Example.Shared.OperationKind OperationKind",
                 "public uint Sequence => RawValue & 0x7fffffu;",
+                "using System.ComponentModel;",
                 "public interface ICoreBridge",
-                "public sealed class Core",
-                "public Core(ICoreBridge bridge, IEffectHandler handler, Action<ViewModel> onView)",
+                "public sealed class Core : INotifyPropertyChanged",
+                "public event PropertyChangedEventHandler? PropertyChanged;",
+                "public Core(ICoreBridge bridge, IEffectHandler handler)",
                 "public void Update(Event @event)",
                 "public void Process(byte[] bytes)",
                 "public void Process(IReadOnlyList<Example.Shared.Request> requests)",
@@ -517,6 +523,8 @@ mod facet_test {
         assert!(source.contains("public struct EffectDispatcher: Sendable {"));
         assert!(!source.contains("CoreBridge"));
         assert!(!source.contains("public final class Core {"));
+        // `Observation` is imported only for `Core`.
+        assert!(!source.contains("import Observation"));
     }
 }
 
@@ -594,6 +602,8 @@ mod facet_no_render {
         assert!(source.contains("public protocol EffectHandler: Sendable {"));
         assert!(!source.contains("CoreBridge"));
         assert!(!source.contains("public final class Core {"));
+        // `Observation` is imported only for `Core`.
+        assert!(!source.contains("import Observation"));
     }
 }
 

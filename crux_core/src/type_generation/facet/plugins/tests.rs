@@ -395,6 +395,33 @@ fn typescript_imports_the_serializer_only_when_the_handler_does_not() {
     );
 }
 
+/// `Core` is the only generated type that is `@Observable` / raises
+/// `PropertyChanged`, so the frameworks those live in are imported only when it
+/// is emitted.
+#[test]
+fn observation_is_imported_only_when_a_core_is_emitted() {
+    let (registry, effects) = fixture();
+    let mut config = CodeGeneratorConfig::new("Shared".to_string());
+    config.update_from(&registry);
+    let app = app_meta(&registry);
+
+    let plugin = CorePlugin::new(&effects.clone().into(), app.clone());
+    assert_eq!(
+        EmitterPlugin::<Swift>::imports(&plugin, &config),
+        vec!["Observation".to_string()]
+    );
+    assert_eq!(
+        EmitterPlugin::<CSharp>::imports(&plugin, &config),
+        vec!["using System.ComponentModel;".to_string()]
+    );
+
+    let mut without_render = effects;
+    without_render[0].variants.retain(|variant| !variant.render);
+    let plugin = CorePlugin::new(&without_render.into(), app);
+    assert!(EmitterPlugin::<Swift>::imports(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<CSharp>::imports(&plugin, &config).is_empty());
+}
+
 /// `Core` is the only thing in the generated Kotlin that needs coroutines, so
 /// the imports and the Gradle dependency come and go with it.
 #[test]
