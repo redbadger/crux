@@ -377,6 +377,10 @@ jobs:
           java-version: 17
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The obsolete `tools` package (part of the action's default) was
+          # removed from Google's SDK repository, so installing it now fails.
+          packages: platform-tools
 
       - name: Install BoltFFI CLI
         run: cargo install boltffi_cli --version '=0.29.3' --locked
