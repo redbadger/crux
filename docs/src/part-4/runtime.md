@@ -33,7 +33,7 @@ request returned from the current core "transaction" (one call to
 
 Which of the three constructors a given operation may be sent with is
 decided by the operation type itself: an operation declares a
-`RequestKind` — notify, request or stream — and the other two constructors
+`OperationKind` — notify, request or stream — and the other two constructors
 stop compiling for it. That declaration is also what the runtime records
 on the `RequestHandle` it builds, and what type generation hands to shells.
 An operation that declares nothing keeps the older behaviour, where the
@@ -251,7 +251,7 @@ containing the operation and a resolve callback, wraps it in the
 app's `Effect` type (via the `From` trait), and sends it through the
 effects channel. The callback the `Request` carries is what fixes how
 many times the request can be resolved — never, once, or repeatedly —
-and the `RequestHandle` remembers it as a `RequestKind`, readable with
+and the `RequestHandle` remembers it as an `OperationKind`, readable with
 `handle.kind()`. Notifications are never registered at all, so
 resolving one reports `NotFound`. The `Command` collects these effects and surfaces
 them to the `Core`.

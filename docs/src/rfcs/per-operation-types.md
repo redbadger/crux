@@ -451,7 +451,7 @@ with what.
 Everything below is emitted next to the generated `Effect`, in Swift, Kotlin,
 TypeScript and C#, by plugins that live in `crux_core`
 (`type_generation::facet::plugins`) rather than in facet-generate. The names
-`RequestKind`, `EffectSink`, `EffectHandler` (`IEffectSink` / `IEffectHandler`
+`OperationKind`, `EffectSink`, `EffectHandler` (`IEffectSink` / `IEffectHandler`
 in C#) and `EffectDispatcher` are reserved: `TypeRegistry::build` reports an
 error if a shared type or an effect variant claims one.
 `CodeGenerator::without_effect_handlers()` turns the handler half off.
@@ -494,9 +494,9 @@ public struct EffectDispatcher: Sendable {
 Kotlin:
 
 ```kotlin
-enum class RequestKind { NOTIFY, REQUEST, STREAM }
+enum class OperationKind { NOTIFY, REQUEST, STREAM }
 
-val Effect.requestKind: RequestKind?
+val Effect.operationKind: OperationKind?
 
 fun interface EffectSink<in T> { fun send(item: T) }
 
@@ -516,8 +516,8 @@ TypeScript — the union's discriminant is already `kind`, so the accessor is a
 free function rather than a property:
 
 ```typescript
-export type RequestKind = "notify" | "request" | "stream";
-export function effectRequestKind(effect: Effect): RequestKind | undefined;
+export type OperationKind = "notify" | "request" | "stream";
+export function effectOperationKind(effect: Effect): OperationKind | undefined;
 
 export interface EffectSink<T> { send(item: T): void }
 
@@ -539,10 +539,10 @@ export class EffectDispatcher {
 C#:
 
 ```csharp
-public enum RequestKind { Notify, Request, Stream }
+public enum OperationKind { Notify, Request, Stream }
 
 // on the generated Effect record
-public RequestKind? RequestKind { get; }
+public OperationKind? OperationKind { get; }
 
 public interface IEffectSink<in T> { void Send(T item); }
 
@@ -567,7 +567,7 @@ carry `@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)`, because
 declares no platforms; a package that declares `platforms:` conforms without
 repeating the annotation. In C#, the generated `Effect` record is not
 `partial`, so the kind accessor is emitted inside the record body rather than
-as an extension, and the `RequestKind` enum is namespace-qualified where it is
+as an extension, and the `OperationKind` enum is namespace-qualified where it is
 used.
 
 The dispatcher resolves each request for the shell: never for a notification,
