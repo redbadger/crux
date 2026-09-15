@@ -399,6 +399,15 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
         }
     });
 
+    // The reverse of `variant_index`: a request id carries only the index, so
+    // this is what lets an error about one name the effect it claims.
+    let variant_name_by_index_arms = effect_names.iter().enumerate().map(|(index, (_, name))| {
+        let index = u8::try_from(index).expect("variant count checked above");
+        quote! {
+            #index => Some(#name)
+        }
+    });
+
     let effect_ffi_derive = if matches!(typegen_kind, TypegenKind::None) {
         quote! {}
     } else {
@@ -409,6 +418,12 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
                 fn variant_index(&self) -> u8 {
                     match self {
                         #(#variant_index_arms ,)*
+                    }
+                }
+                fn variant_name(index: u8) -> Option<&'static str> {
+                    match index {
+                        #(#variant_name_by_index_arms ,)*
+                        _ => None,
                     }
                 }
                 fn serialize<T: ::crux_core::bridge::FfiFormat>(self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {

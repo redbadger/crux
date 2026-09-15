@@ -44,6 +44,9 @@ fn the_largest_effect_enum_the_id_can_describe() {
 
     assert!(actual.contains("const VARIANT_COUNT: u16 = 256u16;"));
     assert!(actual.contains("Effect::V255(_) => 255u8,"));
+    // The index-to-name direction, which is all an error about a request id
+    // has to go on.
+    assert!(actual.contains("255u8 => Some(\"V255\"),"));
 }
 
 #[test]
@@ -105,6 +108,12 @@ fn single_with_facet_typegen() {
         fn variant_index(&self) -> u8 {
             match self {
                 Effect::Render(_) => 0u8,
+            }
+        }
+        fn variant_name(index: u8) -> Option<&'static str> {
+            match index {
+                0u8 => Some("Render"),
+                _ => None,
             }
         }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
@@ -250,6 +259,12 @@ fn single_facet_typegen_with_new_name() {
         fn variant_index(&self) -> u8 {
             match self {
                 MyEffect::Render(_) => 0u8,
+            }
+        }
+        fn variant_name(index: u8) -> Option<&'static str> {
+            match index {
+                0u8 => Some("Render"),
+                _ => None,
             }
         }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
@@ -484,6 +499,13 @@ fn multiple_with_facet_typegen() {
             match self {
                 Effect::Render(_) => 0u8,
                 Effect::Http(_) => 1u8,
+            }
+        }
+        fn variant_name(index: u8) -> Option<&'static str> {
+            match index {
+                0u8 => Some("Render"),
+                1u8 => Some("Http"),
+                _ => None,
             }
         }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
@@ -925,6 +947,12 @@ fn facet_typegen_with_namespace_attribute() {
         fn variant_index(&self) -> u8 {
             match self {
                 Effect::Render(_) => 0u8,
+            }
+        }
+        fn variant_name(index: u8) -> Option<&'static str> {
+            match index {
+                0u8 => Some("Render"),
+                _ => None,
             }
         }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
