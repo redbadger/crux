@@ -1,6 +1,6 @@
 //! Marker traits declaring what the shell does with an operation.
 //!
-//! An operation's [`RequestKind`] says how many times a request carrying it
+//! An operation's [`OperationKind`] says how many times a request carrying it
 //! expects to be resolved. Declaring it on the operation type — as
 //! [`Operation::KIND`] plus one of the markers in this module — lets the
 //! `Command` constructors check the kind at compile time, and lets type
@@ -11,7 +11,7 @@
 //! `futures::Stream`.
 //!
 //! ```
-//! use crux_core::{RequestKind, capability::Operation, operation};
+//! use crux_core::{OperationKind, capability::Operation, operation};
 //! # use facet::Facet;
 //! # use serde::{Deserialize, Serialize};
 //!
@@ -21,7 +21,7 @@
 //!
 //! impl Operation for Publish {
 //!     type Output = ();
-//!     const KIND: Option<RequestKind> = Some(RequestKind::Notify);
+//!     const KIND: Option<OperationKind> = Some(OperationKind::Notify);
 //! }
 //!
 //! impl operation::Notify for Publish {}
@@ -34,7 +34,7 @@
 //!
 //! impl Operation for Get {
 //!     type Output = Vec<u8>;
-//!     const KIND: Option<RequestKind> = Some(RequestKind::Request);
+//!     const KIND: Option<OperationKind> = Some(OperationKind::Request);
 //! }
 //!
 //! impl operation::Request for Get {}
@@ -45,7 +45,7 @@
 //!
 //! impl Operation for Subscribe {
 //!     type Output = Vec<u8>;
-//!     const KIND: Option<RequestKind> = Some(RequestKind::Stream);
+//!     const KIND: Option<OperationKind> = Some(OperationKind::Stream);
 //! }
 //!
 //! impl operation::Stream for Subscribe {}
@@ -55,7 +55,7 @@
 //! default of `None` behaves exactly as it always has: any of the three
 //! constructors will take it.
 
-pub use crate::{RequestKind, capability::Operation};
+pub use crate::{OperationKind, capability::Operation};
 
 /// An operation the shell is told about and never answers.
 ///

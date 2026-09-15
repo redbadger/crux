@@ -1,4 +1,4 @@
-error[E0080]: evaluation panicked: this operation does not declare RequestKind::Notify; send it with request_from_shell or stream_from_shell instead
+error[E0080]: evaluation panicked: this operation does not declare OperationKind::Notify; send it with request_from_shell or stream_from_shell instead
  --> $RUST/core/src/panic.rs
   |
   |           $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
@@ -7,8 +7,8 @@ error[E0080]: evaluation panicked: this operation does not declare RequestKind::
  ::: src/command/context.rs
   |
   | /             assert!(
-  | |                 matches!(Op::KIND, None | Some(RequestKind::Notify)),
-  | |                 "this operation does not declare RequestKind::Notify; \
+  | |                 matches!(Op::KIND, None | Some(OperationKind::Notify)),
+  | |                 "this operation does not declare OperationKind::Notify; \
   | |                  send it with request_from_shell or stream_from_shell instead"
   | |             );
   | |_____________- in this macro invocation
@@ -18,8 +18,8 @@ note: erroneous constant encountered
   |
   | /         const {
   | |             assert!(
-  | |                 matches!(Op::KIND, None | Some(RequestKind::Notify)),
-  | |                 "this operation does not declare RequestKind::Notify; \
+  | |                 matches!(Op::KIND, None | Some(OperationKind::Notify)),
+  | |                 "this operation does not declare OperationKind::Notify; \
   | |                  send it with request_from_shell or stream_from_shell instead"
   | |             );
   | |         }

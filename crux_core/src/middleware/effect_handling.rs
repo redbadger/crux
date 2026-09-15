@@ -6,7 +6,9 @@ use std::{
     thread::{self, ThreadId},
 };
 
-use crate::{Request, RequestHandle, RequestKind, Resolvable, ResolveError, capability::Operation};
+use crate::{
+    OperationKind, Request, RequestHandle, Resolvable, ResolveError, capability::Operation,
+};
 
 use super::Layer;
 
@@ -35,7 +37,7 @@ pub struct EffectResolver<Output: Send + 'static> {
 impl<Output: Send + 'static> EffectResolver<Output> {
     /// How many times this effect expects to be resolved.
     #[must_use]
-    pub const fn kind(&self) -> RequestKind {
+    pub const fn kind(&self) -> OperationKind {
         self.handle.kind()
     }
 

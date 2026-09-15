@@ -1,4 +1,4 @@
-//! Compile-time checks on the request kind an operation declares.
+//! Compile-time checks on the operation kind an operation declares.
 //!
 //! The `fail/` cases in this suite are post-monomorphisation constant
 //! evaluation failures, which only surface once the offending instantiation is

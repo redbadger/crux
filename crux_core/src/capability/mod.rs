@@ -10,7 +10,7 @@ use crate::type_generation::facet::TypeGenError;
 /// ```rust,ignore
 /// impl Operation for HttpRequest {
 ///     type Output = HttpResponse;
-///     const KIND: Option<RequestKind> = Some(RequestKind::Request);
+///     const KIND: Option<OperationKind> = Some(OperationKind::Request);
 /// }
 ///
 /// impl crux_core::operation::Request for HttpRequest {}
@@ -19,7 +19,7 @@ pub trait Operation: Send + 'static {
     /// `Output` assigns the type this request results in.
     type Output: Send + Unpin + 'static;
 
-    /// The [`RequestKind`](crate::RequestKind) of every request carrying this
+    /// The [`OperationKind`](crate::OperationKind) of every request carrying this
     /// operation, or `None` if the operation does not declare one.
     ///
     /// `None` — the default — means the kind is whatever the call site chose:
@@ -33,7 +33,7 @@ pub trait Operation: Send + 'static {
     /// lets type generation tell the shell how many times it is expected to
     /// resolve the request. Declare it together with the matching marker trait
     /// from [`crux_core::operation`](crate::operation).
-    const KIND: Option<crate::RequestKind> = None;
+    const KIND: Option<crate::OperationKind> = None;
 
     #[cfg(feature = "typegen")]
     #[allow(clippy::missing_errors_doc)]

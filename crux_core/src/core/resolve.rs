@@ -28,7 +28,7 @@ pub enum RequestHandle<Out> {
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(C)]
-pub enum RequestKind {
+pub enum OperationKind {
     /// The request will never be resolved, and nothing waits on it.
     Notify,
     /// The request expects exactly one response.
@@ -54,13 +54,13 @@ impl<Output> RequestHandle<Output> {
     /// How many times this request expects to be resolved.
     ///
     /// A [`Self::Once`] becomes a [`Self::Never`] as it resolves, so this
-    /// reports [`RequestKind::Notify`] once answered. Read it before resolving.
+    /// reports [`OperationKind::Notify`] once answered. Read it before resolving.
     #[must_use]
-    pub const fn kind(&self) -> RequestKind {
+    pub const fn kind(&self) -> OperationKind {
         match self {
-            Self::Never => RequestKind::Notify,
-            Self::Once(_) => RequestKind::Request,
-            Self::Many(_) => RequestKind::Stream,
+            Self::Never => OperationKind::Notify,
+            Self::Once(_) => OperationKind::Request,
+            Self::Many(_) => OperationKind::Stream,
         }
     }
 

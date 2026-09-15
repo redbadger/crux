@@ -11,7 +11,7 @@ use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
 
 use crate::capability::Operation;
-use crate::{Request, RequestKind};
+use crate::{OperationKind, Request};
 
 use super::executor::{JoinHandle, Task};
 
@@ -42,7 +42,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// Create a one-off notification to the shell. This method returns immediately.
     ///
     /// If `Op` declares an [`Operation::KIND`], it must be
-    /// [`RequestKind::Notify`]. The check is a post-monomorphisation constant
+    /// [`OperationKind::Notify`]. The check is a post-monomorphisation constant
     /// evaluation, so a mismatch is reported when the code is built — by
     /// `cargo build`, `cargo test` or `cargo clippy --all-targets` — and not by
     /// `cargo check`.
@@ -54,8 +54,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     {
         const {
             assert!(
-                matches!(Op::KIND, None | Some(RequestKind::Notify)),
-                "this operation does not declare RequestKind::Notify; \
+                matches!(Op::KIND, None | Some(OperationKind::Notify)),
+                "this operation does not declare OperationKind::Notify; \
                  send it with request_from_shell or stream_from_shell instead"
             );
         }
@@ -78,7 +78,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// enclosing future.
     ///
     /// If `Op` declares an [`Operation::KIND`], it must be
-    /// [`RequestKind::Request`]. The check is a post-monomorphisation constant
+    /// [`OperationKind::Request`]. The check is a post-monomorphisation constant
     /// evaluation, so a mismatch is reported when the code is built — by
     /// `cargo build`, `cargo test` or `cargo clippy --all-targets` — and not by
     /// `cargo check`.
@@ -91,8 +91,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     {
         const {
             assert!(
-                matches!(Op::KIND, None | Some(RequestKind::Request)),
-                "this operation does not declare RequestKind::Request; \
+                matches!(Op::KIND, None | Some(OperationKind::Request)),
+                "this operation does not declare OperationKind::Request; \
                  send it with notify_shell or stream_from_shell instead"
             );
         }
@@ -129,7 +129,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// enclosing future.
     ///
     /// If `Op` declares an [`Operation::KIND`], it must be
-    /// [`RequestKind::Stream`]. The check is a post-monomorphisation constant
+    /// [`OperationKind::Stream`]. The check is a post-monomorphisation constant
     /// evaluation, so a mismatch is reported when the code is built — by
     /// `cargo build`, `cargo test` or `cargo clippy --all-targets` — and not by
     /// `cargo check`.
@@ -141,8 +141,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     {
         const {
             assert!(
-                matches!(Op::KIND, None | Some(RequestKind::Stream)),
-                "this operation does not declare RequestKind::Stream; \
+                matches!(Op::KIND, None | Some(OperationKind::Stream)),
+                "this operation does not declare OperationKind::Stream; \
                  send it with notify_shell or request_from_shell instead"
             );
         }
