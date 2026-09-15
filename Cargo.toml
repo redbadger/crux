@@ -29,7 +29,7 @@ facet-generate-attrs = "0.18"
 serde = "1.0"
 thiserror = "2.0"
 uniffi_bindgen = "=0.29.4"
-boltffi = "=0.29.3"
+boltffi = "=0.30.1"
 
 [workspace.lints.clippy]
 pedantic = "warn"

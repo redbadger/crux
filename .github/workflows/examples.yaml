@@ -178,13 +178,13 @@ jobs:
       - uses: taiki-e/install-action@just
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.29.3' --locked
+        run: cargo install boltffi_cli --version '=0.30.1' --locked
         env:
           RUSTFLAGS: ""
 
       - name: Install wasm-opt
         run: |
-          # BoltFFI 0.29.3 passes --enable-bulk-memory-opt, which was added in Binaryen 123.
+          # BoltFFI 0.30.1 passes --enable-bulk-memory-opt, which was added in Binaryen 123.
           binaryen_version=123
           archive="binaryen-version_${binaryen_version}-x86_64-linux.tar.gz"
           url="https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/${archive}"
@@ -279,7 +279,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.29.3' --locked
+        run: cargo install boltffi_cli --version '=0.30.1' --locked
         env:
           RUSTFLAGS: ""
 
@@ -331,7 +331,7 @@ jobs:
         run: cargo install cargo-swift --version '=0.9'
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.29.3' --locked
+        run: cargo install boltffi_cli --version '=0.30.1' --locked
         env:
           RUSTFLAGS: ""
 
@@ -383,7 +383,7 @@ jobs:
           packages: platform-tools
 
       - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.29.3' --locked
+        run: cargo install boltffi_cli --version '=0.30.1' --locked
         env:
           RUSTFLAGS: ""
 
