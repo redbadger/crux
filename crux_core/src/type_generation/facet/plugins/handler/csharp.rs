@@ -81,6 +81,19 @@ fn emit_handler(
         } else if variant.is_request() {
             let output = render_output(variant, config);
             writeln!(w, "Task<{output}> {method}({operation} operation);")?;
+        } else if variant.render {
+            writeln!(w, "/// <summary>")?;
+            writeln!(
+                w,
+                "/// <c>Core</c> handles <c>{}</c> itself, so this does nothing;",
+                variant.name
+            )?;
+            writeln!(
+                w,
+                "/// implement it only if you drive <c>EffectDispatcher</c> yourself."
+            )?;
+            writeln!(w, "/// </summary>")?;
+            writeln!(w, "void {method}({operation} operation) {{ }}")?;
         } else {
             writeln!(w, "void {method}({operation} operation);")?;
         }

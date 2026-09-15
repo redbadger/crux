@@ -72,6 +72,14 @@ fn emit_handler(
         } else if variant.is_request() {
             let output = render_output(variant, config);
             writeln!(w, "{method}(operation: {operation}): Promise<{output}>;")?;
+        } else if variant.render {
+            writeln!(
+                w,
+                "/// `Core` handles `{}` itself, so this is optional; implement it",
+                variant.name
+            )?;
+            writeln!(w, "/// only if you drive `EffectDispatcher` yourself.")?;
+            writeln!(w, "{method}?(operation: {operation}): void;")?;
         } else {
             writeln!(w, "{method}(operation: {operation}): void;")?;
         }
@@ -163,6 +171,8 @@ fn emit_arm(
         emit_resolve(w, "output", variant, config)?;
         w.unindent();
         writeln!(w, "}});")?;
+    } else if variant.render {
+        writeln!(w, "this.handler.{method}?.(effect.value);")?;
     } else {
         writeln!(w, "this.handler.{method}(effect.value);")?;
     }

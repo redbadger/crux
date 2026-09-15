@@ -1,0 +1,60 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "core::<Swift>()"
+---
+
+/// The core's FFI surface, as bytes. Implement it around the `CoreFfi` your
+/// Rust crate exports, or with a fake for previews and tests.
+public protocol CoreBridge: Sendable {
+    func update(_ event: [UInt8]) -> [UInt8]
+    func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8]
+    func view() -> [UInt8]
+}
+
+/// The shell's side of the core: it serializes events, dispatches the
+/// requests that come back, and resolves them through the bridge.
+///
+/// `Render` is handled here, so an `EffectHandler` need not implement it.
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@MainActor
+public final class Core {
+    /// The view model as of the last `Render`.
+    public private(set) var view: ViewModel
+    private let bridge: any CoreBridge
+    private let onView: @MainActor (ViewModel) -> Void
+    private var dispatcher: EffectDispatcher!
+
+    public init(bridge: any CoreBridge, handler: any EffectHandler, onView: @escaping @MainActor (ViewModel) -> Void) {
+        self.bridge = bridge
+        self.onView = onView
+        self.view = try! ViewModel.bincodeDeserialize(input: bridge.view())
+        self.dispatcher = EffectDispatcher(handler: handler) { [weak self] id, bytes in
+            Task { @MainActor in
+                guard let self else { return }
+                self.process(bytes: self.bridge.resolve(id, bytes))
+            }
+        }
+    }
+
+    /// Send an event to the core and run the loop it starts.
+    public func update(_ event: Event) {
+        process(bytes: bridge.update(try! event.bincodeSerialize()))
+    }
+
+    /// Serialized requests, as returned by the bridge or pushed by middleware.
+    public func process(bytes: [UInt8]) {
+        if bytes.isEmpty { return }
+        process(try! Requests.bincodeDeserialize(input: bytes).value)
+    }
+
+    public func process(_ requests: [Request]) {
+        for request in requests {
+            if case .render = request.effect {
+                view = try! ViewModel.bincodeDeserialize(input: bridge.view())
+                onView(view)
+                continue
+            }
+            dispatcher.dispatch(request)
+        }
+    }
+}

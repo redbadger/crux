@@ -34,3 +34,10 @@ android {
         }
     }
 }
+
+dependencies {
+    // The generated `Core` runs each request on a `CoroutineScope` and
+    // publishes the view model as a `StateFlow`, so both appear in this
+    // module's API.
+    api(libs.kotlinx.coroutines.core)
+}
