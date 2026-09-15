@@ -55,3 +55,4 @@
 1. [Typegen](./rfcs/typegen.md)
 1. [Effect Router](./rfcs/effect-router.md)
 1. [Decouple crux_http from http-types](./rfcs/decouple-from-http-types.md)
+1. [Per-operation types with static request kinds](./rfcs/per-operation-types.md)
