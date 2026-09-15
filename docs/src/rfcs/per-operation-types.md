@@ -450,8 +450,11 @@ diagnosis on the way back in:
 - An id naming an effect variant the enum does not have, or one whose sequence
   is outstanding but whose effect index or kind bit disagrees with what was
   issued, is rejected as exactly that (`NoSuchEffect`, `WrongEffect`,
-  `WrongKind`) before a byte of the response is deserialized. `NotFound` now
-  means only what it says: never issued, or already resolved.
+  `WrongKind`) before a byte of the response is deserialized, and the error
+  names the variants involved (`#[effect]` implements
+  `EffectFFI::variant_name`, so a message reads "names `Render` (variant 1),
+  but request 1 was issued for `Http` (variant 0)"). `NotFound` now means only
+  what it says: never issued, or already resolved.
 - A log line or a crash report carrying a bare id says which effect and which
   request it belonged to.
 

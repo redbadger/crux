@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{BridgeError, FfiFormat, Request};
 use crate::bridge::request_serde::ResolveSerialized;
-use crate::{EffectFFI, OperationKind, ResolveError};
+use crate::{EffectFFI, EffectVariant, OperationKind, ResolveError};
 
 /// Identifies one request across the FFI boundary, for as long as anything
 /// could still refer to it.
@@ -170,10 +170,38 @@ struct Entry<T: FfiFormat> {
 struct Outstanding<T: FfiFormat> {
     entries: HashMap<u32, Entry<T>>,
     next_sequence: Sequence,
-    /// How many variants the effect enum has, learned from the effects that
-    /// have been registered. `None` until the first one, when there is nothing
+    /// What the effect enum looks like, learned from the effects that have
+    /// been registered. `None` until the first one, when there is nothing
     /// outstanding to resolve anyway.
-    variants: Option<u16>,
+    effect: Option<EffectInfo>,
+}
+
+/// What an error needs to know about the effect enum.
+///
+/// The registry is not generic over the effect type — it holds requests for
+/// every variant at once — so what it needs from that type is copied out of it
+/// when an effect is registered.
+#[derive(Clone, Copy)]
+struct EffectInfo {
+    /// How many variants the effect enum has.
+    count: u16,
+    /// Names the variant at an index, where the effect implementation knows
+    /// it — [`EffectFFI::variant_name`], which needs no effect to call, only
+    /// the index an id carries.
+    name: fn(u8) -> Option<&'static str>,
+    /// The effect type's name, for an error about an index that names no
+    /// variant and so has no name of its own to give.
+    type_name: &'static str,
+}
+
+impl EffectInfo {
+    fn of<Eff: EffectFFI>() -> Self {
+        Self {
+            count: Eff::VARIANT_COUNT,
+            name: Eff::variant_name,
+            type_name: std::any::type_name::<Eff>(),
+        }
+    }
 }
 
 impl<T: FfiFormat> Outstanding<T> {
@@ -214,15 +242,25 @@ impl<T: FfiFormat> Outstanding<T> {
             return Err(ResolveError::Never);
         }
 
-        if let Some(variants) = self.variants
-            && u16::from(id.effect_index()) >= variants
+        let effect = self.effect;
+
+        if let Some(effect) = effect
+            && u16::from(id.effect_index()) >= effect.count
         {
             return Err(ResolveError::NoSuchEffect {
                 id: id.0,
                 index: id.effect_index(),
-                variants,
+                variants: effect.count,
+                effect: effect.type_name,
             });
         }
+
+        // Nothing has been registered yet if `effect` is `None`, so there is
+        // no name to give; the index alone still says what the id claimed.
+        let variant = |index| EffectVariant {
+            index,
+            name: effect.and_then(|effect| (effect.name)(index)),
+        };
 
         let sequence = id.sequence();
 
@@ -234,8 +272,8 @@ impl<T: FfiFormat> Outstanding<T> {
             return Err(ResolveError::WrongEffect {
                 id: id.0,
                 sequence,
-                expected: entry.id.effect_index(),
-                actual: id.effect_index(),
+                expected: variant(entry.id.effect_index()),
+                actual: variant(id.effect_index()),
             });
         }
 
@@ -257,7 +295,7 @@ impl<T: FfiFormat> Default for ResolveRegistry<T> {
         Self(Mutex::new(Outstanding {
             entries: HashMap::new(),
             next_sequence: Sequence::FIRST,
-            variants: None,
+            effect: None,
         }))
     }
 }
@@ -284,7 +322,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 
         let id = {
             let mut outstanding = self.0.lock().expect("Registry Mutex poisoned.");
-            outstanding.variants = Some(Eff::VARIANT_COUNT);
+            outstanding.effect = Some(EffectInfo::of::<Eff>());
             let id = outstanding.issue_id(effect_index, kind);
 
             // A request that cannot be resolved has nothing worth keeping: storing
@@ -339,16 +377,33 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::{EffectId, Entry, Outstanding, ResolveSerialized, Sequence};
+    use super::{EffectId, EffectInfo, Entry, Outstanding, ResolveSerialized, Sequence};
     use crate::bridge::JsonFfiFormat;
-    use crate::{OperationKind, ResolveError};
+    use crate::{EffectVariant, OperationKind, ResolveError};
     use std::collections::HashMap;
 
     fn outstanding(next_sequence: Sequence) -> Outstanding<JsonFfiFormat> {
         Outstanding {
             entries: HashMap::new(),
             next_sequence,
-            variants: None,
+            effect: None,
+        }
+    }
+
+    /// A stand-in for the `#[effect]` macro's work: an effect enum of `count`
+    /// variants, the first four of them named, so that the tests can see the
+    /// names reach the errors.
+    fn effect(count: u16) -> EffectInfo {
+        fn name(index: u8) -> Option<&'static str> {
+            ["Render", "Http", "KeyValue", "Timer"]
+                .get(usize::from(index))
+                .copied()
+        }
+
+        EffectInfo {
+            count,
+            name,
+            type_name: "my_app::Effect",
         }
     }
 
@@ -537,7 +592,7 @@ mod tests {
     #[test]
     fn an_effect_index_outside_the_enum_is_rejected() {
         let mut outstanding = outstanding(Sequence::FIRST);
-        outstanding.variants = Some(3);
+        outstanding.effect = Some(effect(3));
         park(
             &mut outstanding,
             EffectId::new(1, OperationKind::Request, sequence(1)),
@@ -554,9 +609,16 @@ mod tests {
                 ResolveError::NoSuchEffect {
                     index: 9,
                     variants: 3,
+                    effect: "my_app::Effect",
                     ..
                 }
             ),
+            "{error}"
+        );
+        assert!(
+            error
+                .to_string()
+                .ends_with("names variant 9 of `my_app::Effect`, which has only 3 variants."),
             "{error}"
         );
     }
@@ -564,7 +626,7 @@ mod tests {
     #[test]
     fn an_id_for_a_different_effect_is_rejected() {
         let mut outstanding = outstanding(Sequence::FIRST);
-        outstanding.variants = Some(4);
+        outstanding.effect = Some(effect(4));
         park(
             &mut outstanding,
             EffectId::new(1, OperationKind::Request, sequence(1)),
@@ -580,11 +642,74 @@ mod tests {
                 error,
                 ResolveError::WrongEffect {
                     sequence: 1,
-                    expected: 1,
-                    actual: 2,
+                    expected: EffectVariant {
+                        index: 1,
+                        name: Some("Http")
+                    },
+                    actual: EffectVariant {
+                        index: 2,
+                        name: Some("KeyValue")
+                    },
                     ..
                 }
             ),
+            "{error}"
+        );
+        assert!(
+            error.to_string().ends_with(
+                "names `KeyValue` (variant 2), but request 1 was issued for `Http` (variant 1)."
+            ),
+            "{error}"
+        );
+    }
+
+    /// An effect that does not name its variants — a hand-written
+    /// [`EffectFFI`](crate::EffectFFI) — still gets an error that says which
+    /// index the id claimed.
+    #[test]
+    fn an_unnamed_variant_is_reported_by_index_alone() {
+        let mut outstanding = outstanding(Sequence::FIRST);
+        outstanding.effect = Some(EffectInfo {
+            count: 8,
+            name: |_| None,
+            type_name: "my_app::Effect",
+        });
+        park(
+            &mut outstanding,
+            EffectId::new(1, OperationKind::Request, sequence(1)),
+        );
+
+        let error = outstanding
+            .entry(EffectId::new(2, OperationKind::Request, sequence(1)))
+            .err()
+            .expect("an id naming another effect should be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .ends_with("names variant 2, but request 1 was issued for variant 1."),
+            "{error}"
+        );
+    }
+
+    /// Ids are rendered the same way by every error that reports a mangled
+    /// one, so that one can be matched against another by eye.
+    #[test]
+    fn an_id_is_reported_in_hex() {
+        let mut outstanding = outstanding(Sequence::FIRST);
+        outstanding.effect = Some(effect(4));
+        park(
+            &mut outstanding,
+            EffectId::new(1, OperationKind::Request, sequence(1)),
+        );
+
+        let error = outstanding
+            .entry(EffectId::new(2, OperationKind::Request, sequence(1)))
+            .err()
+            .expect("an id naming another effect should be rejected");
+
+        assert!(
+            error.to_string().starts_with("Request id 0x02000001 "),
             "{error}"
         );
     }
@@ -592,7 +717,7 @@ mod tests {
     #[test]
     fn an_id_with_the_wrong_kind_bit_is_rejected() {
         let mut outstanding = outstanding(Sequence::FIRST);
-        outstanding.variants = Some(4);
+        outstanding.effect = Some(effect(4));
         park(
             &mut outstanding,
             EffectId::new(1, OperationKind::Request, sequence(1)),
@@ -620,7 +745,7 @@ mod tests {
     #[test]
     fn an_id_that_was_never_issued_is_still_not_found() {
         let mut outstanding = outstanding(Sequence::FIRST);
-        outstanding.variants = Some(4);
+        outstanding.effect = Some(effect(4));
 
         let id = EffectId::new(1, OperationKind::Request, sequence(7));
         let error = outstanding
@@ -637,7 +762,7 @@ mod tests {
     #[test]
     fn a_well_formed_id_finds_its_entry() {
         let mut outstanding = outstanding(Sequence::FIRST);
-        outstanding.variants = Some(4);
+        outstanding.effect = Some(effect(4));
         let id = EffectId::new(2, OperationKind::Stream, sequence(1));
         park(&mut outstanding, id);
 

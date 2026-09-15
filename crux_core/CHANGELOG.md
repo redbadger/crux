@@ -213,19 +213,25 @@ and this project adheres to
 
   ```text
   Attempted to resolve a request that is not expected to be resolved.  // id 0
-  Request id 33554433 names effect variant 2, but the effect has only 2 variants.
-  Request id 16777217 names effect variant 1, but request 1 was issued for effect variant 0.
-  Request id 8388609 is marked as a Stream request, but request 1 was issued as a Request.
+  Request id 0x09000001 names variant 9 of `shared::Effect`, which has only 2 variants.
+  Request id 0x01000001 names `Render` (variant 1), but request 1 was issued for `Http` (variant 0).
+  Request id 0x00800001 is marked as a Stream request, but request 1 was issued as a Request.
   ```
+
+  Ids are printed in hex so the effect index, kind bit and sequence can be read
+  off them. `WrongEffect` carries both sides as `EffectVariant { index, name }`,
+  and `NoSuchEffect` names the effect type.
 
   `NotFound` now means only what it says — never issued, or already resolved.
   Resolving a notification used to report `NotFound` and now reports
   `ResolveError::Never`. `ResolveError` is also `#[non_exhaustive]`, so later
   additions are not breaking.
 
-  `EffectFFI` gains a defaulted `variant_index()` method and a `VARIANT_COUNT`
-  constant, which `#[effect]` overrides; a hand-written implementation keeps
-  compiling and its ids simply carry variant index zero.
+  `EffectFFI` gains a defaulted `variant_index()` method, a `VARIANT_COUNT`
+  constant and a `variant_name(index)` function, all of which `#[effect]`
+  overrides; a hand-written implementation keeps compiling, its ids simply
+  carry variant index zero, and its errors number variants instead of naming
+  them.
 
 - **Type generation emits `EffectKind` and a `RequestId` decoder**, in Swift,
   Kotlin, TypeScript and C#, from the same effect metadata the core builds ids

@@ -44,6 +44,20 @@ pub trait EffectFFI: Effect {
         0
     }
 
+    /// The name of the variant at `index`, counting from zero in declaration
+    /// order, or `None` where the implementation does not know it.
+    ///
+    /// A request id carries only the index, so this is how the
+    /// [`Bridge`](crate::bridge::Bridge) names the effect a bad id refers to.
+    /// It is used only to make errors readable. The default knows no names, so
+    /// a hand-written implementation keeps compiling and its errors go on
+    /// numbering the variants.
+    #[must_use]
+    fn variant_name(index: u8) -> Option<&'static str> {
+        let _ = index;
+        None
+    }
+
     /// Converts the `Effect` into its FFI counterpart and returns it alongside
     /// a deserializing version of the resolve callback for the request that the
     /// original `Effect` was carrying.
