@@ -141,7 +141,7 @@ pub fn serializes_output(effects: &[EffectMeta]) -> bool {
         effect.variants.iter().any(|variant| {
             matches!(
                 variant.kind,
-                Some(RequestKind::Request | RequestKind::Stream)
+                Some(OperationKind::Request | OperationKind::Stream)
             )
         })
     })
