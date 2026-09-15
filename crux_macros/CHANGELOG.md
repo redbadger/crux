@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 💥 Breaking Changes
+
+- **`#[effect(typegen)]` and the `Export` derive are removed**, together with
+  the serde-based type generation in `crux_core` 0.21. `#[effect(typegen)]` is
+  now a compile error pointing at `#[effect(facet_typegen)]`; `#[effect]` and
+  `#[effect(facet_typegen)]` are unchanged. The crate's `typegen` feature goes
+  with it — `facet_typegen` is the one to enable.
+
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_macros-v0.10.0...crux_macros-v0.10.1) - 2026-08-06
 
 ### 🐛 Bug Fixes

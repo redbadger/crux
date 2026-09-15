@@ -16,7 +16,7 @@ pub trait Effect: Send + 'static {}
 /// This is used by the [`Bridge`](crate::bridge::Bridge) to serialize effects going across the
 /// FFI boundary. If you don't need serialization and FFI, use [`Effect`].
 ///
-/// You should annotate your type with `#[effect(typegen)]` to implement this trait.
+/// You should annotate your type with `#[effect(facet_typegen)]` to implement this trait.
 // used in docs/internals/bridge.md
 // ANCHOR: effect_typegen
 pub trait EffectFFI: Effect {

@@ -453,7 +453,7 @@ mod tests {
         assert_eq!(RenderOperation, render_operation);
     }
 
-    #[effect(typegen)]
+    #[effect(facet_typegen)]
     pub enum BridgeEffect {
         Http(HttpRequest),
         Render(RenderOperation),
