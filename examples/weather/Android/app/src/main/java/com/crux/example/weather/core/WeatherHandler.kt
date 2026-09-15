@@ -24,7 +24,7 @@ import com.crux.example.weather.Set as KeyValueSet
 /// The shell's side of the effect protocol: one method per operation the app
 /// declares, each returning the single output that operation is answered with.
 /// Nothing here calls `resolve` — the generated `EffectDispatcher` does that,
-/// exactly as often as the operation's request kind says.
+/// exactly as often as the operation's kind says.
 ///
 /// There is no `render` override: the generated `Core` intercepts `Render`
 /// before the dispatcher sees it and refreshes its `view` flow, so the

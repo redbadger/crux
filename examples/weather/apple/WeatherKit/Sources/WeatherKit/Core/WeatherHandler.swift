@@ -7,7 +7,7 @@ private nonisolated let logger = Log.core
 /// the generated `EffectHandler`, one method per operation the app declares,
 /// each answering with the single output that operation expects. Nothing here
 /// calls `resolve` — the generated `EffectDispatcher` does that, exactly as
-/// often as the operation's request kind says.
+/// often as the operation's kind says.
 ///
 /// There is no `render` method: the generated `Core` intercepts `Render`
 /// before the dispatcher sees it, so the protocol's default no-op stands.

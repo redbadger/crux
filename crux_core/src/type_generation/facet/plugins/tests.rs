@@ -384,7 +384,7 @@ fn typescript_imports_the_serializer_only_when_the_handler_does_not() {
     let mut notifications = effects;
     notifications[0]
         .variants
-        .retain(|variant| variant.kind == Some(RequestKind::Notify));
+        .retain(|variant| variant.kind == Some(OperationKind::Notify));
     let plugin = CorePlugin::new(&notifications.into(), app);
     assert_eq!(
         EmitterPlugin::<TypeScript>::imports(&plugin, &config),
