@@ -504,17 +504,18 @@ nonisolated extension WeatherHandler: EffectHandler {
 }
 
 // in the app:
-let store = ViewStore()
-let core = Core(bridge: LiveBridge(), handler: WeatherHandler()) { store.view = $0 }
+let core = Core(bridge: LiveBridge(), handler: WeatherHandler())
 core.update(.start)
+// …and `.environment(core)` on the root view, read with `@Environment(Core.self)`
 ```
 
 Each per-capability `switch` over an operation enum collapses into one method per
 operation, every `resolve(requestId:serialize:)` call disappears, and so do the
 loop, the resolve-and-recurse callback and `render` — the generated `Core`
-intercepts `Render` and hands the new view to the closure you give it. `Core`
-carries the same `@available` as the dispatcher, so it can't be `@Observable`;
-keep a small `@Observable` holder (`ViewStore` above) for SwiftUI to read.
+intercepts `Render` and replaces its `view`. `Core` is `@Observable`, so put it
+in the SwiftUI environment and read `core.view` directly; any `@Observable`
+holder you kept for the view model can go. Note that `Core` requires
+iOS 17 / macOS 14, higher than the rest of the generated module.
 
 ### Kotlin
 
