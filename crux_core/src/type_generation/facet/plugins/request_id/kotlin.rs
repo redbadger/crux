@@ -100,16 +100,16 @@ fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
         w,
         "/// How many times the core expects this request to be resolved."
     )?;
-    writeln!(w, "val requestKind: RequestKind")?;
+    writeln!(w, "val operationKind: OperationKind")?;
     w.indent();
     writeln!(w, "get() = when {{")?;
     w.indent();
-    writeln!(w, "isNotification -> RequestKind.NOTIFY")?;
+    writeln!(w, "isNotification -> OperationKind.NOTIFY")?;
     writeln!(
         w,
-        "(rawValue and {STREAM_BIT:#x}u) == 0u -> RequestKind.REQUEST"
+        "(rawValue and {STREAM_BIT:#x}u) == 0u -> OperationKind.REQUEST"
     )?;
-    writeln!(w, "else -> RequestKind.STREAM")?;
+    writeln!(w, "else -> OperationKind.STREAM")?;
     w.unindent();
     writeln!(w, "}}")?;
     w.unindent();

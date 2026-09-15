@@ -110,14 +110,14 @@ pub enum ResolveError {
         actual: u8,
     },
     /// The id's sequence is outstanding, but it was issued as a different
-    /// [`RequestKind`].
+    /// [`OperationKind`].
     #[error(
         "Request id {id} is marked as a {actual:?} request, but request {sequence} was issued as a {expected:?}."
     )]
     WrongKind {
         id: u32,
         sequence: u32,
-        expected: RequestKind,
-        actual: RequestKind,
+        expected: OperationKind,
+        actual: OperationKind,
     },
 }

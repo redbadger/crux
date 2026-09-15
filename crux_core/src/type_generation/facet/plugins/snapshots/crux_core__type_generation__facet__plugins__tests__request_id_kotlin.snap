@@ -38,11 +38,11 @@ data class RequestId(val rawValue: UInt) {
         else EffectKind.fromIndex((rawValue shr 24).toUByte())
 
     /// How many times the core expects this request to be resolved.
-    val requestKind: RequestKind
+    val operationKind: OperationKind
         get() = when {
-            isNotification -> RequestKind.NOTIFY
-            (rawValue and 0x800000u) == 0u -> RequestKind.REQUEST
-            else -> RequestKind.STREAM
+            isNotification -> OperationKind.NOTIFY
+            (rawValue and 0x800000u) == 0u -> OperationKind.REQUEST
+            else -> OperationKind.STREAM
         }
 
     /// The ascending number the request was issued with. Zero for a

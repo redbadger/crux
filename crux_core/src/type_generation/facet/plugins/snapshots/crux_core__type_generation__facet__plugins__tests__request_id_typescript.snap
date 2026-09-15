@@ -22,7 +22,7 @@ export interface RequestId {
     /// code does not know.
     effectKind: EffectKind | undefined;
     /// How many times the core expects this request to be resolved.
-    requestKind: RequestKind;
+    operationKind: OperationKind;
     /// The ascending number the request was issued with. Zero for a
     /// notification, the one id that is not sequenced.
     sequence: number;
@@ -39,7 +39,7 @@ export function decodeRequestId(rawValue: number): RequestId {
             rawValue,
             isNotification: true,
             effectKind: undefined,
-            requestKind: "notify",
+            operationKind: "notify",
             sequence: 0,
         };
     }
@@ -47,7 +47,7 @@ export function decodeRequestId(rawValue: number): RequestId {
         rawValue,
         isNotification: false,
         effectKind: EFFECT_KINDS[(rawValue >>> 24) & 0xff],
-        requestKind: (rawValue & 0x800000) === 0 ? "request" : "stream",
+        operationKind: (rawValue & 0x800000) === 0 ? "request" : "stream",
         sequence: rawValue & 0x7fffff,
     };
 }

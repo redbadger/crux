@@ -258,11 +258,11 @@ fn the_emitted_layout_matches_the_ids_the_bridge_issues() {
     let stream = EffectId(0x0300_0001 | STREAM_BIT);
 
     assert_eq!(u32::from(stream.effect_index()), stream.0 >> EFFECT_SHIFT);
-    assert_eq!(stream.kind(), RequestKind::Stream);
+    assert_eq!(stream.kind(), OperationKind::Stream);
     assert_eq!(stream.sequence(), stream.0 & SEQUENCE_MASK);
 
     let request = EffectId(0x0300_0001);
-    assert_eq!(request.kind(), RequestKind::Request);
+    assert_eq!(request.kind(), OperationKind::Request);
     assert_eq!(request.0 & STREAM_BIT, 0);
 }
 

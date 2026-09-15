@@ -235,7 +235,7 @@ mod facet_test {
                 "case legacy = 4",
                 "public struct RequestId: Hashable, Sendable {",
                 "public var effectKind: EffectKind? {",
-                "public var requestKind: RequestKind {",
+                "public var operationKind: OperationKind {",
                 "public var sequence: UInt32 {",
             ],
         );
@@ -268,7 +268,7 @@ mod facet_test {
                 "LEGACY(4u);",
                 "data class RequestId(val rawValue: UInt) {",
                 "val effectKind: EffectKind?",
-                "val requestKind: RequestKind",
+                "val operationKind: OperationKind",
                 "val sequence: UInt",
             ],
         );
@@ -301,7 +301,7 @@ mod facet_test {
                 "Legacy = 4,",
                 "public sealed record RequestId(uint RawValue)",
                 "public Example.Shared.EffectKind? EffectKind",
-                "public Example.Shared.RequestKind RequestKind",
+                "public Example.Shared.OperationKind OperationKind",
                 "public uint Sequence => RawValue & 0x7fffffu;",
             ],
         );

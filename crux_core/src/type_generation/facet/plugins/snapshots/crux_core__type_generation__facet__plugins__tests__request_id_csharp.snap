@@ -58,15 +58,15 @@ public sealed record RequestId(uint RawValue)
     /// <summary>
     /// How many times the core expects this request to be resolved.
     /// </summary>
-    public Shared.RequestKind RequestKind
+    public Shared.OperationKind OperationKind
     {
         get
         {
             if (IsNotification)
             {
-                return Shared.RequestKind.Notify;
+                return Shared.OperationKind.Notify;
             }
-            return (RawValue & 0x800000u) == 0 ? Shared.RequestKind.Request : Shared.RequestKind.Stream;
+            return (RawValue & 0x800000u) == 0 ? Shared.OperationKind.Request : Shared.OperationKind.Stream;
         }
     }
 

@@ -97,7 +97,7 @@ fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
         w,
         "/// How many times the core expects this request to be resolved."
     )?;
-    writeln!(w, "public var requestKind: RequestKind {{")?;
+    writeln!(w, "public var operationKind: OperationKind {{")?;
     w.indent();
     writeln!(w, "if self.isNotification {{ return .notify }}")?;
     writeln!(
