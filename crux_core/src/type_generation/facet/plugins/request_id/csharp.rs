@@ -76,7 +76,7 @@ fn emit_request_id(w: &mut dyn IndentWrite, m: &Matched<'_>, ctx: &EmitContext) 
 
     emit_effect_kind_property(w, m, ns)?;
     writeln!(w)?;
-    emit_request_kind_property(w, ns)?;
+    emit_operation_kind_property(w, ns)?;
     writeln!(w)?;
 
     writeln!(w, "/// <summary>")?;
@@ -139,14 +139,14 @@ fn emit_effect_kind_property(w: &mut dyn IndentWrite, m: &Matched<'_>, ns: &str)
 }
 
 /// How many times the core expects the request to be resolved.
-fn emit_request_kind_property(w: &mut dyn IndentWrite, ns: &str) -> io::Result<()> {
+fn emit_operation_kind_property(w: &mut dyn IndentWrite, ns: &str) -> io::Result<()> {
     writeln!(w, "/// <summary>")?;
     writeln!(
         w,
         "/// How many times the core expects this request to be resolved."
     )?;
     writeln!(w, "/// </summary>")?;
-    writeln!(w, "public {ns}.RequestKind RequestKind")?;
+    writeln!(w, "public {ns}.OperationKind OperationKind")?;
     writeln!(w, "{{")?;
     w.indent();
     writeln!(w, "get")?;
@@ -155,12 +155,12 @@ fn emit_request_kind_property(w: &mut dyn IndentWrite, ns: &str) -> io::Result<(
     writeln!(w, "if (IsNotification)")?;
     writeln!(w, "{{")?;
     w.indent();
-    writeln!(w, "return {ns}.RequestKind.Notify;")?;
+    writeln!(w, "return {ns}.OperationKind.Notify;")?;
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(
         w,
-        "return (RawValue & {STREAM_BIT:#x}u) == 0 ? {ns}.RequestKind.Request : {ns}.RequestKind.Stream;"
+        "return (RawValue & {STREAM_BIT:#x}u) == 0 ? {ns}.OperationKind.Request : {ns}.OperationKind.Stream;"
     )?;
     w.unindent();
     writeln!(w, "}}")?;

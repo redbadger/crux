@@ -67,7 +67,7 @@ mod tests {
 
     use super::core::Bridge;
     use crux_core::{
-        Core, RequestKind,
+        Core, OperationKind,
         bridge::{EffectId, Request},
     };
     use crux_http::protocol::{HttpResponse, HttpResult};
@@ -197,7 +197,7 @@ mod tests {
 
         let http = request_http(&bridge);
         assert_eq!(http.id.effect_index(), 0, "Http is the first variant");
-        assert_eq!(http.id.kind(), RequestKind::Request);
+        assert_eq!(http.id.kind(), OperationKind::Request);
 
         // The same request, relabelled as the `Render` variant.
         let mangled = EffectId(http.id.0 | (1 << 24));
@@ -225,7 +225,7 @@ mod tests {
 
         // The same request, relabelled as a stream.
         let mangled = EffectId(http.id.0 | (1 << 23));
-        assert_eq!(mangled.kind(), RequestKind::Stream);
+        assert_eq!(mangled.kind(), OperationKind::Stream);
 
         let Err(error) = resolve_http(&bridge, mangled) else {
             panic!("expected resolving with the wrong kind to fail");

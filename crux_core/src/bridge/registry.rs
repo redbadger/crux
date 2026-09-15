@@ -52,13 +52,13 @@ impl EffectId {
 
     /// Build an id for a request of `kind`, carrying the effect variant
     /// `effect_index`, numbered `sequence`.
-    fn new(effect_index: u8, kind: RequestKind, sequence: Sequence) -> Self {
+    fn new(effect_index: u8, kind: OperationKind, sequence: Sequence) -> Self {
         match kind {
-            RequestKind::Notify => Self::NOTIFICATION,
-            RequestKind::Request => {
+            OperationKind::Notify => Self::NOTIFICATION,
+            OperationKind::Request => {
                 Self((u32::from(effect_index) << Self::EFFECT_SHIFT) | sequence.0)
             }
-            RequestKind::Stream => Self(
+            OperationKind::Stream => Self(
                 (u32::from(effect_index) << Self::EFFECT_SHIFT) | Self::STREAM_BIT | sequence.0,
             ),
         }
@@ -84,13 +84,13 @@ impl EffectId {
     /// is the kind that operation always has, and otherwise the one the call
     /// site chose.
     #[must_use]
-    pub const fn kind(self) -> RequestKind {
+    pub const fn kind(self) -> OperationKind {
         if self.0 == Self::NOTIFICATION.0 {
-            RequestKind::Notify
+            OperationKind::Notify
         } else if self.0 & Self::STREAM_BIT == 0 {
-            RequestKind::Request
+            OperationKind::Request
         } else {
-            RequestKind::Stream
+            OperationKind::Stream
         }
     }
 
@@ -188,8 +188,8 @@ impl<T: FfiFormat> Outstanding<T> {
     /// to inherit its storage. The sequence wraps within its 23 bits; ids still
     /// outstanding are stepped over, so a live request can never be displaced
     /// even then.
-    fn issue_id(&mut self, effect_index: u8, kind: RequestKind) -> EffectId {
-        if matches!(kind, RequestKind::Notify) {
+    fn issue_id(&mut self, effect_index: u8, kind: OperationKind) -> EffectId {
+        if matches!(kind, OperationKind::Notify) {
             return EffectId::NOTIFICATION;
         }
 
@@ -341,7 +341,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 mod tests {
     use super::{EffectId, Entry, Outstanding, ResolveSerialized, Sequence};
     use crate::bridge::JsonFfiFormat;
-    use crate::{RequestKind, ResolveError};
+    use crate::{OperationKind, ResolveError};
     use std::collections::HashMap;
 
     fn outstanding(next_sequence: Sequence) -> Outstanding<JsonFfiFormat> {
@@ -374,31 +374,31 @@ mod tests {
 
     #[test]
     fn an_id_carries_its_effect_kind_and_sequence() {
-        let id = EffectId::new(7, RequestKind::Request, sequence(42));
+        let id = EffectId::new(7, OperationKind::Request, sequence(42));
 
         assert_eq!(id.effect_index(), 7);
-        assert_eq!(id.kind(), RequestKind::Request);
+        assert_eq!(id.kind(), OperationKind::Request);
         assert_eq!(id.sequence(), 42);
     }
 
     #[test]
     fn the_kind_bit_is_set_for_a_stream() {
-        let request = EffectId::new(1, RequestKind::Request, sequence(1));
-        let stream = EffectId::new(1, RequestKind::Stream, sequence(1));
+        let request = EffectId::new(1, OperationKind::Request, sequence(1));
+        let stream = EffectId::new(1, OperationKind::Stream, sequence(1));
 
         assert_eq!(stream.0 - request.0, 1 << 23, "stream is the bit above 23");
-        assert_eq!(request.kind(), RequestKind::Request);
-        assert_eq!(stream.kind(), RequestKind::Stream);
+        assert_eq!(request.kind(), OperationKind::Request);
+        assert_eq!(stream.kind(), OperationKind::Stream);
     }
 
     #[test]
     fn every_notification_gets_the_reserved_id() {
         for effect_index in [0, 1, 255] {
-            let id = EffectId::new(effect_index, RequestKind::Notify, Sequence::LAST);
+            let id = EffectId::new(effect_index, OperationKind::Notify, Sequence::LAST);
 
             assert_eq!(id, EffectId::NOTIFICATION);
             assert_eq!(id.0, 0);
-            assert_eq!(id.kind(), RequestKind::Notify);
+            assert_eq!(id.kind(), OperationKind::Notify);
             assert_eq!(id.sequence(), 0);
         }
     }
@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn every_corner_of_the_layout_round_trips() {
         for effect_index in [0u8, 1, 128, 255] {
-            for kind in [RequestKind::Request, RequestKind::Stream] {
+            for kind in [OperationKind::Request, OperationKind::Stream] {
                 for seq in [1, 2, Sequence::MASK] {
                     let id = EffectId::new(effect_index, kind, sequence(seq));
 
@@ -443,14 +443,17 @@ mod tests {
         let mut outstanding = outstanding(Sequence::FIRST);
 
         let ids: Vec<_> = (0..4)
-            .map(|_| outstanding.issue_id(3, RequestKind::Request).sequence())
+            .map(|_| outstanding.issue_id(3, OperationKind::Request).sequence())
             .collect();
         assert_eq!(ids, vec![1, 2, 3, 4]);
 
         // Finishing a request frees its entry, but not its sequence.
         outstanding.entries.remove(&2);
 
-        assert_eq!(outstanding.issue_id(3, RequestKind::Request).sequence(), 5);
+        assert_eq!(
+            outstanding.issue_id(3, OperationKind::Request).sequence(),
+            5
+        );
     }
 
     #[test]
@@ -458,15 +461,18 @@ mod tests {
         let mut outstanding = outstanding(Sequence::FIRST);
 
         assert_eq!(
-            outstanding.issue_id(2, RequestKind::Notify),
+            outstanding.issue_id(2, OperationKind::Notify),
             EffectId::NOTIFICATION
         );
         assert_eq!(
-            outstanding.issue_id(2, RequestKind::Notify),
+            outstanding.issue_id(2, OperationKind::Notify),
             EffectId::NOTIFICATION
         );
 
-        assert_eq!(outstanding.issue_id(2, RequestKind::Request).sequence(), 1);
+        assert_eq!(
+            outstanding.issue_id(2, OperationKind::Request).sequence(),
+            1
+        );
     }
 
     #[test]
@@ -476,19 +482,19 @@ mod tests {
         // Still awaiting a response on 1 and 2 when the counter comes round.
         park(
             &mut outstanding,
-            EffectId::new(0, RequestKind::Request, sequence(1)),
+            EffectId::new(0, OperationKind::Request, sequence(1)),
         );
         park(
             &mut outstanding,
-            EffectId::new(0, RequestKind::Request, sequence(2)),
+            EffectId::new(0, OperationKind::Request, sequence(2)),
         );
 
         assert_eq!(
-            outstanding.issue_id(0, RequestKind::Request).sequence(),
+            outstanding.issue_id(0, OperationKind::Request).sequence(),
             Sequence::MASK
         );
         assert_eq!(
-            outstanding.issue_id(0, RequestKind::Request).sequence(),
+            outstanding.issue_id(0, OperationKind::Request).sequence(),
             3,
             "wrapping displaced a request that was still outstanding"
         );
@@ -499,7 +505,7 @@ mod tests {
         let mut outstanding = outstanding(Sequence::LAST);
 
         let ids: Vec<_> = (0..3)
-            .map(|_| outstanding.issue_id(0, RequestKind::Request))
+            .map(|_| outstanding.issue_id(0, OperationKind::Request))
             .collect();
 
         assert!(
@@ -534,11 +540,11 @@ mod tests {
         outstanding.variants = Some(3);
         park(
             &mut outstanding,
-            EffectId::new(1, RequestKind::Request, sequence(1)),
+            EffectId::new(1, OperationKind::Request, sequence(1)),
         );
 
         let error = outstanding
-            .entry(EffectId::new(9, RequestKind::Request, sequence(1)))
+            .entry(EffectId::new(9, OperationKind::Request, sequence(1)))
             .err()
             .expect("an unknown effect variant should be rejected");
 
@@ -561,11 +567,11 @@ mod tests {
         outstanding.variants = Some(4);
         park(
             &mut outstanding,
-            EffectId::new(1, RequestKind::Request, sequence(1)),
+            EffectId::new(1, OperationKind::Request, sequence(1)),
         );
 
         let error = outstanding
-            .entry(EffectId::new(2, RequestKind::Request, sequence(1)))
+            .entry(EffectId::new(2, OperationKind::Request, sequence(1)))
             .err()
             .expect("an id naming another effect should be rejected");
 
@@ -589,11 +595,11 @@ mod tests {
         outstanding.variants = Some(4);
         park(
             &mut outstanding,
-            EffectId::new(1, RequestKind::Request, sequence(1)),
+            EffectId::new(1, OperationKind::Request, sequence(1)),
         );
 
         let error = outstanding
-            .entry(EffectId::new(1, RequestKind::Stream, sequence(1)))
+            .entry(EffectId::new(1, OperationKind::Stream, sequence(1)))
             .err()
             .expect("an id claiming the wrong kind should be rejected");
 
@@ -602,8 +608,8 @@ mod tests {
                 error,
                 ResolveError::WrongKind {
                     sequence: 1,
-                    expected: RequestKind::Request,
-                    actual: RequestKind::Stream,
+                    expected: OperationKind::Request,
+                    actual: OperationKind::Stream,
                     ..
                 }
             ),
@@ -616,7 +622,7 @@ mod tests {
         let mut outstanding = outstanding(Sequence::FIRST);
         outstanding.variants = Some(4);
 
-        let id = EffectId::new(1, RequestKind::Request, sequence(7));
+        let id = EffectId::new(1, OperationKind::Request, sequence(7));
         let error = outstanding
             .entry(id)
             .err()
@@ -632,7 +638,7 @@ mod tests {
     fn a_well_formed_id_finds_its_entry() {
         let mut outstanding = outstanding(Sequence::FIRST);
         outstanding.variants = Some(4);
-        let id = EffectId::new(2, RequestKind::Stream, sequence(1));
+        let id = EffectId::new(2, OperationKind::Stream, sequence(1));
         park(&mut outstanding, id);
 
         assert!(outstanding.entry(id).is_ok());

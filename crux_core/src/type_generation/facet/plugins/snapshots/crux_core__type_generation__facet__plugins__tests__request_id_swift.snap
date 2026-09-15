@@ -42,7 +42,7 @@ public struct RequestId: Hashable, Sendable {
     }
 
     /// How many times the core expects this request to be resolved.
-    public var requestKind: RequestKind {
+    public var operationKind: OperationKind {
         if self.isNotification { return .notify }
         return (self.rawValue & 0x800000) == 0 ? .request : .stream
     }

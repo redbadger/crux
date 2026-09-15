@@ -238,7 +238,7 @@ and this project adheres to
       public init(_ rawValue: UInt32)
       public var isNotification: Bool { get }
       public var effectKind: EffectKind? { get }
-      public var requestKind: RequestKind { get }
+      public var operationKind: OperationKind { get }
       public var sequence: UInt32 { get }
   }
   ```

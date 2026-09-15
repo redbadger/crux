@@ -392,7 +392,7 @@ public struct RequestId: Hashable, Sendable {
     public var rawValue: UInt32 { get }
     public var isNotification: Bool { get }
     public var effectKind: EffectKind? { get }   // nil for a notification
-    public var requestKind: RequestKind { get }
+    public var operationKind: OperationKind { get }
     public var sequence: UInt32 { get }
 }
 ```

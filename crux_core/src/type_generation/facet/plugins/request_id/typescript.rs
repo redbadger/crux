@@ -77,7 +77,7 @@ fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
         w,
         "/// How many times the core expects this request to be resolved."
     )?;
-    writeln!(w, "requestKind: RequestKind;")?;
+    writeln!(w, "operationKind: OperationKind;")?;
     writeln!(
         w,
         "/// The ascending number the request was issued with. Zero for a"
@@ -111,7 +111,7 @@ fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w, "rawValue,")?;
     writeln!(w, "isNotification: true,")?;
     writeln!(w, "effectKind: undefined,")?;
-    writeln!(w, r#"requestKind: "notify","#)?;
+    writeln!(w, r#"operationKind: "notify","#)?;
     writeln!(w, "sequence: 0,")?;
     w.unindent();
     writeln!(w, "}};")?;
@@ -127,7 +127,7 @@ fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
     )?;
     writeln!(
         w,
-        r#"requestKind: (rawValue & {STREAM_BIT:#x}) === 0 ? "request" : "stream","#
+        r#"operationKind: (rawValue & {STREAM_BIT:#x}) === 0 ? "request" : "stream","#
     )?;
     writeln!(w, "sequence: rawValue & {SEQUENCE_MASK:#x},")?;
     w.unindent();
