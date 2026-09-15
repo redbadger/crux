@@ -59,10 +59,10 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **`#[effect(facet_typegen)]` now records the request kind of each variant**,
+- **`#[effect(facet_typegen)]` now records the operation kind of each variant**,
   by calling the new `TypeRegistry::register_effect_kinds` after registering the
   effect's own types. Nothing consumes the kinds yet, so no generated shell code
-  changes; a later release uses them to emit a request-kind property and a typed
+  changes; a later release uses them to emit an operation-kind property and a typed
   effect-handler API.
 
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_macros-v0.10.0...crux_macros-v0.10.1) - 2026-08-06

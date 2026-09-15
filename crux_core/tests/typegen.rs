@@ -71,12 +71,12 @@ mod facet_shared {
 
 #[cfg(feature = "facet_typegen")]
 mod facet_test {
-    use crux_core::{RequestKind, type_generation::facet::TypeRegistry};
+    use crux_core::{OperationKind, type_generation::facet::TypeRegistry};
 
     use super::facet_shared::App;
 
     #[test]
-    fn effect_variants_carry_their_declared_request_kind() {
+    fn effect_variants_carry_their_declared_operation_kind() {
         let generator = TypeRegistry::new()
             .register_app::<App>()
             .expect("should register the app")
@@ -91,9 +91,9 @@ mod facet_test {
         assert_eq!(
             kinds,
             &vec![
-                ("Render".to_string(), Some(RequestKind::Notify)),
-                ("Get".to_string(), Some(RequestKind::Request)),
-                ("Publish".to_string(), Some(RequestKind::Notify)),
+                ("Render".to_string(), Some(OperationKind::Notify)),
+                ("Get".to_string(), Some(OperationKind::Request)),
+                ("Publish".to_string(), Some(OperationKind::Notify)),
             ]
         );
     }

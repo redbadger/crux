@@ -31,7 +31,7 @@ impl FromMeta for MaybeOutput {
     }
 }
 
-/// The three request kinds an operation can declare.
+/// The three kinds an operation can declare.
 #[derive(Clone, Copy)]
 enum Kind {
     Notify,
@@ -40,7 +40,7 @@ enum Kind {
 }
 
 impl Kind {
-    /// The `RequestKind` variant and the marker trait share a name.
+    /// The `OperationKind` variant and the marker trait share a name.
     fn ident(self) -> Ident {
         let name = match self {
             Self::Notify => "Notify",
@@ -104,14 +104,14 @@ impl OperationReceiver {
         match declared.as_slice() {
             [kind] => Ok(*kind),
             [] => Err(darling::Error::custom(
-                "an operation must declare its request kind: add `#[operation(notify)]`, \
+                "an operation must declare its kind: add `#[operation(notify)]`, \
                  `#[operation(request, output = T)]` or `#[operation(stream, output = T)]`",
             )
             .with_span(&self.ident)),
             many => {
                 let words: Vec<&str> = many.iter().map(|kind| kind.word()).collect();
                 Err(darling::Error::custom(format!(
-                    "an operation declares exactly one request kind, but `{}` were all given",
+                    "an operation declares exactly one kind, but `{}` were all given",
                     words.join("`, `")
                 ))
                 .with_span(&self.ident))
@@ -150,8 +150,8 @@ impl OperationReceiver {
             impl #impl_generics ::crux_core::capability::Operation for #ident #ty_generics #where_clause {
                 type Output = #output;
 
-                const KIND: ::core::option::Option<::crux_core::RequestKind> =
-                    ::core::option::Option::Some(::crux_core::RequestKind::#kind_ident);
+                const KIND: ::core::option::Option<::crux_core::OperationKind> =
+                    ::core::option::Option::Some(::crux_core::OperationKind::#kind_ident);
             }
 
             impl #impl_generics ::crux_core::operation::#kind_ident for #ident #ty_generics #where_clause {}

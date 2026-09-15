@@ -132,9 +132,9 @@ impl Export for () {
     }
 }
 
-/// The request kind of each variant of one effect enum, keyed by variant name
+/// The operation kind of each variant of one effect enum, keyed by variant name
 /// in declaration order. `None` means the operation declares no kind.
-pub type EffectKinds = Vec<(String, Option<crate::RequestKind>)>;
+pub type EffectKinds = Vec<(String, Option<crate::OperationKind>)>;
 
 pub struct TypeRegistry {
     builder: RegistryBuilder,
@@ -221,7 +221,7 @@ impl TypeRegistry {
         Ok(self)
     }
 
-    /// Records the [`RequestKind`](crate::RequestKind) each variant of an
+    /// Records the [`OperationKind`](crate::OperationKind) each variant of an
     /// effect enum declares, so that type generation can tell the shell how
     /// many times it is expected to resolve each request.
     ///
@@ -235,7 +235,7 @@ impl TypeRegistry {
     pub fn register_effect_kinds(
         &mut self,
         effect: &str,
-        kinds: &[(&str, Option<crate::RequestKind>)],
+        kinds: &[(&str, Option<crate::OperationKind>)],
     ) -> Result<&mut Self, TypeGenError> {
         self.effect_kinds.insert(
             effect.to_string(),
@@ -436,7 +436,7 @@ impl CodeGenerator {
         self.registry
     }
 
-    /// The request kind each effect variant declares, keyed by effect enum
+    /// The operation kind each effect variant declares, keyed by effect enum
     /// name, as recorded by [`TypeRegistry::register_effect_kinds`].
     #[must_use]
     pub const fn effect_kinds(&self) -> &BTreeMap<String, EffectKinds> {
