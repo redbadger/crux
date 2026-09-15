@@ -15,6 +15,70 @@ and this project adheres to
   instead; the types it sends over the bridge already derive `Facet`. See
   [Type generation](https://redbadger.github.io/crux/part-4/typegen.html).
 
+### 🚀 Features
+
+- **One type per time operation, in the new `crux_time::operation` module, and a
+  `clock::Time` capability that sends them.** `TimeRequest` has one output type —
+  `TimeResponse` — for all four of its variants, so the capability has to check that
+  the shell answered the question it was asked:
+
+  ```rust
+  // before
+  let TimeResponse::Cleared { id } =
+      ctx.request_from_shell(TimeRequest::Clear { id }).await
+  else {
+      panic!("Unexpected response to TimeRequest::Clear");
+  };
+  ```
+
+  Each operation is now its own type with exactly one output, so there is nothing to
+  check:
+
+  ```rust
+  // after
+  use crux_time::{clock::Time, operation};
+
+  #[effect]
+  enum Effect {
+      NotifyAfter(operation::NotifyAfter),
+      Clear(operation::Clear),
+  }
+
+  let (timer, handle) = Time::notify_after(Duration::from_secs(1));
+  ```
+
+  `clock::Time` has the same three methods as the root `Time` — `now`, `notify_at`,
+  `notify_after` — with the same signatures, and shares `TimerHandle`,
+  `CompletedTimerHandle`, `TimerOutcome`, `TimerId`, `Instant` and `Duration` with it.
+  Its bounds are per method, so an app's `Effect` only has to carry the operations it
+  actually uses.
+
+  The new capability keeps the name `Time` and lives in the `clock` module, so the
+  two coexist: `crux_time::Time` is the enum API and `crux_time::clock::Time` is the
+  per-operation one. The next breaking release removes the root type and re-exports
+  `clock::Time` in its place, so code written against `crux_time::clock::Time` will
+  not need to change.
+
+  The wire types:
+
+  | Operation | Fields | Output | Kind |
+  | --- | --- | --- | --- |
+  | `Now` | — | `Instant` | `Request` |
+  | `NotifyAt` | `id: TimerId, instant: Instant` | `TimerId` | `Request` |
+  | `NotifyAfter` | `id: TimerId, duration: Duration` | `TimerId` | `Request` |
+  | `Clear` | `id: TimerId` | `TimerId` | `Request` |
+
+  Every operation is answered with the bare `TimerId` it was given, which the core
+  still checks against the timer it started. That includes `Clear`, so clearing a
+  timer is the same round trip it is with the enum API: `TimerHandle::clear` sends an
+  `operation::Clear` request, and the timer's future resolves with
+  `TimerOutcome::Cleared` once the shell has answered it. A shell whose timer fires
+  after the core has cleared it does no harm: the core has stopped waiting for that
+  request and ignores the late answer.
+
+  Nothing is deprecated in this release: `Time`, `TimeRequest`, `TimeResponse` and
+  `TimerFuture` are unchanged, and an app can use both APIs side by side.
+
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_time-v0.17.0...crux_time-v0.18.0) - 2026-08-06
 
 ### ⚙️ Miscellaneous Tasks

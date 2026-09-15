@@ -5,7 +5,9 @@
 //! more of a side-cause) by Crux, and has to be obtained externally. This capability provides a simple
 //! interface to do so.
 
+pub mod clock;
 pub mod command;
+pub mod operation;
 pub mod protocol;
 
 use std::{
@@ -231,11 +233,17 @@ pub struct TimerHandle {
 
 impl TimerHandle {
     /// Clear the associated timer request.
-    /// The shell will be notified that the timer has been cleared
-    /// with `TimeRequest::Clear { id }`,
-    /// so it can clean up associated resources.
-    /// The original task will resolve
-    /// with `TimeResponse::Cleared { id }`.
+    ///
+    /// The shell is asked to clear the timer, so it can clean up the resources
+    /// behind it, and the original task resolves with
+    /// [`TimerOutcome::Cleared`] once the shell has answered — a
+    /// `TimeRequest::Clear { id }` answered with `TimeResponse::Cleared { id }`
+    /// for [`Time`], an [`operation::Clear`] answered with the timer's
+    /// [`TimerId`] for [`clock::Time`].
+    ///
+    /// A shell that goes on to answer the original timer request as well does
+    /// no harm: by then the core has stopped listening for it, and the answer
+    /// is ignored.
     pub fn clear(self) {
         let _ = self.abort.send(self.timer_id);
     }

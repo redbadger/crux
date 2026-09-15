@@ -294,7 +294,12 @@ impl From<Result<HttpResponse>> for HttpResult {
 
 impl crux_core::capability::Operation for HttpRequest {
     type Output = HttpResult;
+
+    const KIND: Option<crux_core::OperationKind> = Some(crux_core::OperationKind::Request);
 }
+
+/// An `HttpRequest` is answered exactly once, with an [`HttpResult`].
+impl crux_core::operation::Request for HttpRequest {}
 
 #[async_trait]
 pub(crate) trait EffectSender {

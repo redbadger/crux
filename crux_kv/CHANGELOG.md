@@ -15,6 +15,77 @@ and this project adheres to
   instead; the types it sends over the bridge already derive `Facet`. See
   [Type generation](https://redbadger.github.io/crux/part-4/typegen.html).
 
+### 🚀 Features
+
+- **One type per store operation, in the new `crux_kv::operation` module, and a
+  `store::KeyValue` capability that sends them.** `KeyValueOperation` has one output
+  type — `KeyValueResult` — for all five of its variants, so a `Get` can be answered
+  with a `KeyValueResponse::ListKeys` as far as the type system and the deserializer
+  are concerned, and the capability has to check:
+
+  ```rust
+  // before
+  Command::request_from_shell(KeyValueOperation::Get { key })
+      .map(KeyValueResult::unwrap_get) // panics if the shell answered something else
+  ```
+
+  Each operation is now its own type with exactly one output, so there is nothing to
+  check:
+
+  ```rust
+  // after
+  use crux_kv::{operation, store::KeyValue};
+
+  #[effect]
+  enum Effect {
+      Get(operation::Get),
+      Set(operation::Set),
+      Render(RenderOperation),
+  }
+
+  KeyValue::get("key").then_send(Event::Loaded)
+  ```
+
+  `store::KeyValue` has the same five methods as the root `KeyValue` — `get`, `set`,
+  `delete`, `exists`, `list_keys` — with the same signatures and the same `DataResult`,
+  `StatusResult` and `ListResult` return types. Its bounds are per method, so an app's
+  `Effect` only has to carry the operations it actually uses.
+
+  The new capability keeps the name `KeyValue` and lives in the `store` module, so
+  the two coexist: `crux_kv::KeyValue` is the enum API and `crux_kv::store::KeyValue`
+  is the per-operation one. The next breaking release removes the root type and
+  re-exports `store::KeyValue` in its place, so code written against
+  `crux_kv::store::KeyValue` will not need to change.
+
+  The wire types:
+
+  | Operation | Fields | Output | Kind |
+  | --- | --- | --- | --- |
+  | `Get` | `key: String` | `ValueResult` | `Request` |
+  | `Set` | `key: String, value: Vec<u8>` | `ValueResult` | `Request` |
+  | `Delete` | `key: String` | `ValueResult` | `Request` |
+  | `Exists` | `key: String` | `BoolResult` | `Request` |
+  | `ListKeys` | `prefix: String, cursor: u64` | `KeysResult` | `Request` |
+
+  where the outputs are the usual `Ok`/`Err` pairs, since `Result` does not cross the
+  FFI boundary:
+
+  ```rust
+  pub enum ValueResult { Ok(Value), Err(KeyValueError) }
+  pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
+  pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
+
+  pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
+  ```
+
+  Each converts to and from the `Result` alias an app sees (`ValueResult` ↔
+  `DataResult`, `BoolResult` ↔ `StatusResult`, `KeysResult` ↔ `ListResult`), so a shell
+  that already speaks one API can serve the other.
+
+  Nothing is deprecated in this release: `KeyValue`, `KeyValueOperation`,
+  `KeyValueResult` and `KeyValueResponse` are unchanged, and an app can use both APIs
+  side by side.
+
 ## [0.14.0](https://github.com/redbadger/crux/compare/crux_kv-v0.13.0...crux_kv-v0.14.0) - 2026-08-06
 
 ### ⚙️ Miscellaneous Tasks
