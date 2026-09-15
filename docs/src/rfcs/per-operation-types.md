@@ -1,7 +1,12 @@
 # RFC: Per-operation types with static request kinds
 
 ```admonish
-This RFC is a **draft** for discussion. Nothing in it is implemented yet.
+This RFC is **proposed**. Its compat stage is implemented in a stack of pull
+requests alongside this text, so that reviewers can read real code — see the
+[migration guide](../guide/migrate-per-operation-types.md) — and, if accepted,
+would ship as `crux_core` 0.21, with the breaking stage following in the next
+major release. The text below is kept as it was written, with the sections
+describing the implementation brought up to date.
 ```
 
 This RFC proposes that each operation a capability can ask the shell to perform
@@ -375,7 +380,9 @@ pub enum KeyValue {
 
 This would generate one struct per variant, in a module named after the enum.
 Whether this second form is worth the macro complexity is an open question. The
-first form is the proposal; the second is sugar.
+first form is the proposal; the second is sugar. *It is not implemented: the
+derive as written is struct-only, and one struct per operation reads well
+enough that nobody has asked for the sugar.*
 
 ### The Effect enum
 
@@ -431,50 +438,146 @@ value of the wrong variant that later panics inside a capability.
 
 ### Type generation
 
-Because the kind is static per `EffectFfi` variant, type generation can emit it
-as a property of the generated effect type, with no wire cost:
+*This section describes what the compat stage implements, which is more than
+the RFC originally proposed: the handler API was a "second phase" here and is
+part of the same stack.*
+
+Because the kind is static per `EffectFfi` variant, type generation emits it as
+a property of the generated effect type, with no wire cost. It also emits a
+handler protocol/interface and a dispatcher, so a shell can hand each effect to
+a method whose signature already says how many times it will be resolved and
+with what.
+
+Everything below is emitted next to the generated `Effect`, in Swift, Kotlin,
+TypeScript and C#, by plugins that live in `crux_core`
+(`type_generation::facet::plugins`) rather than in facet-generate. The names
+`OperationKind`, `EffectSink`, `EffectHandler` (`IEffectSink` / `IEffectHandler`
+in C#) and `EffectDispatcher` are reserved: `TypeRegistry::build` reports an
+error if a shared type or an effect variant claims one.
+`CodeGenerator::without_effect_handlers()` turns the handler half off.
+
+Taking an effect with one variant of each kind, plus one legacy operation that
+declares no kind:
+
+Swift:
 
 ```swift
-public enum OperationKind { case notify, request, stream }
+public enum OperationKind: Hashable, Sendable {
+    case notify, request, stream
+}
 
 extension Effect {
-    public var kind: OperationKind {
-        switch self {
-        case .render: .notify
-        case .http, .kvGet, .kvSet, .kvDelete, .kvExists, .kvListKeys: .request
-        case .publish: .notify
-        case .subscribe: .stream
-        }
-    }
+    public var operationKind: OperationKind? { /* .render -> .notify, ... */ }
 }
-```
 
-and equivalently a `val kind` on the Kotlin sealed interface and a `kind()` function
-in TypeScript. The `typegen_extensions` directory, which already ships
-hand-written `Requests` helpers per language, is the natural home for the
-`OperationKind` type; the `kind` switch is generated from the effect registration.
+public struct EffectSink<Item>: Sendable {
+    public func send(_ item: Item)
+}
 
-With the kind and the output type both known per variant, the generator can go
-one step further and emit a handler API:
-
-```swift
-public protocol EffectHandler {
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol EffectHandler: Sendable {
     func render(_ operation: RenderOperation)
     func http(_ operation: HttpRequest) async -> HttpResult
-    func kvGet(_ operation: KvGet) async -> KvGetResult
     func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>)
+    func legacy(_ operation: LegacyOperation, requestId: UInt32,
+                resolve: @escaping @Sendable ([UInt8]) -> Void)
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct EffectDispatcher: Sendable {
+    public init(handler: any EffectHandler,
+                resolve: @escaping @Sendable (UInt32, [UInt8]) -> Void)
+    public func dispatch(_ request: Request)
 }
 ```
 
-A generated dispatcher takes each `Request`, calls the matching method, and
-resolves the id once for a request, never for a notification, and once per
-value the sink receives for a stream. A shell that implements this protocol
-cannot resolve the wrong number of times or with the wrong type, because there
-is no `resolve` call for it to get wrong. Shells that want full control can keep
-matching on `Effect` and calling `resolve` by hand, as today.
+Kotlin:
 
-Generating the handler API is a second phase. Emitting `kind` is enough to make
-the first phase useful.
+```kotlin
+enum class OperationKind { NOTIFY, REQUEST, STREAM }
+
+val Effect.operationKind: OperationKind?
+
+fun interface EffectSink<in T> { fun send(item: T) }
+
+interface EffectHandler {
+    fun render(operation: RenderOperation)
+    suspend fun http(operation: HttpRequest): HttpResult
+    fun subscribe(operation: Subscribe, sink: EffectSink<Message>)
+    fun legacy(operation: LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
+}
+
+class EffectDispatcher(handler: EffectHandler, resolve: (UInt, ByteArray) -> Unit) {
+    suspend fun dispatch(request: Request)
+}
+```
+
+TypeScript — the union's discriminant is already `kind`, so the accessor is a
+free function rather than a property:
+
+```typescript
+export type OperationKind = "notify" | "request" | "stream";
+export function effectOperationKind(effect: Effect): OperationKind | undefined;
+
+export interface EffectSink<T> { send(item: T): void }
+
+export interface EffectHandler {
+    render(operation: RenderOperation): void;
+    http(operation: HttpRequest): Promise<HttpResult>;
+    subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
+    legacy(operation: LegacyOperation, requestId: uint32,
+           resolve: (bytes: Uint8Array) => void): void;
+}
+
+export class EffectDispatcher {
+    constructor(handler: EffectHandler,
+                resolve: (id: uint32, bytes: Uint8Array) => void);
+    public dispatch(request: Request): void;
+}
+```
+
+C#:
+
+```csharp
+public enum OperationKind { Notify, Request, Stream }
+
+// on the generated Effect record
+public OperationKind? OperationKind { get; }
+
+public interface IEffectSink<in T> { void Send(T item); }
+
+public interface IEffectHandler
+{
+    void Render(RenderOperation operation);
+    Task<HttpResult> Http(HttpRequest operation);
+    void Subscribe(Subscribe operation, IEffectSink<Message> sink);
+    void Legacy(LegacyOperation operation, uint requestId, Action<byte[]> resolve);
+}
+
+public sealed class EffectDispatcher
+{
+    public EffectDispatcher(IEffectHandler handler, Action<uint, byte[]> resolve);
+    public void Dispatch(Request request);
+}
+```
+
+Two language details are worth recording. The Swift protocol and dispatcher
+carry `@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)`, because
+`Task {}` needs those versions and facet-generate's own `Package.swift`
+declares no platforms; a package that declares `platforms:` conforms without
+repeating the annotation. In C#, the generated `Effect` record is not
+`partial`, so the kind accessor is emitted inside the record body rather than
+as an extension, and the `OperationKind` enum is namespace-qualified where it is
+used.
+
+The dispatcher resolves each request for the shell: never for a notification,
+once for a request with whatever the handler method returned, and once per item
+a stream's sink receives. Outputs are serialized with the generated bincode
+serializers, so there is no `resolve` call left for a shell to get wrong. An
+operation that declares no kind — everything that has not migrated — keeps the
+shape it always had: its handler method is handed the request id and a
+`resolve` callback taking raw bytes. Shells that prefer to match on `Effect`
+and resolve by hand are unaffected; the emission is purely additive.
 
 ### Effect router and middleware
 
@@ -521,8 +624,11 @@ open questions.
 
 The change lands in two releases so that each is usable on its own.
 
-**Compat release (additive).** Everything a reader needs in order to try the
-design, without breaking anyone:
+**Compat release (additive) — proposed as `crux_core` 0.21, `crux_macros` 0.11,
+`crux_http` 0.21, `crux_kv` 0.15 and `crux_time` 0.19.** Everything a reader
+needs in order to try the design, without breaking anyone. The
+[migration guide](../guide/migrate-per-operation-types.md) is the practical
+version of this list:
 
 - `OperationKind` (from PR #580, minus its id-bit encoding) and the `kind()`
   accessors on handles and resolvers.
@@ -542,9 +648,20 @@ design, without breaking anyone:
   depends on whether `rust-src` is installed. Both warts are accepted as the
   price of not breaking anyone in this release.
 - Per-operation rewrites of `crux_kv`, `crux_time` and the example capabilities,
-  alongside the existing enum APIs, which are deprecated.
+  alongside the existing enum APIs, which are deprecated. `crux_kv::KeyValue`,
+  `KeyValueOperation`, `KeyValueResult` and `KeyValueResponse`, and
+  `crux_time::Time`, `TimeRequest`, `TimeResponse` and `TimerFuture`, all warn
+  and name their replacement. The replacements keep the names and move into a
+  module — `crux_kv::store::KeyValue` and `crux_time::clock::Time` — so that
+  both can live in one crate while apps migrate.
 - Type generation emits the kind for operations that declare one, and the
-  handler API and dispatcher.
+  handler API and dispatcher, in all four languages.
+
+Two of the examples — `notes` and `weather` — move across, core and shells,
+and the other four stay on the enum APIs and bare `impl Operation`, which is
+the evidence that the two coexist. The one thing the compat release does *not*
+carry is the enum-splitting derive (open question 3); one struct per operation
+is fine in practice.
 
 **Breaking release.** Switch to the target shape:
 
@@ -556,6 +673,8 @@ design, without breaking anyone:
   `cargo check`, with a `#[diagnostic::on_unimplemented]` message.
 - Remove the deprecated enum APIs, the legacy `None` handling in the bridge and
   in type generation, and migrate the remaining examples and their shells.
+  Re-export `store::KeyValue` and `clock::Time` at the crate roots, so the
+  original paths name the per-operation types.
 
 For users' own capabilities, the mechanical migration is: one struct per
 variant, `#[operation(..)]` on each, and replace the response enum with the
@@ -599,40 +718,53 @@ wart, so the breaking release moves the kind to an associated type.
 
 ## Open questions
 
-1. **`Output` on notifications.** Is `Output = ()` acceptable, or should the base
-   trait drop `Output` and each marker define its own, with `Request<Op>`
-   becoming generic over the output separately? The second is cleaner to read
-   and harder to keep generic.
-2. **Nested effect enums.** Should the effect macro accept
-   `KeyValue(kv::Effect)` where `kv::Effect` is a capability-provided enum of
-   its operations, and flatten it for the FFI? This keeps app-level enums short
-   at the cost of a second declaration form.
-3. **The enum-splitting derive.** Worth building, or is one struct per operation
-   fine in practice?
-4. **Resolving a notification.** Without the kind in the id, the bridge cannot
-   tell a resolve of a notification from a resolve of an unknown id unless it
-   remembers something per notification. Is reporting both as `NotFound`
-   acceptable, or is a bounded record of recent notification ids worth keeping
-   so the error can say `Never`?
-5. **Stream termination.** With the kind known, a "stream finished" signal from
-   core to shell becomes natural. Should it be designed alongside this, or
-   separately?
-6. **Error conventions.** With one output per operation, should Crux recommend
-   that every request's `Output` be an `Ok | Err` enum, so a shell always has a
-   way to say it could not do what was asked without stalling the core?
+Answered by the compat stage as implemented, in the order they were asked:
+
+1. **`Output` on notifications.** `Output = ()` stays. Keeping one associated
+   type on the base trait is what lets `Request<Op>`, the registries, the
+   effect router and middleware all stay generic over `Operation`, and in
+   practice nobody notices the unit: `#[operation(notify)]` forbids an `output`
+   argument, and the marker `operation::Notify` is bounded on
+   `Operation<Output = ()>`, so a hand-written impl that declares something
+   else fails to compile.
+2. **Nested effect enums.** Not implemented. The two migrated examples list
+   their operations flat — `weather` has eleven variants and `notes` seven —
+   and the flat form reads well and gives shells a single exhaustive match, or
+   a single handler interface. Listing only the operations an app actually uses
+   matters more than shortening the list: `weather` carries `KvGet` and `KvSet`
+   and never has to think about `ListKeys`.
+3. **The enum-splitting derive.** Not implemented, and not missed. One struct
+   per operation is roughly the same number of lines as an enum variant plus
+   its response variant, and it is what the rest of the design reads.
+4. **Resolving a notification.** Both cases report `NotFound`, as 0.20 did. The
+   bridge does not store an entry for a notification, so a shell that resolves
+   one is told the id is unknown. The generated dispatcher makes this hard to
+   do by accident: there is no `resolve` in a notification's handler method.
+5. **Stream termination.** Still separate. The kind reaching the shell makes it
+   easier to design, and nothing in the compat release forecloses it.
+6. **Error conventions.** `crux_kv` and `crux_time`'s new outputs follow the
+   `HttpResult` convention — a concrete `Ok`/`Err` enum, never
+   `std::result::Result`, which type generation cannot emit — and the
+   capabilities chapter recommends it. It is a convention, not a rule the
+   compiler enforces.
 
 Naming is settled: the markers live at `crux_core::operation::{Notify, Request,
 Stream}` and are used through the module path.
 
 ## Next steps
 
-1. Gather community answers to the question PR #580 raised: does anyone send
-   the same operation variant with two different operation kinds? If not, this
-   RFC's central assumption holds.
-2. Prototype the traits, the derive and the tightened `Command` bounds against
-   `crux_kv` and the notes pub/sub example, and measure the line count and
-   readability before and after.
-3. Prototype `kind` emission in type generation for Swift, Kotlin and
-   TypeScript.
-4. Decide the naming and nesting questions with the prototype in hand, then
-   schedule stages 1 and 2 against the release plan.
+Steps 1 to 3 are implemented in the compat stack — the traits, the derive, the
+tightened constructors, the per-operation rewrites of `crux_kv` and `crux_time`,
+and kind and handler emission for all four languages — and two examples moved
+across on both sides of the boundary. What remains is the breaking release:
+
+1. Move the kind to `type Kind` and make the markers blanket impls, so the
+   wrong constructor is an ordinary `cargo check` error rather than an E0080 on
+   build.
+2. Tighten the `Command` and `CommandContext` bounds to the markers, with
+   `#[diagnostic::on_unimplemented]` messages.
+3. Remove the deprecated enum APIs and the legacy `None` handling in the bridge
+   and in type generation, and re-export `store::KeyValue` and `clock::Time` at
+   the crate roots.
+4. Migrate the remaining four examples and their shells, including the
+   FFI-subset-enum question in `counter-routing`.
