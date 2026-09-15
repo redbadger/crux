@@ -73,6 +73,13 @@ resolving cannot resolve the wrong number of times or with the wrong type,
 because there is no `resolve` call left for it to get wrong. Its `resolve`
 argument is the shell's own callback around the core's `resolve` FFI.
 
+The `id` you pass back is the one that arrived, untouched. It is not a bare
+counter, though: it names the effect, says whether the request is resolved once
+or many times, and carries a sequence number, and type generation emits an
+`EffectKind` enum and a `RequestId` decoder for reading it — useful in a log
+line, never needed to resolve. See
+[reading a request id](../part-4/typegen.md#reading-a-request-id).
+
 Three of the shells that follow do exactly that. The Leptos shell doesn't:
 core and shell are both Rust there, so it matches on the `Effect` enum
 directly, which is just as precise and needs no generated code. Matching by

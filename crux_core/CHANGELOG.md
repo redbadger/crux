@@ -195,6 +195,67 @@ and this project adheres to
   Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
   every top-level type and exposes the helpers these plugins need.
 
+- **Request ids are structured, so a bad resolve says what is wrong with it.**
+  An `EffectId` used to be a bare counter. It now packs, from the top, eight
+  bits of effect variant index, one bit that is set for a stream and clear for
+  a request, and twenty-three bits of sequence. Sequences start at one, wrap
+  within their own bits and step over anything still outstanding, so counting
+  can never disturb the effect or the kind. Id `0` is reserved: every
+  notification is issued that one id, and — as before — nothing is stored for
+  it.
+
+  Read the pieces through `EffectId::{effect_index, kind, sequence}`. The
+  layout itself stays an implementation detail; shells should use the generated
+  `RequestId` decoder.
+
+  The bridge checks the structure before it deserializes anything, and
+  `ResolveError` gains three variants to report what it finds:
+
+  ```text
+  Attempted to resolve a request that is not expected to be resolved.  // id 0
+  Request id 0x09000001 names variant 9 of `shared::Effect`, which has only 2 variants.
+  Request id 0x01000001 names `Render` (variant 1), but request 1 was issued for `Http` (variant 0).
+  Request id 0x00800001 is marked as a Stream request, but request 1 was issued as a Request.
+  ```
+
+  Ids are printed in hex so the effect index, kind bit and sequence can be read
+  off them. `WrongEffect` carries both sides as `EffectVariant { index, name }`,
+  and `NoSuchEffect` names the effect type.
+
+  `NotFound` now means only what it says — never issued, or already resolved.
+  Resolving a notification used to report `NotFound` and now reports
+  `ResolveError::Never`. `ResolveError` is also `#[non_exhaustive]`, so later
+  additions are not breaking.
+
+  `EffectFFI` gains a defaulted `variant_index()` method, a `VARIANT_COUNT`
+  constant and a `variant_name(index)` function, all of which `#[effect]`
+  overrides; a hand-written implementation keeps compiling, its ids simply
+  carry variant index zero, and its errors number variants instead of naming
+  them.
+
+- **Type generation emits `EffectKind` and a `RequestId` decoder**, in Swift,
+  Kotlin, TypeScript and C#, from the same effect metadata the core builds ids
+  from — so the two cannot drift apart:
+
+  ```swift
+  public enum EffectKind: UInt8, Hashable, Sendable { case render = 0, http = 1 /* ... */ }
+
+  public struct RequestId: Hashable, Sendable {
+      public init(_ rawValue: UInt32)
+      public var isNotification: Bool { get }
+      public var effectKind: EffectKind? { get }
+      public var operationKind: OperationKind { get }
+      public var sequence: UInt32 { get }
+  }
+  ```
+
+  TypeScript gets `EffectKind` as the union of variant names — the same
+  discriminant the effect union uses — plus `decodeRequestId(rawValue)`. A
+  request is still resolved with the id exactly as it arrived; the decoder is
+  for logging, tracing and assertions. `EffectKind` and `RequestId` join the
+  reserved names, and `without_effect_handlers()` turns them off along with the
+  rest.
+
 ### ⚙️ Miscellaneous Tasks
 
 - **Facet type generation now requires `facet_generate` 0.21.** Only the

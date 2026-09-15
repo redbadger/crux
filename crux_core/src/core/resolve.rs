@@ -83,7 +83,34 @@ impl<Output> RequestHandle<Output> {
     }
 }
 
+/// One variant of an effect enum, as an error can name it.
+///
+/// A request id carries only the variant's index; the name comes from
+/// [`EffectFFI::variant_name`](crate::EffectFFI::variant_name), which the
+/// `#[effect]` macro implements and a hand-written effect may not, hence the
+/// [`Option`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EffectVariant {
+    /// Which variant this is, counting from zero in declaration order.
+    pub index: u8,
+    /// What the variant is called, where the effect implementation knows.
+    pub name: Option<&'static str>,
+}
+
+impl std::fmt::Display for EffectVariant {
+    /// Renders as ``` `KvGet` (variant 1) ``` where the name is known, and
+    /// `variant 1` where it is not.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(name) = self.name {
+            write!(f, "`{name}` (variant {})", self.index)
+        } else {
+            write!(f, "variant {}", self.index)
+        }
+    }
+}
+
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ResolveError {
     #[error("Attempted to resolve a request that is not expected to be resolved.")]
     Never,
@@ -91,4 +118,37 @@ pub enum ResolveError {
     FinishedMany,
     #[error("Request with id {0} not found.")]
     NotFound(u64),
+    /// The id names an effect variant the effect enum does not have, so it
+    /// cannot be one the bridge issued.
+    #[error(
+        "Request id {id:#010x} names variant {index} of `{effect}`, which has only {variants} variants."
+    )]
+    NoSuchEffect {
+        id: u32,
+        index: u8,
+        variants: u16,
+        effect: &'static str,
+    },
+    /// The id's sequence is outstanding, but it was issued for a different
+    /// effect variant.
+    #[error(
+        "Request id {id:#010x} names {actual}, but request {sequence} was issued for {expected}."
+    )]
+    WrongEffect {
+        id: u32,
+        sequence: u32,
+        expected: EffectVariant,
+        actual: EffectVariant,
+    },
+    /// The id's sequence is outstanding, but it was issued as a different
+    /// [`OperationKind`].
+    #[error(
+        "Request id {id:#010x} is marked as a {actual:?} request, but request {sequence} was issued as a {expected:?}."
+    )]
+    WrongKind {
+        id: u32,
+        sequence: u32,
+        expected: OperationKind,
+        actual: OperationKind,
+    },
 }
