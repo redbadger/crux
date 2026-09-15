@@ -6,7 +6,7 @@ use facet::Facet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Command, Request, RequestKind, capability::Operation, command::NotificationBuilder, operation,
+    Command, OperationKind, Request, capability::Operation, command::NotificationBuilder, operation,
 };
 
 /// The single operation `Render` implements.
@@ -16,7 +16,7 @@ pub struct RenderOperation;
 
 impl Operation for RenderOperation {
     type Output = ();
-    const KIND: Option<RequestKind> = Some(RequestKind::Notify);
+    const KIND: Option<OperationKind> = Some(OperationKind::Notify);
 }
 
 impl operation::Notify for RenderOperation {}

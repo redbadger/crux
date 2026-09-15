@@ -1,7 +1,7 @@
 use crate::{
     Request,
     capability::Operation,
-    core::{RequestHandle, RequestKind, ResolveError},
+    core::{OperationKind, RequestHandle, ResolveError},
 };
 
 use super::{BridgeError, FfiFormat};
@@ -26,11 +26,11 @@ pub enum ResolveSerialized<T: FfiFormat> {
 
 impl<T: FfiFormat> ResolveSerialized<T> {
     /// Mirrors [`RequestHandle::kind`], caveat included.
-    pub(crate) const fn kind(&self) -> RequestKind {
+    pub(crate) const fn kind(&self) -> OperationKind {
         match self {
-            Self::Never => RequestKind::Notify,
-            Self::Once(_) => RequestKind::Request,
-            Self::Many(_) => RequestKind::Stream,
+            Self::Never => OperationKind::Notify,
+            Self::Once(_) => OperationKind::Request,
+            Self::Many(_) => OperationKind::Stream,
         }
     }
 
@@ -101,7 +101,7 @@ impl<Out> RequestHandle<Out> {
 
 #[cfg(test)]
 mod tests {
-    use super::{RequestHandle, RequestKind};
+    use super::{OperationKind, RequestHandle};
     use crate::bridge::{BridgeError, JsonFfiFormat};
 
     /// An id is minted from the serializing side, so the two must agree.
@@ -126,14 +126,14 @@ mod tests {
 
     #[test]
     fn kinds_are_distinct() {
-        assert_eq!(RequestHandle::<()>::Never.kind(), RequestKind::Notify);
+        assert_eq!(RequestHandle::<()>::Never.kind(), OperationKind::Notify);
         assert_eq!(
             RequestHandle::<()>::Once(Box::new(|()| {})).kind(),
-            RequestKind::Request
+            OperationKind::Request
         );
         assert_eq!(
             RequestHandle::<()>::Many(Box::new(|()| Ok(()))).kind(),
-            RequestKind::Stream
+            OperationKind::Stream
         );
     }
 }

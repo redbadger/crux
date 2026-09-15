@@ -141,12 +141,12 @@ fn event_can_be_created() {
     assert_eq!(event, Event::Start);
 }
 
-/// Operations which declare a [`RequestKind`] statically, sent through the
+/// Operations which declare an [`OperationKind`] statically, sent through the
 /// constructor that matches. The mismatched combinations are compile errors,
 /// covered by the `trybuild` suite in `crux_core/tests/ui`.
 mod typed_operations {
     use super::super::super::Command;
-    use crate::{Request, RequestKind, capability::Operation, operation};
+    use crate::{OperationKind, Request, capability::Operation, operation};
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
@@ -154,7 +154,7 @@ mod typed_operations {
 
     impl Operation for ANotification {
         type Output = ();
-        const KIND: Option<RequestKind> = Some(RequestKind::Notify);
+        const KIND: Option<OperationKind> = Some(OperationKind::Notify);
     }
 
     impl operation::Notify for ANotification {}
@@ -164,7 +164,7 @@ mod typed_operations {
 
     impl Operation for ARequest {
         type Output = usize;
-        const KIND: Option<RequestKind> = Some(RequestKind::Request);
+        const KIND: Option<OperationKind> = Some(OperationKind::Request);
     }
 
     impl operation::Request for ARequest {}
@@ -174,7 +174,7 @@ mod typed_operations {
 
     impl Operation for AStream {
         type Output = usize;
-        const KIND: Option<RequestKind> = Some(RequestKind::Stream);
+        const KIND: Option<OperationKind> = Some(OperationKind::Stream);
     }
 
     impl operation::Stream for AStream {}

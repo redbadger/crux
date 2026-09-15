@@ -1,12 +1,12 @@
 //! An operation that declares `Notify` cannot be sent with `request_from_shell`.
 
-use crux_core::{Command, Request, RequestKind, capability::Operation, operation};
+use crux_core::{Command, Request, OperationKind, capability::Operation, operation};
 
 struct ANotification;
 
 impl Operation for ANotification {
     type Output = ();
-    const KIND: Option<RequestKind> = Some(RequestKind::Notify);
+    const KIND: Option<OperationKind> = Some(OperationKind::Notify);
 }
 
 impl operation::Notify for ANotification {}

@@ -13,37 +13,37 @@ and this project adheres to
 - **Every request now says how many times it expects to be resolved.** The core
   has always known — `notify_shell` builds a request nothing will answer,
   `request_from_shell` one that takes a single response, `stream_from_shell` one
-  that takes a sequence — but there was no way to ask. The new `RequestKind`
+  that takes a sequence — but there was no way to ask. The new `OperationKind`
   makes it explicit:
 
   ```rust
-  pub enum RequestKind { Notify, Request, Stream }
+  pub enum OperationKind { Notify, Request, Stream }
   ```
 
   and it can be read wherever a request is held:
 
   ```rust
   // the typed lane
-  let kind = handle.kind();                // RequestKind
+  let kind = handle.kind();                // OperationKind
 
   // inside effect middleware
-  let kind = resolver.kind();              // RequestKind
+  let kind = resolver.kind();              // OperationKind
   ```
 
   The middleware one closes a gap: `EffectResolver`'s documentation has always
   said to call `resolve` once for a one-shot effect and repeatedly for a
   streaming one, without offering any way to tell which you were holding.
 
-- **Operations can declare their request kind.** `Operation` gains a `KIND`
+- **Operations can declare their operation kind.** `Operation` gains a `KIND`
   associated constant, and the new `crux_core::operation` module the three
   marker traits that go with it:
 
   ```rust
-  use crux_core::{RequestKind, capability::Operation, operation};
+  use crux_core::{OperationKind, capability::Operation, operation};
 
   impl Operation for Publish {
       type Output = ();
-      const KIND: Option<RequestKind> = Some(RequestKind::Notify);
+      const KIND: Option<OperationKind> = Some(OperationKind::Notify);
   }
 
   impl operation::Notify for Publish {}
@@ -55,7 +55,7 @@ and this project adheres to
 
   ```text
   error[E0080]: evaluation panicked: this operation does not declare
-  RequestKind::Request; send it with notify_shell or stream_from_shell instead
+  OperationKind::Request; send it with notify_shell or stream_from_shell instead
   ```
 
   The check is a constant evaluated after monomorphisation, so it is reported
