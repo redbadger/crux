@@ -92,9 +92,9 @@ that the codegen binary needs:
 
 The macro discovers the operation types carried by each variant (e.g.
 `RenderOperation`) and registers them for type generation
-automatically. It also records, per variant, the request kind the
+automatically. It also records, per variant, the operation kind the
 operation declares and the `Format` of its `Output` — that's the data
-behind the [request kinds and handler API](#request-kinds-and-the-effect-handler-api)
+behind the [operation kinds and handler API](#operation-kinds-and-the-effect-handler-api)
 below.
 
 ### Skipping and opaque types
@@ -225,24 +225,24 @@ For each target language, the codegen produces:
   effects and view models.
 - **Helper extensions** — like `Requests.swift`, which provides
   convenience methods for working with effect requests.
-- **A request-kind accessor and a typed effect handler API** — see the
+- **An operation-kind accessor and a typed effect handler API** — see the
   next section.
 
 For Swift, Kotlin, TypeScript, and C#, this typegen output sits beside the
 BoltFFI-generated binding package for the byte-oriented core API.
 
-## Request kinds and the effect handler API
+## Operation kinds and the effect handler API
 
 A shell holding a `Request { id, effect }` has to know two things that
 are not in the bytes: what type to answer with, and *how many times*.
 Both are static properties of the operation each `Effect` variant
 carries — an operation declares a
-[request kind](../part-2/capabilities.md#one-output-per-operation), notify,
+[operation kind](../part-2/capabilities.md#one-output-per-operation), notify,
 request or stream, and one `Output` — so type generation emits them.
 
 Next to the generated `Effect`, you get:
 
-- a `RequestKind` type and a per-variant accessor, which is `nil` /
+- an `OperationKind` type and a per-variant accessor, which is `nil` /
   `null` / `undefined` for an operation that declares no kind;
 - an `EffectHandler` protocol or interface with one method per variant:
   a notification's method returns nothing, a request's method returns
@@ -263,10 +263,10 @@ kind, plus a `Legacy` operation that declares nothing.
 **Swift**
 
 ```swift
-public enum RequestKind: Hashable, Sendable { case notify, request, stream }
+public enum OperationKind: Hashable, Sendable { case notify, request, stream }
 
 extension Effect {
-    public var requestKind: RequestKind? { /* generated switch */ }
+    public var operationKind: OperationKind? { /* generated switch */ }
 }
 
 public struct EffectSink<Item>: Sendable {
@@ -293,9 +293,9 @@ public struct EffectDispatcher: Sendable {
 **Kotlin**
 
 ```kotlin
-enum class RequestKind { NOTIFY, REQUEST, STREAM }
+enum class OperationKind { NOTIFY, REQUEST, STREAM }
 
-val Effect.requestKind: RequestKind?
+val Effect.operationKind: OperationKind?
 
 fun interface EffectSink<in T> { fun send(item: T) }
 
@@ -318,8 +318,8 @@ for instance — so the rest are not held up behind it.
 **TypeScript**
 
 ```typescript
-export type RequestKind = "notify" | "request" | "stream";
-export function effectRequestKind(effect: Effect): RequestKind | undefined;
+export type OperationKind = "notify" | "request" | "stream";
+export function effectOperationKind(effect: Effect): OperationKind | undefined;
 
 export interface EffectSink<T> { send(item: T): void }
 
@@ -339,16 +339,16 @@ export class EffectDispatcher {
 ```
 
 The generated union already uses `kind` as its discriminant, so the
-accessor is the free function `effectRequestKind(effect)` rather than a
+accessor is the free function `effectOperationKind(effect)` rather than a
 property.
 
 **C#**
 
 ```csharp
-public enum RequestKind { Notify, Request, Stream }
+public enum OperationKind { Notify, Request, Stream }
 
 // emitted inside the generated Effect record, which is not partial
-public RequestKind? RequestKind { get; }
+public OperationKind? OperationKind { get; }
 
 public interface IEffectSink<in T> { void Send(T item); }
 
@@ -383,7 +383,7 @@ public sealed class EffectDispatcher
   a `@MainActor` type conforming to the `Sendable` `EffectHandler`
   needs a `nonisolated` extension — see the
   [iOS chapter](../part-2/shell/ios.md).
-- `RequestKind`, `EffectSink`, `EffectHandler` and `EffectDispatcher`
+- `OperationKind`, `EffectSink`, `EffectHandler` and `EffectDispatcher`
   (and their C# `I`-prefixed forms) are reserved names.
   `TypeRegistry::build` fails if one of your shared types or effect
   variants claims one.

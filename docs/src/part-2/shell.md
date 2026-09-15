@@ -56,8 +56,8 @@ in the bytes: how many times does *this* effect get resolved?
   lives.
 
 Because each operation declares its kind in Rust, [type generation](../part-4/typegen.md)
-can tell the shell. Every generated `Effect` gains a `requestKind` accessor
-(`effectRequestKind(effect)` in TypeScript), and — more usefully — an
+can tell the shell. Every generated `Effect` gains an `operationKind` accessor
+(`effectOperationKind(effect)` in TypeScript), and — more usefully — an
 `EffectHandler` protocol/interface with one method per variant, whose signature
 *is* the answer:
 

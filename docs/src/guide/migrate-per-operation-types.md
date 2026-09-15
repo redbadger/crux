@@ -4,7 +4,7 @@ From `crux_core` 0.21, an operation is a **type**, not a variant: one type per
 operation, each declaring the single output it is answered with and how many
 times the shell resolves it. `crux_kv` 0.15 and `crux_time` 0.19 ship
 per-operation APIs alongside their old enum ones, and type generation hands the
-declared request kinds to shells as a typed handler API.
+declared operation kinds to shells as a typed handler API.
 
 Nothing is removed in this release. The enum APIs still work, they are
 `#[deprecated]` with a replacement named in the warning, and you can migrate one
@@ -39,7 +39,7 @@ Otherwise, in this order:
 
 ## Declaring an operation
 
-There are three forms, one per request kind. Use `#[derive(Operation)]`, which
+There are three forms, one per operation kind. Use `#[derive(Operation)]`, which
 writes the `Operation` implementation, its `Output`, the kind and the matching
 marker trait so the three cannot disagree:
 
@@ -76,7 +76,7 @@ pass through. `output` accepts an unquoted generic type, so
 
 ```text
 error[E0080]: evaluation panicked: this operation does not declare
-RequestKind::Request; send it with notify_shell or stream_from_shell instead
+OperationKind::Request; send it with notify_shell or stream_from_shell instead
 ```
 
 ```admonish note title="Where that error appears"
@@ -97,7 +97,7 @@ If you'd rather not use the derive, declare the kind and the marker together:
 ```rust,ignore
 impl Operation for Get {
     type Output = ValueResult;
-    const KIND: Option<RequestKind> = Some(RequestKind::Request);
+    const KIND: Option<OperationKind> = Some(OperationKind::Request);
 }
 
 impl crux_core::operation::Request for Get {}
@@ -357,10 +357,10 @@ variant name.
 ## Regenerating shells and adopting the handler API
 
 Run your `typegen` recipe. Alongside the generated `Effect`, you now get a
-`RequestKind` accessor, an `EffectHandler` protocol/interface with one method per
+`OperationKind` accessor, an `EffectHandler` protocol/interface with one method per
 variant, and an `EffectDispatcher` that resolves each request for you — never for
 a notification, once for a request, once per sink item for a stream. See
-[Type generation](../part-4/typegen.md#request-kinds-and-the-effect-handler-api)
+[Type generation](../part-4/typegen.md#operation-kinds-and-the-effect-handler-api)
 for the exact shapes in each language.
 
 Adopting it is optional. **Matching on `Effect` and calling `resolve` by hand

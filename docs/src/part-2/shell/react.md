@@ -98,8 +98,8 @@ The other capabilities — `kv`, `location`, `secret`, `time` — follow the sam
 ```admonish note title="Two TypeScript details"
 `crux_kv`'s `Set` operation generates a type called `Set`, which shadows the
 built-in — `index.ts` imports it as `Set as SetValue`. And the generated union
-already uses `kind` as its discriminant, so the request-kind accessor is a free
-function, `effectRequestKind(effect)`, rather than a property.
+already uses `kind` as its discriminant, so the operation-kind accessor is a free
+function, `effectOperationKind(effect)`, rather than a property.
 ```
 
 The notes example goes one step further and uses a **stream**. Its `Subscribe`

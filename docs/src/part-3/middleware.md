@@ -56,7 +56,7 @@ The `RandomNumberRequest` carries the range (min, max), and `RandomNumber` carri
 The `Operation` impl connects them so that Crux knows a `RandomNumberRequest` produces a
 `RandomNumber`.
 
-This one is written by hand and declares no request kind, which is still fine — an
+This one is written by hand and declares no operation kind, which is still fine — an
 operation with no declared kind takes whichever `Command` constructor the call site
 uses. If you'd rather pin it down, `#[derive(Operation)]` with
 `#[operation(request, output = RandomNumber)]` does the same job and additionally
@@ -102,7 +102,7 @@ A few things to note:
   request, once per item for a stream, never for a notification. `EffectResolver`
   is generic over the output rather than the operation, so if you need to know
   which you're holding, ask it: `resolver.kind()` returns the
-  `RequestKind`.
+  `OperationKind`.
 - The processing happens on a background thread. This is important — the middleware
   must not block the caller of `process_event`. On native targets this typically means
   spawning a thread; on WASM it means an async task (e.g. `spawn_local`).
@@ -177,7 +177,7 @@ and the middleware is a separate concern that's composed at the FFI boundary.
 To add a middleware to your app:
 
 1. **Define an `Operation`** — a request type and output type, just like a capability protocol,
-   ideally with `#[derive(Operation)]` so its request kind is declared too.
+   ideally with `#[derive(Operation)]` so its kind is declared too.
 2. **Implement `EffectMiddleware`** — handle the operation and resolve the result, typically
    on a background thread.
 3. **Wire it up** — use `.handle_effects_using()` in your FFI setup to intercept the effects,

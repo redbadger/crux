@@ -22,7 +22,7 @@ That's how a capability gets used. But where do these APIs come from? Let's buil
 
 ## One output per operation
 
-Before we write any code, one rule shapes everything that follows: **an operation type has exactly one output type, and exactly one request kind.**
+Before we write any code, one rule shapes everything that follows: **an operation type has exactly one output type, and exactly one operation kind.**
 
 The `Operation` trait has always said the first half:
 
@@ -36,7 +36,7 @@ The trouble is that it used to be conventional to implement it on a *coarse enum
 
 So: one type per operation. Each carries its own output, and the wrong answer stops being expressible.
 
-The second half — the request kind — is the same idea applied to *how many times* the shell answers:
+The second half — the operation kind — is the same idea applied to *how many times* the shell answers:
 
 - **notify** — the shell is told, and never answers. `Output` is `()`.
 - **request** — the shell answers exactly once, with the operation's `Output`.
@@ -160,7 +160,7 @@ The builders differ in the same way:
 
 ```text
 error[E0080]: evaluation panicked: this operation does not declare
-RequestKind::Request; send it with notify_shell or stream_from_shell instead
+OperationKind::Request; send it with notify_shell or stream_from_shell instead
 ```
 
 ```admonish note title="Where that error appears"
@@ -177,7 +177,7 @@ The kinds pay off hardest on the shell side. Because each variant's kind is stat
 
 Putting it together, a capability gives you two things:
 
-- **A protocol** — one operation type per operation, each declaring its single output and its request kind, which together define the wire format between core and shell.
+- **A protocol** — one operation type per operation, each declaring its single output and its kind, which together define the wire format between core and shell.
 - **A developer API** — small command-builder functions that speak in convenient Rust types rather than the raw protocol.
 
 In [ports-and-adapters](https://en.wikipedia.org/wiki/Hexagonal_architecture) vocabulary, capabilities are the ports; the shell-side code that actually carries out each operation is the adapter. The core expresses *what* it wants done; the shell decides *how* to do it. Keeping that separation tight is what makes the core portable.
