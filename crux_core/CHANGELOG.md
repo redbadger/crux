@@ -175,7 +175,7 @@ and this project adheres to
   property, `fun interface EffectSink<in T>`, an `EffectHandler` interface
   whose request methods are `suspend`, and
   `class EffectDispatcher(handler, resolve)` with `suspend fun dispatch`. C#
-  gets `enum OperationKind`, a `OperationKind?` property on the `Effect` record,
+  gets `enum OperationKind`, an `OperationKind?` property on the `Effect` record,
   `IEffectSink<in T>`, `IEffectHandler` with `Task<T>` request methods, and
   `sealed class EffectDispatcher`.
 

@@ -1,10 +1,10 @@
 ---
 source: crux_core/src/type_generation/facet/plugins/tests.rs
-expression: "request_kind::<Kotlin>()"
+expression: "operation_kind::<Kotlin>()"
 ---
 
 /// How many times the shell is expected to resolve a request.
-enum class RequestKind {
+enum class OperationKind {
     /// Never — the core is not waiting for an answer.
     NOTIFY,
     /// Exactly once.
@@ -15,10 +15,10 @@ enum class RequestKind {
 
 /// How many times the shell resolves a request carrying this effect,
 /// or `null` when the operation leaves that to the call site.
-val Effect.requestKind: RequestKind?
+val Effect.operationKind: OperationKind?
     get() = when (this) {
-        is Effect.Render -> RequestKind.NOTIFY
-        is Effect.Http -> RequestKind.REQUEST
-        is Effect.Subscribe -> RequestKind.STREAM
+        is Effect.Render -> OperationKind.NOTIFY
+        is Effect.Http -> OperationKind.REQUEST
+        is Effect.Subscribe -> OperationKind.STREAM
         is Effect.Legacy -> null
     }

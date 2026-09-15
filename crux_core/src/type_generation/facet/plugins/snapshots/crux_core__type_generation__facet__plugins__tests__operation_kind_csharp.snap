@@ -1,17 +1,17 @@
 ---
 source: crux_core/src/type_generation/facet/plugins/tests.rs
-expression: "request_kind::<CSharp>()"
+expression: "operation_kind::<CSharp>()"
 ---
 
 /// <summary>
 /// How many times the shell resolves a request carrying this effect,
 /// or <c>null</c> when the operation leaves that to the call site.
 /// </summary>
-public Shared.RequestKind? RequestKind => this switch
+public Shared.OperationKind? OperationKind => this switch
 {
-    Shared.Effect.Render => Shared.RequestKind.Notify,
-    Shared.Effect.Http => Shared.RequestKind.Request,
-    Shared.Effect.Subscribe => Shared.RequestKind.Stream,
+    Shared.Effect.Render => Shared.OperationKind.Notify,
+    Shared.Effect.Http => Shared.OperationKind.Request,
+    Shared.Effect.Subscribe => Shared.OperationKind.Stream,
     Shared.Effect.Legacy => null,
     _ => null,
 };
@@ -19,7 +19,7 @@ public Shared.RequestKind? RequestKind => this switch
 /// <summary>
 /// How many times the shell is expected to resolve a request.
 /// </summary>
-public enum RequestKind
+public enum OperationKind
 {
     /// <summary>Never — the core is not waiting.</summary>
     Notify,

@@ -1,4 +1,4 @@
-//! Kotlin: a `RequestKind` enum class and a `requestKind` extension property
+//! Kotlin: an `OperationKind` enum class and an `operationKind` extension property
 //! on the effect.
 
 use std::io;
@@ -22,7 +22,7 @@ fn emit_kind(w: &mut dyn IndentWrite) -> io::Result<()> {
         w,
         "/// How many times the shell is expected to resolve a request."
     )?;
-    writeln!(w, "enum class RequestKind {{")?;
+    writeln!(w, "enum class OperationKind {{")?;
     w.indent();
     writeln!(w, "/// Never — the core is not waiting for an answer.")?;
     writeln!(w, "NOTIFY,")?;
@@ -48,16 +48,16 @@ fn emit_accessor(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
         w,
         "/// or `null` when the operation leaves that to the call site."
     )?;
-    writeln!(w, "val {effect}.requestKind: RequestKind?")?;
+    writeln!(w, "val {effect}.operationKind: OperationKind?")?;
     w.indent();
     writeln!(w, "get() = when (this) {{")?;
     w.indent();
     for variant in &m.variants {
         let class = variant_class_name(variant.name);
         let kind = match variant.kind {
-            Some(crate::RequestKind::Notify) => "RequestKind.NOTIFY",
-            Some(crate::RequestKind::Request) => "RequestKind.REQUEST",
-            Some(crate::RequestKind::Stream) => "RequestKind.STREAM",
+            Some(crate::OperationKind::Notify) => "OperationKind.NOTIFY",
+            Some(crate::OperationKind::Request) => "OperationKind.REQUEST",
+            Some(crate::OperationKind::Stream) => "OperationKind.STREAM",
             None => "null",
         };
         writeln!(w, "is {effect}.{class} -> {kind}")?;

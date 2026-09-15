@@ -1,7 +1,7 @@
 //! The two `EmitterPlugin`s Crux adds on top of facet-generate's
 //! [`BincodePlugin`](facet_generate::generation::bincode::BincodePlugin).
 //!
-//! * [`RequestKindPlugin`] emits the `RequestKind` type and the accessor that
+//! * [`OperationKindPlugin`] emits the `OperationKind` type and the accessor that
 //!   answers "how many times does the shell resolve this effect?".
 //! * [`EffectHandlerPlugin`] emits `EffectSink`, `EffectHandler` and
 //!   `EffectDispatcher` — a shell writes the handler, the dispatcher does the
@@ -10,12 +10,12 @@
 //! Both act only when the container being emitted is a registered effect enum
 //! (see [`Matched`]), and both write everything through the `after_type` hook,
 //! so the generated declarations land beside the effect they belong to. The
-//! one exception is C#, where the request-kind accessor is a property *inside*
+//! one exception is C#, where the operation-kind accessor is a property *inside*
 //! the `Effect` record and so goes through `type_body` — the emitter does not
 //! declare the record `partial`, so it cannot be re-opened from outside.
 
 mod handler;
-mod request_kind;
+mod operation_kind;
 #[cfg(test)]
 mod tests;
 
@@ -26,10 +26,10 @@ use facet_generate::{
 use heck::ToLowerCamelCase;
 
 pub(super) use handler::EffectHandlerPlugin;
-pub(super) use request_kind::RequestKindPlugin;
+pub(super) use operation_kind::OperationKindPlugin;
 
 use super::{EffectMeta, EffectVariantMeta};
-use crate::RequestKind;
+use crate::OperationKind;
 
 /// One variant of an effect enum, as the plugins see it: the registry's view
 /// of the variant (its emitted name and payload type) paired with what the
@@ -40,7 +40,7 @@ pub struct Variant<'a> {
     pub name: &'a str,
     /// The kind the operation declares, or `None` for a legacy operation whose
     /// kind is decided by the call site.
-    pub kind: Option<RequestKind>,
+    pub kind: Option<OperationKind>,
     /// The type the request resolves with. `None` for a notification.
     pub output: Option<&'a Format>,
     /// The operation type the variant carries.
@@ -52,7 +52,7 @@ pub struct Variant<'a> {
 pub struct Matched<'a> {
     /// The effect enum's emitted name.
     pub name: &'a str,
-    /// Whether this is the first registered effect. The `RequestKind` type and
+    /// Whether this is the first registered effect. The `OperationKind` type and
     /// the handler API use fixed names, so they are emitted only once per
     /// generated package.
     pub primary: bool,
@@ -105,7 +105,7 @@ pub fn matched<'a>(effects: &'a [EffectMeta], ctx: &EmitContext<'a>) -> Option<M
 /// output the generated API names.
 const fn output_of(meta: &EffectVariantMeta) -> Option<&Format> {
     match (&meta.output, meta.kind) {
-        (Some(format), Some(RequestKind::Request | RequestKind::Stream)) => Some(format),
+        (Some(format), Some(OperationKind::Request | OperationKind::Stream)) => Some(format),
         _ => None,
     }
 }
@@ -120,12 +120,12 @@ impl Variant<'_> {
     /// Whether the shell resolves this request exactly once with a typed
     /// output.
     pub const fn is_request(&self) -> bool {
-        matches!(self.kind, Some(RequestKind::Request))
+        matches!(self.kind, Some(OperationKind::Request))
     }
 
     /// Whether the shell resolves this request many times with a typed output.
     pub const fn is_stream(&self) -> bool {
-        matches!(self.kind, Some(RequestKind::Stream))
+        matches!(self.kind, Some(OperationKind::Stream))
     }
 
     /// Whether the operation leaves the kind to the call site, so the shell

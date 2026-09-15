@@ -1,4 +1,4 @@
-//! TypeScript: a `RequestKind` string union and a free function that reads it
+//! TypeScript: an `OperationKind` string union and a free function that reads it
 //! off an effect.
 //!
 //! The union that facet-generate emits for an enum already discriminates on
@@ -30,7 +30,7 @@ fn emit_kind(w: &mut dyn IndentWrite) -> io::Result<()> {
     )?;
     writeln!(
         w,
-        r#"export type RequestKind = "notify" | "request" | "stream";"#
+        r#"export type OperationKind = "notify" | "request" | "stream";"#
     )?;
 
     Ok(())
@@ -38,7 +38,7 @@ fn emit_kind(w: &mut dyn IndentWrite) -> io::Result<()> {
 
 fn emit_accessor(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     let effect = m.name;
-    let function = format!("{}RequestKind", lower_camel(effect));
+    let function = format!("{}OperationKind", lower_camel(effect));
 
     writeln!(w)?;
     writeln!(
@@ -51,7 +51,7 @@ fn emit_accessor(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     )?;
     writeln!(
         w,
-        "export function {function}(effect: {effect}): RequestKind | undefined {{"
+        "export function {function}(effect: {effect}): OperationKind | undefined {{"
     )?;
     w.indent();
     writeln!(w, "switch (effect.kind) {{")?;
@@ -59,9 +59,9 @@ fn emit_accessor(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     for variant in &m.variants {
         let name = variant.name;
         let kind = match variant.kind {
-            Some(crate::RequestKind::Notify) => r#""notify""#,
-            Some(crate::RequestKind::Request) => r#""request""#,
-            Some(crate::RequestKind::Stream) => r#""stream""#,
+            Some(crate::OperationKind::Notify) => r#""notify""#,
+            Some(crate::OperationKind::Request) => r#""request""#,
+            Some(crate::OperationKind::Stream) => r#""stream""#,
             None => "undefined",
         };
         writeln!(w, r#"case "{name}": return {kind};"#)?;

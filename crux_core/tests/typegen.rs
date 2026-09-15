@@ -193,7 +193,7 @@ mod facet_test {
             .expect("should build the registry")
     }
 
-    /// Every generated module should carry the request kinds and the handler
+    /// Every generated module should carry the operation kinds and the handler
     /// API, whatever the language spells them.
     fn assert_generated(source: &str, expected: &[&str]) {
         for fragment in expected {
@@ -220,8 +220,8 @@ mod facet_test {
         assert_generated(
             &source,
             &[
-                "public enum RequestKind: Hashable, Sendable {",
-                "public var requestKind: RequestKind? {",
+                "public enum OperationKind: Hashable, Sendable {",
+                "public var operationKind: OperationKind? {",
                 "public struct EffectSink<Item>: Sendable {",
                 "public protocol EffectHandler: Sendable {",
                 "func render(_ operation: RenderOperation)",
@@ -247,8 +247,8 @@ mod facet_test {
         assert_generated(
             &source,
             &[
-                "enum class RequestKind {",
-                "val Effect.requestKind: RequestKind?",
+                "enum class OperationKind {",
+                "val Effect.operationKind: OperationKind?",
                 "fun interface EffectSink<in T> {",
                 "interface EffectHandler {",
                 "suspend fun get(operation: com.example.shared.Get): GetResult",
@@ -273,8 +273,8 @@ mod facet_test {
         assert_generated(
             &source,
             &[
-                "public enum RequestKind",
-                "public Example.Shared.RequestKind? RequestKind => this switch",
+                "public enum OperationKind",
+                "public Example.Shared.OperationKind? OperationKind => this switch",
                 "public interface IEffectSink<in T>",
                 "public interface IEffectHandler",
                 "Task<GetResult> Get(Example.Shared.Get operation);",
@@ -302,8 +302,8 @@ mod facet_test {
             &source,
             &[
                 r#"import { BincodeSerializer } from "./bincode";"#,
-                r#"export type RequestKind = "notify" | "request" | "stream";"#,
-                "export function effectRequestKind(effect: Effect): RequestKind | undefined {",
+                r#"export type OperationKind = "notify" | "request" | "stream";"#,
+                "export function effectOperationKind(effect: Effect): OperationKind | undefined {",
                 "export interface EffectSink<T> {",
                 "export interface EffectHandler {",
                 "get(operation: Get): Promise<GetResult>;",
@@ -334,7 +334,7 @@ mod facet_test {
         )
         .expect("should write a Swift module");
 
-        assert!(!source.contains("RequestKind"));
+        assert!(!source.contains("OperationKind"));
         assert!(!source.contains("EffectHandler"));
     }
 }
@@ -362,7 +362,7 @@ mod facet_clash_test {
 
     #[allow(clippy::unsafe_derive_deserialize)]
     #[derive(Facet)]
-    pub struct RequestKind {
+    pub struct OperationKind {
         pub whoops: String,
     }
 
@@ -390,11 +390,11 @@ mod facet_clash_test {
     }
 
     #[test]
-    fn a_type_cannot_be_called_request_kind() {
+    fn a_type_cannot_be_called_operation_kind() {
         let error = TypeRegistry::new()
             .register_app::<App>()
             .expect("should register the app")
-            .register_type::<RequestKind>()
+            .register_type::<OperationKind>()
             .expect("should register the clashing type")
             .build()
             .err()
@@ -404,7 +404,7 @@ mod facet_clash_test {
             panic!("expected a generation error");
         };
         assert!(
-            message.contains("`RequestKind` is generated for the effect handler API"),
+            message.contains("`OperationKind` is generated for the effect handler API"),
             "unexpected message: {message}"
         );
     }

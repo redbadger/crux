@@ -106,7 +106,7 @@ use serde_json::json;
 use thiserror::Error;
 
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
-use self::plugins::{EffectHandlerPlugin, RequestKindPlugin};
+use self::plugins::{EffectHandlerPlugin, OperationKindPlugin};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -144,7 +144,7 @@ impl Export for () {
 /// every generated package. A registered type using one of these would be
 /// silently shadowed, so [`TypeRegistry::build`] rejects it instead.
 const RESERVED_TYPE_NAMES: &[&str] = &[
-    "RequestKind",
+    "OperationKind",
     "EffectHandler",
     "IEffectHandler",
     "EffectSink",
@@ -239,7 +239,7 @@ impl TypeRegistry {
     }
 
     /// Starts recording what type generation needs to know about the effect
-    /// enum `E`: the [`RequestKind`](crate::RequestKind) each variant declares
+    /// enum `E`: the [`OperationKind`](crate::OperationKind) each variant declares
     /// and the type its request resolves with.
     ///
     /// Called by `#[effect(facet_typegen)]`; you should not need to call it
@@ -314,9 +314,9 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
 
     for effect in effects {
         for variant in &effect.variants {
-            if variant.ident == "RequestKind" {
+            if variant.ident == "OperationKind" {
                 return Err(TypeGenError::Generation(format!(
-                    "effect `{}` has a variant called `RequestKind`, which collides with the generated request kind accessor. Rename the variant.",
+                    "effect `{}` has a variant called `OperationKind`, which collides with the generated operation kind accessor. Rename the variant.",
                     effect.effect.name
                 )));
             }
@@ -359,7 +359,7 @@ impl CodeGenerator {
             swift::Installer::new(&config.package_name, &path).plugin(BincodePlugin);
         if self.handlers {
             installer = installer
-                .plugin(RequestKindPlugin::new(&self.effects))
+                .plugin(OperationKindPlugin::new(&self.effects))
                 .plugin(EffectHandlerPlugin::new(&self.effects));
         }
         installer
@@ -398,7 +398,7 @@ impl CodeGenerator {
             kotlin::Installer::new(&config.package_name, &config.out_dir).plugin(BincodePlugin);
         if self.handlers {
             installer = installer
-                .plugin(RequestKindPlugin::new(&self.effects))
+                .plugin(OperationKindPlugin::new(&self.effects))
                 .plugin(EffectHandlerPlugin::new(&self.effects));
         }
         installer
@@ -437,7 +437,7 @@ impl CodeGenerator {
             csharp::Installer::new(&config.package_name, &config.out_dir).plugin(BincodePlugin);
         if self.handlers {
             installer = installer
-                .plugin(RequestKindPlugin::new(&self.effects))
+                .plugin(OperationKindPlugin::new(&self.effects))
                 .plugin(EffectHandlerPlugin::new(&self.effects));
         }
         installer
@@ -471,7 +471,7 @@ impl CodeGenerator {
             typescript::Installer::new(&config.package_name, output_dir).plugin(BincodePlugin);
         if self.handlers {
             installer = installer
-                .plugin(RequestKindPlugin::new(&self.effects))
+                .plugin(OperationKindPlugin::new(&self.effects))
                 .plugin(EffectHandlerPlugin::new(&self.effects));
         }
         installer
@@ -529,7 +529,7 @@ impl CodeGenerator {
         &self.effects
     }
 
-    /// Turns off emission of the `RequestKind` type and the effect handler API.
+    /// Turns off emission of the `OperationKind` type and the effect handler API.
     ///
     /// Only the types you registered are generated, exactly as before Crux
     /// 0.21. Use this if your shell dispatches effects by hand and the extra

@@ -1,4 +1,4 @@
-//! C#: a `RequestKind` enum and a `RequestKind` property on the effect record.
+//! C#: an `OperationKind` enum and an `OperationKind` property on the effect record.
 //!
 //! The property goes inside the record: the emitter writes
 //! `public abstract record Effect`, not `partial record`, so it cannot be
@@ -22,7 +22,7 @@ pub(super) fn emit_enum(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<
         "/// How many times the shell is expected to resolve a request."
     )?;
     writeln!(w, "/// </summary>")?;
-    writeln!(w, "public enum RequestKind")?;
+    writeln!(w, "public enum OperationKind")?;
     writeln!(w, "{{")?;
     w.indent();
     writeln!(w, "/// <summary>Never — the core is not waiting.</summary>")?;
@@ -59,15 +59,15 @@ pub(super) fn emit_accessor(
         "/// or <c>null</c> when the operation leaves that to the call site."
     )?;
     writeln!(w, "/// </summary>")?;
-    writeln!(w, "public {ns}.RequestKind? RequestKind => this switch")?;
+    writeln!(w, "public {ns}.OperationKind? OperationKind => this switch")?;
     writeln!(w, "{{")?;
     w.indent();
     for variant in &m.variants {
         let name = variant.name;
         let kind = match variant.kind {
-            Some(crate::RequestKind::Notify) => format!("{ns}.RequestKind.Notify"),
-            Some(crate::RequestKind::Request) => format!("{ns}.RequestKind.Request"),
-            Some(crate::RequestKind::Stream) => format!("{ns}.RequestKind.Stream"),
+            Some(crate::OperationKind::Notify) => format!("{ns}.OperationKind.Notify"),
+            Some(crate::OperationKind::Request) => format!("{ns}.OperationKind.Request"),
+            Some(crate::OperationKind::Stream) => format!("{ns}.OperationKind.Stream"),
             None => "null".to_string(),
         };
         writeln!(w, "{ns}.{effect}.{name} => {kind},")?;

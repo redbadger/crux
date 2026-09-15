@@ -1,4 +1,4 @@
-//! Emits the `RequestKind` type and the accessor that reports which kind an
+//! Emits the `OperationKind` type and the accessor that reports which kind an
 //! effect is.
 //!
 //! The kind is static per operation, so it costs nothing on the wire: the
@@ -24,13 +24,13 @@ use facet_generate::generation::{
 use super::{Matched, matched};
 use crate::type_generation::facet::EffectMeta;
 
-/// Emits `RequestKind` and the per-effect accessor.
+/// Emits `OperationKind` and the per-effect accessor.
 #[derive(Debug, Clone)]
-pub struct RequestKindPlugin {
+pub struct OperationKindPlugin {
     effects: Arc<[EffectMeta]>,
 }
 
-impl RequestKindPlugin {
+impl OperationKindPlugin {
     pub fn new(effects: &Arc<[EffectMeta]>) -> Self {
         Self {
             effects: Arc::clone(effects),
@@ -42,27 +42,27 @@ impl RequestKindPlugin {
     }
 }
 
-impl EmitterPlugin<Swift> for RequestKindPlugin {
+impl EmitterPlugin<Swift> for OperationKindPlugin {
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
         self.matched(ctx).map_or(Ok(()), |m| swift::emit(w, &m))
     }
 }
 
-impl EmitterPlugin<Kotlin> for RequestKindPlugin {
+impl EmitterPlugin<Kotlin> for OperationKindPlugin {
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
         self.matched(ctx)
             .map_or(Ok(()), |m| kotlin::emit(w, &m, ctx))
     }
 }
 
-impl EmitterPlugin<TypeScript> for RequestKindPlugin {
+impl EmitterPlugin<TypeScript> for OperationKindPlugin {
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
         self.matched(ctx)
             .map_or(Ok(()), |m| typescript::emit(w, &m, ctx))
     }
 }
 
-impl EmitterPlugin<CSharp> for RequestKindPlugin {
+impl EmitterPlugin<CSharp> for OperationKindPlugin {
     /// C# gets the accessor as a property on the `Effect` record itself. The
     /// emitter does not declare that record `partial`, so a property cannot be
     /// added from outside the way Swift and Kotlin extensions do.

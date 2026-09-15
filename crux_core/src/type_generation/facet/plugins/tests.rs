@@ -22,9 +22,9 @@ use facet_generate::{
     },
 };
 
-use super::{EffectHandlerPlugin, RequestKindPlugin};
+use super::{EffectHandlerPlugin, OperationKindPlugin};
 use crate::{
-    RequestKind,
+    OperationKind,
     capability::Operation,
     type_generation::facet::{EffectMeta, TypeRegistry},
 };
@@ -38,7 +38,7 @@ struct RenderOperation;
 
 impl Operation for RenderOperation {
     type Output = ();
-    const KIND: Option<RequestKind> = Some(RequestKind::Notify);
+    const KIND: Option<OperationKind> = Some(OperationKind::Notify);
 }
 
 #[derive(Facet)]
@@ -48,7 +48,7 @@ struct HttpRequest {
 
 impl Operation for HttpRequest {
     type Output = HttpResult;
-    const KIND: Option<RequestKind> = Some(RequestKind::Request);
+    const KIND: Option<OperationKind> = Some(OperationKind::Request);
 }
 
 #[derive(Facet)]
@@ -63,7 +63,7 @@ struct Subscribe;
 
 impl Operation for Subscribe {
     type Output = Message;
-    const KIND: Option<RequestKind> = Some(RequestKind::Stream);
+    const KIND: Option<OperationKind> = Some(OperationKind::Stream);
 }
 
 #[derive(Facet)]
@@ -145,12 +145,12 @@ where
     String::from_utf8(buffer).expect("the plugin should write valid UTF-8")
 }
 
-fn request_kind<L>() -> String
+fn operation_kind<L>() -> String
 where
-    RequestKindPlugin: EmitterPlugin<L>,
+    OperationKindPlugin: EmitterPlugin<L>,
 {
     emit(|w, ctx, effects| {
-        let plugin = RequestKindPlugin::new(&effects.to_vec().into());
+        let plugin = OperationKindPlugin::new(&effects.to_vec().into());
         EmitterPlugin::<L>::type_body(&plugin, w, ctx)?;
         EmitterPlugin::<L>::after_type(&plugin, w, ctx)
     })
@@ -167,27 +167,27 @@ where
 }
 
 // ---------------------------------------------------------------------------
-// Request kind
+// Operation kind
 // ---------------------------------------------------------------------------
 
 #[test]
-fn request_kind_swift() {
-    insta::assert_snapshot!(request_kind::<Swift>());
+fn operation_kind_swift() {
+    insta::assert_snapshot!(operation_kind::<Swift>());
 }
 
 #[test]
-fn request_kind_kotlin() {
-    insta::assert_snapshot!(request_kind::<Kotlin>());
+fn operation_kind_kotlin() {
+    insta::assert_snapshot!(operation_kind::<Kotlin>());
 }
 
 #[test]
-fn request_kind_typescript() {
-    insta::assert_snapshot!(request_kind::<TypeScript>());
+fn operation_kind_typescript() {
+    insta::assert_snapshot!(operation_kind::<TypeScript>());
 }
 
 #[test]
-fn request_kind_csharp() {
-    insta::assert_snapshot!(request_kind::<CSharp>());
+fn operation_kind_csharp() {
+    insta::assert_snapshot!(operation_kind::<CSharp>());
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +235,7 @@ fn nothing_is_emitted_for_a_type_that_is_not_the_effect() {
     let mut buffer = Vec::new();
     {
         let mut w = IndentedWriter::new(&mut buffer, IndentConfig::Space(4));
-        EmitterPlugin::<Swift>::after_type(&RequestKindPlugin::new(&effects), &mut w, &ctx)
+        EmitterPlugin::<Swift>::after_type(&OperationKindPlugin::new(&effects), &mut w, &ctx)
             .expect("should write nothing");
         EmitterPlugin::<Swift>::after_type(&EffectHandlerPlugin::new(&effects), &mut w, &ctx)
             .expect("should write nothing");

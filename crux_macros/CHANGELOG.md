@@ -71,7 +71,7 @@ and this project adheres to
       .finish();
   ```
 
-  Type generation uses this to emit a operation-kind accessor and a typed effect
+  Type generation uses this to emit an operation-kind accessor and a typed effect
   handler API for each shell language — see the `crux_core` changelog.
 
 ## [0.10.1](https://github.com/redbadger/crux/compare/crux_macros-v0.10.0...crux_macros-v0.10.1) - 2026-08-06
