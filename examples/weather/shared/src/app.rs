@@ -52,14 +52,11 @@ mod tests {
 
         assert!(matches!(model, Model::Initializing(_)));
 
-        cmd.expect_secret_with(|op| {
-            assert_eq!(
-                op,
-                &secret::SecretRequest::Fetch(secret::API_KEY_NAME.to_string())
-            );
+        cmd.expect_fetch_secret_with(|op| {
+            assert_eq!(op, &secret::Fetch(secret::API_KEY_NAME.to_string()));
         })
-        .expect_key_value_with(|op| {
-            assert!(matches!(op, crux_kv::KeyValueOperation::Get { .. }));
+        .expect_kv_get_with(|op| {
+            assert_eq!(op.key, "favorites");
         });
     }
 

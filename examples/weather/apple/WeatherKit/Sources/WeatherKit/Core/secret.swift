@@ -2,55 +2,59 @@ import App
 import Foundation
 import Security
 
-private let logger = Log.secret
+private nonisolated let logger = Log.secret
 
 #if os(iOS)
-    private let keychainService = "com.crux.examples.weather.ios"
+    private nonisolated let keychainService = "com.crux.examples.weather.ios"
 #else
-    private let keychainService = "com.crux.examples.weather"
+    private nonisolated let keychainService = "com.crux.examples.weather"
 #endif
 
-extension Core {
-    func resolveSecret(request: SecretRequest, requestId: UInt32) {
-        let response: SecretResponse
-        switch request {
-        case let .fetch(key):
-            logger.debug("fetching secret: \(key)")
-            if let value = keychainGet(key: key) {
-                logger.debug("secret fetched: \(key)")
-                response = .fetched(key, value)
-            } else {
-                logger.debug("secret not found: \(key)")
-                response = .missing(key)
-            }
-        case let .store(key, value):
-            logger.debug("storing secret: \(key)")
-            do {
-                try keychainSave(key: key, value: value)
-                logger.debug("secret stored: \(key)")
-                response = .stored(key)
-            } catch {
-                logger.warning("store failed for \(key): \(error)")
-                response = .storeError(error.localizedDescription)
-            }
-        case let .delete(key):
-            logger.debug("deleting secret: \(key)")
-            do {
-                try keychainDelete(key: key)
-                logger.debug("secret deleted: \(key)")
-                response = .deleted(key)
-            } catch {
-                logger.warning("delete failed for \(key): \(error)")
-                response = .deleteError(error.localizedDescription)
-            }
+nonisolated extension Core {
+    /// Each secret operation has its own output, naming only the outcomes it
+    /// can actually have — there is no wide response enum to narrow, and no
+    /// `unreachable` case to write.
+    public func fetchSecret(_ operation: Fetch) async -> SecretFetchResponse {
+        let key = operation.value
+        logger.debug("fetching secret: \(key)")
+        guard let value = keychainGet(key: key) else {
+            logger.debug("secret not found: \(key)")
+            return .missing(key)
         }
-        resolve(requestId: requestId, serialize: { try response.bincodeSerialize() })
+        logger.debug("secret fetched: \(key)")
+        return .fetched(value)
+    }
+
+    public func storeSecret(_ operation: Store) async -> SecretStoreResponse {
+        let (key, value) = (operation.field0, operation.field1)
+        logger.debug("storing secret: \(key)")
+        do {
+            try keychainSave(key: key, value: value)
+            logger.debug("secret stored: \(key)")
+            return .stored(key)
+        } catch {
+            logger.warning("store failed for \(key): \(error)")
+            return .storeError(error.localizedDescription)
+        }
+    }
+
+    public func deleteSecret(_ operation: Delete) async -> SecretDeleteResponse {
+        let key = operation.value
+        logger.debug("deleting secret: \(key)")
+        do {
+            try keychainDelete(key: key)
+            logger.debug("secret deleted: \(key)")
+            return .deleted(key)
+        } catch {
+            logger.warning("delete failed for \(key): \(error)")
+            return .deleteError(error.localizedDescription)
+        }
     }
 }
 
 // MARK: - Keychain Operations
 
-private func keychainSave(key: String, value: String) throws {
+nonisolated private func keychainSave(key: String, value: String) throws {
     guard let data = value.data(using: .utf8) else {
         throw KeychainError.encodingFailed
     }
@@ -92,7 +96,7 @@ private func keychainSave(key: String, value: String) throws {
     }
 }
 
-private func keychainGet(key: String) -> String? {
+nonisolated private func keychainGet(key: String) -> String? {
     var query: [CFString: Any] = [
         kSecClass: kSecClassGenericPassword,
         kSecAttrAccount: key,
@@ -120,7 +124,7 @@ private func keychainGet(key: String) -> String? {
     return value
 }
 
-private func keychainDelete(key: String) throws {
+nonisolated private func keychainDelete(key: String) throws {
     var query: [CFString: Any] = [
         kSecClass: kSecClassGenericPassword,
         kSecAttrAccount: key,
@@ -136,7 +140,7 @@ private func keychainDelete(key: String) throws {
     }
 }
 
-private enum KeychainError: Error, LocalizedError {
+nonisolated private enum KeychainError: Error, LocalizedError {
     case encodingFailed
     case unhandledError(status: OSStatus)
 

@@ -1,68 +1,57 @@
 import App
 import Foundation
 
-private let logger = Log.time
+private nonisolated let logger = Log.time
 
-extension Core {
-    func resolveTime(request: TimeRequest, requestId: UInt32) {
-        switch request {
-        case .now:
-            let now = Date()
-            logger.debug("sending current time")
-            let response = TimeResponse.now(
-                instant: Instant(
-                    seconds: UInt64(now.timeIntervalSince1970),
-                    nanos: UInt32(
-                        (now.timeIntervalSince1970.truncatingRemainder(dividingBy: 1))
-                            * 1_000_000_000)
-                )
-            )
-            resolve(requestId: requestId, serialize: { try response.bincodeSerialize() })
+nonisolated extension Core {
+    /// `TimeNotifyAfter` is a request: it is answered exactly once, with the
+    /// id of the timer that fired.
+    ///
+    /// If `timeClear` arrives first the sleeping task is cancelled, and this
+    /// method returns early and answers anyway. That is harmless: the core
+    /// stopped listening for this request the moment it cleared the timer, and
+    /// ignores the answer.
+    public func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId {
+        let id = operation.id.value
+        let nanoseconds = UInt64(operation.duration.nanos)
+        logger.debug("scheduling timer (\(id)) for \(nanoseconds)ns")
 
-        case let .notifyAt(id: timerId, instant: instant):
-            let targetDate = Date(timeIntervalSince1970: Double(instant.seconds))
-            let interval = max(targetDate.timeIntervalSinceNow, 0)
-            scheduleTimer(id: timerId, interval: interval, requestId: requestId) { id in
-                TimeResponse.instantArrived(id: TimerId(value: id))
-            }
+        let sleeping = Task<Void, Never> { try? await Task.sleep(nanoseconds: nanoseconds) }
+        await store(timer: sleeping, id: id)
+        await sleeping.value
+        await forget(id: id)
 
-        case let .notifyAfter(id: timerId, duration: duration):
-            let interval = TimeInterval(duration.nanos) / 1_000_000_000
-            scheduleTimer(id: timerId, interval: interval, requestId: requestId) { id in
-                TimeResponse.durationElapsed(id: TimerId(value: id))
-            }
-
-        case let .clear(id: timerId):
-            let id = timerId.value
-            logger.debug("clearing timer (\(id))")
-            activeTimers[id]?.invalidate()
-            activeTimers.removeValue(forKey: id)
-            let response = TimeResponse.cleared(id: timerId)
-            resolve(requestId: requestId, serialize: { try response.bincodeSerialize() })
-        }
+        logger.debug("timer (\(id)) finished")
+        return operation.id
     }
 
-    private func scheduleTimer(
-        id timerId: TimerId,
-        interval: TimeInterval,
-        requestId: UInt32,
-        response: @Sendable @escaping (UInt64) -> TimeResponse
-    ) {
-        let id = timerId.value
-        logger.debug("scheduling timer (\(id)) for \(interval)s")
-        let timer = Timer.scheduledTimer(
-            withTimeInterval: interval, repeats: false
-        ) { _ in
-            Task { @MainActor in
-                logger.debug("timer (\(id)) elapsed")
-                let resp = response(id)
-                self.resolve(
-                    requestId: requestId,
-                    serialize: { try resp.bincodeSerialize() }
-                )
-                self.activeTimers.removeValue(forKey: id)
-            }
-        }
+    /// `TimeClear` is a request: cancel the timer, release what it was holding,
+    /// and answer with the id it named.
+    public func timeClear(_ operation: Clear) async -> TimerId {
+        let id = operation.id.value
+        logger.debug("clearing timer (\(id))")
+        await cancelTimer(id: id)
+
+        return operation.id
+    }
+
+    /// The timer table lives on the main actor, so the handler methods hop to
+    /// reach it.
+    @MainActor
+    private func store(timer: Task<Void, Never>, id: UInt64) {
         activeTimers[id] = timer
+    }
+
+    @MainActor
+    private func forget(id: UInt64) {
+        activeTimers.removeValue(forKey: id)
+    }
+
+    /// Cancelling the sleeping task wakes `timeNotifyAfter`, which then returns
+    /// and answers its own request. Nothing acts on that answer — the core is
+    /// no longer listening for it.
+    @MainActor
+    private func cancelTimer(id: UInt64) {
+        activeTimers.removeValue(forKey: id)?.cancel()
     }
 }
