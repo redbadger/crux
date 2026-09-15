@@ -254,7 +254,7 @@ Each level unwraps and dispatches to the appropriate sub-model.
 ## Effects
 
 The `Effect` enum defines eleven effect types — one per operation the app
-uses. Each operation type declares its own output and its own request kind,
+uses. Each operation type declares its own output and its own kind,
 so nothing on either side of the boundary has to guess:
 
 ```rust
