@@ -1,4 +1,4 @@
-//! Swift: a `RequestKind` enum and a computed `requestKind` property in an
+//! Swift: an `OperationKind` enum and a computed `operationKind` property in an
 //! extension on the effect.
 
 use std::io;
@@ -20,7 +20,7 @@ fn emit_kind(w: &mut dyn IndentWrite) -> io::Result<()> {
         w,
         "/// How many times the shell is expected to resolve a request."
     )?;
-    writeln!(w, "public enum RequestKind: Hashable, Sendable {{")?;
+    writeln!(w, "public enum OperationKind: Hashable, Sendable {{")?;
     w.indent();
     writeln!(w, "/// Never — the core is not waiting for an answer.")?;
     writeln!(w, "case notify")?;
@@ -46,15 +46,15 @@ fn emit_accessor(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
         w,
         "/// or `nil` when the operation leaves that to the call site."
     )?;
-    writeln!(w, "public var requestKind: RequestKind? {{")?;
+    writeln!(w, "public var operationKind: OperationKind? {{")?;
     w.indent();
     writeln!(w, "switch self {{")?;
     for variant in &m.variants {
         let case = case_name(variant.name);
         let kind = match variant.kind {
-            Some(crate::RequestKind::Notify) => ".notify",
-            Some(crate::RequestKind::Request) => ".request",
-            Some(crate::RequestKind::Stream) => ".stream",
+            Some(crate::OperationKind::Notify) => ".notify",
+            Some(crate::OperationKind::Request) => ".request",
+            Some(crate::OperationKind::Stream) => ".stream",
             None => "nil",
         };
         writeln!(w, "case .{case}: return {kind}")?;

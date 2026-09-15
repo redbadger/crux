@@ -56,7 +56,7 @@ impl EffectHandlerPlugin {
             effect.variants.iter().any(|variant| {
                 matches!(
                     variant.kind,
-                    Some(crate::RequestKind::Request | crate::RequestKind::Stream)
+                    Some(crate::OperationKind::Request | crate::OperationKind::Stream)
                 )
             })
         })
@@ -69,7 +69,7 @@ impl EffectHandlerPlugin {
             effect
                 .variants
                 .iter()
-                .any(|variant| variant.kind == Some(crate::RequestKind::Request))
+                .any(|variant| variant.kind == Some(crate::OperationKind::Request))
         })
     }
 }

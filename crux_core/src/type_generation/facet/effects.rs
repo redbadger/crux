@@ -4,14 +4,14 @@
 //! [`TypeRegistry::register_effect`](super::TypeRegistry::register_effect) and
 //! the [`EffectBuilder`] it returns. The registry itself only knows the shape
 //! of the types, so the two facts the plugins need — the
-//! [`RequestKind`](crate::RequestKind) each variant declares and the type its
+//! [`OperationKind`](crate::OperationKind) each variant declares and the type its
 //! request resolves with — have to come from the operation types themselves.
 
 use facet::Facet;
 use facet_generate::reflection::format::{Format, QualifiedTypeName};
 
 use super::{TypeGenError, TypeRegistry};
-use crate::{RequestKind, capability::Operation};
+use crate::{OperationKind, capability::Operation};
 
 /// Everything type generation knows about one effect enum, beyond its shape in
 /// the registry.
@@ -32,9 +32,9 @@ pub struct EffectVariantMeta {
     pub index: usize,
     /// The variant's Rust identifier.
     pub ident: String,
-    /// The [`RequestKind`] the operation declares, or `None` for an operation
+    /// The [`OperationKind`] the operation declares, or `None` for an operation
     /// that leaves the choice to the call site.
-    pub kind: Option<RequestKind>,
+    pub kind: Option<OperationKind>,
     /// The format of `Operation::Output`, or `None` for a notification (which
     /// is never resolved, so its `()` output is not worth naming).
     pub output: Option<Format>,
@@ -75,7 +75,7 @@ impl<'a> EffectBuilder<'a> {
 
         // A notification is never resolved, so its output type is irrelevant —
         // and it is `()`, which no shell wants to see in a signature.
-        let output = if kind == Some(RequestKind::Notify) {
+        let output = if kind == Some(OperationKind::Notify) {
             None
         } else {
             Some(
