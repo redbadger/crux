@@ -46,6 +46,7 @@ rand = "0.10"
 serde = { workspace = true, features = ["derive"] }
 static_assertions = "1.1"
 tempfile = "3.27.0"
+trybuild = "1"
 url = "2.5.8"
 uuid = { version = "1.24.0", features = ["serde", "v4"] }
 
