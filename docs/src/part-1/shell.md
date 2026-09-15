@@ -68,7 +68,7 @@ codegen = [
 ]
 
 [dependencies]
-boltffi = "=0.29.3"
+boltffi = "=0.30.1"
 facet = "=0.46.5"
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }

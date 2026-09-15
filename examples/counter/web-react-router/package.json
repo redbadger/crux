@@ -8,7 +8,7 @@
     "start": "react-router-serve build/server/index.js"
   },
   "dependencies": {
-    "@boltffi/runtime": "0.29.3",
+    "@boltffi/runtime": "0.30.1",
     "@react-router/node": "^7.18.2",
     "@react-router/serve": "^7.18.2",
     "react": "^19.2.8",

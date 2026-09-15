@@ -64,7 +64,7 @@ from our code.
 To do this, we'll use BoltFFI, which you can install like this:
 
 ```sh
-cargo install boltffi_cli --version '=0.29.3' --locked
+cargo install boltffi_cli --version '=0.30.1' --locked
 brew install binaryen # provides wasm-opt
 ```
 

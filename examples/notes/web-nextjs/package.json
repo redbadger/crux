@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@boltffi/runtime": "0.29.3",
+    "@boltffi/runtime": "0.30.1",
     "daisyui": "5.5.19",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.2.4",

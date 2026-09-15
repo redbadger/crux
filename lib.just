@@ -1,7 +1,7 @@
 # Shared justfile helpers for Crux.
 # Import with: mod lib '../lib.just' (adjust path as needed)
 
-boltffi_version := "0.29.3"
+boltffi_version := "0.30.1"
 
 # Minimum Binaryen release providing --enable-bulk-memory-opt, which BoltFFI passes
 binaryen_version := "123"
