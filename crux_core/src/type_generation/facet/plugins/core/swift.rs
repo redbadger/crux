@@ -12,7 +12,7 @@ use facet_generate::{
 };
 
 use super::{
-    super::{Matched, SWIFT_AVAILABILITY as AVAILABILITY},
+    super::{Matched, SWIFT_OBSERVABLE_AVAILABILITY as AVAILABILITY},
     AppMeta,
 };
 
@@ -78,26 +78,34 @@ fn emit_core(
         "/// `{}` is handled here, so an `EffectHandler` need not implement it.",
         render.name
     )?;
+    writeln!(w, "///")?;
+    writeln!(
+        w,
+        "/// `view` is observable, so a SwiftUI view that reads it is invalidated"
+    )?;
+    writeln!(w, "/// whenever the core renders.")?;
     writeln!(w, "{AVAILABILITY}")?;
+    writeln!(w, "@Observable")?;
     writeln!(w, "@MainActor")?;
     writeln!(w, "public final class Core {{")?;
     w.indent();
     writeln!(w, "/// The view model as of the last `{}`.", render.name)?;
     writeln!(w, "public private(set) var view: {view_model}")?;
-    writeln!(w, "private let bridge: any CoreBridge")?;
-    writeln!(w, "private let onView: @MainActor ({view_model}) -> Void")?;
+    writeln!(w, "@ObservationIgnored private let bridge: any CoreBridge")?;
     // The resolve callback captures `self`, which Swift will not allow until
     // every stored property is initialized — hence the implicitly unwrapped
     // optional.
-    writeln!(w, "private var dispatcher: EffectDispatcher!")?;
+    writeln!(
+        w,
+        "@ObservationIgnored private var dispatcher: EffectDispatcher!"
+    )?;
     writeln!(w)?;
     writeln!(
         w,
-        "public init(bridge: any CoreBridge, handler: any EffectHandler, onView: @escaping @MainActor ({view_model}) -> Void) {{"
+        "public init(bridge: any CoreBridge, handler: any EffectHandler) {{"
     )?;
     w.indent();
     writeln!(w, "self.bridge = bridge")?;
-    writeln!(w, "self.onView = onView")?;
     writeln!(
         w,
         "self.view = try! {view_model}.bincodeDeserialize(input: bridge.view())"
@@ -169,7 +177,6 @@ fn emit_methods(
         w,
         "view = try! {view_model}.bincodeDeserialize(input: bridge.view())"
     )?;
-    writeln!(w, "onView(view)")?;
     writeln!(w, "continue")?;
     w.unindent();
     writeln!(w, "}}")?;
