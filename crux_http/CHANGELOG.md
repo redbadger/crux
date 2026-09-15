@@ -31,7 +31,7 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **`HttpRequest` declares `RequestKind::Request`.** It now sets
+- **`HttpRequest` declares `OperationKind::Request`.** It now sets
   `Operation::KIND` and implements `crux_core::operation::Request`, which says what has
   always been true: an HTTP request is answered exactly once, with an `HttpResult`.
   Sending one with `notify_shell` or `stream_from_shell` is a compile error from this

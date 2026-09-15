@@ -2,7 +2,7 @@
 //!
 //! Each type in this module is a single operation the shell can perform, with
 //! exactly one output type and a statically declared
-//! [`RequestKind`](crux_core::RequestKind). That is the difference from
+//! [`OperationKind`](crux_core::OperationKind). That is the difference from
 //! [`TimeRequest`](crate::TimeRequest), where every variant shares one
 //! [`TimeResponse`](crate::TimeResponse) and the capability has to check at
 //! runtime that the shell answered the question it was asked.
