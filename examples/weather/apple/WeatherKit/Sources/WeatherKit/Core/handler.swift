@@ -4,7 +4,7 @@ import App
 /// generated `EffectHandler`, one method per operation the app declares, each
 /// answering with the single output that operation expects. Nothing here
 /// calls `resolve` — the generated `EffectDispatcher` does that, exactly as
-/// often as the operation's request kind says.
+/// often as the operation's operation kind says.
 ///
 /// The methods live beside the platform code they use: `http.swift`,
 /// `keyValue.swift`, `location.swift`, `secret.swift` and `time.swift`.
