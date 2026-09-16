@@ -30,9 +30,10 @@ Otherwise, in this order:
    operations you use in your `Effect` enum.
 3. **Your `Effect` enum** — one variant per operation, which renames the
    generated `is_` / `into_` / `expect_*` test helpers.
-4. **Regenerate your shells** and let the generated `Core` drive the loop, or
-   adopt just the generated `EffectHandler`, or widen the match you already
-   have.
+4. **Regenerate your shells** and adopt the handler API — implement
+   `EffectHandler` and let the generated `Core` drive the loop. If that can't
+   work for you, implementing just the handler, or widening the match you
+   already have, are both still supported.
 5. **Check the [traps](#traps-worth-knowing-about)** — Swift actor isolation,
    `Set` name collisions, and what a late timer does.
 
@@ -364,8 +365,12 @@ a notification, once for a request, once per sink item for a stream. See
 [Type generation](../part-4/typegen.md#operation-kinds-and-the-effect-handler-api)
 for the exact shapes in each language.
 
-Adopting it is optional. **Matching on `Effect` and calling `resolve` by hand
-keeps working**, and is the right choice for Rust shells — see
+**Adopt it.** One method per operation, with the operation and output types
+already correct and the resolving done for you, is what makes the per-operation
+design worth having on the shell side, and it is what both examples and the rest
+of this guide do. If it can't work for your shell — you own the concurrency, or
+your deployment target is below the `Core`'s — matching on `Effect` and calling
+`resolve` by hand keeps working, and is the right choice for Rust shells; see
 [keeping a flat match](#keeping-a-flat-match).
 
 ### Letting the generated Core own the loop
@@ -596,8 +601,10 @@ fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
 }
 ```
 
-The same applies to a non-Rust shell that wants full control over its own
-concurrency: the emission is additive, and ignoring it costs nothing.
+A non-Rust shell that wants full control over its own concurrency can do the
+same — the emission is additive, and ignoring it costs nothing — but that is the
+fallback, not the recommendation: everything the handler API gives you, a
+hand-written match has to keep right by hand, every time an operation is added.
 
 ---
 
