@@ -80,7 +80,33 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! ## Bridging to the FFI bindings
+//!
+//! The generated `Core` talks to the core through a `CoreBridge`, which a
+//! shell normally implements over its FFI bindings. Name the `BoltFFI` bindings
+//! with [`CodeGenerator::boltffi`] and that adapter is generated too, as an
+//! `FfiBridge`, along with a one-argument `Core` constructor that uses it:
+//!
+//! ```rust
+//! # use crux_core::type_generation::facet::{BoltFfi, PackageLocation, TypeRegistry};
+//! let typegen = TypeRegistry::new().build()?.boltffi(
+//!     BoltFfi::new()
+//!         .swift("Shared")
+//!         .kotlin()
+//!         .typescript("shared", PackageLocation::Path("../pkg".into()))
+//!         .csharp(),
+//! );
+//! # let _ = typegen;
+//! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+//! ```
+//!
+//! The shell then writes `Core(handler: MyHandler())` in Swift,
+//! `Core(handler, scope)` in Kotlin, `await Core.create(handler, onView)` in
+//! TypeScript and `new Core(handler)` in C#. A language you do not name is
+//! generated exactly as before.
 mod app;
+mod boltffi;
 mod effects;
 mod plugins;
 
@@ -107,6 +133,7 @@ use serde_json::json;
 use thiserror::Error;
 
 pub use self::app::AppMeta;
+pub use self::boltffi::{BoltFfi, CSharpFfi, KotlinFfi, SwiftFfi, TypeScriptFfi};
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
 use self::plugins::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin};
 use crate::App;
@@ -157,6 +184,10 @@ const RESERVED_TYPE_NAMES: &[&str] = &[
     "Core",
     "CoreBridge",
     "ICoreBridge",
+    // Only emitted when `boltffi` is configured, but reserved unconditionally:
+    // whether a shared type clashes should not depend on how the shell is
+    // wired up.
+    "FfiBridge",
 ];
 
 pub struct TypeRegistry {
@@ -171,6 +202,7 @@ pub struct CodeGenerator {
     app: Option<AppMeta>,
     handlers: bool,
     core: bool,
+    boltffi: Option<BoltFfi>,
 }
 
 /// The `TypeRegistry` struct stores the registered types so that they can be generated for foreign languages
@@ -339,6 +371,7 @@ impl TypeRegistry {
             app: self.app.clone(),
             handlers: true,
             core: true,
+            boltffi: None,
         })
     }
 }
@@ -396,6 +429,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn swift(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Swift types");
+        self.check_boltffi()?;
         let path = config.out_dir.join(&config.package_name);
 
         fs::create_dir_all(&path)?;
@@ -413,6 +447,7 @@ impl CodeGenerator {
         }
         installer
             .external_packages(&config.external_packages)
+            .platforms(&config.platforms)
             .generate(&self.registry)?;
 
         Ok(())
@@ -436,6 +471,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn kotlin(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Kotlin types");
+        self.check_boltffi()?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -479,6 +515,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn csharp(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating C# types");
+        self.check_boltffi()?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -521,6 +558,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn typescript(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating TypeScript types");
+        self.check_boltffi()?;
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
@@ -623,6 +661,63 @@ impl CodeGenerator {
         self
     }
 
+    /// Names the `BoltFFI` bindings the generated `Core` should bridge to, so
+    /// that an `FfiBridge` and a one-argument `Core` constructor are generated
+    /// as well.
+    ///
+    /// Opt in per language — a language [`BoltFfi`] does not name is generated
+    /// exactly as it is without this call.
+    ///
+    /// ```rust
+    /// # use crux_core::type_generation::facet::{BoltFfi, TypeRegistry};
+    /// let typegen = TypeRegistry::new()
+    ///     .build()?
+    ///     .boltffi(BoltFfi::new().swift("Shared").kotlin());
+    /// # let _ = typegen;
+    /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+    /// ```
+    #[must_use]
+    pub fn boltffi(mut self, boltffi: BoltFfi) -> Self {
+        self.boltffi = Some(boltffi);
+        self
+    }
+
+    /// The bridge is generated as part of `Core`, so asking for one without a
+    /// `Core` to put it in is a mistake worth saying out loud — silently
+    /// generating nothing would leave the shell with a missing constructor and
+    /// no clue why.
+    fn check_boltffi(&self) -> Result<(), TypeGenError> {
+        if self.boltffi.is_none() {
+            return Ok(());
+        }
+
+        let reason = if !self.handlers {
+            Some("`without_effect_handlers()` turns the generated `Core` off")
+        } else if !self.core {
+            Some("`without_core()` turns the generated `Core` off")
+        } else if self.app.is_none() {
+            Some("no app was registered, so there is no `Core` to construct")
+        } else if !self.emits_core() {
+            Some("the first registered effect has no render variant, so no `Core` is generated")
+        } else {
+            None
+        };
+
+        reason.map_or(Ok(()), |reason| {
+            Err(TypeGenError::Generation(format!(
+                "`boltffi` generates the bridge the generated `Core` is built with, but {reason}"
+            )))
+        })
+    }
+
+    /// Whether the first registered effect has a render variant, which is what
+    /// the `Core` plugin needs to emit anything.
+    fn emits_core(&self) -> bool {
+        self.effects
+            .first()
+            .is_some_and(|effect| effect.variants.iter().any(|variant| variant.render))
+    }
+
     /// The plugin that emits `CoreBridge` and `Core`, if it should be emitted
     /// at all.
     ///
@@ -634,6 +729,6 @@ impl CodeGenerator {
         }
         self.app
             .clone()
-            .map(|app| CorePlugin::new(&self.effects, app))
+            .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
     }
 }

@@ -1,0 +1,20 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: file.contents
+---
+/// The generated `CoreBridge`, implemented over BoltFFI's `CoreFfi`: bytes
+/// in, bytes out, nothing else. It is the only generated type that knows
+/// the Rust core exists — pass a fake to `Core(bridge, handler, scope)`
+/// instead for tests.
+///
+/// `CoreFfi` holds a handle to the Rust side, so closing an `FfiBridge`
+/// releases the core it wraps.
+class FfiBridge(private val ffi: CoreFfi = CoreFfi()) : CoreBridge, AutoCloseable {
+    override fun update(event: ByteArray): ByteArray = ffi.update(event)
+
+    override fun resolve(id: UInt, output: ByteArray): ByteArray = ffi.resolve(id, output)
+
+    override fun view(): ByteArray = ffi.view()
+
+    override fun close() = ffi.close()
+}

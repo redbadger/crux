@@ -11,16 +11,64 @@ use facet_generate::{
 };
 use heck::ToUpperCamelCase;
 
-use super::{super::Matched, AppMeta};
+use super::{super::Matched, AppMeta, BoltFfi};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
     app: &AppMeta,
     config: &CodeGeneratorConfig,
+    ffi: Option<&BoltFfi>,
 ) -> io::Result<()> {
     emit_bridge(w)?;
-    emit_core(w, m, app, config)
+    // TypeScript generates one file per module, so the bridge goes in here
+    // rather than into a companion file.
+    let bridged = ffi.filter(|ffi| ffi.typescript_ffi().is_some());
+    if let Some(ffi) = bridged {
+        emit_ffi_bridge(w, ffi.class_name())?;
+    }
+    emit_core(w, m, app, config, bridged)
+}
+
+/// `FfiBridge`, the `CoreBridge` over `BoltFFI`'s wasm bindings.
+fn emit_ffi_bridge(w: &mut dyn IndentWrite, class: &str) -> io::Result<()> {
+    writeln!(w)?;
+    writeln!(
+        w,
+        "/// The generated `CoreBridge`, implemented over BoltFFI's `{class}`: bytes"
+    )?;
+    writeln!(
+        w,
+        "/// in, bytes out, nothing else. `{class}.new()` reaches into the wasm"
+    )?;
+    writeln!(
+        w,
+        "/// module, so build one only once the package has loaded — `Core.create`"
+    )?;
+    writeln!(w, "/// waits for that.")?;
+    writeln!(w, "export class FfiBridge implements CoreBridge {{")?;
+    w.indent();
+    writeln!(w, "private readonly ffi = boltffi.{class}.new();")?;
+    writeln!(w)?;
+    writeln!(w, "update(event: Uint8Array): Uint8Array {{")?;
+    w.indent();
+    writeln!(w, "return this.ffi.update(event);")?;
+    w.unindent();
+    writeln!(w, "}}")?;
+    writeln!(w)?;
+    writeln!(w, "resolve(id: uint32, output: Uint8Array): Uint8Array {{")?;
+    w.indent();
+    writeln!(w, "return this.ffi.resolve(id, output);")?;
+    w.unindent();
+    writeln!(w, "}}")?;
+    writeln!(w)?;
+    writeln!(w, "view(): Uint8Array {{")?;
+    w.indent();
+    writeln!(w, "return this.ffi.view();")?;
+    w.unindent();
+    writeln!(w, "}}")?;
+    w.unindent();
+    writeln!(w, "}}")
 }
 
 fn emit_bridge(w: &mut dyn IndentWrite) -> io::Result<()> {
@@ -46,6 +94,7 @@ fn emit_core(
     m: &Matched<'_>,
     app: &AppMeta,
     config: &CodeGeneratorConfig,
+    ffi: Option<&BoltFfi>,
 ) -> io::Result<()> {
     let render = m
         .render_variant()
@@ -94,11 +143,43 @@ fn emit_core(
     w.unindent();
     writeln!(w, "}}")?;
 
+    if let Some(ffi) = ffi {
+        emit_create(w, ffi.class_name(), &view_model)?;
+    }
+
     emit_methods(w, app, config, &event, &view_model, render.name)?;
     w.unindent();
     writeln!(w, "}}")?;
 
     Ok(())
+}
+
+/// The one-argument constructor, as a static factory: the wasm module has to
+/// finish loading before `CoreFfi.new()` can be called, and a constructor
+/// cannot await.
+fn emit_create(w: &mut dyn IndentWrite, class: &str, view_model: &str) -> io::Result<()> {
+    writeln!(w)?;
+    writeln!(
+        w,
+        "/// Build a `Core` over the `{class}` the Rust crate exports, once the"
+    )?;
+    writeln!(w, "/// wasm module has loaded.")?;
+    writeln!(w, "public static async create(")?;
+    w.indent();
+    writeln!(w, "handler: EffectHandler,")?;
+    writeln!(w, "onView: (view: {view_model}) => void,")?;
+    w.unindent();
+    writeln!(w, "): Promise<Core> {{")?;
+    w.indent();
+    // `initialized` is not in the package's type declarations, so it has to be
+    // reached for explicitly.
+    writeln!(
+        w,
+        "await (boltffi as unknown as {{ initialized: Promise<void> }}).initialized;"
+    )?;
+    writeln!(w, "return new Core(new FfiBridge(), handler, onView);")?;
+    w.unindent();
+    writeln!(w, "}}")
 }
 
 fn emit_methods(

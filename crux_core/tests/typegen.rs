@@ -147,7 +147,7 @@ mod facet_test {
 
     use crux_core::{
         OperationKind,
-        type_generation::facet::{Config, Format, TypeRegistry},
+        type_generation::facet::{BoltFfi, Config, Format, PackageLocation, TypeRegistry},
     };
 
     use super::facet_shared::{App, OtherApp};
@@ -502,6 +502,245 @@ mod facet_test {
         .expect("should write a Swift module")
     }
 
+    // -----------------------------------------------------------------------
+    // Bridging to the BoltFFI bindings
+    // -----------------------------------------------------------------------
+
+    /// Swift is the language that needs the most from the installer: a
+    /// companion file, a package dependency, a target dependency and a
+    /// deployment-target floor.
+    #[test]
+    fn generates_swift_ffi_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .boltffi(BoltFfi::new().swift("Shared"))
+            .swift(
+                &Config::builder("SharedTypes", dir.path())
+                    .platform(".iOS(.v16)")
+                    .platform(".macOS(.v13)")
+                    .build(),
+            )
+            .expect("swift type generation should succeed");
+
+        let manifest = fs::read_to_string(dir.path().join("SharedTypes/Package.swift"))
+            .expect("should write a package manifest");
+        assert_generated(
+            &manifest,
+            &[
+                "platforms: [.iOS(.v16), .macOS(.v13)],",
+                r#".package(path: "../Shared")"#,
+                r#".product(name: "Shared", package: "Shared")"#,
+            ],
+        );
+
+        let bridge = fs::read_to_string(
+            dir.path()
+                .join("SharedTypes/Sources/SharedTypes/FfiBridge.swift"),
+        )
+        .expect("should write the bridge beside the module");
+        assert_generated(
+            &bridge,
+            &[
+                "import Foundation",
+                "import Shared",
+                "public struct FfiBridge: CoreBridge, @unchecked Sendable {",
+                "private let ffi = Shared.CoreFfi()",
+                "[UInt8](ffi.update(data: Data(event)))",
+            ],
+        );
+
+        let source = fs::read_to_string(
+            dir.path()
+                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
+        )
+        .expect("should write a Swift module");
+        assert_generated(
+            &source,
+            &["public convenience init(handler: any EffectHandler) {"],
+        );
+        // The FFI module is named by the bridge alone.
+        assert!(!source.contains("import Shared"));
+    }
+
+    /// Without the configuration nothing changes: no bridge, no dependency, no
+    /// platforms.
+    #[test]
+    fn swift_without_boltffi_has_no_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        assert!(
+            !dir.path()
+                .join("SharedTypes/Sources/SharedTypes/FfiBridge.swift")
+                .exists()
+        );
+
+        let manifest = fs::read_to_string(dir.path().join("SharedTypes/Package.swift"))
+            .expect("should write a package manifest");
+        assert!(!manifest.contains("platforms:"));
+        assert!(!manifest.contains("../Shared"));
+
+        let source = fs::read_to_string(
+            dir.path()
+                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
+        )
+        .expect("should write a Swift module");
+        assert!(!source.contains("FfiBridge"));
+        assert!(!source.contains("convenience init"));
+    }
+
+    #[test]
+    fn generates_kotlin_ffi_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .boltffi(BoltFfi::new().kotlin())
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        let bridge = fs::read_to_string(dir.path().join("com/example/shared/FfiBridge.kt"))
+            .expect("should write the bridge beside the module");
+        assert_generated(
+            &bridge,
+            &[
+                "package com.example.shared",
+                "class FfiBridge(private val ffi: CoreFfi = CoreFfi()) : CoreBridge, AutoCloseable {",
+                "override fun close() = ffi.close()",
+            ],
+        );
+        // `CoreFfi` is in the package the file declares, so no import.
+        assert!(!bridge.contains("import com.example.shared.CoreFfi"));
+
+        let source = fs::read_to_string(dir.path().join("com/example/shared/Shared.kt"))
+            .expect("should write a Kotlin module");
+        assert_generated(
+            &source,
+            &[
+                "constructor(handler: EffectHandler, scope: CoroutineScope) : this(FfiBridge(), handler, scope)",
+            ],
+        );
+    }
+
+    #[test]
+    fn kotlin_ffi_bridge_in_another_package() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .boltffi(BoltFfi::new().kotlin_package("com.example.ffi"))
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        let bridge = fs::read_to_string(dir.path().join("com/example/shared/FfiBridge.kt"))
+            .expect("should write the bridge beside the module");
+        assert_generated(&bridge, &["import com.example.ffi.CoreFfi"]);
+    }
+
+    #[test]
+    fn generates_csharp_ffi_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .boltffi(BoltFfi::new().csharp())
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+
+        let bridge = fs::read_to_string(dir.path().join("Example/Shared/FfiBridge.cs"))
+            .expect("should write the bridge beside the module");
+        assert_generated(
+            &bridge,
+            &[
+                "namespace Example.Shared;",
+                "public sealed class FfiBridge : ICoreBridge, IDisposable",
+                "private readonly CoreFfi _ffi = new();",
+                "public void Dispose() => _ffi.Dispose();",
+            ],
+        );
+
+        let source = fs::read_to_string(dir.path().join("Example/Shared/Shared.cs"))
+            .expect("should write a C# module");
+        assert_generated(
+            &source,
+            &["public Core(IEffectHandler handler) : this(new FfiBridge(), handler) {}"],
+        );
+    }
+
+    /// Runs `pnpm` and `tsc` against a stub `shared` package, so the bridge is
+    /// really type-checked against the shape `BoltFFI` emits.
+    #[test]
+    fn generates_typescript_ffi_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let pkg = dir.path().join("pkg");
+        fs::create_dir_all(&pkg).expect("should create the stub package");
+        fs::write(
+            pkg.join("package.json"),
+            r#"{ "name": "shared", "version": "0.1.0", "main": "./shared.js", "types": "./shared.d.ts" }"#,
+        )
+        .expect("should write the stub manifest");
+        fs::write(pkg.join("shared.js"), "module.exports = {};\n")
+            .expect("should write the stub module");
+        fs::write(
+            pkg.join("shared.d.ts"),
+            "export declare class CoreFfi {\n\
+             \x20 static new(): CoreFfi;\n\
+             \x20 update(event: Uint8Array): Uint8Array;\n\
+             \x20 resolve(id: number, output: Uint8Array): Uint8Array;\n\
+             \x20 view(): Uint8Array;\n\
+             }\n",
+        )
+        .expect("should write the stub declarations");
+
+        let types = dir.path().join("types");
+        generator()
+            .boltffi(BoltFfi::new().typescript("shared", PackageLocation::Path("../pkg".into())))
+            .typescript(&Config::builder("shared_types", &types).build())
+            .expect("typescript type generation should succeed");
+
+        let manifest =
+            fs::read_to_string(types.join("package.json")).expect("should write a package.json");
+        assert_generated(&manifest, &[r#""shared": "file:../pkg""#]);
+
+        let source =
+            fs::read_to_string(types.join("shared_types.ts")).expect("should write a TS module");
+        assert_generated(
+            &source,
+            &[
+                r#"import * as boltffi from "shared";"#,
+                "export class FfiBridge implements CoreBridge {",
+                "private readonly ffi = boltffi.CoreFfi.new();",
+                "public static async create(",
+                "await (boltffi as unknown as { initialized: Promise<void> }).initialized;",
+            ],
+        );
+
+        assert!(
+            types.join("shared_types.d.ts").exists(),
+            "tsc should have emitted declarations, so the generated module compiles"
+        );
+    }
+
+    /// The bridge is part of the generated `Core`, so asking for one without a
+    /// `Core` is an error rather than a silent no-op.
+    #[test]
+    fn boltffi_needs_the_core() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let error = generator()
+            .without_core()
+            .boltffi(BoltFfi::new().swift("Shared"))
+            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .expect_err("should reject the configuration");
+
+        let crux_core::type_generation::facet::TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains("`boltffi`"),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("without_core()"),
+            "unexpected message: {message}"
+        );
+    }
+
     #[test]
     fn effect_handlers_can_be_turned_off() {
         let source = swift_source(&generator().without_effect_handlers());
@@ -538,7 +777,7 @@ mod facet_no_render {
     use crux_core::{
         Command,
         macros::{Operation, effect},
-        type_generation::facet::{Config, TypeRegistry},
+        type_generation::facet::{BoltFfi, Config, TypeGenError, TypeRegistry},
     };
     use facet::Facet;
     use serde::{Deserialize, Serialize};
@@ -605,6 +844,32 @@ mod facet_no_render {
         // `Observation` is imported only for `Core`.
         assert!(!source.contains("import Observation"));
     }
+
+    /// …so there is nothing for a bridge to be the bridge of.
+    #[test]
+    fn boltffi_needs_a_render_variant() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let error = TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry")
+            .boltffi(BoltFfi::new().swift("Shared"))
+            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .expect_err("should reject the configuration");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains("`boltffi`"),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("render variant"),
+            "unexpected message: {message}"
+        );
+    }
 }
 
 /// The generated handler API claims a handful of names, so a shared type
@@ -637,6 +902,12 @@ mod facet_clash_test {
     #[allow(clippy::unsafe_derive_deserialize)]
     #[derive(Facet)]
     pub struct Core {
+        pub whoops: String,
+    }
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(Facet)]
+    pub struct FfiBridge {
         pub whoops: String,
     }
 
@@ -699,6 +970,28 @@ mod facet_clash_test {
         };
         assert!(
             message.contains("`Core` is generated for the shell API"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// `FfiBridge` is reserved whether or not `boltffi` is configured: whether
+    /// a shared type clashes should not depend on how the shell is wired up.
+    #[test]
+    fn a_type_cannot_be_called_ffi_bridge() {
+        let error = TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .register_type::<FfiBridge>()
+            .expect("should register the clashing type")
+            .build()
+            .err()
+            .expect("should reject the clashing type");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains("`FfiBridge` is generated for the shell API"),
             "unexpected message: {message}"
         );
     }

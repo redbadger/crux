@@ -10,15 +10,10 @@ import {
   type ReactNode,
 } from "react";
 
-import * as sharedWasm from "shared";
 import type { Core, Event, ViewModel } from "shared_types/app";
 import { eventStart, viewModelLoading } from "shared_types/app";
 
 import { createCore } from "./";
-
-const wasmInitialized = (
-  sharedWasm as unknown as { initialized: Promise<void> }
-).initialized;
 
 // ANCHOR: context
 /**
@@ -44,10 +39,8 @@ export function CoreProvider({ children }: { children: ReactNode }) {
     if (initialized.current) return;
     initialized.current = true;
 
-    wasmInitialized.then(() => {
-      if (!coreRef.current) {
-        coreRef.current = createCore(setView);
-      }
+    createCore(setView).then((core) => {
+      coreRef.current ??= core;
       coreRef.current.update(eventStart());
     });
   }, []);

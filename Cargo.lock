@@ -776,7 +776,7 @@ dependencies = [
 [[package]]
 name = "facet-generate-attrs"
 version = "0.18.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2#c949b1cc25c24c5b763c675f31a96032e19c8233"
+source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
 dependencies = [
  "facet 0.46.5",
 ]
@@ -860,7 +860,7 @@ dependencies = [
 [[package]]
 name = "facet_generate"
 version = "0.21.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2#c949b1cc25c24c5b763c675f31a96032e19c8233"
+source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
 dependencies = [
  "derive_builder",
  "facet 0.46.5",

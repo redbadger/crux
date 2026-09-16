@@ -12,16 +12,75 @@ use facet_generate::{
     reflection::format::Format,
 };
 
-use super::{super::Matched, AppMeta};
+use super::{super::Matched, AppMeta, BoltFfi, render};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
     app: &AppMeta,
     config: &CodeGeneratorConfig,
+    ffi: Option<&BoltFfi>,
 ) -> io::Result<()> {
     emit_bridge(w)?;
-    emit_core(w, m, app, config)
+    // The one-argument constructor is only correct when `FfiBridge` is written
+    // beside the module, which is what naming the C# bindings asks for.
+    let bridged = ffi.filter(|ffi| ffi.csharp_ffi().is_some());
+    emit_core(w, m, app, config, bridged)
+}
+
+/// `FfiBridge`, the `ICoreBridge` over `BoltFFI`'s class, for its own file in the
+/// generated namespace.
+pub(super) fn ffi_bridge(class: &str, config: &CodeGeneratorConfig) -> io::Result<String> {
+    let event = escape_identifier("event");
+
+    render(config, |w| {
+        writeln!(w, "/// <summary>")?;
+        writeln!(
+            w,
+            "/// The generated <c>ICoreBridge</c>, implemented over BoltFFI's"
+        )?;
+        writeln!(
+            w,
+            "/// <c>{class}</c>: bytes in, bytes out, nothing else. It is the only"
+        )?;
+        writeln!(
+            w,
+            "/// generated type that knows the Rust core exists — pass a fake to"
+        )?;
+        writeln!(
+            w,
+            "/// <c>Core(ICoreBridge, IEffectHandler)</c> instead for tests."
+        )?;
+        writeln!(w, "///")?;
+        writeln!(
+            w,
+            "/// Disposing an <c>FfiBridge</c> releases the core it wraps."
+        )?;
+        writeln!(w, "/// </summary>")?;
+        writeln!(
+            w,
+            "public sealed class FfiBridge : ICoreBridge, IDisposable"
+        )?;
+        writeln!(w, "{{")?;
+        w.indent();
+        writeln!(w, "private readonly {class} _ffi = new();")?;
+        writeln!(w)?;
+        writeln!(
+            w,
+            "public byte[] Update(byte[] {event}) => _ffi.Update({event});"
+        )?;
+        writeln!(w)?;
+        writeln!(
+            w,
+            "public byte[] Resolve(uint id, byte[] output) => _ffi.Resolve(id, output);"
+        )?;
+        writeln!(w)?;
+        writeln!(w, "public byte[] View() => _ffi.View();")?;
+        writeln!(w)?;
+        writeln!(w, "public void Dispose() => _ffi.Dispose();")?;
+        w.unindent();
+        writeln!(w, "}}")
+    })
 }
 
 fn emit_bridge(w: &mut dyn IndentWrite) -> io::Result<()> {
@@ -52,6 +111,7 @@ fn emit_core(
     m: &Matched<'_>,
     app: &AppMeta,
     config: &CodeGeneratorConfig,
+    ffi: Option<&BoltFfi>,
 ) -> io::Result<()> {
     let ns = &config.module_name;
     let effect = m.name;
@@ -119,6 +179,22 @@ fn emit_core(
     )?;
     w.unindent();
     writeln!(w, "}}")?;
+
+    if let Some(ffi) = ffi {
+        writeln!(w)?;
+        writeln!(w, "/// <summary>")?;
+        writeln!(
+            w,
+            "/// Build a <c>Core</c> over the <c>{}</c> the Rust crate exports — the",
+            ffi.class_name()
+        )?;
+        writeln!(w, "/// shell writes the handler and never sees the bridge.")?;
+        writeln!(w, "/// </summary>")?;
+        writeln!(
+            w,
+            "public Core(IEffectHandler handler) : this(new FfiBridge(), handler) {{}}"
+        )?;
+    }
 
     emit_methods(
         w,

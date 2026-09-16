@@ -9,7 +9,7 @@ struct WeatherApp: App {
 
     // ANCHOR: start
     init() {
-        let core = Core(bridge: LiveBridge(), handler: WeatherHandler())
+        let core = Core(handler: WeatherHandler())
 
         _core = State(wrappedValue: core)
         updater = CoreUpdater { core.update($0) }
