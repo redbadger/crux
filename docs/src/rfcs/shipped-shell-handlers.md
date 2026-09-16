@@ -407,15 +407,16 @@ reviewed together.
 
 ### Changes to facet-generate
 
-One addition. The `EmitterPlugin` trait gains a hook for **module companion
-files**: files a plugin wants written into the module's own directory —
-`Sources/<Module>/`, the Kotlin package directory, the C# namespace
-directory — with the module's header prepended by the installer. Unlike
+None. The hook this design leans on already exists: `EmitterPlugin` has
+**module companion files**, files a plugin wants written into the module's
+own directory — `Sources/<Module>/`, the Kotlin package directory, the C#
+namespace directory — with the module's header prepended. Unlike
 `runtime_files`, which the installers skip when the serde runtime comes from
 an external package, companion files are written whenever the module itself
-is. They are the right home for shipped sources in Swift, Kotlin and C#, where
-one file per capability is what a reader expects to find. TypeScript's
-single-file modules do not need it.
+is. It was added for the generated `Core`'s BoltFFI bridge, whose `FfiBridge`
+is emitted through it, and it is the right home for shipped sources in Swift,
+Kotlin and C# too, where one file per capability is what a reader expects to
+find. TypeScript's single-file modules do not need it.
 
 Everything else uses hooks that exist: `after_type` for the wiring, as the
 handler and `Core` plugins do, and `manifest_dependencies` for the rare
@@ -542,7 +543,8 @@ evolves.
 
 ## Next steps
 
-1. Add the companion-file hook to facet-generate and release it.
+1. Release the facet-generate that carries the companion-file hook; the
+   per-operation types stack already depends on it.
 2. Add `ShellHandler`, `register_shell_handler`, the `shell(..)` derive
    attribute and the plugin to `crux_core`, with `without_shell_handlers()`.
 3. Ship handlers for `crux_http`, `crux_kv` and `crux_time` in all four
