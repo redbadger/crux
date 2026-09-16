@@ -26,7 +26,7 @@ Three things happen in this component.
 
 The `useRef` holds the `Core` across renders. `coreRef.current` points at the same instance every time the function runs; assigning once inside the init effect locks it in.
 
-The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It awaits the WASM module's `initialized` promise, then calls `createCore` and fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for StrictMode (on by default in Next.js), which double-invokes effects in development to surface resource-leak bugs.
+The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It awaits `createCore` — which is asynchronous because the WASM module loads asynchronously, and the generated `Core.create` waits for it — then fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for StrictMode (on by default in Next.js), which double-invokes effects in development to surface resource-leak bugs.
 
 The `dispatch` callback is wrapped in `useCallback(_, [])` so its reference is stable. Consumers of `useDispatch()` get the same function every render, which matters when passing it into handlers — otherwise every view update would invalidate every handler and trigger spurious re-renders of memoised children.
 
@@ -82,19 +82,26 @@ export class Core {
     view: ViewModel;
     constructor(bridge: CoreBridge, handler: EffectHandler,
                 onView: (view: ViewModel) => void);
+    static create(handler: EffectHandler,
+                  onView: (view: ViewModel) => void): Promise<Core>;
     update(event: Event): void;
     process(requests: Request[]): void;
     processBytes(bytes: Uint8Array): void;
 }
 ```
 
-The bridge is the generated `CoreBridge` interface over the WASM export:
+The bridge is the generated `CoreBridge` interface over the WASM export, and because the codegen was told which npm package BoltFFI produces (`.boltffi(BoltFfi::new().typescript("shared", …))`), the generated module implements it too:
 
 ```typescript
-{{#include ../../../../examples/weather/web-nextjs/src/lib/core/bridge.ts}}
+export class FfiBridge implements CoreBridge {
+  private readonly ffi = boltffi.CoreFfi.new();
+  update(event: Uint8Array): Uint8Array { return this.ffi.update(event); }
+  resolve(id: number, output: Uint8Array): Uint8Array { return this.ffi.resolve(id, output); }
+  view(): Uint8Array { return this.ffi.view(); }
+}
 ```
 
-Bytes in, bytes out. `CoreFfi.new()` touches the WASM module, so a `LiveBridge` can only be constructed once `initialized` has resolved — which is why `CoreProvider` builds the core inside its init effect rather than in the `useRef` initialiser.
+Bytes in, bytes out. `CoreFfi.new()` touches the WASM module, so an `FfiBridge` can only be constructed once the package's `initialized` promise has resolved. `Core.create` awaits it before constructing, which is why it is asynchronous, and why `CoreProvider` builds the core inside its init effect rather than in the `useRef` initialiser. The generated `package.json` depends on the wasm package, so the web `Justfile` packs it before running typegen.
 
 The handler is `WeatherHandler`, one method per operation. HTTP looks like this:
 

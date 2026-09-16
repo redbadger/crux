@@ -6,12 +6,12 @@ This is the first of the shell chapters. We'll walk through how the Swift side t
 
 The Apple shell is split into two Swift targets:
 
-- **`WeatherApp`** (the app target) — just a few files: the `@main` struct, the `LiveBridge` that talks to Rust, and `ContentView` as the root view.
+- **`WeatherApp`** (the app target) — just a few files: the `@main` struct that builds the `Core`, and `ContentView` as the root view.
 - **`WeatherKit`** (a local Swift Package) — everything else: the `WeatherHandler`, every effect handler, every screen, and the preview helpers.
 
 The split exists because building Swift is much faster than rebuilding the whole Rust framework, and SPM gives you the kind of iteration loop you'd expect from `cargo`. When you're tweaking a view, you only recompile the package. When you're iterating on effect handlers, same — the Rust library (and the Swift bindings it emits) only recompile when the core changes.
 
-WeatherKit never touches the Rust FFI. The one type that does, `LiveBridge`, lives in the app target and implements the generated `CoreBridge` protocol; the generated `Core` does the rest. That's what lets SwiftUI previews run without the Rust framework loaded. More on that at the end.
+WeatherKit never touches the Rust FFI. Neither, in fact, does any code we wrote: the generated `App` package contains the one type that does, and the app target constructs a `Core` from it. That's what lets SwiftUI previews run without the Rust framework loaded. More on that at the end.
 
 ## Booting the Core
 
@@ -21,21 +21,41 @@ Here's the app entry point:
 {{#include ../../../../examples/weather/apple/WeatherApp/WeatherApp.swift:start}}
 ```
 
-Build the generated `Core` from a `LiveBridge` and a `WeatherHandler`, keep it in `@State`, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in chapter 3.
+Build the generated `Core` from a `WeatherHandler`, keep it in `@State`, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in chapter 3.
 
 `Core` comes from the generated `App` module, hence the `import App`. `struct WeatherApp: App` still resolves to SwiftUI's protocol — Swift looks for a protocol in that position, not a module — so the two names don't clash.
 
 ## The FFI bridge
 
-`LiveBridge` is the generated `CoreBridge` protocol, implemented over BoltFFI's `CoreFfi`:
+`Core(handler:)` is a convenience: underneath, `Core` talks to Rust through a `CoreBridge` protocol with three byte-level methods — `update` and `resolve` return the serialized requests the core produced, `view` the serialized view model — and the generated package implements it over BoltFFI's `CoreFfi` in a file of its own, `FfiBridge.swift`:
 
 ```swift
-{{#include ../../../../examples/weather/apple/WeatherApp/LiveBridge.swift}}
+public struct FfiBridge: CoreBridge, @unchecked Sendable {
+    private let ffi = Shared.CoreFfi()
+
+    public func update(_ event: [UInt8]) -> [UInt8] {
+        [UInt8](ffi.update(data: Data(event)))
+    }
+
+    public func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8] {
+        [UInt8](ffi.resolve(id: id, data: Data(output)))
+    }
+
+    public func view() -> [UInt8] {
+        [UInt8](ffi.view())
+    }
+}
 ```
 
-Three methods, bytes in and bytes out: `update` and `resolve` return the serialized requests the core produced, `view` the serialized view model. Nothing here knows about bincode or about Swift types — the generated `Core` does the serializing — so this is the only place that knows `CoreFfi` exists. Everything else in the Swift code works with Swift types.
+Nothing here knows about bincode or about Swift types — the generated `Core` does the serializing — so this is the only place that knows `CoreFfi` exists, and it is generated because the codegen was told where BoltFFI put it:
 
-Two annotations are worth a look. The app target builds with `MainActor` as its default isolation and `CoreBridge`'s requirements are not actor-isolated, so the struct is `nonisolated`. And `CoreBridge` is `Sendable` while `CoreFfi` is a class Swift can't prove safe, so the conformance is `@unchecked Sendable` — sound, because the Rust `Bridge` behind the handle guards its state with mutexes.
+```rust,ignore
+.boltffi(BoltFfi::new().swift("Shared") /* … */)
+```
+
+That line is also why the generated `App` package depends on the `Shared` package BoltFFI produces, and declares the same `platforms:` floor. The app target links `App` and gets `Shared` through it.
+
+One annotation is worth a look. `CoreBridge` is `Sendable` while `CoreFfi` is a class Swift can't prove safe, so the conformance is `@unchecked Sendable` — sound, because the Rust `Bridge` behind the handle guards its state with mutexes. If you ever write a `CoreBridge` of your own in a target that defaults to `MainActor` isolation, it also needs to be `nonisolated`, because the protocol's requirements are not actor-isolated. The preview bridge at the end of this chapter is one.
 
 ## Handling effects
 
@@ -46,6 +66,7 @@ The loop — serialize the event, call the bridge, deserialize the requests, dis
 @Observable @MainActor public final class Core {
     public private(set) var view: ViewModel
     public init(bridge: any CoreBridge, handler: any EffectHandler)
+    public convenience init(handler: any EffectHandler)
     public func update(_ event: Event)
     public func process(_ requests: [Request])
     public func process(bytes: [UInt8])

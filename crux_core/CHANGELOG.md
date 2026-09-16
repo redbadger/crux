@@ -252,6 +252,44 @@ and this project adheres to
   types as an `AppMeta`, read back with `CodeGenerator::app()`, and
   `EffectVariantMeta` gains `render: bool`.
 
+- **Type generation can bridge `Core` to BoltFFI's bindings itself.** Tell the
+  `CodeGenerator` where BoltFFI put its output and the adapter is generated
+  too, so a shell constructs `Core` from nothing but its `EffectHandler`:
+
+  ```rust,ignore
+  TypeRegistry::new().register_app::<App>()?.build()?.boltffi(
+      BoltFfi::new()
+          .swift("Shared")                                        // import Shared, ../Shared
+          .kotlin()                                               // CoreFfi is in the generated package
+          .typescript("shared", PackageLocation::Path("../pkg".into()))
+          .csharp(),                                              // CoreFfi is in the generated namespace
+  )
+  ```
+
+  Each language is opted in on its own; one you do not name is unchanged. For
+  a named language the generated module gains `FfiBridge` — `CoreBridge` over
+  `CoreFfi`, with the Swift `Data` conversion and `@unchecked Sendable` where
+  they belong — and `Core` gains `Core(handler:)` in Swift, `Core(handler,
+  scope)` in Kotlin, `static async create(handler, onView)` in TypeScript
+  (it awaits the wasm module's `initialized` promise) and `Core(handler)` in
+  C#. `BoltFfi::class(..)` renames the exported class; `swift_package(..)`,
+  `kotlin_package(..)` and `csharp_namespace(..)` cover non-default layouts.
+  `CoreBridge` and the two-argument constructors are still emitted for fakes
+  and for FFI shapes the bridge does not cover, such as the middleware
+  examples' `CoreFfi::new(shell)`.
+
+  Two build consequences. The generated Swift package now depends on BoltFFI's
+  (`.package(path: "../Shared")` and the product on its target) and needs a
+  `platforms:` floor no lower than that package's, set with
+  `Config::builder(..).platform(".iOS(.v16)")`, a new `Config` setting that
+  works with or without the bridge; your app target no longer has to link the
+  BoltFFI package directly. The generated TypeScript `package.json` depends on
+  the wasm package, so run `boltffi pack wasm` before typegen. `FfiBridge`
+  joins the reserved names, and a `boltffi(..)` configuration with no `Core`
+  to bridge (`without_core()`, no registered app, or no `Render` variant) is
+  an error rather than a no-op. Requires `facet_generate` with the
+  companion-file and manifest hooks (0.21).
+
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` used to be a bare counter. It now packs, from the top, eight
   bits of effect variant index, one bit that is set for a stream and clear for

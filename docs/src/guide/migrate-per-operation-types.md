@@ -377,20 +377,39 @@ rest, resolve and repeat — and it handles `Render` itself, so your handler no
 longer implements `render` at all. See
 [the generated Core](../part-4/typegen.md#the-generated-core) for the shapes.
 
-With it, a shell writes two things:
+With it, a shell writes one thing — **an effect handler**: the `EffectHandler`
+methods that used to live on your hand-written core object, and whatever state
+they need, on a plain class of their own. Delete `render`.
 
-1. **A bridge adapter.** A type conforming to `CoreBridge` whose three methods
-   call the `update`, `resolve` and `view` that BoltFFI generated for your
-   crate. Three lines of body in Swift (converting `Data` to `[UInt8]`), and
-   pass-through in Kotlin and TypeScript.
-2. **An effect handler.** The `EffectHandler` methods that used to live on your
-   hand-written core object, and whatever state they need, on a plain class of
-   their own. Delete `render`.
+The bridge between `Core` and BoltFFI's `CoreFfi` is generated too, once the
+codegen knows where BoltFFI put its output:
 
-Then delete the hand-written loop and construct `Core(bridge, handler, ...)`,
-with a callback that publishes the view in Swift, TypeScript and C#, or by
-collecting `core.view` in Kotlin. The per-language sections below show the
-result for the notes and weather examples.
+```rust,ignore
+TypeRegistry::new()
+    .register_app::<Weather>()?
+    .build()?
+    .boltffi(
+        BoltFfi::new()
+            .swift("Shared")   // the Swift module BoltFFI generates
+            .kotlin()          // CoreFfi is in the generated Kotlin package
+            .typescript("shared", PackageLocation::Path("../pkg".into())),
+    )
+```
+
+Each language is opted in separately. For a named language the generated module
+gains an `FfiBridge` and `Core` gains a constructor that takes only the handler.
+The Swift package then depends on BoltFFI's, so give it a `platforms:` floor to
+match (`Config::builder(..).platform(".iOS(.v16)").platform(".macOS(.v13)")`),
+and the TypeScript package depends on the wasm package, so pack it before running
+typegen. If you use another binding generator, or want a fake for previews and
+tests, `CoreBridge` is still there to implement by hand: three methods calling
+`update`, `resolve` and `view`, converting `Data` to `[UInt8]` in Swift and
+passing bytes straight through elsewhere.
+
+Then delete the hand-written loop and construct `Core(handler, ...)`, with a
+callback that publishes the view in TypeScript, `@Observable` in Swift,
+`PropertyChanged` in C#, or by collecting `core.view` in Kotlin. The per-language
+sections below show the result for the notes and weather examples.
 
 ### TypeScript
 
@@ -420,15 +439,8 @@ private processEffect(id: number, effect: Effect) {
 ```
 
 ```typescript
-// After — a bridge over the FFI, a handler with one method per operation, and
-// the generated Core owning the loop between them
-export class LiveBridge implements CoreBridge {
-  private readonly ffi = CoreFfi.new();
-  update(event: Uint8Array): Uint8Array { return this.ffi.update(event); }
-  resolve(id: number, output: Uint8Array): Uint8Array { return this.ffi.resolve(id, output); }
-  view(): Uint8Array { return this.ffi.view(); }
-}
-
+// After — a handler with one method per operation, and the generated Core
+// owning the loop and the bridge to the wasm module
 export class NotesHandler implements EffectHandler {
   constructor(/* the refs the handlers need */) {}
 
@@ -447,19 +459,21 @@ export class NotesHandler implements EffectHandler {
   }
 }
 
-// once the WASM module has initialised:
-const core = new Core(new LiveBridge(), new NotesHandler(/* … */), setView);
+const core = await Core.create(new NotesHandler(/* … */), setView);
 core.update(eventOpen());
 ```
 
 `matchEffect`, the `unsupported()` helper for operations the app never issues,
 the hand-built response constructors, the stashed request id, `render`, the
-hand-rolled `deserializeRequests` and the resolve-and-recurse callback all go.
-The stream is the biggest win: instead of remembering a `subscriptionId` and
-resolving it repeatedly by hand, the shell parks the `EffectSink` and calls
-`sink.send(new Message(bytes))` per message. Note that `CoreFfi.new()` needs the
-WASM module initialised, and `Core`'s constructor reads the view straight away,
-so construct both after awaiting `initialized` — not in a `useRef` initialiser.
+hand-rolled `deserializeRequests` and the resolve-and-recurse callback all go,
+and so does the `LiveBridge` around `CoreFfi`. The stream is the biggest win:
+instead of remembering a `subscriptionId` and resolving it repeatedly by hand,
+the shell parks the `EffectSink` and calls `sink.send(new Message(bytes))` per
+message. `Core.create` is asynchronous because `CoreFfi.new()` needs the WASM
+module initialised and `Core` reads the view straight away; it awaits the
+package's `initialized` promise for you, so the cast every shell used to write
+around that untyped promise goes too. Construct the core in an effect, not in a
+`useRef` initialiser.
 
 ### Swift
 
@@ -479,15 +493,8 @@ func processEffect(_ request: Request) {
 ```
 
 ```swift
-// After — a bridge over the FFI, a handler with one method per operation, and
-// the generated Core owning the loop between them
-nonisolated struct LiveBridge: CoreBridge, @unchecked Sendable {
-    private let ffi = CoreFfi()
-    func update(_ event: [UInt8]) -> [UInt8] { [UInt8](ffi.update(data: Data(event))) }
-    func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8] { [UInt8](ffi.resolve(id: id, data: Data(output))) }
-    func view() -> [UInt8] { [UInt8](ffi.view()) }
-}
-
+// After — a handler with one method per operation, and the generated Core
+// owning the loop and the bridge to CoreFfi
 @MainActor public final class WeatherHandler {
     let keyValueStore: KeyValueStore
     var activeTimers: [UInt64: Task<Void, Never>] = [:]
@@ -504,33 +511,29 @@ nonisolated extension WeatherHandler: EffectHandler {
 }
 
 // in the app:
-let core = Core(bridge: LiveBridge(), handler: WeatherHandler())
+let core = Core(handler: WeatherHandler())
 core.update(.start)
 // …and `.environment(core)` on the root view, read with `@Environment(Core.self)`
 ```
 
 Each per-capability `switch` over an operation enum collapses into one method per
 operation, every `resolve(requestId:serialize:)` call disappears, and so do the
-loop, the resolve-and-recurse callback and `render` — the generated `Core`
-intercepts `Render` and replaces its `view`. `Core` is `@Observable`, so put it
-in the SwiftUI environment and read `core.view` directly; any `@Observable`
-holder you kept for the view model can go. Note that `Core` requires
-iOS 17 / macOS 14, higher than the rest of the generated module.
+loop, the resolve-and-recurse callback, `render` and the `LiveBridge` around
+`CoreFfi` — the generated `Core` intercepts `Render` and replaces its `view`,
+and the generated `FfiBridge` does the `Data` conversions. `Core` is
+`@Observable`, so put it in the SwiftUI environment and read `core.view`
+directly; any `@Observable` holder you kept for the view model can go. Note that
+`Core` requires iOS 17 / macOS 14, higher than the rest of the generated module.
+Because the generated package now depends on BoltFFI's `Shared` package, your
+app target can stop linking `Shared` directly, and the generated package needs
+a `platforms:` floor at least as high as `Shared` declares — set it on the
+`Config` in `codegen.rs`.
 
 ### Kotlin
 
-A bridge over the FFI, a handler that delegates, and the generated `Core`
-provided by Hilt:
+A handler that delegates, and the generated `Core` provided by Hilt:
 
 ```kotlin
-@Singleton
-class LiveBridge @Inject constructor() : CoreBridge {
-    private val coreFfi = CoreFfi()
-    override fun update(event: ByteArray): ByteArray = coreFfi.update(event)
-    override fun resolve(id: UInt, output: ByteArray): ByteArray = coreFfi.resolve(id, output)
-    override fun view(): ByteArray = coreFfi.view()
-}
-
 @Singleton
 class WeatherHandler @Inject constructor(/* … */) : EffectHandler {
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
@@ -540,11 +543,9 @@ class WeatherHandler @Inject constructor(/* … */) : EffectHandler {
 
 @Module @InstallIn(SingletonComponent::class)
 object CoreModule {
-    @Provides @Singleton fun provideCoreBridge(bridge: LiveBridge): CoreBridge = bridge
-
     @Provides @Singleton
-    fun provideCore(bridge: CoreBridge, handler: WeatherHandler): Core =
-        Core(bridge, handler, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+    fun provideCore(handler: WeatherHandler): Core =
+        Core(handler, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
             .also { it.update(Event.Start) }
 }
 ```
@@ -552,6 +553,10 @@ object CoreModule {
 The generated `Core` has no `@Inject` constructor, hence the module; it
 dispatches each request in its own coroutine on the scope you give it, publishes
 the view on `core.view: StateFlow<ViewModel>`, and needs no `render` override.
+The two-argument constructor builds the generated `FfiBridge` over `CoreFfi`,
+which works without an import because BoltFFI's Kotlin and the generated types
+share a package in this example; if yours do not, name BoltFFI's with
+`BoltFfi::kotlin_package(..)`.
 Because `Core` uses `StateFlow` and `launch`, the Gradle module that compiles the
 generated sources needs `kotlinx-coroutines-core` on its classpath — the
 generated `build.gradle.kts` declares it, but if you pull the sources in with
@@ -639,10 +644,12 @@ URLSession, Keychain and CoreLocation work does not belong on the main actor
 anyway, so this is usually an improvement. Only `Sendable` values cross back.
 
 The bridge has the same shape of problem from the other side: `CoreBridge` is
-`Sendable`, but BoltFFI's `CoreFfi` is a class Swift can't prove safe. Declare
-the adapter `nonisolated` (if your target defaults to `MainActor` isolation)
-and `@unchecked Sendable` — sound, because the Rust `Bridge` behind the handle
-guards its state with mutexes.
+`Sendable`, but BoltFFI's `CoreFfi` is a class Swift can't prove safe. The
+generated `FfiBridge` declares itself `@unchecked Sendable` — sound, because
+the Rust `Bridge` behind the handle guards its state with mutexes. If you write
+a `CoreBridge` of your own, for a preview or another binding generator, do the
+same, and declare it `nonisolated` if your target defaults to `MainActor`
+isolation.
 
 ### `Set` collides with the standard library
 
