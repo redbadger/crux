@@ -490,6 +490,7 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "serde_qs 1.1.2",
+ "tempfile",
  "thiserror",
  "url",
  "web-sys",
@@ -506,6 +507,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serde_json",
+ "tempfile",
  "thiserror",
 ]
 
@@ -539,6 +541,7 @@ dependencies = [
  "include_dir",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
 ]
 
