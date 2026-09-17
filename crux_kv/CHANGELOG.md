@@ -75,7 +75,7 @@ and this project adheres to
   pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
   pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
 
-  pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
+  pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
   ```
 
   Each converts to and from the `Result` alias an app sees (`ValueResult` ↔
