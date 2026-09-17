@@ -12,12 +12,13 @@ use leptos::prelude::*;
 use crux_core::Request;
 use shared::ViewModel;
 use shared::effects::secret::{
-    Delete, Fetch, SecretDeleteResponse, SecretFetchResponse, SecretStoreResponse, Store,
+    DeleteSecret, FetchSecret, SecretDeleteResponse, SecretFetchResponse, SecretStoreResponse,
+    StoreSecret,
 };
 
 pub(super) fn fetch(
     core: &super::Core,
-    mut request: Request<Fetch>,
+    mut request: Request<FetchSecret>,
     render: WriteSignal<ViewModel>,
 ) {
     let key = &request.operation.0;
@@ -39,10 +40,10 @@ pub(super) fn fetch(
 
 pub(super) fn store(
     core: &super::Core,
-    mut request: Request<Store>,
+    mut request: Request<StoreSecret>,
     render: WriteSignal<ViewModel>,
 ) {
-    let Store(key, value) = &request.operation;
+    let StoreSecret(key, value) = &request.operation;
     log::debug!("secret store: {key}");
     if let Some(storage) = local_storage() {
         let _ = storage.set_item(key, value);
@@ -53,7 +54,7 @@ pub(super) fn store(
 
 pub(super) fn delete(
     core: &super::Core,
-    mut request: Request<Delete>,
+    mut request: Request<DeleteSecret>,
     render: WriteSignal<ViewModel>,
 ) {
     let key = &request.operation.0;

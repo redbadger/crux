@@ -1,11 +1,15 @@
 //! A custom capability for storing and retrieving secrets (e.g. API keys).
 //!
-//! Three operations — [`Fetch`], [`Store`] and [`Delete`] — each with its own
-//! output type naming only the outcomes that operation can actually have:
-//! [`SecretFetchResponse`], [`SecretStoreResponse`] and
+//! Three operations — [`FetchSecret`], [`StoreSecret`] and [`DeleteSecret`] —
+//! each with its own output type naming only the outcomes that operation can
+//! actually have: [`SecretFetchResponse`], [`SecretStoreResponse`] and
 //! [`SecretDeleteResponse`]. There is no wide response enum shared between
 //! them, so no call site has to rule out variants that cannot happen. The
 //! developer-facing command builders live in the [`command`] submodule.
+//!
+//! The names carry the capability because the generated shell module is one
+//! flat namespace: a bare `Delete` here and `crux_kv`'s `Delete` would both
+//! generate as `Delete`, and the app registers both capabilities.
 
 pub mod command;
 
@@ -19,19 +23,19 @@ pub const API_KEY_NAME: &str = "openweather_api_key";
 /// Fetch the secret stored under the given key (if any).
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = SecretFetchResponse)]
-pub struct Fetch(pub String);
+pub struct FetchSecret(pub String);
 
 /// Store the second value under the first key, replacing any existing value.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = SecretStoreResponse)]
-pub struct Store(pub String, pub String);
+pub struct StoreSecret(pub String, pub String);
 
 /// Delete the secret stored under the given key.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = SecretDeleteResponse)]
-pub struct Delete(pub String);
+pub struct DeleteSecret(pub String);
 
-/// The output of a [`Fetch`].
+/// The output of a [`FetchSecret`].
 #[derive(Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
 pub enum SecretFetchResponse {
@@ -41,7 +45,7 @@ pub enum SecretFetchResponse {
     Fetched(String),
 }
 
-/// The output of a [`Store`].
+/// The output of a [`StoreSecret`].
 #[derive(Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
 pub enum SecretStoreResponse {
@@ -51,7 +55,7 @@ pub enum SecretStoreResponse {
     StoreError(String),
 }
 
-/// The output of a [`Delete`].
+/// The output of a [`DeleteSecret`].
 #[derive(Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
 pub enum SecretDeleteResponse {

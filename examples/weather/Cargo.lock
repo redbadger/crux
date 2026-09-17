@@ -553,6 +553,7 @@ dependencies = [
  "facet-generate-attrs",
  "futures-util",
  "http",
+ "include_dir",
  "mime",
  "serde",
  "serde_bytes",
@@ -570,6 +571,7 @@ dependencies = [
  "anyhow",
  "crux_core",
  "facet",
+ "include_dir",
  "serde",
  "serde_bytes",
  "thiserror 2.0.19",
@@ -594,6 +596,7 @@ dependencies = [
  "crux_core",
  "facet",
  "futures",
+ "include_dir",
  "serde",
  "thiserror 2.0.19",
 ]
