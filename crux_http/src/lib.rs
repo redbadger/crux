@@ -36,6 +36,8 @@ pub mod command;
 mod compat;
 pub mod middleware;
 pub mod protocol;
+#[cfg(feature = "facet_typegen")]
+pub mod shell;
 pub mod testing;
 
 use std::marker::PhantomData;
@@ -50,6 +52,8 @@ pub use url::Url;
 pub use http_types;
 
 pub use crate::protocol::{HttpRequest, HttpResponse};
+#[cfg(feature = "facet_typegen")]
+pub use crate::shell::HTTP;
 
 pub use self::{config::Config, error::HttpError, request::Request};
 pub use response::Response;
