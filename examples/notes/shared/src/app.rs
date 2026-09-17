@@ -556,7 +556,7 @@ mod editing_tests {
 mod save_load_tests {
     use crux_core::assert_effect;
     use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult, value::Value};
-    use crux_time::{TimeRequest, TimerId};
+    use crux_time::TimeRequest;
 
     use super::*;
 
@@ -727,13 +727,13 @@ mod save_load_tests {
 
         let _publish = effects.next().unwrap().expect_pub_sub();
         let timer = effects.next().unwrap().expect_time();
-        assert_eq!(
-            timer.operation,
-            TimeRequest::NotifyAfter {
-                id: TimerId(3),
-                duration: crux_time::Duration::from_millis(1000)
-            }
-        );
+        let TimeRequest::NotifyAfter { id, duration } = timer.operation else {
+            panic!("expected a NotifyAfter");
+        };
+
+        assert_ne!(id, first_id);
+        assert_ne!(id, second_id);
+        assert_eq!(duration, crux_time::Duration::from_millis(1000));
     }
     // ANCHOR_END: starts_a_timer_after_an_edit
 }
