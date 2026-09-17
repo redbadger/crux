@@ -9,6 +9,8 @@ pub mod clock;
 pub mod command;
 pub mod operation;
 pub mod protocol;
+#[cfg(feature = "facet_typegen")]
+pub mod shell;
 
 use std::{
     collections::HashSet,
