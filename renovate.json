@@ -56,13 +56,6 @@
       "commitMessagePrefix": "chore(ci):"
     },
     {
-      "description": "Group typegen extension npm updates",
-      "matchFileNames": ["crux_core/typegen_extensions/**"],
-      "matchManagers": ["npm"],
-      "groupName": "typegen-npm",
-      "commitMessagePrefix": "chore(core):"
-    },
-    {
       "description": "Update Cargo lockfiles even when the version range is already satisfied",
       "matchManagers": ["cargo"],
       "rangeStrategy": "update-lockfile"
@@ -80,7 +73,7 @@
       "allowedVersions": "0.30.1"
     },
     {
-      "description": "Pin facet to 0.46.5 — facet_generate 0.19 depends on facet =0.46.5. Held to lib.just by `just check-versions`.",
+      "description": "Pin facet to 0.46.5 — facet_generate 0.21 depends on facet =0.46.5. Held to lib.just by `just check-versions`.",
       "matchPackageNames": ["facet"],
       "matchManagers": ["cargo"],
       "allowedVersions": "0.46.5"

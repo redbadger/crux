@@ -7,8 +7,8 @@
 //! - `InitializingTransition::Active(api_key, favorites)` - fully initialized.
 
 use crux_core::{Command, render::render};
-use crux_kv::command::KeyValue;
 use crux_kv::error::KeyValueError;
+use crux_kv::store::KeyValue;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 

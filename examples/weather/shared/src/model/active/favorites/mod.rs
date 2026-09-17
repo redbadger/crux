@@ -8,7 +8,7 @@
 //! Changes to the favourites list are persisted through the [`KeyValue`]
 //! effect under [`FAVORITES_KEY`] as a JSON blob.
 //!
-//! [`KeyValue`]: crux_kv::command::KeyValue
+//! [`KeyValue`]: crux_kv::store::KeyValue
 //! [`FAVORITES_KEY`]: model::FAVORITES_KEY
 
 pub mod add;
@@ -16,8 +16,8 @@ pub mod confirm_delete;
 pub mod model;
 
 use crux_core::{Command, render::render};
-use crux_kv::command::KeyValue;
 use crux_kv::error::KeyValueError;
+use crux_kv::store::KeyValue;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 

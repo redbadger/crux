@@ -8,102 +8,192 @@ and this project adheres to
 
 ## [Unreleased]
 
+### 💥 Breaking Changes
+
+- **The serde-based type generation is removed.** The `typegen` feature, the
+  `crux_core::type_generation::serde` module and its `crux_core::typegen`
+  alias, `Operation::register_types`, the `Export` derive and
+  `#[effect(typegen)]` are all gone, along with the `serde-generate`,
+  `serde-reflection` and `include_dir` dependencies and the bundled
+  `typegen_extensions/` runtimes.
+
+  Facet type generation (`facet_typegen`) has been the documented path since
+  0.19 and is now the only one. To move over: enable `facet_typegen` in place
+  of `typegen`, derive `Facet` on the types that cross the bridge, write
+  `#[effect(facet_typegen)]` on the effect enum, and generate from
+  `TypeRegistry` and `CodeGenerator` as described in
+  [Type generation](https://redbadger.github.io/crux/part-4/typegen.html). `#[effect(typegen)]` is now a compile
+  error that says as much, so a crate still on the old path cannot silently
+  lose its generated types.
+
+  Nothing about the facet path changes in this release, and
+  `Operation::register_types_facet` keeps its name. This closes the last phase
+  of the [type generation RFC](https://redbadger.github.io/crux/rfcs/typegen.html):
+  retiring the legacy backend.
+
 ### 🚀 Features
 
 - **Every request now says how many times it expects to be resolved.** The core
   has always known — `notify_shell` builds a request nothing will answer,
   `request_from_shell` one that takes a single response, `stream_from_shell` one
-  that takes a sequence — but that was erased at the FFI boundary. A shell
-  received `{ id, effect }` and had to know by hand whether to resolve zero, one
-  or many times; getting it wrong either hangs a command forever or resolves
-  something that has finished.
-
-  The new `RequestKind` makes it explicit:
+  that takes a sequence — but there was no way to ask. The new `OperationKind`
+  makes it explicit:
 
   ```rust
-  pub enum RequestKind { Notify, Request, Stream }
+  pub enum OperationKind { Notify, Request, Stream }
   ```
 
-  It is read from a request, not declared on an operation, because the kind
-  belongs to the call site rather than the type. One `Operation` can span kinds:
-  a pub/sub operation may be published as a notification and subscribed to as a
-  stream.
+  and it can be read wherever a request is held:
 
   ```rust
-  // the serialized lane
-  let kind = request.kind();               // Option<RequestKind>
-
   // the typed lane
-  let kind = handle.kind();                // RequestKind
+  let kind = handle.kind();                // OperationKind
 
   // inside effect middleware
-  let kind = resolver.kind();              // RequestKind
+  let kind = resolver.kind();              // OperationKind
   ```
 
   The middleware one closes a gap: `EffectResolver`'s documentation has always
   said to call `resolve` once for a one-shot effect and repeatedly for a
   streaming one, without offering any way to tell which you were holding.
 
-  Nothing about writing a Crux app changes: keep calling `notify_shell`,
-  `request_from_shell` and `stream_from_shell`, and the framework works the kind
-  out for itself.
-
-- **Nothing changes on the wire.** The kind travels in the top two bits of
-  `bridge::EffectId`, which is a fixed-width `u32` under `bincode`, so a request
-  is still exactly an id followed by an effect and generated Swift, Kotlin, C#
-  and TypeScript are byte-for-byte unchanged. A shell generated against 0.20
-  keeps working against this release without regenerating: it treats an id as
-  opaque and echoes it back, and the core looks that id up whole, kind bits
-  included.
-
-  Read the id through `EffectId::kind()` and `EffectId::sequence()` rather than
-  unpacking the `u32`; the encoding is an implementation detail and is expected
-  to change. The one visible consequence is that a shell printing raw ids for
-  debugging sees large numbers for requests and streams — `sequence()` is the
-  small ascending number it used to print.
-
-  That leaves the low 30 bits for the sequence — a billion ids, shared by all
-  three kinds, since the kind bits already keep their ids apart — and it still
-  wraps by stepping over any id that is still outstanding.
-
-### 🐛 Bug Fixes
-
-- **Resolving a fire-and-forget request says so again.** 0.20 stopped storing
-  such a request, which made its id indistinguishable from one that was never
-  issued, so the error regressed from `ResolveError::Never` to
-
-  ```
-  Err(BridgeError::ProcessResponse(ResolveError::NotFound(id)))
-  ```
-
-  The id now carries its kind, so the bridge can recognise a notification
-  without storing anything, and reports
-
-  ```
-  Attempted to resolve a request that is not expected to be resolved.
-  ```
-
-  `ResolveError::Never` is therefore reachable through the bridge once more.
-  Resolving an id that really is unknown, or one that has already been resolved,
-  still reports `NotFound`.
-
-### 💥 Breaking Changes
-
-- **`effects::routes::Parked::park` returns `effects::ParkedRequest` instead of a
-  tuple**, so the kind can travel with the id — a custom FFI lane is precisely
-  where you have to decide whether to answer once, repeatedly, or not at all.
+- **Operations can declare their operation kind.** `Operation` gains a `KIND`
+  associated constant, and the new `crux_core::operation` module the three
+  marker traits that go with it:
 
   ```rust
-  // before
-  let (id, operation) = camera.park(request);
+  use crux_core::{OperationKind, capability::Operation, operation};
 
-  // after
-  let parked = camera.park(request);
-  // parked.id, parked.kind, parked.operation
+  impl Operation for Publish {
+      type Output = ();
+      const KIND: Option<OperationKind> = Some(OperationKind::Notify);
+  }
+
+  impl operation::Notify for Publish {}
   ```
 
-  This only affects the `Parked` lane of the effect router, added in 0.19. The
-  serialized lane and the plain `Bridge` are unaffected.
+  An operation that declares a kind can only be sent with the constructor that
+  matches it — `notify_shell` for `Notify`, `request_from_shell` for `Request`,
+  `stream_from_shell` for `Stream`. The wrong one is a compile error:
+
+  ```text
+  error[E0080]: evaluation panicked: this operation does not declare
+  OperationKind::Request; send it with notify_shell or stream_from_shell instead
+  ```
+
+  The check is a constant evaluated after monomorphisation, so it is reported
+  when the code is built — by `cargo build`, `cargo test` or
+  `cargo clippy --all-targets` — rather than by `cargo check`.
+
+  `RenderOperation` now declares `Notify`. Everything else is unchanged:
+  `KIND` defaults to `None`, which means "the call site decides", so every
+  existing `Operation` implementation keeps compiling and keeps behaving
+  exactly as it did. Nothing changes on the wire, and no generated shell code
+  changes.
+
+- **`#[derive(Operation)]` is re-exported as `crux_core::macros::Operation`.**
+  It writes the `Operation` implementation, the `KIND` constant and the marker
+  trait for you, so a capability author declares an operation in one place:
+
+  ```rust
+  use crux_core::macros::Operation;
+
+  #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+  #[operation(request, output = GetResult)]
+  pub struct Get {
+      pub key: String,
+  }
+  ```
+
+  See the `crux_macros` changelog for the full description.
+
+- **`TypeRegistry::register_effect` records what type generation needs to know
+  about each effect variant** — the kind it declares and the type its request
+  resolves with — and `CodeGenerator::effects` reads it back:
+
+  ```rust
+  let generator = TypeRegistry::new().register_app::<App>()?.build()?;
+  let variants = &generator.effects()[0].variants;
+  // ident: "Get", kind: Some(OperationKind::Request), output: Some(TypeName("GetResult"))
+  ```
+
+  `#[effect(facet_typegen)]` calls it for you.
+
+- **Type generation now emits the operation kinds and a typed effect handler API
+  for every shell language.** Facet type generation (`facet_typegen`) adds
+  these declarations alongside the generated `Effect`, in Swift, Kotlin,
+  TypeScript and C#. A shell implements the handler; the dispatcher resolves
+  each request for it, so there is no `resolve` left to call the wrong number of
+  times or with bytes of the wrong type — a notification is not resolved at
+  all, a request once with whatever the handler returned, and a stream once per
+  item its sink receives.
+
+  Swift:
+
+  ```swift
+  public enum OperationKind: Hashable, Sendable { case notify, request, stream }
+
+  extension Effect {
+      public var operationKind: OperationKind? { /* ... */ }
+  }
+
+  public struct EffectSink<Item>: Sendable { public func send(_ item: Item) }
+
+  public protocol EffectHandler: Sendable {
+      func render(_ operation: RenderOperation)
+      func http(_ operation: HttpRequest) async -> HttpResult
+      func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>)
+  }
+
+  public struct EffectDispatcher: Sendable {
+      public init(handler: any EffectHandler,
+                  resolve: @escaping @Sendable (UInt32, [UInt8]) -> Void)
+      public func dispatch(_ request: Request)
+  }
+  ```
+
+  TypeScript:
+
+  ```typescript
+  export type OperationKind = "notify" | "request" | "stream";
+  export function effectOperationKind(effect: Effect): OperationKind | undefined;
+
+  export interface EffectHandler {
+      render(operation: RenderOperation): void;
+      http(operation: HttpRequest): Promise<HttpResult>;
+      subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
+  }
+
+  export class EffectDispatcher {
+      constructor(handler: EffectHandler,
+                  resolve: (id: uint32, bytes: Uint8Array) => void);
+      public dispatch(request: Request): void;
+  }
+  ```
+
+  Kotlin gets `enum class OperationKind`, a `val Effect.operationKind` extension
+  property, `fun interface EffectSink<in T>`, an `EffectHandler` interface
+  whose request methods are `suspend`, and
+  `class EffectDispatcher(handler, resolve)` with `suspend fun dispatch`. C#
+  gets `enum OperationKind`, an `OperationKind?` property on the `Effect` record,
+  `IEffectSink<in T>`, `IEffectHandler` with `Task<T>` request methods, and
+  `sealed class EffectDispatcher`.
+
+  An operation that declares no kind keeps the shape it has today: its handler
+  method is handed the request id and a `resolve` callback taking raw bytes, so
+  a shell can adopt the handler API before every capability it uses has
+  migrated.
+
+  This is purely additive — nothing that was generated before has changed, and
+  a shell that matches on `Effect` and calls `resolve` by hand carries on
+  working. If the extra declarations are in the way, turn them off with
+  `CodeGenerator::without_effect_handlers()`. The generated names
+  (`OperationKind`, `EffectSink`/`IEffectSink`, `EffectHandler`/`IEffectHandler`,
+  `EffectDispatcher`) are now reserved: `TypeRegistry::build` reports an error
+  if a shared type or an effect variant claims one.
+
+  Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
+  every top-level type and exposes the helpers these plugins need.
 
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
 

@@ -129,7 +129,7 @@ response. None of those is a good answer to a bug that the type system could
 have ruled out. The response enum exists only because the operation enum does.
 Each operation already knows what it returns; the enum is what forgets.
 
-### The request kind lives at the call site
+### The operation kind lives at the call site
 
 The three `Command` constructors accept any operation:
 
@@ -173,7 +173,7 @@ per-variant types can express and per-enum types cannot.
 [PR #580](https://github.com/redbadger/crux/pull/580), open at the time of
 writing, makes the kind visible on the resolve path by encoding it in two bits
 of the request id. It is a cheap, non-breaking way to surface the kind and it
-introduces the `RequestKind` type this RFC builds on. But it records the kind
+introduces the `OperationKind` type this RFC builds on. But it records the kind
 *per request instance*, which is more freedom than anyone uses, and it puts the
 information somewhere shells can only reach by unpacking an id whose encoding
 is documented as an implementation detail.
@@ -182,7 +182,7 @@ Once the kind is a static property of each operation type, the id no longer
 needs to carry it. The core knows the operation's static kind when it registers a
 request and when it resolves one, and shells know it from the generated
 per-variant table. This RFC therefore **supersedes the id encoding**: the
-`RequestKind` type and the `kind()` accessors on handles, resolvers and parked
+`OperationKind` type and the `kind()` accessors on handles, resolvers and parked
 requests from that PR stay, and the two id bits go. If the PR merges first, the
 bits are removed in the compat release below; if this RFC is accepted first, the PR can
 drop the encoding before it lands.
@@ -200,7 +200,7 @@ Swift, Kotlin and TypeScript too.
 
 ## Goals
 
-1. An operation type has exactly one output type and exactly one request kind.
+1. An operation type has exactly one output type and exactly one operation kind.
 2. Sending an operation with the wrong `Command` constructor is a compile error.
 3. Resolving an operation with a value of the wrong type is a compile error in
    the typed lanes (effect router, middleware, Rust shells) and a deserialization
@@ -232,7 +232,7 @@ the wrong constructor fails with an ordinary trait-bound error:
 
 ```rust
 /// How many times a request expects to be resolved. Introduced by PR #580.
-pub enum RequestKind { Notify, Request, Stream }
+pub enum OperationKind { Notify, Request, Stream }
 
 pub mod operation {
     /// Common base: a serializable payload the shell can act on. Carries the
@@ -249,13 +249,13 @@ pub mod operation {
 
     /// One of the three kinds, as a type. Sealed; the only impls are below.
     pub trait Kind: sealed::Sealed {
-        const VALUE: RequestKind;
+        const VALUE: OperationKind;
     }
 
     pub mod kind {
-        pub struct Notify;   // impl Kind { VALUE = RequestKind::Notify }
-        pub struct Request;  // impl Kind { VALUE = RequestKind::Request }
-        pub struct Stream;   // impl Kind { VALUE = RequestKind::Stream }
+        pub struct Notify;   // impl Kind { VALUE = OperationKind::Notify }
+        pub struct Request;  // impl Kind { VALUE = OperationKind::Request }
+        pub struct Stream;   // impl Kind { VALUE = OperationKind::Stream }
     }
 
     /// Fire and forget. Nothing waits on it.
@@ -435,10 +435,10 @@ Because the kind is static per `EffectFfi` variant, type generation can emit it
 as a property of the generated effect type, with no wire cost:
 
 ```swift
-public enum RequestKind { case notify, request, stream }
+public enum OperationKind { case notify, request, stream }
 
 extension Effect {
-    public var kind: RequestKind {
+    public var kind: OperationKind {
         switch self {
         case .render: .notify
         case .http, .kvGet, .kvSet, .kvDelete, .kvExists, .kvListKeys: .request
@@ -452,7 +452,7 @@ extension Effect {
 and equivalently a `val kind` on the Kotlin sealed interface and a `kind()` function
 in TypeScript. The `typegen_extensions` directory, which already ships
 hand-written `Requests` helpers per language, is the natural home for the
-`RequestKind` type; the `kind` switch is generated from the effect registration.
+`OperationKind` type; the `kind` switch is generated from the effect registration.
 
 With the kind and the output type both known per variant, the generator can go
 one step further and emit a handler API:
@@ -524,10 +524,10 @@ The change lands in two releases so that each is usable on its own.
 **Compat release (additive).** Everything a reader needs in order to try the
 design, without breaking anyone:
 
-- `RequestKind` (from PR #580, minus its id-bit encoding) and the `kind()`
+- `OperationKind` (from PR #580, minus its id-bit encoding) and the `kind()`
   accessors on handles and resolvers.
 - The marker traits `operation::{Notify, Request, Stream}`.
-- A transitional kind declaration: `const KIND: Option<RequestKind> = None;` on
+- A transitional kind declaration: `const KIND: Option<OperationKind> = None;` on
   `Operation`. A const can have a default where an associated type cannot, so
   every existing impl keeps compiling with `None`, meaning "kind decided by the
   constructor called, as before".
@@ -627,7 +627,7 @@ Stream}` and are used through the module path.
 ## Next steps
 
 1. Gather community answers to the question PR #580 raised: does anyone send
-   the same operation variant with two different request kinds? If not, this
+   the same operation variant with two different operation kinds? If not, this
    RFC's central assumption holds.
 2. Prototype the traits, the derive and the tightened `Command` bounds against
    `crux_kv` and the notes pub/sub example, and measure the line count and

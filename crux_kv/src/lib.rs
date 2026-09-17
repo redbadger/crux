@@ -5,7 +5,9 @@
 
 pub mod command;
 pub mod error;
+pub mod operation;
 pub mod protocol;
+pub mod store;
 
 use std::{future::Future, marker::PhantomData};
 
