@@ -608,6 +608,111 @@ hand-written match has to keep right by hand, every time an operation is added.
 
 ---
 
+## Adopting the shipped handlers
+
+`crux_http`, `crux_kv` and `crux_time` ship the shell side of their protocols:
+a Swift, Kotlin, TypeScript and C# implementation of each, embedded in the
+crate. If you adopted the handler API above, the methods you wrote for those
+three capabilities can go. See
+[Shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers) for the
+mechanism; this is the migration.
+
+1. **Register the handlers** in your codegen binary, on the registry, before
+   `build()`:
+
+   ```rust,ignore
+   let mut registry = TypeRegistry::new();
+   registry.register_app::<App>()?;
+   registry
+       .shell_handler(&crux_http::HTTP)?
+       .shell_handler(&crux_kv::KEY_VALUE)?
+       .shell_handler(&crux_time::TIME)?;
+   let typegen = registry.build()?;
+   ```
+
+   Each capability crate needs its `facet_typegen` feature on for the
+   codegen binary, which it usually already has. Registering a handler also
+   registers every operation and output its source names — the shipped file
+   implements the whole capability, so `Exists`, `Now` and the rest are
+   generated even if your `Effect` never carries them.
+
+2. **Regenerate.** The Swift package gains `Http.swift`, `KeyValue.swift` and
+   `Time.swift`; the Kotlin package and C# namespace gain the same three
+   files; the TypeScript module gains the same declarations at its end. Each
+   declares a protocol — `HttpHandler`, `KeyValueHandler`, `TimeHandler`
+   (`I`-prefixed in C#) — with one method per operation, and an
+   implementation of it.
+
+3. **Delete your implementations and delegate.** Hold an instance and forward
+   each method in one line:
+
+   ```swift
+   let http = URLSessionHttpHandler.shared
+   let kv = UserDefaultsKeyValueHandler(suiteName: "com.example.app.store")
+   let time = TaskTimeHandler()
+
+   func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
+   func kvGet(_ operation: Get) async -> ValueResult { await kv.get(operation) }
+   func kvSet(_ operation: Set) async -> ValueResult { await kv.set(operation) }
+   func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
+   func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
+   ```
+
+   ```kotlin
+   private val http = UrlConnectionHttpHandler { it.connectTimeout = 15_000 }
+   private val kv = FileKeyValueHandler(File(context.filesDir, "key_value_store"))
+   private val time = CoroutineTimeHandler()
+
+   override suspend fun http(operation: HttpRequest) = http.request(operation)
+   override suspend fun kvGet(operation: Get) = kv.get(operation)
+   override suspend fun timeClear(operation: Clear) = time.clear(operation)
+   ```
+
+   ```typescript
+   private readonly http = fetchHttpHandler;
+   private readonly kv = createLocalStorageKeyValueHandler("app.");
+   private readonly time = new TimeoutTimeHandler();
+
+   http(operation: HttpRequest) { return this.http.request(operation); }
+   kvGet(operation: Get) { return this.kv.get(operation); }
+   timeClear(operation: Clear) { return this.time.clear(operation); }
+   ```
+
+   ```csharp
+   private readonly IHttpHandler http = HttpClientHttpHandler.Shared;
+   private readonly IKeyValueHandler kv = new FileKeyValueHandler(storeDirectory);
+   private readonly ITimeHandler time = new TaskTimeHandler();
+
+   public Task<HttpResult> Http(HttpRequest operation) => http.Request(operation);
+   public Task<ValueResult> KvGet(Get operation) => kv.Get(operation);
+   public Task<TimerId> TimeClear(Clear operation) => time.Clear(operation);
+   ```
+
+   The timer table is state, so construct one `TaskTimeHandler` (or its
+   sibling) where you construct your handler and keep it for the life of the
+   app. The weather and notes examples do exactly this; their diffs are the
+   worked version of this section.
+
+**Configuring.** Construct the shipped implementation with what it needs — a
+pinned `URLSession`, a directory, a `localStorage` prefix, an
+`HttpURLConnection` configurator — or conform your own type to the protocol
+and hold that instead. To take one operation back, write its method body
+yourself and keep delegating the others.
+
+**When a capability gains an operation**, regenerating brings the new type
+and the shipped method for it, and your handler stops compiling until you add
+the delegating line. That is deliberate: it is the moment to read what the new
+operation does.
+
+**Names.** Registering a capability puts all of its operation types into your
+generated module's root namespace — `crux_kv` brings `Get`, `Set`, `Delete`,
+`Exists` and `ListKeys`. An operation of your own with one of those names
+collides, and today the registry keeps one of the two without a word
+([#601](https://github.com/redbadger/crux/issues/601)). Rename yours with
+`#[facet(rename = "...")]` or, better, give app-defined operations names
+that carry their capability, as the weather example's `FetchSecret`,
+`StoreSecret` and `DeleteSecret` do.
+
 ## Traps worth knowing about
 
 These are the things that actually caught us out migrating the two examples.
@@ -625,6 +730,9 @@ event and no error.
 So a shell has two obligations, and neither is about safety: cancel the timer,
 so it does not sit there until it fires, and answer the `Clear`. Under `Time`
 that answer was `TimeResponse::Cleared { id }`; now it is the bare `TimerId`.
+The handler `crux_time` ships does both, so a shell that
+[adopts it](#adopting-the-shipped-handlers) never has to think about this
+again.
 
 What a shell must not do is answer the same request twice, which is a
 `NotFound` from the bridge and a panic in most FFI wrappers, or answer a

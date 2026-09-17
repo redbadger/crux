@@ -128,7 +128,9 @@ Now each operation names only its own outcomes:
 {{#include ../../../examples/weather/shared/src/effects/secret/mod.rs}}
 ```
 
-Three operations, three outputs, two variants each. There is no wide `SecretResponse` and no `unreachable!()` anywhere, because a `SecretStoreResponse` is not a possible answer to a `Fetch` — the type says so, and the shell's generated handler method for `Fetch` returns a `SecretFetchResponse` or nothing at all.
+Three operations, three outputs, two variants each. There is no wide `SecretResponse` and no `unreachable!()` anywhere, because a `SecretStoreResponse` is not a possible answer to a `FetchSecret` — the type says so, and the shell's generated handler method for `FetchSecret` returns a `SecretFetchResponse` or nothing at all.
+
+The operation names carry the capability's name for a reason that has nothing to do with Rust: type generation puts every operation of every capability into one namespace on the shell side, and the weather app also uses `crux_kv`, whose `Delete` would otherwise land on top of a bare `Delete` here. An app-defined operation with a generic name is worth prefixing from the start.
 
 The developer API is correspondingly plain:
 
@@ -181,5 +183,56 @@ Putting it together, a capability gives you two things:
 - **A developer API** — small command-builder functions that speak in convenient Rust types rather than the raw protocol.
 
 In [ports-and-adapters](https://en.wikipedia.org/wiki/Hexagonal_architecture) vocabulary, capabilities are the ports; the shell-side code that actually carries out each operation is the adapter. The core expresses *what* it wants done; the shell decides *how* to do it. Keeping that separation tight is what makes the core portable.
+
+## Shipping the shell side too
+
+A published capability can go one step further and carry a reference adapter with it: a Swift, Kotlin, TypeScript and C# implementation of its operations, embedded in the crate as source. `crux_http`, `crux_kv` and `crux_time` all do. An app that registers one in its codegen binary gets the file emitted into its generated package, and its handler delegates to it one line per operation — see [Shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers) for that side of the story. This section is about what the capability author writes.
+
+The rules of a protocol belong to whoever defines it. How a `URLError` maps onto `HttpResult`, what a timer answers with when it fires and what it answers when it is cleared first: these are decisions the capability made, and every shell that re-derives them from documentation can get them subtly wrong. Shipping the implementation puts them in one place, next to the Rust that defines the operations, where a change to one is reviewed with the other. What it does *not* decide is whether a given app uses it — a bank with a hardened HTTP stack keeps its own — so the shipped file is a plain type in the app's module, and nothing generated calls it.
+
+The declaration is a `static` behind the crate's `facet_typegen` feature, so the source text is compiled into the app's codegen binary and never into its core:
+
+```rust,ignore
+// crux_time/src/shell.rs, re-exported from lib.rs
+#[cfg(feature = "facet_typegen")]
+pub static TIME: ShellHandler = ShellHandler::new("Time")
+    .types(register_types)
+    .swift(ShellSource::stdlib(include_str!("../shell/swift/Time.swift")))
+    .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Time.kt")))
+    .typescript(ShellSource::stdlib(include_str!("../shell/typescript/time.ts")))
+    .csharp(ShellSource::stdlib(include_str!("../shell/csharp/Time.cs")));
+```
+
+`name` names the file the app receives (`Time.swift`) and the protocol inside it. `types` names a function that registers every operation and output the sources mention — the shipped file implements the whole capability, so all of its types have to be generated even for an app whose `Effect` carries only some of them. A language you do not name is not shipped; the app implements those methods itself, as it would have without you.
+
+Each file declares a protocol called `<Name>Handler` (`I<Name>Handler` in C#) with one method per operation, taking the operation and returning exactly what the generated `EffectHandler` method for that operation returns — the output for a request, nothing for a notification, an `EffectSink` for a stream — and at least one implementation of it. Matching the shapes is what makes the app's delegation a single expression:
+
+```swift
+// crux_time/shell/swift/Time.swift
+public protocol TimeHandler: Sendable {
+    func now(_ operation: Now) async -> Instant
+    func notifyAt(_ operation: NotifyAt) async -> TimerId
+    func notifyAfter(_ operation: NotifyAfter) async -> TimerId
+    func clear(_ operation: Clear) async -> TimerId
+}
+
+public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
+    /* a table of running timers, keyed by id, guarded by a lock */
+}
+```
+
+The source refers to the generated types unqualified — `Now`, `Instant`, `TimerId` — because it is emitted into the same module they are. It carries its own imports after the module header type generation prepends, and nothing else at module scope under a name a generated type could take; `<Name>Handler` is reserved for it.
+
+A few constraints keep a shipped file safe to drop into any app:
+
+- **Standard library only.** Foundation, the JDK and `kotlinx-coroutines-core`, the browser or Node globals, the BCL — nothing the generated module does not already require. The Kotlin source is JVM, not Android: the generated package is a `kotlin("jvm")` library, so `android.*` would not compile there. A capability that truly needs a library adds it with `ShellSource::stdlib(..).dependencies(&[..])`, and every app that registers the handler then pays for it, so the bar is high.
+- **Say where the lowest common denominator ends.** Writing to the standard library means a platform with something better — `DataStore` or Room on Android, Cronet for HTTP, a database anywhere — beats what you shipped. That is fine: the shell conforms its own type to your protocol and provides that instead. What is not fine is leaving an app to discover it. `crux_kv`'s file store documents that it caches nothing and spans no more than one key; its `UserDefaults` implementation documents that documents and caches belong in a file.
+- **The same source on every platform that runs the language.** Swift's standard library differs between Apple platforms and corelibs-foundation: `URLSession` and its companions live in `FoundationNetworking` there, so a source that uses them needs `#if canImport(FoundationNetworking)`. The `tests/shell_source.rs` below builds Swift on Linux in CI, which is how you find out.
+- **Locks, not actors, in Swift.** The generated operation and output types are not `Sendable`, so an actor cannot return one across its isolation boundary. A shipped implementation that holds state guards it with a lock and declares itself `@unchecked Sendable`, as `TaskTimeHandler` does above.
+- **Configuration through the initialiser.** A shared instance for the plain path (`URLSessionHttpHandler.shared`), an initialiser for the configured one (`URLSessionHttpHandler(session:)`), no globals to mutate.
+- **Quiet.** No logging through an app-specific logger. Stay silent or expose a hook on the protocol.
+- **Compiled somewhere on every change.** `cargo test` cannot compile Swift. The bundled capabilities are compiled by the weather and notes example shells and by a `tests/shell_source.rs` in each crate, which generates a package for a small app and runs `dotnet build` or `tsc` when the toolchain is present. Give your own capability the same.
+
+Put the files under `shell/<language>/` beside `src/`, and make sure `Cargo.toml` packages them if it lists what to `include`.
 
 Speaking of the shell — it's time to look at how these operations get carried out on each platform. That's the next chapter.
