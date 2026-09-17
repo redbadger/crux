@@ -20,7 +20,7 @@ use crux_kv::operation as kv;
 use crux_time::operation as time;
 
 use crate::effects::location::{GetLocation, IsLocationEnabled};
-use crate::effects::secret::{Delete, Fetch, Store};
+use crate::effects::secret::{DeleteSecret, FetchSecret, StoreSecret};
 
 // ANCHOR: effect
 /// Every side-effect the core can ask the shell to perform.
@@ -53,10 +53,10 @@ pub enum Effect {
     /// Ask for the device's coordinates.
     GetLocation(GetLocation),
     /// Fetch a secret (the OpenWeatherMap API key).
-    FetchSecret(Fetch),
+    FetchSecret(FetchSecret),
     /// Store a secret.
-    StoreSecret(Store),
+    StoreSecret(StoreSecret),
     /// Delete a secret.
-    DeleteSecret(Delete),
+    DeleteSecret(DeleteSecret),
 }
 // ANCHOR_END: effect
