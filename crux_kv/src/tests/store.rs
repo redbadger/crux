@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     DataResult, ListResult, StatusResult,
     error::KeyValueError,
-    operation::{self, BoolResult, Keys, KeysResult, ValueResult},
+    operation::{self, BoolResult, KeyPage, KeysResult, ValueResult},
     protocol::Value,
     store::KeyValue,
 };
@@ -274,7 +274,7 @@ fn test_list_keys() {
     );
 
     request
-        .resolve(KeysResult::Ok(Keys {
+        .resolve(KeysResult::Ok(KeyPage {
             keys: vec!["test:1".to_string(), "test:2".to_string()],
             next_cursor: 2,
         }))
@@ -393,7 +393,7 @@ fn bool_result_round_trips_through_status_result() {
 #[test]
 fn keys_result_round_trips_through_list_result() {
     let cases = [
-        KeysResult::Ok(Keys {
+        KeysResult::Ok(KeyPage {
             keys: vec!["a".to_string()],
             next_cursor: 7,
         }),
@@ -406,7 +406,7 @@ fn keys_result_round_trips_through_list_result() {
     }
 
     assert_eq!(
-        ListResult::from(KeysResult::Ok(Keys {
+        ListResult::from(KeysResult::Ok(KeyPage {
             keys: vec!["a".to_string()],
             next_cursor: 7,
         })),
@@ -499,7 +499,7 @@ fn test_serializing_the_outputs_as_json() {
     );
 
     assert_eq!(
-        serde_json::to_string(&KeysResult::Ok(Keys {
+        serde_json::to_string(&KeysResult::Ok(KeyPage {
             keys: vec!["a".to_string()],
             next_cursor: 1,
         }))
