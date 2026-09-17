@@ -25,8 +25,20 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new()
-        .register_app::<shared::Weather>()?
+    let mut registry = TypeRegistry::new();
+    registry.register_app::<shared::Weather>()?;
+    // The HTTP client, the store and the timer table are the same in every
+    // shell, so the shells hold an instance of what these emit and delegate to
+    // it rather than writing the protocols' rules out three times. Registering
+    // a handler also registers the types its sources name, so the operations
+    // this app never sends — `KvDelete`, `Now` and the rest — are generated
+    // too: the shipped source implements the whole capability.
+    registry
+        .shell_handler(&crux_http::HTTP)?
+        .shell_handler(&crux_kv::KEY_VALUE)?
+        .shell_handler(&crux_time::TIME)?;
+
+    let typegen_app = registry
         .build()?
         // Where `boltffi pack` puts the bindings for each shell, so that the
         // generated `Core` can be constructed with nothing but a handler.
