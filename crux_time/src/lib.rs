@@ -9,6 +9,8 @@ pub mod clock;
 pub mod command;
 pub mod operation;
 pub mod protocol;
+#[cfg(feature = "facet_typegen")]
+pub mod shell;
 
 use std::{
     collections::HashSet,
@@ -31,6 +33,8 @@ use futures::{
 };
 
 pub use protocol::*;
+#[cfg(feature = "facet_typegen")]
+pub use shell::TIME;
 
 /// Result of the timer run. Timers can either run to completion or be cleared early.
 #[derive(Debug, PartialEq, Eq, Clone)]
