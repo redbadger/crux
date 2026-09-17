@@ -12,15 +12,11 @@ depends on the `Operation` trait, which the breaking release replaces with
 This RFC proposes that a capability crate can ship the shell side of its
 protocol — a Swift, Kotlin, TypeScript and C# implementation of its effect
 handlers — as source embedded in the crate, and that an app can ask type
-generation to emit that source into its generated package, together with a
-small generated adapter that connects it to the generated `EffectHandler`.
-The app chooses, in two places, whether to use it: once in its type generation
-configuration, which decides what is emitted, and once in its handler type,
-which decides what is wired. An app that makes neither choice gets exactly
-what it gets today. An app that makes both writes nothing else for the
-operations the shipped handler covers, and can configure the shipped
-implementation, replace one of its methods, or replace it wholesale, each with
-one ordinary declaration.
+generation to emit that source into its generated package. The shipped source
+is an ordinary type in the app's own module, implementing a protocol the
+capability defines. The app's `EffectHandler` uses it the way it would use
+any other type: it holds an instance and calls it. An app that does not ask
+for it gets exactly what it gets today.
 
 ## Summary
 
@@ -44,12 +40,11 @@ inherits.
 The capability declares what it ships:
 
 ```rust
-// crux_http/src/lib.rs
+// Rust — crux_http/src/lib.rs
 
 #[cfg(feature = "facet_typegen")]
 pub static HTTP: ShellHandler = ShellHandler {
     name: "Http",
-    methods: &[ShellMethod::new::<HttpRequest>("request")],
     swift: Some(ShellSource::stdlib(include_str!("../shell/swift/Http.swift"))),
     kotlin: Some(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt"))),
     typescript: Some(ShellSource::stdlib(include_str!("../shell/typescript/http.ts"))),
@@ -60,7 +55,7 @@ pub static HTTP: ShellHandler = ShellHandler {
 The app asks for it where it configures type generation:
 
 ```rust
-// shared_types/build.rs
+// Rust — shared/src/bin/codegen.rs
 
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
@@ -69,12 +64,17 @@ let typegen = TypeRegistry::new()
     .shell_handler(&crux_time::TIME);
 ```
 
-and its handler adopts it by conforming:
+and its handler uses it:
 
 ```swift
-struct WeatherHandler: EffectHandler, HttpHandling, TimeHandling {
-    let httpHandler: any HttpHandler = URLSessionHttpHandler.shared
-    let timeHandler: any TimeHandler = TaskTimeHandler.shared
+// Swift — the weather shell's handler
+struct WeatherHandler: EffectHandler {
+    let http = URLSessionHttpHandler.shared
+    let time = TaskTimeHandler()
+
+    func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
+    func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
+    func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
 
     func getLocation(_ operation: GetLocation) async -> Location { /* … */ }
     func isLocationEnabled(_ operation: IsLocationEnabled) async -> Bool { /* … */ }
@@ -82,9 +82,9 @@ struct WeatherHandler: EffectHandler, HttpHandling, TimeHandling {
 }
 ```
 
-`http`, `timeNotifyAfter` and `timeClear` are satisfied by `HttpHandling` and
-`TimeHandling`. Drop a conformance and the compiler asks for the methods
-again.
+The three delegating lines are the whole of what the shell writes for
+`crux_http` and `crux_time`. The rules live in `Http.swift` and `Time.swift`,
+generated into the package, versioned with the crates.
 
 ## Why?
 
@@ -118,22 +118,20 @@ client to use it with, stays with the shell.
 Nothing about this should be decided in the core. A capability crate knows
 how its protocol works and can offer an implementation; it cannot know
 whether a given app wants one, and it must not put behaviour into a shell the
-shell did not ask for. So the design has two explicit opt-ins and no implicit
-ones:
+shell did not ask for. So:
 
 - **Emission** is opt-in per capability, in the app's type generation
   configuration. An app that does not register a shipped handler gets no
-  source, no adapter and no manifest dependency for it. An app that drives
-  `EffectDispatcher` itself, or matches on `Effect` by hand, registers
-  nothing and sees nothing.
-- **Wiring** is opt-in per capability, in the app's handler type. The
-  generated `EffectHandler` is unchanged: every method is still abstract.
-  What is generated alongside it is an adapter protocol the app may conform
-  to. Conforming supplies the methods; not conforming leaves them for the
-  app to implement.
+  source and no manifest dependency for it.
+- **Wiring** is the shell's own code. The generated `EffectHandler` does not
+  change, and nothing is generated that calls the shipped implementation. The
+  app's handler holds an instance and delegates to it, one line per
+  operation, and those lines are where a reader sees what the app does for
+  HTTP or timers.
 
-An app reading its own handler type sees every effect it produces, either as
-a method it wrote or as a conformance it declared.
+A shell that drives `EffectDispatcher` itself, or matches on `Effect` by hand,
+can register a shipped handler too: it is a plain type, and the shell calls
+it from wherever it handles the operation.
 
 ### The default has to be easy to leave and easy to return to
 
@@ -142,29 +140,25 @@ shells configure their HTTP client (certificate pinning, a shared
 `URLSession`, an `OkHttpClient` with interceptors), put their key-value store
 somewhere specific, and sometimes replace a whole capability's implementation
 with one backed by a platform library. Each of those has to be one
-declaration away from the plain path, and the compiler has to point at what
-is missing.
+declaration away from the plain path.
 
 ## Goals
 
 - A capability crate can ship shell handlers for Swift, Kotlin, TypeScript
   and C#, versioned with the crate, so that regenerating types also brings the
   matching handler.
-- The core makes no decision about the shell. What is emitted, and what is
-  wired, are both chosen by the app, and nothing is emitted for a capability
-  the app did not ask for.
+- The core makes no decision about the shell. What is emitted is chosen by
+  the app, nothing is emitted for a capability the app did not ask for, and
+  nothing generated calls the shipped code.
 - An app that adopts a shipped handler writes, per capability, one
-  registration in type generation and one conformance with one property in
-  its handler type. Its `EffectHandler` methods for that capability are
-  supplied.
-- Configuring a shipped handler, replacing one of its methods, and replacing it
-  wholesale are each a single declaration in the app's handler type, and the
-  three compose.
+  registration in type generation, one property, and one delegating line per
+  operation. It writes none of the protocol rules.
+- Configuring a shipped handler, replacing one of its methods, and replacing
+  it wholesale are each ordinary code in the app's handler type.
 - Type generation stays independent of package registries and of BoltFFI. The
   shipped source compiles against the app's own generated types, in the same
   module.
-- Nothing changes for a shell that keeps implementing the methods itself, and
-  a shell can stop using a shipped handler by deleting a conformance.
+- Nothing changes for a shell that keeps implementing the methods itself.
 
 ## Non-goals
 
@@ -174,6 +168,8 @@ is missing.
 - Shipping handlers for an app's own operations. The mechanism is available to
   any crate that declares operations, but its purpose is published
   capabilities.
+- Generating the wiring between `EffectHandler` and the shipped
+  implementation. Considered and rejected; see Alternatives.
 - UI or dependency-injection frameworks. A shipped handler is a plain type; how
   an app constructs and provides it is the app's business.
 - The Rust side of the FFI, as in the generated `Core` RFC.
@@ -188,29 +184,15 @@ client, a key-value store, a timer table — because its operations share
 state, and because that is the unit an app would want to configure or replace.
 
 ```rust
+// Rust
 pub struct ShellHandler {
-    /// UpperCamelCase. Names the shipped protocol (`HttpHandler`,
-    /// `IHttpHandler` in C#), the generated adapter (`HttpHandling`,
-    /// `IHttpHandling`) and the property the adapter requires (`httpHandler`).
+    /// UpperCamelCase. Names the companion file (`Http.swift`) and the
+    /// protocol the source declares (`HttpHandler`, `IHttpHandler` in C#).
     pub name: &'static str,
-    /// Which operations the shipped protocol performs, and through which
-    /// method.
-    pub methods: &'static [ShellMethod],
     pub swift: Option<ShellSource>,
     pub kotlin: Option<ShellSource>,
     pub typescript: Option<ShellSource>,
     pub csharp: Option<ShellSource>,
-}
-
-pub struct ShellMethod {
-    /// The operation type, recorded as its `TypeId`.
-    operation: fn() -> TypeId,
-    /// The method on the shipped protocol that performs it.
-    method: &'static str,
-}
-
-impl ShellMethod {
-    pub const fn new<Op: 'static>(method: &'static str) -> Self { /* … */ }
 }
 
 pub struct ShellSource {
@@ -227,21 +209,12 @@ impl ShellSource {
 }
 ```
 
-The binding from operation to method lives in the static, with everything
-else the capability says about its shell side, and the operation declaration
-does not mention it. Nothing is added to the `Operation` derive or to the
-trait, which is why the breaking release's move to `Notify`, `Request` and
-`Stream` does not touch this design.
-
-A shipped protocol method has the same shape as the generated `EffectHandler`
-method for the variant that carries its operation: a request returns its
-output, a stream takes an `EffectSink`, a notification returns nothing. A
-legacy operation with no declared kind cannot be bound; type generation
-rejects the registration and says which operation.
+That is the whole declaration. The operation types are not mentioned, the
+`Operation` derive and trait are untouched, and the breaking release's move
+to `Notify`, `Request` and `Stream` does not affect it.
 
 A language a capability does not ship (`kotlin: None`) simply has nothing to
-emit on that platform: the app implements the methods as it does today, and
-type generation says so when the handler is registered for that language.
+emit on that platform: the app implements the methods as it does today.
 
 The static is gated on `facet_typegen`, as `register_types_facet` already is,
 so the source text is compiled into the typegen binary and not into the app's
@@ -254,6 +227,7 @@ The app names the shipped handlers it wants on the built `CodeGenerator`,
 next to `boltffi`:
 
 ```rust
+// Rust — shared/src/bin/codegen.rs
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
     .build()?
@@ -262,153 +236,124 @@ let typegen = TypeRegistry::new()
     .shell_handler(&crux_time::TIME);
 ```
 
-`EffectVariantMeta` gains the operation's `TypeId`, which
-`EffectMeta::variant::<Op>()` already computes to set `render`. When a
-language is generated, the plugin joins each registered handler's `methods`
-to the variants that carry those operations, and emits for the matches.
+This is the one place the app has to know a shipped handler exists, and it
+is where the capability's documentation and the book's typegen chapter point.
+It is also what keeps the dependency story simple: a handler's
+`dependencies` reach the manifest only when the handler is registered, so no
+app pays for a library it did not ask for.
 
-Registration is checked, and the checks say what to do:
-
-- A registered handler none of whose operations appears in any registered
-  effect is an error — the app asked for `crux_http::HTTP` but no effect
-  variant carries `HttpRequest` — because silently emitting nothing would
-  leave the shell hunting for a protocol that is not there. This mirrors
-  `check_boltffi`.
-- A registered handler together with `without_effect_handlers()` is an error,
-  for the same reason `boltffi` is.
-- Two registered handlers with the same `name`, or a `name` that collides
-  with a registered type or a reserved name, is an error.
-- A handler whose source names a dependency reports it through
-  `manifest_dependencies`, so the manifest gains it only when the handler is
-  registered.
+Registration is checked: two handlers with the same `name`, or a `name` that
+collides with a registered type or a reserved name, is an error.
 
 ### What is emitted
 
 For each registered handler with source for the target language, the plugin
 emits one companion file in the generated module — Swift
 `Sources/App/Http.swift`, Kotlin `com/crux/example/weather/Http.kt`, C#
-`Company/Shared/Http.cs` — containing two things. In TypeScript, whose
-modules are one file, both are appended to the module after the types, the
-way `Core` is today.
+`Company/Shared/Http.cs` — containing the shipped source verbatim, after the
+module header the language needs (the `package` line in Kotlin, the
+file-scoped `namespace` in C#). In TypeScript, whose modules are one file, the
+source is appended to the module after the types, the way `Core` is today.
 
-**The shipped source**, verbatim, after the module header the language needs
-(the `package` line in Kotlin, the file-scoped `namespace` in C#). It
-declares the protocol `HttpHandler` and one or more implementations of it,
-and refers to `HttpRequest` and `HttpResult` unqualified, as any file in
-that module would.
-
-**The adapter**, generated, which is the only thing that knows the app's
-variant names:
+The source declares a protocol named after the handler and one or more
+implementations of it, and refers to `HttpRequest` and `HttpResult`
+unqualified, as any file in that module would:
 
 ```swift
-/// `crux_http`'s shipped handler. Conform to this and supply `httpHandler`
-/// to have `http(_:)` performed by it; implement `http(_:)` yourself to
-/// take that operation back.
-public protocol HttpHandling: EffectHandler {
-    var httpHandler: any HttpHandler { get }
+// Swift — shipped source, emitted as Sources/App/Http.swift
+public protocol HttpHandler: Sendable {
+    func request(_ operation: HttpRequest) async -> HttpResult
 }
 
-extension HttpHandling {
-    public func http(_ operation: HttpRequest) async -> HttpResult {
-        await httpHandler.request(operation)
-    }
+public final class URLSessionHttpHandler: HttpHandler {
+    public static let shared = URLSessionHttpHandler(session: .shared)
+    public init(session: URLSession) { /* … */ }
+    public func request(_ operation: HttpRequest) async -> HttpResult { /* … */ }
 }
 ```
 
-In Kotlin, an interface with a default member:
+Each protocol method takes the operation and returns what the generated
+`EffectHandler` method for that operation returns — the output for a request,
+nothing for a notification, and an `EffectSink` for a stream — so the app's
+delegation is one expression.
+
+Nothing else is emitted. The generated `EffectHandler`, `EffectDispatcher`
+and `Core` are exactly as the earlier RFCs describe them.
+
+### The developer experience
+
+**Use.** Hold an instance of the shipped implementation and delegate.
 
 ```kotlin
-interface HttpHandling : EffectHandler {
-    val httpHandler: HttpHandler
-    override suspend fun http(operation: HttpRequest): HttpResult =
-        httpHandler.request(operation)
-}
-```
+// Kotlin
+class WeatherHandler(private val location: LocationClient) : EffectHandler {
+    private val http = UrlConnectionHttpHandler
+    private val time = TaskTimeHandler()
 
-In C#, a derived interface providing the base member's default:
+    override suspend fun http(operation: HttpRequest) = http.request(operation)
+    override suspend fun timeNotifyAfter(operation: NotifyAfter) = time.notifyAfter(operation)
+    override suspend fun timeClear(operation: Clear) = time.clear(operation)
 
-```csharp
-public interface IHttpHandling : IEffectHandler
-{
-    IHttpHandler HttpHandler { get; }
-    Task<HttpResult> IEffectHandler.Http(HttpRequest operation) =>
-        HttpHandler.Request(operation);
-}
-```
-
-In TypeScript, where interfaces carry no behaviour, a function returning the
-members to spread into the handler object:
-
-```ts
-export function httpHandling(handler: HttpHandler): Pick<EffectHandler, "http"> {
-  return { http: (operation) => handler.request(operation) };
-}
-```
-
-The generated `EffectHandler` itself does not change. Every method is still a
-requirement; the adapter is one way of meeting it. In all four languages the
-app's own implementation of a method takes precedence over the adapter's, so
-conforming and implementing compose per method.
-
-### The developer experience, in tiers
-
-Every tier is a declaration in the app's handler type, and they compose per
-capability.
-
-**Use.** Conform to the adapter and supply the shipped implementation.
-
-```kotlin
-class WeatherHandler(private val location: LocationClient) :
-    EffectHandler, HttpHandling, TimeHandling {
-    override val httpHandler = UrlConnectionHttpHandler
-    override val timeHandler = TaskTimeHandler()
     override suspend fun getLocation(operation: GetLocation) = location.current()
     override suspend fun isLocationEnabled(operation: IsLocationEnabled) = location.enabled()
 }
 ```
 
 ```ts
+// TypeScript
+const http = fetchHttpHandler;
+const time = new TaskTimeHandler();
+
 const handler: EffectHandler = {
-  ...httpHandling(fetchHttpHandler),
-  ...timeHandling(new TaskTimeHandler()),
+  http: (operation) => http.request(operation),
+  timeNotifyAfter: (operation) => time.notifyAfter(operation),
+  timeClear: (operation) => time.clear(operation),
   getLocation: async (operation) => location.current(),
   isLocationEnabled: async (operation) => location.enabled(),
 };
 ```
 
-**Configure.** Supply a configured instance of the shipped implementation, or
-any other type conforming to the shipped protocol.
+**Configure.** Construct the shipped implementation with what it needs, or
+use any other type conforming to the shipped protocol.
 
 ```kotlin
-override val httpHandler = OkHttpHttpHandler(client)            // app's own conformer
-override val keyValueHandler = FileKeyValueHandler(context.filesDir)
+// Kotlin
+private val http = OkHttpHttpHandler(client)                  // app's own conformer
+private val kv = FileKeyValueHandler(context.filesDir)
 ```
 
 ```swift
-let httpHandler: any HttpHandler = URLSessionHttpHandler(session: pinnedSession)
+// Swift
+let http = URLSessionHttpHandler(session: pinnedSession)
 ```
 
-**Replace one method.** Implement the method. The adapter still serves the
-capability's other operations.
+**Replace one method.** Write the method body. The shipped implementation
+still serves the capability's other operations.
 
 ```swift
+// Swift
 func kvGet(_ operation: Get) async -> ValueResult {
     if operation.key == "session" { return await keychainGet() }
-    return await keyValueHandler.get(operation)
+    return await kv.get(operation)
 }
 ```
 
 **Replace the capability.** Supply a conformer of the shipped protocol, as
-under Configure, or drop the conformance and implement the methods. The
-protocol is also the natural seam for a fake in tests.
+under Configure, or write the methods without it. The protocol is also the
+natural seam for a fake in tests.
 
-**Do not use it.** Do not register it. Nothing is emitted, and the handler
-type is exactly what the per-operation types RFC generates.
+**Do not use it.** Do not register it. Nothing is emitted, and the generated
+package is exactly what the per-operation types RFC generates.
+
+When a capability gains an operation, the app's handler stops compiling until
+the app adds the delegating line for it. That is the moment to read what the
+new operation does, and it is a better moment than finding out from a
+regenerated file that does it silently.
 
 ### State and concurrency
 
-The app owns the instance it supplies, so lifetime is the app's. Shipped
-implementations that are safe to share offer a shared instance
+The app owns the instance, so lifetime is the app's. Shipped implementations
+that are safe to share offer a shared instance
 (`URLSessionHttpHandler.shared`, a Kotlin `object`, a C# static) for the
 plain path, and an initialiser for the configured one. Shipped
 implementations that hold state, like a timer table, are constructed by the
@@ -418,8 +363,7 @@ Shipped Swift protocols are `Sendable` and their methods `nonisolated`, matching
 `EffectHandler`; a stateful implementation guards its state with an actor or
 a lock, as the weather shell's timer table does today with `@MainActor`.
 Kotlin implementations are `suspend` and choose their own dispatcher, as the
-weather shell's `withContext(Dispatchers.IO)` does. Nothing about the generated
-`Core` or `EffectDispatcher` changes.
+weather shell's `withContext(Dispatchers.IO)` does.
 
 ### Rules for shipped source
 
@@ -435,12 +379,13 @@ every app that registers it.
   manifest only for apps that register the handler, but every one of those
   apps then pays for it, so the bar is high.
 - The Kotlin source is JVM, not Android. No `android.*`.
-- Declares a protocol named `<Name>Handler` (`I<Name>Handler` in C#) whose
-  methods match the bound operations' shapes, and at least one implementation
+- Declares a protocol named `<Name>Handler` (`I<Name>Handler` in C#) with one
+  method per operation, each taking the operation and returning what the
+  generated `EffectHandler` method returns, and at least one implementation
   of it. Exposes configuration through the implementation's initialiser, not
   through globals.
 - Declares nothing else at module scope under a name a generated type could
-  take. `<Name>Handler` and `<Name>Handling` join the reserved names.
+  take. `<Name>Handler` joins the reserved names.
 - Does not log through an app-specific logger. A shipped handler either stays
   quiet or exposes a hook on its protocol.
 - Is compiled by an example shell on every change. The weather example covers
@@ -463,11 +408,8 @@ an external package, companion files are written whenever the module itself
 is. It was added for the generated `Core`'s BoltFFI bridge, whose `FfiBridge`
 is emitted through it, and it is the right home for shipped sources in Swift,
 Kotlin and C# too, where one file per capability is what a reader expects to
-find. TypeScript's single-file modules do not need it.
-
-Everything else uses hooks that exist: `after_type` for the TypeScript
-emission, as the handler and `Core` plugins do, and `manifest_dependencies`
-for the rare library.
+find. TypeScript's single-file modules use `after_type`, as `Core` does, and
+`manifest_dependencies` carries the rare library.
 
 ## Drawbacks
 
@@ -485,19 +427,17 @@ Swift, Kotlin, TypeScript and C# in one pull request. That is the point — the
 author who changes the protocol is the one who knows what the shells must do —
 but it raises the cost of contributing a capability.
 
-**Three declarations per capability, in two places.** The plain path is a
-registration in `build.rs`, a conformance and a property. Each is there
-because it is a decision the shell should make visibly, but it is more than
-the zero declarations a core-side default would have cost, and the
-registration in particular is one the app has to know to make. The
-capability's documentation and the book's typegen chapter are where it learns
-that; type generation cannot suggest it, because it does not know which
-crates ship handlers until they are registered.
+**The app still writes a line per operation.** A shell using `crux_http`,
+`crux_kv` and `crux_time` writes a property per capability and a delegating
+line per operation, where a generated default would have cost nothing. Those
+lines are deliberate — they are where the shell's choice is visible, and
+where a new operation surfaces — but they are lines, and a capability with
+many operations has many of them.
 
-**Swift needs the property's type spelled out.** A stored property witnessing
-`var httpHandler: any HttpHandler { get }` must be declared with that type;
-`let httpHandler = URLSessionHttpHandler.shared` does not conform. One
-annotation, but a surprising one.
+**The app has to know to register it.** Type generation cannot suggest a
+shipped handler, because it does not know which crates ship one until they
+are registered. The capability's documentation and the book's typegen chapter
+are where an author learns the line exists.
 
 **Stdlib-only implementations are sometimes the second-best implementation.**
 The weather Android shell uses OkHttp today and would keep using it, through
@@ -511,11 +451,11 @@ Nothing is required. A shell that implements `http`, `kvGet` and the rest keeps
 compiling and keeps its behaviour. A shell that registers nothing generates
 what it generates today.
 
-To adopt, register the handler in type generation, regenerate, add the
-conformance and the property to the handler type, and delete the method and
-the file behind it. The notes and weather examples do this in the
-implementing pull request, so the book's Part II shows handlers that
-implement only app-defined operations.
+To adopt, register the handler in type generation, regenerate, replace the
+method bodies with delegations to an instance of the shipped implementation,
+and delete the file that held them. The notes and weather examples do this in
+the implementing pull request, so the book's Part II shows handlers whose
+only substance is the app-defined operations.
 
 The [migration guide](../guide/migrate-per-operation-types.md) gains a section
 per language.
@@ -530,16 +470,28 @@ nothing got the shipped implementation. Review made the case against it: the
 core was deciding what the shell does; an app that never wanted the shipped
 handler got it emitted anyway, including into shells that drive
 `EffectDispatcher` themselves; and a capability with no sensible default on
-one platform made the property required there and optional elsewhere. The
-adapter shape keeps the one-declaration configuration the default was there
-to provide, and moves both decisions to the app.
+one platform made the property required there and optional elsewhere.
 
-**Binding on the operation declaration.** Keep `shell(HTTP, method = "request")`
-on the operation, as protocol metadata. It is metadata rather than a shell
-decision, but it puts a shell-side concern on every operation of the
-capability, and it means the derive has to grow for a feature the trait does
-not know about. The static already exists to hold everything the capability
-says about its shell side; the binding belongs there.
+**A generated adapter.** The second draft kept the wiring but made it opt-in:
+the static listed its operations and methods, `EffectVariantMeta` recorded
+each operation's `TypeId`, and type generation emitted a per-capability
+`HttpHandling: EffectHandler` protocol with a required `httpHandler` property
+and default bodies delegating to it, which the app adopted by conforming.
+Counted out, it saved the weather shell almost nothing — five delegating lines
+became three conformances and three properties — and cost a method listing
+in every capability, `TypeId` plumbing, registration checks and four adapter
+emitters. Review asked whether that was making our life difficult for not
+much gain, and it was. The delegating lines also turn out to be the better
+behaviour: a new operation asks for a line instead of being wired silently.
+
+**Discovery through the operation.** Instead of the app registering the
+handler, put `shell = HTTP` on each `#[operation]` so the derive registers it
+and every shipped handler is emitted automatically. Zero configuration, and
+the foreign compilers strip unused types, but manifest dependencies are not
+stripped, so a capability that ships a library would land it in every app.
+It also puts a shell-side concern on every operation in the core crate, and
+grows the derive for a feature the trait does not know about. The one line in
+the codegen binary is the price of keeping both decisions in the shell.
 
 **Generalising the `render` default.** The generated `Core` RFC gave `render`
 a default body because `Core` handles that variant itself. That is a
@@ -553,29 +505,17 @@ tests. Real libraries with their own release cadence, but four registries to
 publish to in lockstep with the crate, a breaking move of every capability
 type out of the app's namespace, and the bincode runtime shared across
 packages. Worth revisiting when shipped handlers are large enough to need
-native unit tests; the adapter shape does not preclude it, since a published
-package could provide the conformer the property takes.
+native unit tests; nothing here precludes it, since a published package could
+provide the conformer the app's property holds.
 
 **A byte-level seam.** Publish a package that bundles its own copy of the
 types and exposes `handle(bytes) -> bytes`; type generation emits a default
 that serialises across the seam. Avoids the namespace move but keeps the four
 registries, and adds a protocol-version check the app can get wrong.
 
-**A shared static instead of a property.** Emit the adapter's methods as
-`URLSessionHttpHandler.shared.request(op)` with no property. Simpler to
-generate and to read, but configuration means either mutating a global or
-re-implementing the delegation, and there is no compile-time signal for a
-capability that needs configuring. Rejected because the property is what
-makes the Configure tier a single declaration.
-
-**One handler per operation.** Bind each operation to its own shipped type
-rather than grouping by capability. Loses the shared state a timer table or a
-store needs, and multiplies the properties an app would configure.
-
-**Runtime registration.** A `ShellHandlers.register(HttpHandler.self, …)` the
-app calls at startup, consulted by the adapter. Discoverable only by reading
-generated code, fails at runtime when missing, and invisible to the compiler.
-Rejected.
+**One handler per operation.** Ship each operation's implementation as its own
+type rather than grouping by capability. Loses the shared state a timer table
+or a store needs, and multiplies the instances an app would hold.
 
 **Documentation.** Keep the handler files in the book and the examples and
 tell people to copy them. This is the status quo, and its failure mode is the
@@ -584,36 +524,29 @@ evolves.
 
 ## Open questions
 
-1. **A default within the adapter.** Should `HttpHandling` supply
-   `httpHandler` itself, defaulting to the shipped implementation, so that
-   conforming alone is enough and the property is only written to configure?
-   Swift could do it from the shipped source, with an extension on the
-   generated protocol; Kotlin and C# would need the default expression back
-   in the static, because it has to appear in the interface declaration.
-   Uniformity across languages argues for leaving the property required.
-2. **Logging.** Shells want to see HTTP traffic and timer activity in their own
+1. **Logging.** Shells want to see HTTP traffic and timer activity in their own
    logs. A shipped protocol could carry an optional observer, or the shipped
    implementations could take a logger in their configuration. Left to the
    first implementation.
-3. **Which implementations to ship.** Tentatively: `crux_http` everywhere
+2. **Which implementations to ship.** Tentatively: `crux_http` everywhere
    (`URLSession`, `HttpURLConnection`, `fetch`, `HttpClient`); `crux_time`
    everywhere; `crux_kv` as `UserDefaults` in Swift, `localStorage` where
    present in TypeScript, and a file-backed store taking a directory on the
-   JVM and in C#. Because the property is required, a store that needs a
-   directory is no different from one that does not. To be settled per
-   capability in the implementing pull requests.
-4. **Renamed variants.** The adapter uses the variant's emitted name, so a
-   renamed variant still binds. If two variants of one effect carry the same
-   operation — two `HttpRequest` variants — both delegate to the same
-   method, which is correct but worth a note in the book.
+   JVM and in C#. To be settled per capability in the implementing pull
+   requests.
+3. **Checking the source against the protocol.** Type generation does not
+   parse the shipped source, so a protocol method whose shape drifts from its
+   operation is caught only when an example shell compiles. Whether a typegen
+   fixture that compiles every shipped file for every language is worth
+   building, rather than relying on the examples, is a question for the
+   implementation.
 
 ## Next steps
 
 1. Release the facet-generate that carries the companion-file hook; the
    per-operation types stack already depends on it.
-2. Add `ShellHandler`, `ShellMethod`, `ShellSource` and
-   `CodeGenerator::shell_handler` to `crux_core`, record the operation's
-   `TypeId` in `EffectVariantMeta`, and add the plugin with its checks.
+2. Add `ShellHandler`, `ShellSource` and `CodeGenerator::shell_handler` to
+   `crux_core`, with the plugin and its name check.
 3. Ship handlers for `crux_http`, `crux_kv` and `crux_time` in all four
    languages, and migrate the notes and weather shells to them, so CI compiles
    every shipped Swift, Kotlin and TypeScript file. Give counter-http a C#
