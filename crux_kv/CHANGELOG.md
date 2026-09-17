@@ -17,6 +17,19 @@ and this project adheres to
 
 ### 🚀 Features
 
+- **A shell-side key-value handler ships with the crate.** `crux_kv::KEY_VALUE`
+  is a `ShellHandler` carrying `UserDefaultsKeyValueHandler` (Swift),
+  `FileKeyValueHandler` over a directory (Kotlin and C#) and
+  `createLocalStorageKeyValueHandler` (TypeScript), each behind a
+  `KeyValueHandler` protocol with `get`, `set`, `delete`, `exists` and
+  `listKeys`. An app registers it in its codegen binary
+  (`registry.shell_handler(&crux_kv::KEY_VALUE)?`), which also generates every
+  operation of the capability, and delegates one line per operation. Note that
+  this puts `Get`, `Set`, `Delete`, `Exists` and `ListKeys` into the app's
+  generated namespace: an app-defined operation with one of those names must
+  be renamed. See
+  [Shipped shell handlers](https://redbadger.github.io/crux/part-4/typegen.html#shipped-shell-handlers).
+
 - **One type per store operation, in the new `crux_kv::operation` module, and a
   `store::KeyValue` capability that sends them.** `KeyValueOperation` has one output
   type — `KeyValueResult` — for all five of its variants, so a `Get` can be answered
