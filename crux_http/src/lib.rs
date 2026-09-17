@@ -36,6 +36,8 @@ pub mod command;
 mod compat;
 pub mod middleware;
 pub mod protocol;
+#[cfg(feature = "facet_typegen")]
+pub mod shell;
 pub mod testing;
 
 use std::marker::PhantomData;
