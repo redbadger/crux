@@ -1,20 +1,26 @@
 //! Generation of foreign language types (currently Swift, Kotlin, C#, TypeScript) for Crux
 //!
-//! To use this module, you can add a separate crate from your shared library, possibly
-//! called `shared_types`, which will allow you to reference types from your shared library
-//! during the build process (e.g. in `shared_types/build.rs`).
+//! Type generation runs from your core crate itself — the one usually called
+//! `shared` — which carries a small binary to drive it. There is no separate
+//! crate for it: the examples put the binary in `shared/src/bin/codegen.rs`
+//! and gate it on a feature, so an ordinary build of the core never compiles
+//! it.
 //!
-//! This module is behind the feature called `facet_typegen`, and is not compiled into the default crate.
+//! ```toml
+//! [[bin]]
+//! name = "codegen"
+//! required-features = ["codegen"]
 //!
-//! Ensure that you have the following line in the `Cargo.toml` of your `shared_types` library.
-//!
-//! ```rust,ignore
-//! [build-dependencies]
-//! crux_core = { version = "0.20", features = ["facet_typegen"] }
+//! [features]
+//! facet_typegen = ["crux_core/facet_typegen"]
+//! codegen = ["facet_typegen", "dep:anyhow", "dep:clap"]
 //! ```
 //!
-//! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
-//! * Create a `build.rs` in your `shared_types` library, that looks something like this:
+//! This module is behind the `facet_typegen` feature, so it is never compiled
+//! into the core you ship.
+//!
+//! The binary takes the language and the output directory from its arguments
+//! and generates into them; stripped of that plumbing, it does this:
 //!
 //! ```rust
 //! # mod shared {
@@ -59,12 +65,12 @@
 //! let typegen = TypeRegistry::new().register_app::<App>()?.build()?;
 //!
 //! typegen.swift(
-//!     &Config::builder("SharedTypes", &output_root.join("swift"))
+//!     &Config::builder("App", &output_root.join("swift"))
 //!     .build()
 //! )?;
 //!
 //! typegen.kotlin(
-//!     &Config::builder("com.crux.example.counter.shared", output_root.join("kotlin"))
+//!     &Config::builder("com.crux.examples.counter", output_root.join("kotlin"))
 //!     .build()
 //! )?;
 //!
@@ -74,7 +80,7 @@
 //! )?;
 //!
 //! typegen.typescript(
-//!     &Config::builder("shared_types", output_root.join("typescript"))
+//!     &Config::builder("app", output_root.join("typescript"))
 //!     .build()
 //! )?;
 //! # Ok(())
@@ -105,10 +111,46 @@
 //! `Core(handler, scope)` in Kotlin, `await Core.create(handler, onView)` in
 //! TypeScript and `new Core(handler)` in C#. A language you do not name is
 //! generated exactly as before.
+//!
+//! ## Shell handlers shipped with a capability
+//!
+//! A capability crate can ship the shell side of its protocol — the rules for
+//! turning a platform response into its operation's output — as source. Name
+//! the ones you want with [`TypeRegistry::shell_handler`] and they are
+//! emitted into the generated module:
+//!
+//! ```rust
+//! use crux_core::type_generation::facet::{
+//!     ShellHandler, ShellSource, TypeGenError, TypeRegistry,
+//! };
+//!
+//! // Normally `crux_http::HTTP`, declared by the capability crate, whose
+//! // source is `include_str!` from the crate rather than written inline.
+//! static HTTP: ShellHandler = ShellHandler::new("Http")
+//!     .types(register_types)
+//!     .swift(ShellSource::stdlib("public protocol HttpHandler: Sendable {}"));
+//!
+//! // A real capability registers each of its operations here, so that the
+//! // types its sources name exist even when the app never sends them:
+//! // `HttpRequest::register_types_facet(registry)`.
+//! fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+//!     Ok(registry)
+//! }
+//!
+//! let typegen = TypeRegistry::new().shell_handler(&HTTP)?.build()?;
+//! # let _ = typegen;
+//! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+//! ```
+//!
+//! Registering the handler also registers the types its sources name, so the
+//! whole capability is generated even when the app's `Effect` uses a subset of
+//! it. Nothing generated calls the shipped implementation: your handler holds
+//! an instance and delegates to it, one line per operation.
 mod app;
 mod boltffi;
 mod effects;
 mod plugins;
+mod shell_handler;
 
 use std::{
     fs::{self, File},
@@ -135,7 +177,10 @@ use thiserror::Error;
 pub use self::app::AppMeta;
 pub use self::boltffi::{BoltFfi, CSharpFfi, KotlinFfi, SwiftFfi, TypeScriptFfi};
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
-use self::plugins::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin};
+use self::plugins::{
+    CorePlugin, EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin, ShellHandlerPlugin,
+};
+pub use self::shell_handler::{RegisterTypes, ShellHandler, ShellSource};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -194,6 +239,7 @@ pub struct TypeRegistry {
     builder: RegistryBuilder,
     effects: Vec<EffectMeta>,
     app: Option<AppMeta>,
+    shell_handlers: Vec<&'static ShellHandler>,
 }
 
 pub struct CodeGenerator {
@@ -203,6 +249,7 @@ pub struct CodeGenerator {
     handlers: bool,
     core: bool,
     boltffi: Option<BoltFfi>,
+    shell_handlers: Vec<&'static ShellHandler>,
 }
 
 /// The `TypeRegistry` struct stores the registered types so that they can be generated for foreign languages
@@ -215,7 +262,58 @@ impl TypeRegistry {
             builder: RegistryBuilder::new(),
             effects: Vec::new(),
             app: None,
+            shell_handlers: Vec::new(),
         }
+    }
+
+    /// Registers the shell handler a capability ships, and the types its
+    /// sources name.
+    ///
+    /// The source is the capability's — a `HttpHandler` protocol and an
+    /// implementation of it, in each language the capability ships — and it is
+    /// emitted verbatim, into `Http.swift`, `Http.kt` and `Http.cs` beside the
+    /// module, and after the types in TypeScript. Nothing generated calls it:
+    /// the shell's handler holds an instance and delegates to it, one line per
+    /// operation.
+    ///
+    /// ```rust,ignore
+    /// let typegen = TypeRegistry::new()
+    ///     .register_app::<Weather>()?
+    ///     .shell_handler(&crux_http::HTTP)?
+    ///     .shell_handler(&crux_time::TIME)?
+    ///     .build()?;
+    /// ```
+    ///
+    /// A shipped source implements the whole capability, so registering the
+    /// handler registers every type it names — including the operations this
+    /// app never sends. The capability says which those are, with
+    /// [`ShellHandler::types`].
+    ///
+    /// The capability declares the handler with [`ShellHandler::new`] and one
+    /// builder per language it ships:
+    ///
+    /// ```rust,ignore
+    /// pub static HTTP: ShellHandler = ShellHandler::new("Http")
+    ///     .types(register_types)
+    ///     .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
+    ///     .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")));
+    /// ```
+    ///
+    /// # Errors
+    /// Returns a [`TypeGenError`] if one of the handler's own types cannot be
+    /// registered. Registering a handler twice, or one whose name collides
+    /// with a type of yours, is reported by [`build`](Self::build).
+    pub fn shell_handler(
+        &mut self,
+        handler: &'static ShellHandler,
+    ) -> Result<&mut Self, TypeGenError> {
+        self.shell_handlers.push(handler);
+
+        if let Some(register) = handler.types {
+            register(self)?;
+        }
+
+        Ok(self)
     }
 
     /// Register all the types used in app `A` to be shared with the Shell.
@@ -352,11 +450,12 @@ impl TypeRegistry {
     /// Builds the type registry and returns a [`CodeGenerator`] instance.
     /// # Errors
     /// Returns a [`TypeGenError`] if the type registration fails, or if a
-    /// registered type or effect variant claims one of the names the generated
-    /// effect handler API uses.
+    /// registered type, effect variant or shell handler claims one of the
+    /// names the generated effect handler API uses.
     pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
         let builder = std::mem::take(&mut self.builder);
         let effects: Arc<[EffectMeta]> = std::mem::take(&mut self.effects).into();
+        let shell_handlers = std::mem::take(&mut self.shell_handlers);
         let registry = builder
             .build()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -364,6 +463,7 @@ impl TypeRegistry {
         if !effects.is_empty() {
             validate_names(&registry, &effects)?;
         }
+        validate_shell_handlers(&registry, &shell_handlers)?;
 
         Ok(CodeGenerator {
             registry,
@@ -372,6 +472,7 @@ impl TypeRegistry {
             handlers: true,
             core: true,
             boltffi: None,
+            shell_handlers,
         })
     }
 }
@@ -404,6 +505,77 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
     Ok(())
 }
 
+/// Rejects registered shell handlers whose names would collide — with each
+/// other, with the generated shell API, or with a type the app registered.
+///
+/// The names are checked whatever language is generated and whether or not
+/// that language has source, because whether a shared type clashes should not
+/// depend on which shell you build today.
+fn validate_shell_handlers(
+    registry: &Registry,
+    handlers: &[&'static ShellHandler],
+) -> Result<(), TypeGenError> {
+    use facet_generate::reflection::format::Namespace;
+
+    let mut seen: Vec<&str> = Vec::with_capacity(handlers.len());
+    for handler in handlers {
+        if seen.contains(&handler.name) {
+            return Err(TypeGenError::Generation(format!(
+                "two shell handlers are called `{}`. Register each capability's handler once.",
+                handler.name
+            )));
+        }
+        seen.push(handler.name);
+
+        for name in [
+            handler.name.to_string(),
+            handler.protocol_name(),
+            handler.csharp_interface_name(),
+        ] {
+            if RESERVED_TYPE_NAMES.contains(&name.as_str()) {
+                return Err(TypeGenError::Generation(format!(
+                    "shell handler `{}` needs the name `{name}`, which is generated for the shell API. Rename the handler.",
+                    handler.name
+                )));
+            }
+        }
+    }
+
+    for registered in registry.keys() {
+        if registered.namespace != Namespace::Root {
+            continue;
+        }
+        for handler in handlers {
+            let claimed = registered.name == handler.name
+                || registered.name == handler.protocol_name()
+                || registered.name == handler.csharp_interface_name();
+            if claimed {
+                return Err(TypeGenError::Generation(format!(
+                    "`{}` is claimed by the `{}` shell handler, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
+                    registered.name, handler.name
+                )));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// The base name of the file a package or namespace writes its own module
+/// into, for the languages that derive it from the last dotted segment.
+///
+/// Swift does not: its module is a directory of the package's own name, so it
+/// passes the package name through as it is.
+fn module_file_stem(package_name: &str) -> String {
+    use heck::ToUpperCamelCase as _;
+
+    package_name
+        .rsplit('.')
+        .next()
+        .unwrap_or(package_name)
+        .to_upper_camel_case()
+}
+
 impl Default for TypeRegistry {
     fn default() -> Self {
         Self::new()
@@ -419,7 +591,7 @@ impl CodeGenerator {
     /// # let mut typegen = TypeRegistry::new().build()?;
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.swift(
-    ///     &Config::builder("SharedTypes", output_root.join("swift"))
+    ///     &Config::builder("App", output_root.join("swift"))
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -429,7 +601,9 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn swift(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Swift types");
-        self.check_boltffi()?;
+        // Swift's module is a directory named for the package, holding a file
+        // of the same name.
+        self.check(Some(&config.package_name))?;
         let path = config.out_dir.join(&config.package_name);
 
         fs::create_dir_all(&path)?;
@@ -444,6 +618,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_handlers) = self.shell_handler_plugin(&config.package_name) {
+            installer = installer.plugin(shell_handlers);
         }
         installer
             .external_packages(&config.external_packages)
@@ -471,7 +648,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn kotlin(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Kotlin types");
-        self.check_boltffi()?;
+        self.check(Some(&module_file_stem(&config.package_name)))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -489,6 +666,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_handlers) = self.shell_handler_plugin(&config.package_name) {
+            installer = installer.plugin(shell_handlers);
         }
         installer
             .external_packages(&config.external_packages)
@@ -515,7 +695,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn csharp(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating C# types");
-        self.check_boltffi()?;
+        self.check(Some(&module_file_stem(&config.package_name)))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -534,6 +714,9 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
+        if let Some(shell_handlers) = self.shell_handler_plugin(&config.package_name) {
+            installer = installer.plugin(shell_handlers);
+        }
         installer
             .external_packages(&config.external_packages)
             .generate(&self.registry)?;
@@ -549,7 +732,7 @@ impl CodeGenerator {
     /// # let mut typegen = TypeRegistry::new().build()?;
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.typescript(
-    ///     &Config::builder("shared_types", output_root.join("typescript"))
+    ///     &Config::builder("app", output_root.join("typescript"))
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -558,7 +741,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn typescript(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating TypeScript types");
-        self.check_boltffi()?;
+        self.check(None)?;
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
@@ -572,6 +755,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_handlers) = self.shell_handler_plugin(&config.package_name) {
+            installer = installer.plugin(shell_handlers);
         }
         installer
             .external_packages(&config.external_packages)
@@ -682,6 +868,22 @@ impl CodeGenerator {
         self
     }
 
+    /// Everything the configuration is checked for before a language is
+    /// generated. The builder methods are infallible, so this is where a
+    /// configuration that cannot work is reported.
+    ///
+    /// `module_file` is what the module calls its own source file in this
+    /// language, which a companion file beside it must not take. TypeScript's
+    /// module is one file with the sources appended to it, so it has no
+    /// companion files and passes `None`.
+    fn check(&self, module_file: Option<&str>) -> Result<(), TypeGenError> {
+        self.check_boltffi()?;
+        if let Some(module_file) = module_file {
+            self.check_shell_handler_files(module_file)?;
+        }
+        Ok(())
+    }
+
     /// The bridge is generated as part of `Core`, so asking for one without a
     /// `Core` to put it in is a mistake worth saying out loud — silently
     /// generating nothing would leave the shell with a missing constructor and
@@ -730,5 +932,52 @@ impl CodeGenerator {
         self.app
             .clone()
             .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
+    }
+
+    /// A handler's source is written beside the module as `<Name>.swift`,
+    /// `<Name>.kt` or `<Name>.cs`, and the module names its own file after the
+    /// last segment of the package or namespace. A package called `Crux.Http`
+    /// would therefore have the `Http` handler overwrite `Crux/Http/Http.cs` —
+    /// the types themselves — so it is rejected while both files still exist.
+    ///
+    /// This is the one check that needs the [`Config`], so it is made here and
+    /// not in [`validate_shell_handlers`].
+    fn check_shell_handler_files(&self, module_file: &str) -> Result<(), TypeGenError> {
+        for handler in &self.shell_handlers {
+            if handler.name == module_file {
+                return Err(TypeGenError::Generation(format!(
+                    "the `{name}` shell handler is written beside the generated module, which names its own file `{name}` too — the package or namespace ends in `{name}`. Generate into a package of another name, or use a capability whose handler is named differently.",
+                    name = handler.name
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// The plugin that emits the registered shipped handlers, if any were
+    /// registered.
+    ///
+    /// It is installed outside the `handlers` flag: a shipped handler is a
+    /// plain type, as usable from a hand-written `switch` on `Effect` as from
+    /// the generated dispatcher, so
+    /// [`without_effect_handlers`](Self::without_effect_handlers) does not
+    /// take it away.
+    fn shell_handler_plugin(&self, package_name: &str) -> Option<ShellHandlerPlugin> {
+        use facet_generate::reflection::format::Namespace;
+
+        if self.shell_handlers.is_empty() {
+            return None;
+        }
+        let last_type = self
+            .registry
+            .keys()
+            .rfind(|name| name.namespace == Namespace::Root)
+            .cloned();
+        Some(ShellHandlerPlugin::new(
+            &self.shell_handlers,
+            package_name,
+            last_type,
+        ))
     }
 }

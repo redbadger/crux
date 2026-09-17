@@ -312,14 +312,11 @@ mod facet_test {
     fn generates_swift() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
         generator()
-            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .swift(&Config::builder("App", dir.path()).build())
             .expect("swift type generation should succeed");
 
-        let source = fs::read_to_string(
-            dir.path()
-                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
-        )
-        .expect("should write a Swift module");
+        let source = fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
 
         assert_generated(
             &source,
@@ -492,14 +489,11 @@ mod facet_test {
     fn swift_source(generator: &crux_core::type_generation::facet::CodeGenerator) -> String {
         let dir = tempfile::tempdir().expect("should create a temp dir");
         generator
-            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .swift(&Config::builder("App", dir.path()).build())
             .expect("swift type generation should succeed");
 
-        fs::read_to_string(
-            dir.path()
-                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
-        )
-        .expect("should write a Swift module")
+        fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module")
     }
 
     // -----------------------------------------------------------------------
@@ -515,14 +509,14 @@ mod facet_test {
         generator()
             .boltffi(BoltFfi::new().swift("Shared"))
             .swift(
-                &Config::builder("SharedTypes", dir.path())
+                &Config::builder("App", dir.path())
                     .platform(".iOS(.v16)")
                     .platform(".macOS(.v13)")
                     .build(),
             )
             .expect("swift type generation should succeed");
 
-        let manifest = fs::read_to_string(dir.path().join("SharedTypes/Package.swift"))
+        let manifest = fs::read_to_string(dir.path().join("App/Package.swift"))
             .expect("should write a package manifest");
         assert_generated(
             &manifest,
@@ -533,11 +527,8 @@ mod facet_test {
             ],
         );
 
-        let bridge = fs::read_to_string(
-            dir.path()
-                .join("SharedTypes/Sources/SharedTypes/FfiBridge.swift"),
-        )
-        .expect("should write the bridge beside the module");
+        let bridge = fs::read_to_string(dir.path().join("App/Sources/App/FfiBridge.swift"))
+            .expect("should write the bridge beside the module");
         assert_generated(
             &bridge,
             &[
@@ -549,11 +540,8 @@ mod facet_test {
             ],
         );
 
-        let source = fs::read_to_string(
-            dir.path()
-                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
-        )
-        .expect("should write a Swift module");
+        let source = fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
         assert_generated(
             &source,
             &["public convenience init(handler: any EffectHandler) {"],
@@ -568,25 +556,18 @@ mod facet_test {
     fn swift_without_boltffi_has_no_bridge() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
         generator()
-            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .swift(&Config::builder("App", dir.path()).build())
             .expect("swift type generation should succeed");
 
-        assert!(
-            !dir.path()
-                .join("SharedTypes/Sources/SharedTypes/FfiBridge.swift")
-                .exists()
-        );
+        assert!(!dir.path().join("App/Sources/App/FfiBridge.swift").exists());
 
-        let manifest = fs::read_to_string(dir.path().join("SharedTypes/Package.swift"))
+        let manifest = fs::read_to_string(dir.path().join("App/Package.swift"))
             .expect("should write a package manifest");
         assert!(!manifest.contains("platforms:"));
         assert!(!manifest.contains("../Shared"));
 
-        let source = fs::read_to_string(
-            dir.path()
-                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
-        )
-        .expect("should write a Swift module");
+        let source = fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
         assert!(!source.contains("FfiBridge"));
         assert!(!source.contains("convenience init"));
     }
@@ -725,7 +706,7 @@ mod facet_test {
         let error = generator()
             .without_core()
             .boltffi(BoltFfi::new().swift("Shared"))
-            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .swift(&Config::builder("App", dir.path()).build())
             .expect_err("should reject the configuration");
 
         let crux_core::type_generation::facet::TypeGenError::Generation(message) = error else {
@@ -829,14 +810,11 @@ mod facet_no_render {
             .expect("should register the app")
             .build()
             .expect("should build the registry")
-            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .swift(&Config::builder("App", dir.path()).build())
             .expect("swift type generation should succeed");
 
-        let source = fs::read_to_string(
-            dir.path()
-                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
-        )
-        .expect("should write a Swift module");
+        let source = fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
 
         assert!(source.contains("public protocol EffectHandler: Sendable {"));
         assert!(!source.contains("CoreBridge"));
@@ -855,7 +833,7 @@ mod facet_no_render {
             .build()
             .expect("should build the registry")
             .boltffi(BoltFfi::new().swift("Shared"))
-            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .swift(&Config::builder("App", dir.path()).build())
             .expect_err("should reject the configuration");
 
         let TypeGenError::Generation(message) = error else {
@@ -994,5 +972,683 @@ mod facet_clash_test {
             message.contains("`FfiBridge` is generated for the shell API"),
             "unexpected message: {message}"
         );
+    }
+}
+
+/// The shell handlers a capability ships: source the capability wrote, emitted
+/// into the app's own generated module when the app asks for it.
+#[cfg(feature = "facet_typegen")]
+mod facet_shell_handler_test {
+    // `#[derive(Facet)]` generates `unsafe` methods.
+    #![allow(clippy::unsafe_derive_deserialize)]
+
+    use std::{fs, path::Path, process::Command};
+
+    use crux_core::{
+        Command as CruxCommand,
+        // `register_types_facet`, which a shipped handler names to register
+        // the types its source uses. Anonymous, because the derive macro of
+        // the same name is imported below.
+        capability::Operation as _,
+        macros::{Operation, effect},
+        render::RenderOperation,
+        type_generation::facet::{
+            CodeGenerator, Config, ShellHandler, ShellSource, TypeGenError, TypeRegistry,
+        },
+    };
+    use facet::Facet;
+    use serde::{Deserialize, Serialize};
+
+    // -----------------------------------------------------------------------
+    // A small app with one request operation, so the shipped sources have a
+    // real signature to implement
+    // -----------------------------------------------------------------------
+
+    #[derive(Facet)]
+    #[repr(C)]
+    pub enum Event {
+        None,
+    }
+
+    #[derive(Facet)]
+    pub struct ViewModel;
+
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(request, output = StoreValue)]
+    pub struct Get {
+        pub key: String,
+    }
+
+    #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+    pub struct StoreValue {
+        pub value: Vec<u8>,
+    }
+
+    #[effect(facet_typegen)]
+    pub enum Effect {
+        Render(RenderOperation),
+        Store(Get),
+    }
+
+    #[derive(Default)]
+    pub struct App;
+
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = ();
+        type ViewModel = ViewModel;
+        type Effect = Effect;
+
+        fn update(&self, _event: Event, _model: &mut Self::Model) -> CruxCommand<Effect, Event> {
+            CruxCommand::done()
+        }
+
+        fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+            ViewModel
+        }
+    }
+
+    /// A type in a namespace of its own, so that the generated package has
+    /// more than one module. Registered only by the test that checks the
+    /// shipped source lands in exactly one of them.
+    #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+    #[facet(facet_generate_attrs::namespace = "Kit")]
+    pub struct Tag {
+        pub label: String,
+    }
+
+    /// A type named after the protocol a registered handler declares, for the
+    /// clash test. Registered only there.
+    #[derive(Facet)]
+    pub struct StoreHandler {
+        pub whoops: String,
+    }
+
+    /// An operation the app's `Effect` never carries, standing in for the ones
+    /// a shipped source implements and the app never sends. Nothing registers
+    /// it but the handler that ships it.
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(request, output = StoreValue)]
+    pub struct Peek {
+        pub key: String,
+    }
+
+    // -----------------------------------------------------------------------
+    // What a capability would ship
+    // -----------------------------------------------------------------------
+
+    const SWIFT_SOURCE: &str = r"import Foundation
+
+public protocol StoreHandler: Sendable {
+    func get(_ operation: Get) async -> StoreValue
+}
+
+public struct InMemoryStoreHandler: StoreHandler {
+    public init() {}
+
+    public func get(_ operation: Get) async -> StoreValue {
+        StoreValue(value: Array(operation.key.utf8))
+    }
+}
+";
+
+    const KOTLIN_SOURCE: &str = r"import java.util.Locale
+
+interface StoreHandler {
+    suspend fun get(operation: Get): StoreValue
+}
+
+object InMemoryStoreHandler : StoreHandler {
+    override suspend fun get(operation: Get): StoreValue =
+        StoreValue(operation.key.lowercase(Locale.ROOT).map { it.code.toUByte() })
+}
+";
+
+    const TYPESCRIPT_SOURCE: &str = r"export interface StoreHandler {
+  get(operation: Get): Promise<StoreValue>;
+}
+
+export const inMemoryStoreHandler: StoreHandler = {
+  async get(operation: Get): Promise<StoreValue> {
+    return new StoreValue([operation.key.length]);
+  },
+};
+";
+
+    const CSHARP_SOURCE: &str = r"using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+
+public interface IStoreHandler
+{
+    Task<StoreValue> Get(Get operation);
+}
+
+public sealed class InMemoryStoreHandler : IStoreHandler
+{
+    public Task<StoreValue> Get(Get operation) =>
+        Task.FromResult(new StoreValue { Value = new ObservableCollection<byte>() });
+}
+";
+
+    static STORE: ShellHandler = ShellHandler::new("Store")
+        .swift(ShellSource::stdlib(SWIFT_SOURCE))
+        .kotlin(ShellSource::stdlib(KOTLIN_SOURCE))
+        .typescript(ShellSource::stdlib(TYPESCRIPT_SOURCE))
+        .csharp(ShellSource::stdlib(CSHARP_SOURCE));
+
+    /// A capability whose source implements an operation the app never sends,
+    /// so registering the handler has to register that operation's types too.
+    /// One operation is an operation's own `register_types_facet`; a
+    /// capability with several names a `fn` in its own `shell` module.
+    static SHIPS_TYPES: ShellHandler = ShellHandler::new("Peeker")
+        .types(Peek::register_types_facet)
+        .swift(ShellSource::stdlib("public protocol PeekerHandler {}\n"));
+
+    /// A capability that ships Swift only — the other languages implement the
+    /// methods themselves, as they do today.
+    static SWIFT_ONLY: ShellHandler =
+        ShellHandler::new("Clock").swift(ShellSource::stdlib("public protocol ClockHandler {}\n"));
+
+    /// A capability whose source needs a library, which is the rare case the
+    /// manifest entries are for.
+    static DEPENDENT: ShellHandler = ShellHandler::new("Fetcher").kotlin(
+        ShellSource::stdlib("interface FetcherHandler\n")
+            .dependencies(&[r#"    implementation("com.squareup.okhttp3:okhttp:4.12.0")"#]),
+    );
+
+    /// A capability whose Swift source needs a package — which in Swift means
+    /// two entries: the package, and the target's edge to its product.
+    static SWIFT_DEPENDENT: ShellHandler = ShellHandler::new("Uploader").swift(
+        ShellSource::stdlib("public protocol UploaderHandler {}\n")
+            .dependencies(&[
+                r#".package(url: "https://github.com/apple/swift-nio", from: "2.0.0")"#,
+            ])
+            .target_dependencies(&[r#".product(name: "NIOCore", package: "swift-nio")"#]),
+    );
+
+    /// The registry the tests generate from: the app, plus whichever shipped
+    /// handlers the test registers. Registering a handler is where its own
+    /// types are registered, and `build` is where its names are checked, so a
+    /// test that expects a rejection uses this and the rest use
+    /// [`generator`].
+    fn build(handlers: &[&'static ShellHandler]) -> Result<CodeGenerator, TypeGenError> {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<App>()
+            .expect("should register the app");
+        for handler in handlers {
+            registry
+                .shell_handler(handler)
+                .expect("should register the shell handler");
+        }
+        registry.build()
+    }
+
+    fn generator(handlers: &[&'static ShellHandler]) -> CodeGenerator {
+        build(handlers).expect("should build the registry")
+    }
+
+    fn message_of(error: TypeGenError) -> String {
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        message
+    }
+
+    /// Why building the registry with `handlers` was rejected.
+    fn rejection(handlers: &[&'static ShellHandler]) -> String {
+        match build(handlers) {
+            Ok(_) => panic!("should reject the handler"),
+            Err(error) => message_of(error),
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Emission
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn swift_writes_the_source_into_a_companion_file() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&STORE])
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        let shipped = fs::read_to_string(dir.path().join("App/Sources/App/Store.swift"))
+            .expect("should write the handler beside the module");
+
+        // Verbatim, imports and all, after the header the module needs.
+        assert!(
+            shipped.contains(SWIFT_SOURCE),
+            "expected the shipped source verbatim:\n{shipped}"
+        );
+        assert!(
+            shipped.contains("import Serde"),
+            "no module header:\n{shipped}"
+        );
+
+        // Nothing is generated that calls it — the shell writes that itself.
+        let source = fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
+        assert!(!source.contains("StoreHandler"));
+    }
+
+    #[test]
+    fn kotlin_writes_the_source_into_a_companion_file() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&STORE])
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        let shipped = fs::read_to_string(dir.path().join("com/example/shared/Store.kt"))
+            .expect("should write the handler beside the module");
+
+        assert!(
+            shipped.contains(KOTLIN_SOURCE),
+            "expected the shipped source verbatim:\n{shipped}"
+        );
+        // The source's own imports follow the package line, which is where
+        // Kotlin wants them.
+        assert!(
+            shipped.starts_with("package com.example.shared\n"),
+            "no package header:\n{shipped}"
+        );
+        assert!(
+            shipped.find("import java.util.Locale").unwrap()
+                < shipped.find("interface StoreHandler").unwrap()
+        );
+    }
+
+    #[test]
+    fn csharp_writes_the_source_into_a_companion_file() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&STORE])
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+
+        let shipped = fs::read_to_string(dir.path().join("Example/Shared/Store.cs"))
+            .expect("should write the handler beside the module");
+
+        assert!(
+            shipped.contains(CSHARP_SOURCE),
+            "expected the shipped source verbatim:\n{shipped}"
+        );
+        // The file-scoped namespace comes from the header, and the source's
+        // own `using`s follow it — which C# 10 allows.
+        assert!(
+            shipped.contains("namespace Example.Shared;"),
+            "no namespace header:\n{shipped}"
+        );
+        assert!(
+            shipped.find("namespace Example.Shared;").unwrap()
+                < shipped.find(CSHARP_SOURCE).unwrap(),
+            "the shipped `using`s should follow the file-scoped namespace:\n{shipped}"
+        );
+    }
+
+    /// TypeScript modules are one file, so the source is appended after the
+    /// types rather than written beside them.
+    #[test]
+    fn typescript_appends_the_source_after_the_types() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&STORE])
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("typescript type generation should succeed");
+
+        let source = fs::read_to_string(dir.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+
+        assert!(
+            source.contains(TYPESCRIPT_SOURCE),
+            "expected the shipped source verbatim:\n{source}"
+        );
+        assert!(
+            source.find("export class StoreValue").unwrap()
+                < source.find("export interface StoreHandler").unwrap(),
+            "the shipped source should come after the types it names"
+        );
+
+        // `typescript()` runs `tsc`, so this is a real compile of the shipped
+        // source against the generated types.
+        let declarations = fs::read_to_string(dir.path().join("shared_types.d.ts"))
+            .expect("tsc should have emitted declarations");
+        assert!(declarations.contains("inMemoryStoreHandler"));
+
+        let output = Command::new("pnpm")
+            .current_dir(dir.path())
+            .args(["exec", "tsc", "--build", "--force"])
+            .output()
+            .expect("should run tsc");
+        assert!(
+            output.status.success(),
+            "tsc should type-check the shipped source:\n{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    /// A capability that does not ship a language leaves that language exactly
+    /// as it was.
+    #[test]
+    fn a_language_without_source_emits_nothing() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let generator = generator(&[&SWIFT_ONLY]);
+
+        generator
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+        assert!(dir.path().join("App/Sources/App/Clock.swift").exists());
+
+        let kotlin = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .kotlin(&Config::builder("com.example.shared", kotlin.path()).build())
+            .expect("kotlin type generation should succeed");
+        assert!(!kotlin.path().join("com/example/shared/Clock.kt").exists());
+
+        let csharp = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .csharp(&Config::builder("Example.Shared", csharp.path()).build())
+            .expect("c# type generation should succeed");
+        assert!(!csharp.path().join("Example/Shared/Clock.cs").exists());
+    }
+
+    /// A shipped handler is a plain type, as usable from a hand-written
+    /// `switch` as from the generated dispatcher.
+    #[test]
+    fn without_effect_handlers_still_emits_shipped_handlers() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&STORE])
+            .without_effect_handlers()
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        let shipped = fs::read_to_string(dir.path().join("App/Sources/App/Store.swift"))
+            .expect("should write the handler beside the module");
+        assert!(shipped.contains("public protocol StoreHandler: Sendable {"));
+
+        let source = fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
+        assert!(!source.contains("EffectHandler"));
+    }
+
+    /// A namespace of its own is a module of its own, and the shipped source
+    /// belongs to the app's module — not to every module in the package.
+    #[test]
+    fn the_source_lands_in_the_root_module_only() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<App>()
+            .expect("should register the app")
+            .register_type::<Tag>()
+            .expect("should register the namespaced type");
+        registry
+            .shell_handler(&STORE)
+            .expect("should register the shell handler");
+        let generator = registry.build().expect("should build the registry");
+
+        let swift = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .swift(&Config::builder("App", swift.path()).build())
+            .expect("swift type generation should succeed");
+        assert!(swift.path().join("App/Sources/App/Store.swift").exists());
+        assert!(!swift.path().join("App/Sources/Kit/Store.swift").exists());
+
+        let kotlin = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .kotlin(&Config::builder("com.example.shared", kotlin.path()).build())
+            .expect("kotlin type generation should succeed");
+        assert!(kotlin.path().join("com/example/shared/Store.kt").exists());
+        assert!(
+            !kotlin
+                .path()
+                .join("com/example/shared/Kit/Store.kt")
+                .exists()
+        );
+
+        let csharp = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .csharp(&Config::builder("Example.Shared", csharp.path()).build())
+            .expect("c# type generation should succeed");
+        assert!(csharp.path().join("Example/Shared/Store.cs").exists());
+        assert!(!csharp.path().join("Example/Shared/Kit/Store.cs").exists());
+
+        let typescript = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .typescript(&Config::builder("shared_types", typescript.path()).build())
+            .expect("typescript type generation should succeed");
+        let module = fs::read_to_string(typescript.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+        assert!(module.contains("export interface StoreHandler"));
+        let kit = fs::read_to_string(typescript.path().join("Kit.ts"))
+            .expect("should write the namespaced module");
+        assert!(!kit.contains("StoreHandler"), "unexpected module:\n{kit}");
+    }
+
+    /// A shipped source implements the whole capability, so the handler
+    /// registers every type it names — including the operations this app's
+    /// `Effect` never carries.
+    #[test]
+    fn registering_a_handler_registers_the_types_its_source_names() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&SHIPS_TYPES])
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        let source = fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
+        assert!(
+            source.contains("struct Peek"),
+            "the handler's own operation should be generated:\n{source}"
+        );
+
+        // …and only because the handler asked for it.
+        let without = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[])
+            .swift(&Config::builder("App", without.path()).build())
+            .expect("swift type generation should succeed");
+        let source = fs::read_to_string(without.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
+        assert!(
+            !source.contains("struct Peek"),
+            "unexpected type:\n{source}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Manifest dependencies
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn dependencies_reach_the_manifest_only_when_the_handler_is_registered() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&DEPENDENT])
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        let manifest = fs::read_to_string(dir.path().join("build.gradle.kts"))
+            .expect("should write a build script");
+        assert!(
+            manifest.contains(r#"implementation("com.squareup.okhttp3:okhttp:4.12.0")"#),
+            "unexpected manifest:\n{manifest}"
+        );
+
+        let without = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[])
+            .kotlin(&Config::builder("com.example.shared", without.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        let manifest = fs::read_to_string(without.path().join("build.gradle.kts"))
+            .expect("should write a build script");
+        assert!(
+            !manifest.contains("okhttp"),
+            "unexpected manifest:\n{manifest}"
+        );
+    }
+
+    /// Swift needs a second entry for a package: the generated target's edge
+    /// to the product it uses, which goes in `target_dependencies`.
+    #[test]
+    fn swift_target_dependencies_reach_the_generated_target() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&SWIFT_DEPENDENT])
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        let manifest = fs::read_to_string(dir.path().join("App/Package.swift"))
+            .expect("should write a package manifest");
+        assert!(
+            manifest
+                .contains(r#".package(url: "https://github.com/apple/swift-nio", from: "2.0.0")"#),
+            "unexpected manifest:\n{manifest}"
+        );
+
+        // The product belongs to the generated module's target, beside the
+        // local targets it already depends on.
+        let target = manifest
+            .split(".target(")
+            .skip(1)
+            .find(|declaration| declaration.contains(r#"name: "App""#))
+            .expect("should declare the generated target");
+        assert!(
+            target.contains(r#".product(name: "NIOCore", package: "swift-nio")"#),
+            "unexpected target:\n{manifest}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Registration is checked
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn two_handlers_cannot_share_a_name() {
+        let message = rejection(&[&STORE, &STORE]);
+        assert!(
+            message.contains("two shell handlers are called `Store`"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// The handler names a file and a protocol in the app's own module, so it
+    /// cannot take a name the app's types already use.
+    #[test]
+    fn a_handler_cannot_take_a_registered_type_name() {
+        static CLASH: ShellHandler =
+            ShellHandler::new("Get").swift(ShellSource::stdlib("public protocol GetHandler {}\n"));
+
+        let message = rejection(&[&CLASH]);
+        assert!(
+            message.contains("`Get` is claimed by the `Get` shell handler"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// …and the protocol it declares is reserved the same way `Core` is.
+    #[test]
+    fn a_type_cannot_be_called_store_handler() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<App>()
+            .expect("should register the app")
+            .register_type::<StoreHandler>()
+            .expect("should register the clashing type");
+        registry
+            .shell_handler(&STORE)
+            .expect("should register the shell handler");
+        let message = match registry.build() {
+            Ok(_) => panic!("should reject the clashing type"),
+            Err(error) => message_of(error),
+        };
+        assert!(
+            message.contains("`StoreHandler` is claimed by the `Store` shell handler"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// A handler called `Effect` would declare an `EffectHandler`, which is the
+    /// generated one's name.
+    #[test]
+    fn a_handler_cannot_claim_a_generated_name() {
+        static CLASH: ShellHandler = ShellHandler::new("Effect")
+            .swift(ShellSource::stdlib("public protocol EffectHandler {}\n"));
+
+        let message = rejection(&[&CLASH]);
+        assert!(
+            message.contains("shell handler `Effect` needs the name `EffectHandler`"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// The companion file sits beside the module's own source file, and the
+    /// module names that after the last segment of its package — so a package
+    /// ending in the handler's name would have the handler overwrite the
+    /// types.
+    #[test]
+    fn a_handler_cannot_be_named_after_the_module_it_is_written_beside() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let generator = generator(&[&STORE]);
+
+        let error = generator
+            .csharp(&Config::builder("Crux.Store", dir.path()).build())
+            .expect_err("should reject the package that would be overwritten");
+        let message = message_of(error);
+        assert!(
+            message.contains("the `Store` shell handler is written beside the generated module"),
+            "unexpected message: {message}"
+        );
+
+        let error = generator
+            .kotlin(&Config::builder("com.example.store", dir.path()).build())
+            .expect_err("should reject the package that would be overwritten");
+        assert!(message_of(error).contains("`Store` shell handler"));
+
+        let error = generator
+            .swift(&Config::builder("Store", dir.path()).build())
+            .expect_err("should reject the package that would be overwritten");
+        assert!(message_of(error).contains("`Store` shell handler"));
+
+        // TypeScript appends the source to the module rather than writing a
+        // file beside it, so there is nothing to overwrite.
+        generator
+            .typescript(&Config::builder("store", dir.path()).build())
+            .expect("typescript type generation should succeed");
+    }
+
+    // -----------------------------------------------------------------------
+    // Compiling the shipped C#
+    // -----------------------------------------------------------------------
+
+    /// Builds a generated C# package with `dotnet`, or says why it did not.
+    ///
+    /// The shipped sources are the one part of a capability crate `cargo test`
+    /// cannot compile, so this is where a C# handler that does not build gets
+    /// caught. It is skipped rather than failed when the toolchain is missing:
+    /// a Rust contributor should not need the .NET SDK.
+    fn dotnet_build(dir: &Path) {
+        match Command::new("dotnet")
+            .current_dir(dir)
+            .args(["build", "--nologo"])
+            .output()
+        {
+            Ok(output) => assert!(
+                output.status.success(),
+                "`dotnet build` failed:\n{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                println!("skipping: `dotnet` is not on PATH, so the generated C# is not compiled");
+            }
+            Err(e) => panic!("could not run `dotnet build`: {e}"),
+        }
+    }
+
+    #[test]
+    fn csharp_shipped_source_compiles() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&STORE])
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+
+        dotnet_build(dir.path());
     }
 }
