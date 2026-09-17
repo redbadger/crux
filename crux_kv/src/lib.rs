@@ -7,6 +7,8 @@ pub mod command;
 pub mod error;
 pub mod operation;
 pub mod protocol;
+#[cfg(feature = "facet_typegen")]
+pub mod shell;
 pub mod store;
 
 use std::{future::Future, marker::PhantomData};
