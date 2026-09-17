@@ -43,13 +43,12 @@ The capability declares what it ships:
 // Rust — crux_http/src/lib.rs
 
 #[cfg(feature = "facet_typegen")]
-pub static HTTP: ShellHandler = ShellHandler {
-    name: "Http",
-    swift: Some(ShellSource::stdlib(include_str!("../shell/swift/Http.swift"))),
-    kotlin: Some(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt"))),
-    typescript: Some(ShellSource::stdlib(include_str!("../shell/typescript/http.ts"))),
-    csharp: Some(ShellSource::stdlib(include_str!("../shell/csharp/Http.cs"))),
-};
+pub static HTTP: ShellHandler = ShellHandler::new("Http")
+    .types(shell::register_types)
+    .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
+    .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")))
+    .typescript(ShellSource::stdlib(include_str!("../shell/typescript/http.ts")))
+    .csharp(ShellSource::stdlib(include_str!("../shell/csharp/Http.cs")));
 ```
 
 The app asks for it where it configures type generation:
@@ -59,9 +58,9 @@ The app asks for it where it configures type generation:
 
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
-    .build()?
-    .shell_handler(&crux_http::HTTP)
-    .shell_handler(&crux_time::TIME);
+    .shell_handler(&crux_http::HTTP)?
+    .shell_handler(&crux_time::TIME)?
+    .build()?;
 ```
 
 and its handler uses it:
@@ -185,16 +184,27 @@ state, and because that is the unit an app would want to configure or replace.
 
 ```rust
 // Rust
+#[non_exhaustive]
 pub struct ShellHandler {
     /// UpperCamelCase. Names the companion file (`Http.swift`) and the
     /// protocol the source declares (`HttpHandler`, `IHttpHandler` in C#).
     pub name: &'static str,
+    /// Registers every operation and output the shipped sources name.
+    pub types: Option<fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>>,
     pub swift: Option<ShellSource>,
     pub kotlin: Option<ShellSource>,
     pub typescript: Option<ShellSource>,
     pub csharp: Option<ShellSource>,
 }
 
+impl ShellHandler {
+    pub const fn new(name: &'static str) -> Self { /* every language None */ }
+    pub const fn types(self, register: fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>) -> Self { /* … */ }
+    pub const fn swift(self, source: ShellSource) -> Self { /* … */ }
+    // kotlin, typescript, csharp likewise
+}
+
+#[non_exhaustive]
 pub struct ShellSource {
     /// The source text, emitted verbatim into the generated module.
     pub source: &'static str,
@@ -202,16 +212,34 @@ pub struct ShellSource {
     /// library, in the form facet-generate's `manifest_dependencies` takes.
     /// Empty for a handler that needs nothing.
     pub dependencies: &'static [&'static str],
+    /// Swift only: `Target.Dependency` expressions for the generated target,
+    /// in the form facet-generate's `target_dependencies` takes, for a
+    /// handler whose `dependencies` add a package the target must link.
+    pub target_dependencies: &'static [&'static str],
 }
 
 impl ShellSource {
-    pub const fn stdlib(source: &'static str) -> Self { /* dependencies: &[] */ }
+    pub const fn stdlib(source: &'static str) -> Self { /* both lists empty */ }
+    pub const fn dependencies(self, lines: &'static [&'static str]) -> Self { /* … */ }
+    pub const fn target_dependencies(self, lines: &'static [&'static str]) -> Self { /* … */ }
 }
 ```
 
-That is the whole declaration. The operation types are not mentioned, the
-`Operation` derive and trait are untouched, and the breaking release's move
-to `Notify`, `Request` and `Stream` does not affect it.
+Both types are `#[non_exhaustive]` and built through `const fn` builders,
+which a `static` initialiser can call, so a fifth language or another kind
+of dependency can be added later without breaking every capability crate.
+
+That is the whole declaration. The `Operation` derive and trait are
+untouched, and the breaking release's move to `Notify`, `Request` and
+`Stream` does not affect it.
+
+`types` is there because a shipped source implements the whole capability,
+while an app's `Effect` may carry only some of its operations. The weather
+app never sends `Exists` or `Now`, so left to itself type generation would
+not emit them, and `KeyValue.swift` would not compile. The function the
+static names registers every operation and output the sources mention —
+`HttpRequest::register_types_facet` and its siblings — so that they are
+generated whenever the handler is.
 
 A language a capability does not ship (`kotlin: None`) simply has nothing to
 emit on that platform: the app implements the methods as it does today.
@@ -223,17 +251,17 @@ which is the existing convention.
 
 ### Registering it
 
-The app names the shipped handlers it wants on the built `CodeGenerator`,
-next to `boltffi`:
+The app names the shipped handlers it wants on the `TypeRegistry`, before
+it builds, because registering one also registers types:
 
 ```rust
 // Rust — shared/src/bin/codegen.rs
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
+    .shell_handler(&crux_http::HTTP)?
+    .shell_handler(&crux_time::TIME)?
     .build()?
-    .boltffi(BoltFfi::new().swift("Shared").kotlin())
-    .shell_handler(&crux_http::HTTP)
-    .shell_handler(&crux_time::TIME);
+    .boltffi(BoltFfi::new().swift("Shared").kotlin());
 ```
 
 This is the one place the app has to know a shipped handler exists, and it
@@ -243,7 +271,10 @@ It is also what keeps the dependency story simple: a handler's
 app pays for a library it did not ask for.
 
 Registration is checked: two handlers with the same `name`, or a `name` that
-collides with a registered type or a reserved name, is an error.
+collides with a registered type or a reserved name, is an error at `build`.
+A `name` equal to the last segment of the module being generated — an `Http`
+handler in a `Crux.Http` namespace — would overwrite the module's own file,
+and is an error when that language is generated.
 
 ### What is emitted
 
@@ -360,8 +391,9 @@ implementations that hold state, like a timer table, are constructed by the
 app, once, where it constructs its handler.
 
 Shipped Swift protocols are `Sendable` and their methods `nonisolated`, matching
-`EffectHandler`; a stateful implementation guards its state with an actor or
-a lock, as the weather shell's timer table does today with `@MainActor`.
+`EffectHandler`; a stateful implementation guards its state with a lock rather
+than an actor, because the generated types it returns are not `Sendable` and
+could not cross an actor's isolation boundary.
 Kotlin implementations are `suspend` and choose their own dispatcher, as the
 weather shell's `withContext(Dispatchers.IO)` does.
 
@@ -378,7 +410,30 @@ every app that registers it.
   library declares it in `ShellSource::dependencies`, so that it lands in the
   manifest only for apps that register the handler, but every one of those
   apps then pays for it, so the bar is high.
-- The Kotlin source is JVM, not Android. No `android.*`.
+- The Kotlin source is JVM, not Android: the generated package is a
+  `kotlin("jvm")` library, so `android.*` would not compile. The consequence
+  matters more than the rule. Where a platform has something better than the
+  lowest common denominator — `DataStore` for a store, Cronet for a transport —
+  the shipped handler will not be it, and the capability should say so on the
+  type rather than leave an app to find out. That is what the Configure tier is
+  for. It also imports
+  nothing the generated module's header already imports — Kotlin rejects
+  the same simple name imported twice — so `com.novi.serde.Bytes` and
+  `kotlinx.coroutines.CoroutineScope` are written in full where they occur.
+- The Swift source compiles on Linux as well as on Apple platforms, because
+  the crate's own test builds it there. The standard library is not the same
+  on both: `URLSession`, `URLRequest` and `HTTPURLResponse` are in
+  `FoundationNetworking` under corelibs-foundation, so a source that uses them
+  imports it under `#if canImport(FoundationNetworking)`.
+- The Swift source uses lock-guarded classes, not actors, for shared state:
+  the generated operation and output types are not `Sendable`, so an actor
+  could not return them across its isolation boundary.
+- The TypeScript source reaches platform globals through `globalThis`
+  (`globalThis.URL`, `fetch(url, init)` rather than `new Request(..)`),
+  because the generated module declares its own `Request` and shadows the
+  DOM's.
+- C# method names are PascalCase (`Request`, `Get`, `NotifyAfter`), matching
+  the generated `IEffectHandler`.
 - Declares a protocol named `<Name>Handler` (`I<Name>Handler` in C#) with one
   method per operation, each taking the operation and returning what the
   generated `EffectHandler` method returns, and at least one implementation
@@ -433,6 +488,15 @@ line per operation, where a generated default would have cost nothing. Those
 lines are deliberate — they are where the shell's choice is visible, and
 where a new operation surfaces — but they are lines, and a capability with
 many operations has many of them.
+
+**Registering a handler registers the whole capability.** Every operation and
+output the sources name is generated, including ones the app never sends, and
+all of them land in the app's root namespace. That is more surface for a name
+to collide in: the weather example's own `secret::Delete` met `crux_kv`'s
+`Delete` this way, and today the registry keeps one of them without a word
+([#601](https://github.com/redbadger/crux/issues/601)). Renaming the app's
+type is the fix, as it is for `Set`; a facet namespace for capability types
+would be the structural one.
 
 **The app has to know to register it.** Type generation cannot suggest a
 shipped handler, because it does not know which crates ship one until they
@@ -545,8 +609,8 @@ evolves.
 
 1. Release the facet-generate that carries the companion-file hook; the
    per-operation types stack already depends on it.
-2. Add `ShellHandler`, `ShellSource` and `CodeGenerator::shell_handler` to
-   `crux_core`, with the plugin and its name check.
+2. Add `ShellHandler`, `ShellSource` and `TypeRegistry::shell_handler` to
+   `crux_core`, with the plugin and its checks.
 3. Ship handlers for `crux_http`, `crux_kv` and `crux_time` in all four
    languages, and migrate the notes and weather shells to them, so CI compiles
    every shipped Swift, Kotlin and TypeScript file. Give counter-http a C#
