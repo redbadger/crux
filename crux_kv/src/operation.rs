@@ -111,13 +111,17 @@ pub enum ExistsResult {
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum KeysResult {
-    Ok(Keys),
+    Ok(KeyPage),
     Err(KeyValueError),
 }
 
 /// A page of keys, and the cursor to continue from.
+///
+/// The type is called `KeyPage`, not `Keys`, because a generated C# class
+/// cannot have a member with its own name (CS0542), and the first field of
+/// this type is `keys`.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct Keys {
+pub struct KeyPage {
     pub keys: Vec<String>,
     /// The cursor to continue listing keys, or 0 if there are no more keys.
     pub next_cursor: u64,
@@ -182,7 +186,7 @@ impl From<StatusResult> for ExistsResult {
 impl From<KeysResult> for ListResult {
     fn from(result: KeysResult) -> Self {
         match result {
-            KeysResult::Ok(Keys { keys, next_cursor }) => Ok((keys, next_cursor)),
+            KeysResult::Ok(KeyPage { keys, next_cursor }) => Ok((keys, next_cursor)),
             KeysResult::Err(error) => Err(error),
         }
     }
@@ -191,7 +195,7 @@ impl From<KeysResult> for ListResult {
 impl From<ListResult> for KeysResult {
     fn from(result: ListResult) -> Self {
         match result {
-            Ok((keys, next_cursor)) => Self::Ok(Keys { keys, next_cursor }),
+            Ok((keys, next_cursor)) => Self::Ok(KeyPage { keys, next_cursor }),
             Err(error) => Self::Err(error),
         }
     }
