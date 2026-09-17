@@ -27,8 +27,19 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new()
-        .register_app::<NoteEditor>()?
+    let mut registry = TypeRegistry::new();
+    registry.register_app::<NoteEditor>()?;
+    // The store and the timer table are the capabilities' own business, so the
+    // shell holds an instance of what these emit and delegates to it rather
+    // than writing the protocols' rules out itself. Registering a handler also
+    // registers the types its sources name, so the operations this app never
+    // sends — `Delete`, `Exists`, `ListKeys`, `Now` and `NotifyAt` — are
+    // generated too: the shipped source implements the whole capability.
+    registry
+        .shell_handler(&crux_kv::KEY_VALUE)?
+        .shell_handler(&crux_time::TIME)?;
+
+    let typegen_app = registry
         .build()?
         // Only the web shell is built from this example, so only TypeScript
         // names where `boltffi pack` put its bindings.

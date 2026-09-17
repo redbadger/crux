@@ -14,7 +14,7 @@ nonisolated extension WeatherHandler {
     /// Each secret operation has its own output, naming only the outcomes it
     /// can actually have — there is no wide response enum to narrow, and no
     /// `unreachable` case to write.
-    public func fetchSecret(_ operation: Fetch) async -> SecretFetchResponse {
+    public func fetchSecret(_ operation: FetchSecret) async -> SecretFetchResponse {
         let key = operation.value
         logger.debug("fetching secret: \(key)")
         guard let value = keychainGet(key: key) else {
@@ -25,7 +25,7 @@ nonisolated extension WeatherHandler {
         return .fetched(value)
     }
 
-    public func storeSecret(_ operation: Store) async -> SecretStoreResponse {
+    public func storeSecret(_ operation: StoreSecret) async -> SecretStoreResponse {
         let (key, value) = (operation.field0, operation.field1)
         logger.debug("storing secret: \(key)")
         do {
@@ -38,7 +38,7 @@ nonisolated extension WeatherHandler {
         }
     }
 
-    public func deleteSecret(_ operation: Delete) async -> SecretDeleteResponse {
+    public func deleteSecret(_ operation: DeleteSecret) async -> SecretDeleteResponse {
         let key = operation.value
         logger.debug("deleting secret: \(key)")
         do {
