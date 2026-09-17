@@ -10,7 +10,6 @@ import Textarea, {
   SelectEvent,
 } from "../components/Textarea/Textarea";
 
-import * as sharedWasm from "shared";
 import { SyncMessage, createCore } from "./core";
 import type { Core, EffectSink } from "shared_types/app";
 import {
@@ -26,10 +25,6 @@ import {
 } from "shared_types/app";
 
 const LOG_EDITS = false;
-
-const wasmInitialized = (
-  sharedWasm as unknown as { initialized: Promise<void> }
-).initialized;
 
 type Selection = {
   start: number;
@@ -84,11 +79,9 @@ const Home: NextPage = () => {
 
         (async () => {
           try {
-            await wasmInitialized;
-
-            // `CoreFfi.new()` needs the WASM module, so the core can only be
-            // built once it has loaded.
-            core.current = createCore(setView, channel, subscription);
+            // `Core.create` waits for the WASM module before building the
+            // generated bridge over it.
+            core.current = await createCore(setView, channel, subscription);
 
             // Subscribe to the BroadcastChannel
             channel.current.onmessage = onMessage;

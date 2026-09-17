@@ -1,13 +1,13 @@
 // Must come first: patches `WebAssembly.instantiate` so automerge can reach
 // `crypto.getRandomValues` through boltffi's stubbed wasm-bindgen imports.
-// See the module for the full explanation — importing it before `shared`
-// is what guarantees the patch is installed before the WASM module loads.
+// See the module for the full explanation — importing it before anything that
+// evaluates `shared` (which now happens through `shared_types/app`, because
+// the generated `FfiBridge` calls into it) is what guarantees the patch is
+// installed before the WASM module loads.
 import "./wasm-getrandom";
 
-import { CoreFfi } from "shared";
 import type {
   Clear,
-  CoreBridge,
   EffectHandler,
   EffectSink,
   Get,
@@ -32,25 +32,6 @@ export type SyncMessage = {
   kind: "change" | "reset";
   data?: number[];
 };
-
-/// The generated `CoreBridge`, implemented over the wasm bindings: bytes in,
-/// bytes out, nothing else. `CoreFfi.new()` touches the WASM module, so a
-/// `LiveBridge` may only be built once `wasmInitialized` has resolved.
-export class LiveBridge implements CoreBridge {
-  private readonly ffi = CoreFfi.new();
-
-  update(event: Uint8Array): Uint8Array {
-    return this.ffi.update(event);
-  }
-
-  resolve(id: number, output: Uint8Array): Uint8Array {
-    return this.ffi.resolve(id, output);
-  }
-
-  view(): Uint8Array {
-    return this.ffi.view();
-  }
-}
 
 /// The shell's side of the effect protocol.
 ///
@@ -138,17 +119,14 @@ export class NotesHandler implements EffectHandler {
   }
 }
 
-/// Everything the shell has to write to run a Crux core: a `CoreBridge` over
-/// the FFI, an `EffectHandler` for the app's operations, and a callback for
-/// the view model. The generated `Core` owns the loop between them.
+/// Everything the shell has to write to run a Crux core: an `EffectHandler`
+/// for the app's operations and a callback for the view model. `Core.create`
+/// waits for the wasm module, builds the generated `FfiBridge` over it, and
+/// owns the loop between them.
 export function createCore(
   onView: (view: ViewModel) => void,
   channel: RefObject<BroadcastChannel>,
   subscription: RefObject<EffectSink<Message> | null>,
-): Core {
-  return new Core(
-    new LiveBridge(),
-    new NotesHandler(channel, subscription),
-    onView,
-  );
+): Promise<Core> {
+  return Core.create(new NotesHandler(channel, subscription), onView);
 }

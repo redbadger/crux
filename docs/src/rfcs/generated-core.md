@@ -14,8 +14,10 @@ This RFC proposes that type generation emit the whole shell-side core loop —
 serialise an event, cross the FFI, deserialise the requests, hand each to the
 effect handler, resolve with what comes back, and repeat — as a `Core` class in
 Swift, Kotlin, TypeScript and C#, talking to the Rust core through a small,
-generated, byte-level `CoreBridge` protocol that the shell satisfies with a
-handful of lines around the BoltFFI bindings.
+generated, byte-level `CoreBridge` protocol. When the codegen is told where
+BoltFFI put its bindings, type generation implements that protocol too, and
+the shell constructs `Core` from nothing but its effect handler; otherwise the
+shell satisfies it with a handful of lines around the bindings.
 
 ## Summary
 
@@ -95,12 +97,14 @@ does not move.
 
 - Generate the loop once, in the type generation plugins that already emit the
   handler API, for all four languages.
-- Keep type generation independent of the FFI binding generator. The
-  generated code must not import BoltFFI's output, whose package, module and
-  class names differ per language and per project.
+- Keep type generation independent of the FFI binding generator by default.
+  The generated code must not *discover* BoltFFI's output, whose package,
+  module and class names differ per language and per project; it may be
+  *told* where that output is, and then bridge to it.
 - Keep the shell's remaining code purely about the platform: an
-  `EffectHandler` for the platform work, and a few lines adapting the FFI
-  bindings to a byte-level protocol.
+  `EffectHandler` for the platform work, and nothing else when the codegen
+  knows where the FFI bindings are — a few lines adapting them to a
+  byte-level protocol when it does not.
 - Leave the door open for previews and tests that never load the Rust library.
 - Hold the current `ViewModel` inside the generated code, so diff-based
   updates can land later without changing how apps use it.
@@ -132,10 +136,10 @@ does not move.
 The generated code needs three things from the Rust core: `update(bytes) ->
 bytes`, `resolve(id, bytes) -> bytes` and `view() -> bytes`. Type generation
 emits exactly that as a protocol (`CoreBridge` in Swift, Kotlin and
-TypeScript, `ICoreBridge` in C#) and nothing else. The shell implements it
-around whatever BoltFFI generated — in Swift that is three one-line methods
-converting `Data` to `[UInt8]` and back; in Kotlin and TypeScript the bytes
-pass straight through — and hands the instance to `Core`.
+TypeScript, `ICoreBridge` in C#). Something implements it around whatever
+BoltFFI generated — in Swift that is three one-line methods converting `Data`
+to `[UInt8]` and back; in Kotlin and TypeScript the bytes pass straight
+through — and hands the instance to `Core`.
 
 The protocol is the seam for two other things. A preview or a test can
 implement it with canned bytes and never load the Rust library, which is what
@@ -147,6 +151,40 @@ pushes effects out of band, as the middleware examples do through a
 Three closures would have done the same job with slightly less ceremony. A
 named protocol was chosen because the fake is a real use, and because a
 protocol gives the adapter a name the documentation can point at.
+
+### The adapter is generated when the codegen is told where BoltFFI is
+
+Type generation cannot find BoltFFI's output: the Swift module, the Kotlin
+package, the npm package and the C# namespace are all settings in
+`boltffi.toml`, and the exported class name is a Rust identifier in `ffi.rs`.
+But the shape of that output is fixed by BoltFFI, so once the codegen is given
+the names — `CodeGenerator::boltffi(BoltFfi::new().swift("Shared").kotlin()
+.typescript("shared", ..).csharp())`, each language opted in on its own — the
+adapter is a template with the names filled in. Type generation emits it as
+`FfiBridge`, and gives `Core` a constructor that takes only the handler:
+`Core(handler:)` in Swift, `Core(handler, scope)` in Kotlin,
+`Core.create(handler, onView)` in TypeScript and `Core(handler)` in C#. That
+is the surface a shell engineer sees: a class that wants an effect handler,
+with nothing about Rust in view.
+
+The consequences differ per language, and are the reason this is a
+configuration rather than a default. In Swift, `FfiBridge` imports BoltFFI's
+module, so the generated package declares a dependency on BoltFFI's package
+and must carry a `platforms:` floor no lower than that package's; the floor is
+set on the type generation `Config`, because only the app knows its
+deployment target. `FfiBridge` is written as a companion file in the module,
+so the module's main file does not import the FFI at all. In TypeScript the
+wasm module initialises asynchronously and BoltFFI's `initialized` promise is
+not in its type declarations, so `Core.create` is an `async` factory that
+awaits it through a cast, once, in generated code, rather than in every shell.
+The generated `package.json` depends on the wasm package, which means BoltFFI
+has to run before type generation. In Kotlin and C# the bindings usually share
+a package or namespace with the generated types and nothing more is needed.
+
+The middleware examples are excluded on purpose: their `CoreFfi::new` takes a
+`CruxShell` callback, a different constructor shape, and they keep writing
+their adapter against `CoreBridge`. So does a fake. The protocol and the
+two-argument constructor are emitted whether or not `boltffi(..)` is set.
 
 ### `Core` owns the loop
 
@@ -244,14 +282,16 @@ configurations.
 
 ### Names and escape hatches
 
-`Core`, `CoreBridge` and `ICoreBridge` join the reserved names;
+`Core`, `CoreBridge`, `ICoreBridge` and `FfiBridge` join the reserved names;
 `TypeRegistry::build` reports an error if a shared type claims one. A shell
 that already had its own `Core` type — as every example did — deletes it or
 refers to the generated one by module.
 
 `CodeGenerator::without_core()` turns off `CoreBridge` and `Core` and leaves the
 handler API; `without_effect_handlers()` turns off both, since `Core` depends on
-the dispatcher.
+the dispatcher. A `boltffi(..)` configuration with nothing to bridge — no
+`Core`, because of either of those, no registered app, or no `Render`
+variant — is an error at generation time, not a silent no-op.
 
 ## Drawbacks
 
@@ -277,18 +317,27 @@ already emitted `suspend` functions, which need only the standard library;
 `StateFlow` and `launch` need the library, so type generation now adds it to
 the generated `build.gradle.kts`.
 
+**With `boltffi(..)`, the generated package depends on BoltFFI's.** In Swift
+that is a package dependency and a `platforms:` floor the app has to state; in
+TypeScript it is a `package.json` dependency that makes `boltffi pack` a
+prerequisite of type generation. Both are the price of the shell not writing
+the adapter, and both are absent when the option is not set.
+
 ## Migration
 
 A shell that has adopted the handler API is three steps away:
 
-1. Write the bridge adapter: a type conforming to `CoreBridge` whose three
-   methods call BoltFFI's `CoreFfi`.
+1. Tell the codegen where BoltFFI's output is, with `boltffi(..)`, and give
+   the Swift `Config` a `platforms:` floor; or, for another binding generator,
+   write the bridge adapter yourself: a type conforming to `CoreBridge` whose
+   three methods call the bindings.
 2. Move the `EffectHandler` methods and their state off the hand-written core
    object into a plain handler type, and delete `render`.
 3. Delete the hand-written loop and construct the generated `Core` with the
-   adapter and the handler. Observe `core.view` the way the platform does:
-   `@Environment(Core.self)` in SwiftUI, `collectAsState()` in Compose,
-   `PropertyChanged` in C#; in TypeScript, pass a state setter as `onView`.
+   handler (and the adapter, if you wrote one). Observe `core.view` the way
+   the platform does: `@Environment(Core.self)` in SwiftUI, `collectAsState()`
+   in Compose, `PropertyChanged` in C#; in TypeScript, pass a state setter as
+   `onView`.
 
 The [migration guide](../guide/migrate-per-operation-types.md) walks through
 this for each language, and the notes and weather examples show the result.
@@ -297,11 +346,25 @@ here is additive, and a shell that matches on `Effect` by hand keeps working.
 
 ## Alternatives considered
 
-**Generate direct calls into the BoltFFI bindings.** Rejected: the generated
-types package would have to import the bindings package, whose name is a
-project decision in every language, and the middleware examples have a
-different FFI shape altogether. The protocol costs a few lines per shell and
-keeps the two generators independent.
+**Generate direct calls into the BoltFFI bindings, always.** Rejected as the
+only shape: the generated types package would have to import the bindings
+package, whose name is a project decision in every language, and the
+middleware examples have a different FFI shape altogether. Adopted as an
+opt-in: when the codegen is told the names, it emits the adapter and the
+one-argument constructor, and the protocol remains the seam for everything
+else. The first version of this RFC stopped at the protocol; the bridged
+constructor was added after review, when the question "why is the bridging by
+hand?" turned out to have configuration, not a limitation, as its answer.
+
+**Read `boltffi.toml` to find the names.** Rejected: it would tie type
+generation to BoltFFI's configuration schema, which changes between releases,
+and the exported class name is not in the file anyway. Repeating three or four
+names in `codegen.rs` is cheap and explicit.
+
+**Emit the adapter into the app target instead of the generated package.**
+This avoids the Swift package dependency, but puts a generated file in the
+app's own source tree, and the whole point is that the shell sees only a
+`Core`. Rejected in favour of the dependency and a `platforms:` floor.
 
 **Leave `render` to the app.** A `Core` that treats `Render` as an ordinary
 notification is simpler to specify, but every app then owns the view, the
@@ -329,8 +392,10 @@ noted under non-goals.
    any of the three is possible without moving `update` or `view`.
 3. **The middleware callback.** `process(bytes)` accepts what
    `CruxShell.process_effects` hands over, but the shell still writes the
-   `CruxShell` conformance and the `Arc<dyn CruxShell>` constructor by hand.
-   Should type generation know about that shape too?
+   `CruxShell` conformance, the `Arc<dyn CruxShell>` constructor and its
+   `CoreBridge` adapter by hand, because `CoreFfi::new(shell)` is not the
+   constructor `FfiBridge` calls. Should `BoltFfi` grow a variant for that
+   shape, with `Core` supplying the callback itself?
 4. **Stream termination** is unchanged from the per-operation types RFC's
    open question 5.
 

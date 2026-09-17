@@ -144,7 +144,10 @@ The key steps are:
 
 BoltFFI binding generation is run separately by the shell build recipes with
 `boltffi pack ...`. The codegen binary is intentionally focused on Crux app
-types.
+types; the one thing it can be told about BoltFFI is where its output
+lives, with `.boltffi(BoltFfi::new()...)` on the `CodeGenerator`, so that
+the generated `Core` can be constructed over it without a hand-written
+adapter — see [Bridging to BoltFFI](#bridging-to-boltffi).
 
 ### Cargo.toml setup
 
@@ -211,7 +214,10 @@ reference it. The TypeScript shells use `generated/types` to keep the
 types separate from the wasm package (which lives in `generated/pkg`).
 
 The `generated/` directories are gitignored and regenerated as part of
-the build process. Each shell's `build` recipe depends on `typegen`.
+the build process. Each shell's `build` recipe depends on `typegen`, and
+where the codegen is configured to bridge to BoltFFI, `typegen` in turn
+depends on the `boltffi pack` recipe, because the generated package
+refers to BoltFFI's.
 
 ## What gets generated
 
@@ -382,10 +388,13 @@ it as a `Core` class, next to the handler API.
 
 `Core` talks to the Rust core through a `CoreBridge` protocol (Swift,
 Kotlin, TypeScript) or `ICoreBridge` interface (C#) with three
-byte-level methods. You implement it around whatever BoltFFI generated
-for your crate — in Swift that means converting `Data` to `[UInt8]` and
-back; in Kotlin and TypeScript the bytes pass straight through — and
-hand it to `Core` with your `EffectHandler`:
+byte-level methods. If BoltFFI generates your bindings, tell the codegen
+where they are and type generation implements the protocol for you (see
+[Bridging to BoltFFI](#bridging-to-boltffi) below), so a shell constructs
+`Core` from nothing but its `EffectHandler`. Otherwise — another binding
+generator, a test double, a preview — you implement it yourself around
+whatever produces the bytes, and hand it to `Core` with your
+`EffectHandler`:
 
 ```swift
 public protocol CoreBridge: Sendable {
@@ -400,6 +409,7 @@ public protocol CoreBridge: Sendable {
 public final class Core {
     public private(set) var view: ViewModel
     public init(bridge: any CoreBridge, handler: any EffectHandler)
+    public convenience init(handler: any EffectHandler)   // with a BoltFFI config
     public func update(_ event: Event)
     public func process(_ requests: [Request])
     public func process(bytes: [UInt8])
@@ -414,6 +424,7 @@ interface CoreBridge {
 }
 
 class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
+    constructor(handler: EffectHandler, scope: CoroutineScope)   // with a BoltFFI config
     val view: StateFlow<ViewModel>
     fun update(event: Event)
     fun process(requests: List<Request>)
@@ -432,6 +443,8 @@ export class Core {
     view: ViewModel;
     constructor(bridge: CoreBridge, handler: EffectHandler,
                 onView: (view: ViewModel) => void);
+    static create(handler: EffectHandler,                 // with a BoltFFI config
+                  onView: (view: ViewModel) => void): Promise<Core>;
     update(event: Event): void;
     process(requests: Request[]): void;
     processBytes(bytes: Uint8Array): void;
@@ -441,7 +454,8 @@ export class Core {
 C# gets `ICoreBridge` and `sealed class Core(ICoreBridge, IEffectHandler)`,
 which implements `INotifyPropertyChanged` and raises `PropertyChanged` for
 its `View` property, with `Update(Event)`, `Process(IReadOnlyList<Request>)`
-and `Process(byte[])`.
+and `Process(byte[])`. With a BoltFFI config it also has a
+`Core(IEffectHandler)` constructor.
 
 Things worth knowing:
 
@@ -475,6 +489,92 @@ Things worth knowing:
 - **Turning it off.** `CodeGenerator::without_core()` leaves the handler
   API in place; `without_effect_handlers()` turns off both, because
   `Core` depends on the dispatcher.
+
+### Bridging to BoltFFI
+
+Type generation does not read BoltFFI's output — the two generators are
+independent, and the package, module and class names BoltFFI uses are
+decisions you made in `boltffi.toml` and `ffi.rs`. Repeat them in the
+codegen and type generation emits the bridge for you:
+
+```rust,ignore
+let typegen = TypeRegistry::new()
+    .register_app::<Weather>()?
+    .build()?
+    .boltffi(
+        BoltFfi::new()
+            .swift("Shared")   // the Swift module; the package is at ../Shared
+            .kotlin()          // CoreFfi is in the generated package
+            .typescript("shared", PackageLocation::Path("../pkg".into()))
+            .csharp(),         // CoreFfi is in the generated namespace
+    );
+```
+
+Each language is opted in separately; one you do not name gets exactly
+the output described above. `BoltFfi::class(..)` renames the exported
+class if yours is not `CoreFfi`; `swift_package(..)`, `kotlin_package(..)`,
+`typescript_package(..)` and `csharp_namespace(..)` cover bindings that
+live somewhere other than the defaults.
+
+For a named language the generated module gains an `FfiBridge` —
+`CoreBridge` implemented over `CoreFfi`, bytes in and bytes out, with the
+Swift `Data` conversion and the `@unchecked Sendable` declaration where
+they belong — and `Core` gains a constructor that takes only the handler:
+
+```swift
+let core = Core(handler: WeatherHandler())
+```
+
+```kotlin
+val core = Core(handler, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+```
+
+```typescript
+const core = await Core.create(new WeatherHandler(), setView);
+```
+
+```csharp
+var core = new Core(new CounterHandler());
+```
+
+TypeScript's is an `async` factory because the wasm module loads
+asynchronously: `Core.create` awaits the package's `initialized` promise
+before touching `CoreFfi`, which is the one thing every hand-written web
+shell had to remember. `CoreBridge` and the two-argument constructors are
+still emitted, so a preview or a test can hand `Core` a fake, and a shell
+whose FFI has a different shape — the middleware examples, whose
+`CoreFfi::new` takes a callback — still writes its own adapter.
+
+Two consequences for the build:
+
+- **Swift.** `FfiBridge.swift` imports the BoltFFI module, so the generated
+  package now depends on the BoltFFI package: `Package.swift` gains
+  `.package(path: "../Shared")` and the target depends on its product. SPM
+  requires a dependent package's deployment target to be at least its
+  dependency's, and BoltFFI's package declares one, so give the generated
+  package a `platforms:` floor to match through the `Config`:
+
+  ```rust,ignore
+  Config::builder("App", &out_dir)
+      .platform(".iOS(.v16)")
+      .platform(".macOS(.v13)")
+      .build()
+  ```
+
+  Your app target no longer needs to link the BoltFFI package itself; it
+  reaches it through the generated one.
+- **TypeScript.** The generated `package.json` depends on the BoltFFI
+  package (`"shared": "file:../pkg"`), and type generation runs
+  `pnpm install` in the generated package, so run `boltffi pack wasm`
+  *before* typegen. The Android recipes already pack first; the web
+  recipes in the examples were reordered to match.
+
+Kotlin and C# need nothing else when the bindings share the generated
+package or namespace, which is how the examples are configured.
+
+Setting `boltffi(..)` when there is no `Core` to bridge — no registered
+app, no `Render` variant, or `without_core()` — is reported as an error
+rather than silently ignored.
 
 ### Reading a request id
 
@@ -542,12 +642,16 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   bar, and drives the loop itself. `CoreBridge` is `Sendable`; an adapter around BoltFFI's
   non-`Sendable` `CoreFfi` class declares itself `@unchecked Sendable`,
   which is sound because the Rust bridge guards its state with mutexes.
+  The generated `FfiBridge` carries that declaration; write it yourself
+  only on an adapter of your own.
 - `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`,
-  `EffectHandler`, `EffectDispatcher`, `Core` and `CoreBridge` (and their
-  C# `I`-prefixed forms) are reserved names. `TypeRegistry::build` fails
-  if one of your shared types or effect variants claims one.
-- `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`;
-  `CodeGenerator::without_effect_handlers()` turns off those and the
+  `EffectHandler`, `EffectDispatcher`, `Core`, `CoreBridge` and
+  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names.
+  `TypeRegistry::build` fails if one of your shared types or effect
+  variants claims one.
+- `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`, and
+  with them the BoltFFI bridge, which is an error to configure alongside
+  it; `CodeGenerator::without_effect_handlers()` turns off those and the
   handler API, the kind accessor and the request-id decoder, leaving
   only the types you registered.
 - The generated Kotlin module declares a dependency on

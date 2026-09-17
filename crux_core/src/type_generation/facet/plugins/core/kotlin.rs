@@ -11,16 +11,66 @@ use facet_generate::{
     reflection::format::Format,
 };
 
-use super::{super::Matched, AppMeta};
+use super::{super::Matched, AppMeta, BoltFfi, render};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
     app: &AppMeta,
     config: &CodeGeneratorConfig,
+    ffi: Option<&BoltFfi>,
 ) -> io::Result<()> {
     emit_bridge(w)?;
-    emit_core(w, m, app, config)
+    // The secondary constructor is only correct when `FfiBridge` is written
+    // beside the module, which is what naming the Kotlin bindings asks for.
+    let bridged = ffi.filter(|ffi| ffi.kotlin_ffi().is_some());
+    emit_core(w, m, app, config, bridged)
+}
+
+/// `FfiBridge`, the `CoreBridge` over `BoltFFI`'s class, for its own file in the
+/// generated package.
+pub(super) fn ffi_bridge(class: &str, config: &CodeGeneratorConfig) -> io::Result<String> {
+    render(config, |w| {
+        writeln!(
+            w,
+            "/// The generated `CoreBridge`, implemented over BoltFFI's `{class}`: bytes"
+        )?;
+        writeln!(
+            w,
+            "/// in, bytes out, nothing else. It is the only generated type that knows"
+        )?;
+        writeln!(
+            w,
+            "/// the Rust core exists — pass a fake to `Core(bridge, handler, scope)`"
+        )?;
+        writeln!(w, "/// instead for tests.")?;
+        writeln!(w, "///")?;
+        writeln!(
+            w,
+            "/// `{class}` holds a handle to the Rust side, so closing an `FfiBridge`"
+        )?;
+        writeln!(w, "/// releases the core it wraps.")?;
+        writeln!(
+            w,
+            "class FfiBridge(private val ffi: {class} = {class}()) : CoreBridge, AutoCloseable {{"
+        )?;
+        w.indent();
+        writeln!(
+            w,
+            "override fun update(event: ByteArray): ByteArray = ffi.update(event)"
+        )?;
+        writeln!(w)?;
+        writeln!(
+            w,
+            "override fun resolve(id: UInt, output: ByteArray): ByteArray = ffi.resolve(id, output)"
+        )?;
+        writeln!(w)?;
+        writeln!(w, "override fun view(): ByteArray = ffi.view()")?;
+        writeln!(w)?;
+        writeln!(w, "override fun close() = ffi.close()")?;
+        w.unindent();
+        writeln!(w, "}}")
+    })
 }
 
 fn emit_bridge(w: &mut dyn IndentWrite) -> io::Result<()> {
@@ -41,11 +91,27 @@ fn emit_bridge(w: &mut dyn IndentWrite) -> io::Result<()> {
     Ok(())
 }
 
+/// The secondary constructor that builds the generated `FfiBridge`, so a shell
+/// that uses the `BoltFFI` bindings never names a bridge at all.
+fn emit_ffi_constructor(w: &mut dyn IndentWrite, class: &str) -> io::Result<()> {
+    writeln!(w)?;
+    writeln!(
+        w,
+        "/// Build a `Core` over the `{class}` the Rust crate exports — the shell"
+    )?;
+    writeln!(w, "/// writes the handler and never sees the bridge.")?;
+    writeln!(
+        w,
+        "constructor(handler: EffectHandler, scope: CoroutineScope) : this(FfiBridge(), handler, scope)"
+    )
+}
+
 fn emit_core(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
     app: &AppMeta,
     config: &CodeGeneratorConfig,
+    ffi: Option<&BoltFfi>,
 ) -> io::Result<()> {
     let render = m
         .render_variant()
@@ -96,6 +162,11 @@ fn emit_core(
     writeln!(w, "scope.launch {{ process(bridge.resolve(id, bytes)) }}")?;
     w.unindent();
     writeln!(w, "}}")?;
+
+    if let Some(ffi) = ffi {
+        emit_ffi_constructor(w, ffi.class_name())?;
+    }
+
     writeln!(w)?;
     writeln!(
         w,

@@ -16,7 +16,7 @@ The only explicit provider here is `OkHttpClient`, since it isn't under our cont
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/CoreModule.kt:start}}
 ```
 
-`Core` takes the three things a shell supplies: a `CoreBridge` (bound to `LiveBridge` in the same module), an `EffectHandler`, and a `CoroutineScope` on the main dispatcher. The `.also` sends the same `Event.Start` we saw in chapter 3 the moment the core exists — it fetches the API key and favourites before anything is drawn.
+`Core` takes the two things a shell supplies: an `EffectHandler` and a `CoroutineScope` on the main dispatcher. The `.also` sends the same `Event.Start` we saw in chapter 3 the moment the core exists — it fetches the API key and favourites before anything is drawn.
 
 The handler is `WeatherHandler`, which takes five injected dependencies — one per capability that needs a real-world implementation: `HttpHandler` (OkHttp), `LocationHandler` (Fused Location Provider + permission flow), `KeyValueHandler` (DataStore-backed), `SecretStore` (AndroidKeyStore-backed), and `TimeHandler` (coroutine timers).
 
@@ -24,13 +24,21 @@ One thing to flag upfront: the word "ViewModel" shows up in two senses on Androi
 
 ## The FFI bridge
 
-`LiveBridge` is the generated `CoreBridge` interface, implemented over BoltFFI's `CoreFfi`:
+Underneath the two-argument constructor, `Core` talks to Rust through a `CoreBridge` interface with three byte-level methods, and the generated package implements it over BoltFFI's `CoreFfi` in `FfiBridge.kt`:
 
 ```kotlin
-{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/LiveBridge.kt}}
+class FfiBridge(private val ffi: CoreFfi = CoreFfi()) : CoreBridge, AutoCloseable {
+    override fun update(event: ByteArray): ByteArray = ffi.update(event)
+
+    override fun resolve(id: UInt, output: ByteArray): ByteArray = ffi.resolve(id, output)
+
+    override fun view(): ByteArray = ffi.view()
+
+    override fun close() = ffi.close()
+}
 ```
 
-Bytes in, bytes out. The generated `Core` does the serializing, so this is the only class that knows `CoreFfi` exists. The view layer observes `core.view`, a `StateFlow<ViewModel>` — a Kotlin coroutines type that always holds a current value, and conflates on equality: collectors are only notified if the new value differs from the previous one. That property keeps identical renders from rippling downstream.
+Bytes in, bytes out. The generated `Core` does the serializing, so this is the only class that knows `CoreFfi` exists, and it is generated because the codegen was told BoltFFI's Kotlin lands in the same package (`.boltffi(BoltFfi::new().kotlin() /* … */)`), which is how `boltffi.toml` and `codegen.rs` are set up in this example. The view layer observes `core.view`, a `StateFlow<ViewModel>` — a Kotlin coroutines type that always holds a current value, and conflates on equality: collectors are only notified if the new value differs from the previous one. That property keeps identical renders from rippling downstream.
 
 One build detail: `Core` uses `StateFlow` and `launch`, so the `shared` Gradle module that compiles the generated sources declares `kotlinx-coroutines-core` as an `api` dependency. The generated `build.gradle.kts` lists it too, but this project pulls the generated sources in directly with `srcDirs` and manages versions in `libs.versions.toml`.
 
@@ -40,6 +48,7 @@ The loop is the generated `Core`:
 
 ```kotlin
 class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
+    constructor(handler: EffectHandler, scope: CoroutineScope)
     val view: StateFlow<ViewModel>
     fun update(event: Event)
     fun process(requests: List<Request>)
