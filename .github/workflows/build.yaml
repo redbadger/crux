@@ -49,6 +49,15 @@ jobs:
         with:
           version: latest
 
+      # The capability crates' `shell_source` tests, and `crux_core`'s typegen
+      # tests, run `dotnet build` over a generated C# package, which the
+      # generator targets at `net10.0`. They skip when `dotnet` is missing
+      # rather than fail, so without this the shipped C# would quietly go
+      # uncompiled.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
       - name: Build crux
         shell: bash
         run: cargo build --workspace
