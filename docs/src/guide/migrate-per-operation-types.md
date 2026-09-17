@@ -245,7 +245,7 @@ pub enum ValueResult { Ok(Value), Err(KeyValueError) }
 pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
 pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
 
-pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
+pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
 ```
 
 `KeyValueError`, `Value`, `DataResult`, `StatusResult` and `ListResult` are
