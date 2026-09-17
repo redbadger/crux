@@ -8,12 +8,12 @@
 // actually produce — there is no wide response enum to narrow.
 
 import type {
-  Delete,
-  Fetch,
+  DeleteSecret,
+  FetchSecret,
   SecretDeleteResponse,
   SecretFetchResponse,
   SecretStoreResponse,
-  Store,
+  StoreSecret,
 } from "shared_types/app";
 import {
   secretDeleteResponseDeleted,
@@ -22,7 +22,9 @@ import {
   secretStoreResponseStored,
 } from "shared_types/app";
 
-export async function fetch(operation: Fetch): Promise<SecretFetchResponse> {
+export async function fetch(
+  operation: FetchSecret,
+): Promise<SecretFetchResponse> {
   const key = operation.value;
   console.debug("secret fetch:", key);
   const value = localStorage.getItem(key);
@@ -34,7 +36,9 @@ export async function fetch(operation: Fetch): Promise<SecretFetchResponse> {
   return secretFetchResponseMissing(key);
 }
 
-export async function store(operation: Store): Promise<SecretStoreResponse> {
+export async function store(
+  operation: StoreSecret,
+): Promise<SecretStoreResponse> {
   const { field0: key, field1: value } = operation;
   console.debug("secret store:", key);
   localStorage.setItem(key, value);
@@ -42,7 +46,7 @@ export async function store(operation: Store): Promise<SecretStoreResponse> {
 }
 
 export async function remove(
-  operation: Delete,
+  operation: DeleteSecret,
 ): Promise<SecretDeleteResponse> {
   const key = operation.value;
   console.debug("secret delete:", key);
