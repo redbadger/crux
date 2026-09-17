@@ -394,12 +394,12 @@ public protocol CoreBridge: Sendable {
     func view() -> [UInt8]
 }
 
-@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
+@Observable
 @MainActor
 public final class Core {
     public private(set) var view: ViewModel
-    public init(bridge: any CoreBridge, handler: any EffectHandler,
-                onView: @escaping @MainActor (ViewModel) -> Void)
+    public init(bridge: any CoreBridge, handler: any EffectHandler)
     public func update(_ event: Event)
     public func process(_ requests: [Request])
     public func process(bytes: [UInt8])
@@ -438,18 +438,20 @@ export class Core {
 }
 ```
 
-C# gets `ICoreBridge` and `sealed class Core(ICoreBridge, IEffectHandler,
-Action<ViewModel>)` with a `View` property, `Update(Event)`,
-`Process(IReadOnlyList<Request>)` and `Process(byte[])`.
+C# gets `ICoreBridge` and `sealed class Core(ICoreBridge, IEffectHandler)`,
+which implements `INotifyPropertyChanged` and raises `PropertyChanged` for
+its `View` property, with `Update(Event)`, `Process(IReadOnlyList<Request>)`
+and `Process(byte[])`.
 
 Things worth knowing:
 
 - **`Core` owns `Render`.** It recognizes the variant carrying
   `crux_core::render::RenderOperation`, re-reads the view from the bridge
-  when one arrives, keeps it in `view`, and notifies — through the
-  `onView` callback in Swift, TypeScript and C#, and through the
-  `StateFlow` in Kotlin. The callback is not fired for the initial view;
-  read `view` for that. Because `Core` handles it, `EffectHandler.render`
+  when one arrives, keeps it in `view`, and publishes it the way each
+  platform expects: `view` is an `@Observable` property in Swift, a
+  `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a
+  `PropertyChanged` event in C#. The initial view is read in the
+  constructor without a notification. Because `Core` handles it, `EffectHandler.render`
   has a default that does nothing (a protocol extension in Swift, a
   default method in Kotlin and C#, an optional `render?` in TypeScript).
   Implement it only if you drive `EffectDispatcher` without `Core`.
@@ -464,9 +466,9 @@ Things worth knowing:
   resolve hops back to the main actor before touching the bridge, as the
   hand-written shells did. The Kotlin `Core` dispatches each request, and
   processes each resolution, in its own coroutine on the scope you pass.
-  In C#, `onView` may be called on a thread-pool thread after an
-  asynchronous request completes, so marshal to your UI thread in the
-  callback.
+  In C#, `PropertyChanged` may be raised on a thread-pool thread after
+  an asynchronous request completes, so marshal to your UI thread in the
+  handler.
 - **No `Render`, no `Core`.** An effect enum without a `RenderOperation`
   variant has no view loop to own, so only the handler API is emitted
   for it.
@@ -532,10 +534,12 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   that the generated operation and output types are not `Sendable`, so
   a `@MainActor` type conforming to the `Sendable` `EffectHandler`
   needs a `nonisolated` extension — see the
-  [iOS chapter](../part-2/shell/ios.md). The generated `Core` carries
-  the same `@available`, which is also why it is not `@Observable`: a
-  SwiftUI shell keeps a small `@Observable` holder that `onView` writes
-  to. `CoreBridge` is `Sendable`; an adapter around BoltFFI's
+  [iOS chapter](../part-2/shell/ios.md). The generated `Core` is
+  `@Observable`, so it alone carries
+  `@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)` and the
+  generated file imports `Observation`; a shell with an older deployment
+  target keeps the handler API and dispatcher, which stay at the lower
+  bar, and drives the loop itself. `CoreBridge` is `Sendable`; an adapter around BoltFFI's
   non-`Sendable` `CoreFfi` class declares itself `@unchecked Sendable`,
   which is sound because the Rust bridge guards its state with mutexes.
 - `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`,

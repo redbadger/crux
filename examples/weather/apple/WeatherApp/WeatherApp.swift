@@ -4,17 +4,14 @@ import WeatherKit
 
 @main
 struct WeatherApp: App {
-    @State private var store: ViewStore
-    private let core: Core
+    @State private var core: Core
     private let updater: CoreUpdater
 
     // ANCHOR: start
     init() {
-        let store = ViewStore()
-        let core = Core(bridge: LiveBridge(), handler: WeatherHandler()) { store.view = $0 }
+        let core = Core(bridge: LiveBridge(), handler: WeatherHandler())
 
-        _store = State(wrappedValue: store)
-        self.core = core
+        _core = State(wrappedValue: core)
         updater = CoreUpdater { core.update($0) }
 
         core.update(.start)
@@ -24,7 +21,7 @@ struct WeatherApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(store)
+                .environment(core)
                 .environment(updater)
         }
     }

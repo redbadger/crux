@@ -28,9 +28,11 @@ let previewWeatherResponse = CurrentWeatherResponse(
 // MARK: - Preview Environment Modifier
 
 struct PreviewEnvironment: ViewModifier {
+    @State private var core = Core(bridge: PreviewBridge(), handler: PreviewHandler())
+
     func body(content: Content) -> some View {
         content
-            .environment(ViewStore())
+            .environment(core)
             .environment(CoreUpdater.forPreview())
     }
 }

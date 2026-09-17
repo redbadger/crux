@@ -215,26 +215,30 @@ and this project adheres to
       func view() -> [UInt8]
   }
 
-  @MainActor public final class Core {
+  @available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
+  @Observable @MainActor public final class Core {
       public private(set) var view: ViewModel
-      public init(bridge: any CoreBridge, handler: any EffectHandler,
-                  onView: @escaping @MainActor (ViewModel) -> Void)
+      public init(bridge: any CoreBridge, handler: any EffectHandler)
       public func update(_ event: Event)
       public func process(_ requests: [Request])
       public func process(bytes: [UInt8])
   }
   ```
 
-  Kotlin gets `interface CoreBridge` and `class Core(bridge, handler, scope:
+  The Swift `Core` is `@Observable`, so a SwiftUI shell puts it in the
+  environment and reads `core.view`; it alone requires iOS 17 / macOS 14,
+  while the handler API keeps its iOS 13 / macOS 10.15 bar. Kotlin gets
+  `interface CoreBridge` and `class Core(bridge, handler, scope:
   CoroutineScope)` exposing `val view: StateFlow<ViewModel>`; TypeScript gets
   `interface CoreBridge` and `class Core(bridge, handler, onView)` with
   `update`, `process(requests)` and `processBytes(bytes)`; C# gets
-  `ICoreBridge` and `sealed class Core(bridge, handler, onView)` with `View`,
+  `ICoreBridge` and `sealed class Core(bridge, handler)`, which implements
+  `INotifyPropertyChanged` and raises `PropertyChanged` for `View`, with
   `Update` and two `Process` overloads. `process(bytes)` is there for the
   requests middleware pushes to the shell asynchronously.
 
   `Core` handles `Render` itself — it re-reads the view, holds it and
-  notifies — so **`EffectHandler.render` now has a default that does nothing**
+  publishes it — so **`EffectHandler.render` now has a default that does nothing**
   in all four languages (a Swift protocol extension, a Kotlin or C# default
   method, an optional member in TypeScript). Implement it only if you drive
   `EffectDispatcher` without `Core`. `Core` is emitted only when the effect

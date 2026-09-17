@@ -110,14 +110,18 @@ does not move.
 - Generating the Rust side of the FFI (`shared/src/ffi.rs`). It is also
   boilerplate, but BoltFFI 0.29's binding generator reads source without
   expanding macros, so a `crux_core` macro emitting `#[boltffi::export]` would
-  be invisible to it. Worth revisiting when the examples move to a BoltFFI that
-  reads binding metadata from the built artifact.
+  be invisible to it. BoltFFI 0.30 still discovers exports this way, and
+  exports declared in a dependency reach the bindings only for path
+  dependencies, so `crux_core` cannot host the FFI class either. Worth
+  revisiting when BoltFFI's per-invocation metadata capture
+  ([boltffi/boltffi#665](https://github.com/boltffi/boltffi/issues/665)) ships.
 - Rust shells. Leptos, Yew and Dioxus call the typed `Core<App>` directly and
   match on the `Effect` enum; there is no serialisation and nothing to generate.
-- UI-framework observability. `@Observable`, `StateFlow`, React state and
-  `INotifyPropertyChanged` are the shell's business; the generated `Core`
-  exposes the view through the cheapest idiom each language has and stops
-  there.
+- UI frameworks. The generated `Core` publishes the view through each
+  language's standard observability primitive — `Observation` in Swift,
+  `StateFlow` in Kotlin, `INotifyPropertyChanged` in C#, a callback in
+  TypeScript — and stops there. Binding that to SwiftUI, Compose, MAUI or
+  React is the shell's business.
 - Stream termination, which the per-operation types RFC leaves open. The
   generated `Core` neither helps nor hinders it.
 
@@ -176,12 +180,16 @@ Today the held value is replaced wholesale on every `Render`. When a diff
 plugin exists it will patch the held value instead, and `update`, `view` and
 the notification stay as they are.
 
-Notification uses the cheapest idiom each language has that is not tied to a
-UI framework: a callback in Swift (`onView`, `@MainActor`), TypeScript and C#
-(`Action<ViewModel>`), and a `StateFlow<ViewModel>` in Kotlin, where a
-coroutine scope is already needed for the `suspend` dispatcher and `StateFlow`
-is what every Android consumer would wrap the callback in anyway. The callback
-is not fired for the initial view; the caller reads `view` if it wants it.
+Publication uses the observability primitive each language's UI layer
+already understands, without depending on the UI framework itself. In Swift
+`Core` is `@Observable` and `view` is its one observed property, so a SwiftUI
+view that reads `core.view` is invalidated on every render. In Kotlin `view`
+is a `StateFlow<ViewModel>`; a coroutine scope is already needed for the
+`suspend` dispatcher, and `StateFlow` is what every Android consumer would
+wrap a callback in anyway. In C# `Core` implements `INotifyPropertyChanged`
+and raises `PropertyChanged` for `View`. TypeScript keeps an `onView`
+callback, because a React state setter is exactly that shape. None of these
+fires for the initial view; the caller reads `view` if it wants it.
 
 An effect enum with no `RenderOperation` variant gets no `Core`. There is no
 view loop to own in that case, and the handler and dispatcher are still
@@ -197,10 +205,11 @@ emitted for such an app to drive itself.
   side does no I/O. `CoreBridge` is `Sendable`; a wrapper around BoltFFI's
   non-`Sendable` `CoreFfi` class declares itself `@unchecked Sendable`, which
   is sound because the Rust `Bridge` guards its state with mutexes. `Core`
-  carries the same `@available` as the dispatcher, because the generated
-  package declares no platforms; that is also why it is not `@Observable`,
-  and why a SwiftUI shell keeps a small observable holder that `onView`
-  writes to.
+  is `@Observable`, so it alone carries
+  `@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)`; the
+  protocol and dispatcher keep the lower bar the generated package has
+  always had, so a shell with an older deployment target can still drive
+  them itself.
 - **Kotlin**: `Core` takes a `CoroutineScope`. Each request is dispatched in
   its own coroutine, so a slow handler never blocks the requests behind it,
   and each resolution is processed in its own coroutine too. `update` itself
@@ -208,9 +217,9 @@ emitted for such an app to drive itself.
   bridge is internally synchronised, so no further locking is needed.
 - **TypeScript**: single-threaded; `update` is synchronous, request handlers
   return promises, and the dispatcher resolves in their continuations.
-- **C#**: as TypeScript, with `Task`. `onView` may run on a thread-pool thread
-  after an asynchronous request completes, so a UI shell marshals to its
-  dispatcher inside the callback.
+- **C#**: as TypeScript, with `Task`. `PropertyChanged` may be raised on a
+  thread-pool thread after an asynchronous request completes, so a UI shell
+  marshals to its dispatcher inside the handler.
 
 ### What type generation needs to know
 
@@ -252,6 +261,10 @@ where before it failed to compile. The default is documented as existing for
 `Core`'s benefit, and the recommended path is `Core`, but it is a real loss of
 a compile-time check for the other path.
 
+**The Swift `Core` needs iOS 17 / macOS 14.** `@Observable` arrived with those
+releases. The rest of the generated module keeps its iOS 13 / macOS 10.15 bar,
+so a shell below iOS 17 loses only the generated loop, not the handler API.
+
 **The Swift `Core` serialises all bridge calls on the main actor.** For the
 Rust core this is fine; a shell that wanted to call the bridge from a
 background actor would write its own loop, which remains possible.
@@ -273,8 +286,9 @@ A shell that has adopted the handler API is three steps away:
 2. Move the `EffectHandler` methods and their state off the hand-written core
    object into a plain handler type, and delete `render`.
 3. Delete the hand-written loop and construct the generated `Core` with the
-   adapter, the handler, and — in Swift, TypeScript and C# — a callback that
-   publishes the view; in Kotlin, collect `core.view`.
+   adapter and the handler. Observe `core.view` the way the platform does:
+   `@Environment(Core.self)` in SwiftUI, `collectAsState()` in Compose,
+   `PropertyChanged` in C#; in TypeScript, pass a state setter as `onView`.
 
 The [migration guide](../guide/migrate-per-operation-types.md) walks through
 this for each language, and the notes and weather examples show the result.
@@ -303,10 +317,13 @@ noted under non-goals.
 
 ## Open questions
 
-1. **View publication idiom.** A callback in three languages and `StateFlow`
-   in the fourth is a pragmatic choice, not a principled one. Should the Swift
-   `Core` grow an `@Observable` form once the generated package can declare
-   platforms, or should observability stay entirely in the shell?
+1. **Observable view models.** `Core` now publishes `view` through each
+   language's standard primitive, but it replaces the value wholesale, so a
+   SwiftUI or Compose view that reads any part of it is invalidated on every
+   render. Finer-grained invalidation would need the view model *types* to be
+   observable — generated observable classes, or per-field flows — and only
+   pays off once diffs arrive over the wire. That belongs to the diff-based
+   updates work below rather than to this RFC.
 2. **Diff-based updates.** When the difficient plugin exists, does the
    notification carry the whole view, the diff, or both? The held view means
    any of the three is possible without moving `update` or `view`.

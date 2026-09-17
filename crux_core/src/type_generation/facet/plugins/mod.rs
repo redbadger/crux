@@ -45,6 +45,12 @@ use crate::OperationKind;
 /// available.
 pub const SWIFT_AVAILABILITY: &str = "@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)";
 
+/// `Core` publishes its view model through the `Observation` framework, which
+/// arrived later than Swift concurrency, so it alone carries a higher bar than
+/// [`SWIFT_AVAILABILITY`].
+pub const SWIFT_OBSERVABLE_AVAILABILITY: &str =
+    "@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)";
+
 /// One variant of an effect enum, as the plugins see it: the registry's view
 /// of the variant (its emitted name and payload type) paired with what the
 /// operation declared.
