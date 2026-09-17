@@ -576,6 +576,80 @@ Setting `boltffi(..)` when there is no `Core` to bridge — no registered
 app, no `Render` variant, or `without_core()` — is reported as an error
 rather than silently ignored.
 
+### Shipped shell handlers
+
+A capability crate can carry the shell side of its own protocol: a Swift,
+Kotlin, TypeScript and C# implementation of its operations, embedded in
+the crate as source and versioned with it. Type generation copies that
+source into your generated package when you ask for it, and does nothing
+else — the generated `EffectHandler`, `EffectDispatcher` and `Core` are
+exactly as described above.
+
+You ask in the codegen binary, per capability, on the registry before you
+build it:
+
+```rust,ignore
+let typegen = TypeRegistry::new()
+    .register_app::<Weather>()?
+    .shell_handler(&crux_http::HTTP)?
+    .shell_handler(&crux_kv::KEY_VALUE)?
+    .shell_handler(&crux_time::TIME)?
+    .build()?;
+```
+
+Each `ShellHandler` is a `static` the capability exports behind its
+`facet_typegen` feature. Registering one also registers every operation and
+output its sources name, including operations your `Effect` never carries —
+the shipped file implements the whole capability, so all of its types have
+to exist. For every one you register, and every language
+it has source for, the generated module gains one file — `Http.swift` in
+the Swift target, `Http.kt` in the Kotlin package, `Http.cs` in the C#
+namespace — with the module's header prepended and the source otherwise
+verbatim. TypeScript modules are a single file, so there the source is
+appended after the types, as `Core` is. A language the capability does
+not ship gets nothing, and you implement those methods as you would have
+anyway.
+
+The file declares a protocol named after the handler — `HttpHandler`,
+`IHttpHandler` in C# — with one method per operation, taking the
+operation and returning what the generated `EffectHandler` method for it
+returns, and at least one implementation. Your handler holds an instance
+and delegates:
+
+```swift
+struct WeatherHandler: EffectHandler {
+    let http = URLSessionHttpHandler.shared
+    let time = TaskTimeHandler()
+
+    func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
+    func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
+    func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
+    // the app's own operations…
+}
+```
+
+Those lines are the whole of what you write for the capability. The
+protocol rules — how a `URLError` maps onto `HttpResult`, what a cleared
+timer answers — live in the shipped file, written once by the capability
+author. Because the delegation is yours, so is the choice: construct the
+shipped implementation with a pinned `URLSession` or a storage directory,
+write your own conformer of the protocol behind a hardened HTTP stack,
+override one method and delegate the rest, or leave the registration out
+and get a package with nothing extra in it. When a capability gains an
+operation, your handler stops compiling until you add its line, which is
+the right moment to read what the new operation does.
+
+Registration is where a shipped handler's manifest dependencies, if it
+declares any, reach your `Package.swift`, `build.gradle.kts` or
+`package.json`. The bundled capabilities depend on nothing beyond the
+platform standard library. `<Name>Handler` joins the reserved names, and
+registering two handlers with the same name is an error. So is one of your
+own types sharing a name with a capability's — registering `crux_kv` brings
+its `Delete` with it, and an app with a `Delete` of its own renames one of
+them with `#[facet(rename = "...")]`.
+[Building capabilities](../part-2/capabilities.md) covers the other side:
+how a capability declares what it ships.
+
 ### Reading a request id
 
 The `id` on a `Request` is not a bare counter. It packs, from the top,
@@ -646,7 +720,8 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   only on an adapter of your own.
 - `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`,
   `EffectHandler`, `EffectDispatcher`, `Core`, `CoreBridge` and
-  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names.
+  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names, and
+  so is `<Name>Handler` for every shipped handler you register.
   `TypeRegistry::build` fails if one of your shared types or effect
   variants claims one.
 - `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`, and
