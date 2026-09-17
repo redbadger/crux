@@ -3,7 +3,7 @@ import Foundation
 
 private nonisolated let logger = Log.keyValue
 
-nonisolated extension Core {
+nonisolated extension WeatherHandler {
     /// `KvGet` is answered with a `ValueResult` — the value stored under the
     /// key, or the error that stopped us reading it.
     public func kvGet(_ operation: App.Get) async -> ValueResult {

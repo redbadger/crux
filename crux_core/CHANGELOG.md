@@ -195,6 +195,59 @@ and this project adheres to
   Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
   every top-level type and exposes the helpers these plugins need.
 
+- **Type generation also emits a shell-side `Core`.** With the handler API in
+  place, what every shell still wrote by hand was the same loop: serialize the
+  `Event`, call the core's `update`, deserialize the `Requests`, re-read the view
+  on `Render`, dispatch the rest, and on each resolve call the core's `resolve`
+  and loop over what it returns. Beside `EffectHandler` and `EffectDispatcher`,
+  every generated package now carries a `CoreBridge` protocol/interface
+  (`ICoreBridge` in C#) over bytes — `update(event)`, `resolve(id, output)` and
+  `view()` — and a `Core` that owns that loop. The shell writes a few-line
+  adapter from BoltFFI's `CoreFfi` to `CoreBridge` (or a fake, for previews and
+  tests), an `EffectHandler` for the platform work, and is done.
+
+  Swift:
+
+  ```swift
+  public protocol CoreBridge: Sendable {
+      func update(_ event: [UInt8]) -> [UInt8]
+      func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8]
+      func view() -> [UInt8]
+  }
+
+  @MainActor public final class Core {
+      public private(set) var view: ViewModel
+      public init(bridge: any CoreBridge, handler: any EffectHandler,
+                  onView: @escaping @MainActor (ViewModel) -> Void)
+      public func update(_ event: Event)
+      public func process(_ requests: [Request])
+      public func process(bytes: [UInt8])
+  }
+  ```
+
+  Kotlin gets `interface CoreBridge` and `class Core(bridge, handler, scope:
+  CoroutineScope)` exposing `val view: StateFlow<ViewModel>`; TypeScript gets
+  `interface CoreBridge` and `class Core(bridge, handler, onView)` with
+  `update`, `process(requests)` and `processBytes(bytes)`; C# gets
+  `ICoreBridge` and `sealed class Core(bridge, handler, onView)` with `View`,
+  `Update` and two `Process` overloads. `process(bytes)` is there for the
+  requests middleware pushes to the shell asynchronously.
+
+  `Core` handles `Render` itself — it re-reads the view, holds it and
+  notifies — so **`EffectHandler.render` now has a default that does nothing**
+  in all four languages (a Swift protocol extension, a Kotlin or C# default
+  method, an optional member in TypeScript). Implement it only if you drive
+  `EffectDispatcher` without `Core`. `Core` is emitted only when the effect
+  enum has a `crux_core::render::RenderOperation` variant;
+  `CodeGenerator::without_core()` turns it off and leaves the handler API, and
+  `without_effect_handlers()` turns off both. `Core`, `CoreBridge` and
+  `ICoreBridge` join the reserved names. The generated Kotlin module now
+  declares `kotlinx-coroutines-core` in its `build.gradle.kts`.
+
+  `TypeRegistry::register_app` now records the app's `Event` and `ViewModel`
+  types as an `AppMeta`, read back with `CodeGenerator::app()`, and
+  `EffectVariantMeta` gains `render: bool`.
+
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` used to be a bare counter. It now packs, from the top, eight
   bits of effect variant index, one bit that is set for a stream and clear for

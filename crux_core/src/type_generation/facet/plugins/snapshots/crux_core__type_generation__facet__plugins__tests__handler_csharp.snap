@@ -20,7 +20,11 @@ public interface IEffectSink<in T>
 /// </summary>
 public interface IEffectHandler
 {
-    void Render(RenderOperation operation);
+    /// <summary>
+    /// <c>Core</c> handles <c>Render</c> itself, so this does nothing;
+    /// implement it only if you drive <c>EffectDispatcher</c> yourself.
+    /// </summary>
+    void Render(RenderOperation operation) { }
     Task<HttpResult> Http(HttpRequest operation);
     void Subscribe(Subscribe operation, IEffectSink<Message> sink);
     void Legacy(LegacyOperation operation, uint requestId, Action<byte[]> resolve);

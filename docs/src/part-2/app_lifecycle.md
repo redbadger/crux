@@ -41,7 +41,7 @@ But the core doesn't run itself — the shell has to send that `Event::Start` to
 ```
 
 ```kotlin
-{{#include ../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/Core.kt:start}}
+{{#include ../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/CoreModule.kt:start}}
 ```
 
 In both cases the shell constructs the core, wires up its dependencies, and then immediately sends `Event::Start` — nothing else happens until the shell makes that first call. That's the "core is driven" point from chapter 2 in practice: the core is just a library until the shell pokes it.
