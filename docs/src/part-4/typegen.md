@@ -630,8 +630,14 @@ struct WeatherHandler: EffectHandler {
 
 Those lines are the whole of what you write for the capability. The
 protocol rules — how a `URLError` maps onto `HttpResult`, what a cleared
-timer answers — live in the shipped file, written once by the capability
-author. Because the delegation is yours, so is the choice: construct the
+timer answers, whether a session cookie survives between requests — live
+in the shipped file, written once by the capability author. That last one
+is worth knowing about: all three of the HTTP handlers that own a client
+keep cookies by default, because `URLSession` and `HttpClient` do and the
+Kotlin one would otherwise be the odd platform out, losing a session the
+same core keeps everywhere else. `UrlConnectionHttpHandler` carries an
+`InMemoryCookieJar` you can replace or switch off — and read its note
+before reaching for `java.net.CookieManager`, which cannot do this job. Because the delegation is yours, so is the choice: construct the
 shipped implementation with a pinned `URLSession` or a storage directory,
 write your own conformer of the protocol behind a hardened HTTP stack,
 override one method and delegate the rest, or leave the registration out
