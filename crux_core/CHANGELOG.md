@@ -290,6 +290,41 @@ and this project adheres to
   an error rather than a no-op. Requires `facet_generate` with the
   companion-file and manifest hooks (0.21).
 
+- **A capability can ship its shell handlers, and type generation emits them
+  on request.** A capability crate exports a `ShellHandler` static — a name
+  and, per language, a `ShellSource` holding Swift, Kotlin, TypeScript or C#
+  source embedded with `include_str!` — behind its `facet_typegen` feature.
+  An app registers the ones it wants on the `TypeRegistry`, which also
+  registers every type the shipped sources name:
+
+  ```rust,ignore
+  TypeRegistry::new().register_app::<App>()?
+      .shell_handler(&crux_http::HTTP)?
+      .shell_handler(&crux_time::TIME)?
+      .build()?
+  ```
+
+  For each registered handler with source for the language, the generated
+  module gains one companion file (`Http.swift`, `Http.kt`, `Http.cs`) with
+  the source verbatim under the module header; TypeScript appends it to the
+  module after the types. The source declares a protocol named after the
+  handler with one method per operation, matching the generated
+  `EffectHandler` shapes, and an implementation of it. The app's handler
+  holds an instance and delegates one line per operation. Nothing else is
+  generated: `EffectHandler`, `EffectDispatcher` and `Core` are unchanged,
+  an unregistered handler leaves no trace, and `without_effect_handlers()`
+  does not affect it. `ShellSource::dependencies` carries any manifest lines
+  the source needs, which reach the manifest only through registration.
+  `ShellSource::stdlib(..)` is the constructor for the expected case of none,
+  and a Swift handler that adds a package names the target's product with
+  `target_dependencies(..)`. Both types are `#[non_exhaustive]` and built
+  with `const fn` builders (`ShellHandler::new("Http").swift(..)`), so a
+  language can be added later without breaking capability crates.
+  `<Name>Handler` (and C# `I<Name>Handler`) join the reserved names;
+  registering two handlers with the same name, or one named after the
+  module it is generated into, is an error. See
+  [Shipped shell handlers](https://redbadger.github.io/crux/part-4/typegen.html#shipped-shell-handlers).
+
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` used to be a bare counter. It now packs, from the top, eight
   bits of effect variant index, one bit that is set for a stream and clear for
