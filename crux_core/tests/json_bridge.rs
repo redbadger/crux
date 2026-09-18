@@ -209,9 +209,9 @@ mod tests {
         assert_eq!(
             error.to_string(),
             format!(
-                "could not process response: Request id {:#010x} names `Render` (variant 1), but request {} was issued for `Http` (variant 0).",
-                mangled.0,
-                http.id.sequence()
+                "could not process response: Request {} expects `Http` (variant 0), but response id {:#010x} carries `Render` (variant 1).",
+                http.id.sequence(),
+                mangled.0
             )
         );
     }
@@ -234,9 +234,9 @@ mod tests {
         assert_eq!(
             error.to_string(),
             format!(
-                "could not process response: Request id {:#010x} is marked as a Stream request, but request {} was issued as a Request.",
-                mangled.0,
-                http.id.sequence()
+                "could not process response: Request {} expects the Request kind, but response id {:#010x} carries the Stream kind.",
+                http.id.sequence(),
+                mangled.0
             )
         );
     }
@@ -256,7 +256,7 @@ mod tests {
         assert_eq!(
             error.to_string(),
             format!(
-                "could not process response: Request id {:#010x} names variant 9 of `json_bridge::app::Effect`, which has only 2 variants.",
+                "could not process response: `json_bridge::app::Effect` has only 2 variants, but response id {:#010x} carries variant 9.",
                 mangled.0
             )
         );
