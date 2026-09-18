@@ -118,10 +118,10 @@ pub enum ResolveError {
     FinishedMany,
     #[error("Request with id {0} not found.")]
     NotFound(u64),
-    /// The id names an effect variant the effect enum does not have, so it
-    /// cannot be one the bridge issued.
+    /// The id carries an effect variant index the effect enum does not have,
+    /// so it cannot be one the bridge issued.
     #[error(
-        "Request id {id:#010x} names variant {index} of `{effect}`, which has only {variants} variants."
+        "`{effect}` has only {variants} variants, but response id {id:#010x} carries variant {index}."
     )]
     NoSuchEffect {
         id: u32,
@@ -131,9 +131,7 @@ pub enum ResolveError {
     },
     /// The id's sequence is outstanding, but it was issued for a different
     /// effect variant.
-    #[error(
-        "Request id {id:#010x} names {actual}, but request {sequence} was issued for {expected}."
-    )]
+    #[error("Request {sequence} expects {expected}, but response id {id:#010x} carries {actual}.")]
     WrongEffect {
         id: u32,
         sequence: u32,
@@ -143,7 +141,7 @@ pub enum ResolveError {
     /// The id's sequence is outstanding, but it was issued as a different
     /// [`OperationKind`].
     #[error(
-        "Request id {id:#010x} is marked as a {actual:?} request, but request {sequence} was issued as a {expected:?}."
+        "Request {sequence} expects the {expected:?} kind, but response id {id:#010x} carries the {actual:?} kind."
     )]
     WrongKind {
         id: u32,

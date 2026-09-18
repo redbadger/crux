@@ -266,10 +266,7 @@ Next to the generated `Effect`, you get:
   `(operation, requestId, resolve)` exactly as before;
 - an `EffectDispatcher(handler, resolve)` that calls the right method
   and resolves the request never, once, or once per sink item,
-  serializing each output with the generated bincode serializers;
-- an `EffectKind` enum and a `RequestId` decoder, for reading the id a
-  request arrived with — see [reading a request
-  id](#reading-a-request-id).
+  serializing each output with the generated bincode serializers.
 
 The `resolve` you hand the dispatcher is your own
 `(requestId, bytes) -> ()` callback around the core's `resolve` FFI —
@@ -674,49 +671,27 @@ them with `#[facet(rename = "...")]`.
 [Building capabilities](../part-2/capabilities.md) covers the other side:
 how a capability declares what it ships.
 
-### Reading a request id
+### Request ids
 
-The `id` on a `Request` is not a bare counter. It packs, from the top,
-the effect's variant index, one bit saying whether the shell resolves
-the request once or many times, and an ascending sequence number. Id `0`
-is reserved for notifications, which the core never waits on.
+The `id` on a `Request` is opaque. You resolve with the one that
+arrived, untouched, and that is the whole story: there is nothing in it
+to decode, and nothing generated to decode it with. How the bridge lays
+the id out is its own business, and may change.
 
-You still resolve with the id exactly as it arrived — the decoder is for
-logging, tracing and assertions, so that a stray id in a crash report
-says *which* effect and *which* request it belonged to. The layout is an
-implementation detail of the bridge, which is why the decoder is
-generated from the same effect metadata the core builds ids from rather
-than written by hand in each shell:
+The bridge does check an id on the way back in, and its errors name the
+effect rather than numbering it. Resolving a notification's id is
+reported as "not expected to be resolved", and an id naming an effect
+the enum does not have, or disagreeing with the request its sequence
+belongs to, is rejected as that rather than as an unknown id:
 
-```swift
-// Swift
-public enum EffectKind: UInt8, Hashable, Sendable { case render = 0, http = 1 /* ... */ }
-
-public struct RequestId: Hashable, Sendable {
-    public init(_ rawValue: UInt32)
-    public var rawValue: UInt32 { get }
-    public var isNotification: Bool { get }
-    public var effectKind: EffectKind? { get }   // nil for a notification
-    public var operationKind: OperationKind { get }
-    public var sequence: UInt32 { get }
-}
+```text
+Request 1 expects `Http` (variant 0), but response id 0x01000001 carries `Render` (variant 1).
 ```
 
-Kotlin gets `enum class EffectKind(val index: UByte)` with an
-`EffectKind.fromIndex(..)` companion and a `data class RequestId(val
-rawValue: UInt)` carrying the same four properties. C# gets
-`enum EffectKind : byte` and
-`public sealed record RequestId(uint RawValue)`. TypeScript, whose
-effect union already discriminates on the variant name, gets
-`export type EffectKind = "Render" | "Http" | ...` and a
-`decodeRequestId(rawValue: number): RequestId` function.
-
-The bridge checks the same structure on the way back in: resolving a
-notification's id is reported as "not expected to be resolved", and an
-id naming an effect the enum does not have, or disagreeing with the
-request its sequence belongs to, is rejected as that rather than as an
-unknown id. An effect enum is limited to 256 variants, because the
-variant index is eight bits — `#[effect]` rejects a larger one.
+So the mapping from id to effect that a crash report needs still exists,
+in Rust, next to the layout it depends on. An effect enum is limited to
+256 variants, because the variant index is eight bits — `#[effect]`
+rejects a larger one.
 
 ### Notes and escape hatches
 
@@ -743,17 +718,18 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   which is sound because the Rust bridge guards its state with mutexes.
   The generated `FfiBridge` carries that declaration; write it yourself
   only on an adapter of your own.
-- `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`,
-  `EffectHandler`, `EffectDispatcher`, `Core`, `CoreBridge` and
-  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names, and
-  so is `<Name>Handler` for every shipped handler you register.
+- `OperationKind`, `EffectSink`, `EffectHandler`, `EffectDispatcher`,
+  `Core`, `CoreBridge` and `FfiBridge` (and their C# `I`-prefixed forms)
+  are reserved names, and so is `<Name>Handler` for every shipped handler
+  you register.
   `TypeRegistry::build` fails if one of your shared types or effect
   variants claims one.
 - `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`, and
   with them the BoltFFI bridge, which is an error to configure alongside
   it; `CodeGenerator::without_effect_handlers()` turns off those and the
-  handler API, the kind accessor and the request-id decoder, leaving
-  only the types you registered.
+  handler API too, leaving the types you registered and the
+  operation-kind accessor, because a shell that dispatches by hand still
+  has to know how many times to resolve.
 - The generated Kotlin module declares a dependency on
   `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
   `StateFlow` and coroutine launches need.
