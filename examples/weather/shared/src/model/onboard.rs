@@ -174,7 +174,7 @@ impl OnboardModel {
 #[cfg(test)]
 mod tests {
     use crate::effects::EffectTestExt;
-    use crate::effects::secret::{self, Store};
+    use crate::effects::secret::{self, StoreSecret};
     use rstest::rstest;
 
     use super::*;
@@ -233,7 +233,7 @@ mod tests {
         cmd.expect_only_store_secret_with(|op| {
             assert_eq!(
                 op,
-                &Store(secret::API_KEY_NAME.to_string(), "my_new_key".to_string())
+                &StoreSecret(secret::API_KEY_NAME.to_string(), "my_new_key".to_string())
             );
         });
     }

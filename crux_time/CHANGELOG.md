@@ -17,6 +17,17 @@ and this project adheres to
 
 ### 🚀 Features
 
+- **A shell-side timer handler ships with the crate.** `crux_time::TIME` is a
+  `ShellHandler` carrying `TaskTimeHandler` (Swift and C#),
+  `CoroutineTimeHandler` (Kotlin) and `TimeoutTimeHandler` (TypeScript), each
+  behind a `TimeHandler` protocol with `now`, `notifyAt`, `notifyAfter` and
+  `clear`. They encode the protocol's rules once: a timer answers with its id
+  when it fires, `clear` cancels it and answers with the same id, and a late
+  answer after a clear is harmless. An app registers it in its codegen binary
+  (`registry.shell_handler(&crux_time::TIME)?`) and delegates one line per
+  operation. See
+  [Shipped shell handlers](https://redbadger.github.io/crux/part-4/typegen.html#shipped-shell-handlers).
+
 - **One type per time operation, in the new `crux_time::operation` module, and a
   `clock::Time` capability that sends them.** `TimeRequest` has one output type —
   `TimeResponse` — for all four of its variants, so the capability has to check that

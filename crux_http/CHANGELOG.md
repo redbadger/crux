@@ -10,6 +10,18 @@ and this project adheres to
 
 ### Added
 
+- **A shell-side HTTP handler ships with the crate.** `crux_http::HTTP` is a
+  `ShellHandler` carrying Swift, Kotlin, TypeScript and C# implementations of
+  the protocol — `URLSessionHttpHandler`, `UrlConnectionHttpHandler`,
+  `fetchHttpHandler` and `HttpClientHttpHandler`, each behind an `HttpHandler`
+  protocol with one `request` method. An app registers it in its codegen
+  binary (`registry.shell_handler(&crux_http::HTTP)?`) and its `EffectHandler`
+  delegates `http` in one line; the mapping of platform errors onto
+  `HttpResult` is then the crate's, not the shell's. The sources are under
+  `shell/` and compile against the generated types; `tests/shell_source.rs`
+  builds them where a toolchain is present. See
+  [Shipped shell handlers](https://redbadger.github.io/crux/part-4/typegen.html#shipped-shell-handlers).
+
 - **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
   response into the `Response` an app sees, with the same semantics a `crux_http`
   request gives it.
