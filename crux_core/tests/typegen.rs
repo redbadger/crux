@@ -1625,6 +1625,16 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     fn dotnet_build(dir: &Path) {
         match Command::new("dotnet")
             .current_dir(dir)
+            // Two tests build C# in this binary, and nextest runs them at the
+            // same time. A cold `dotnet` configures itself on first use, which
+            // takes a named mutex under `DOTNET_CLI_HOME`; two cold builds
+            // sharing one home race there, and the loser dies with
+            // `stat("/tmp/.dotnet/shm", ..) == -1`. Give each build its own
+            // home — the package cache is elsewhere, so nothing is re-fetched.
+            .env("DOTNET_CLI_HOME", dir)
+            .env("DOTNET_NOLOGO", "1")
+            .env("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
+            .env("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "1")
             .args(["build", "--nologo"])
             .output()
         {
