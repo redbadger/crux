@@ -452,8 +452,8 @@ diagnosis on the way back in:
   issued, is rejected as exactly that (`NoSuchEffect`, `WrongEffect`,
   `WrongKind`) before a byte of the response is deserialized, and the error
   names the variants involved (`#[effect]` implements
-  `EffectFFI::variant_name`, so a message reads "names `Render` (variant 1),
-  but request 1 was issued for `Http` (variant 0)"). `NotFound` now means only
+  `EffectFFI::variant_name`, so a message reads "Request 1 expects `Http`
+  (variant 0), but response id 0x01000001 carries `Render` (variant 1)"). `NotFound` now means only
   what it says: never issued, or already resolved.
 - A log line or a crash report carrying a bare id says which effect and which
   request it belonged to.
