@@ -23,7 +23,7 @@ check: check-versions
     cargo check --all-features
     cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
-# Verify every BoltFFI, Binaryen and facet version pin agrees with lib.just.
+# Verify every BoltFFI, Binaryen, facet, Kotlin and coroutines pin agrees with lib.just.
 #
 # The versions are spread across workspace manifests, package.json files, CI,
 # the book and renovate.json, and they all have to move together — a partial
@@ -37,6 +37,11 @@ check: check-versions
 # `RenderOperation: Facet<'_> is not satisfied` from whichever crate ended up on
 # the wrong side. The facet pin is also locked to facet_generate, which itself
 # depends on `facet =<facet_version>`, so the two can only move together.
+#
+# The coroutines version is the one that the generator writes into every
+# build.gradle.kts, so lib.just only records what crux_core already decides.
+# The check holds the generator, its test, the Android shells and the jar that
+# CI fetches for the typegen tests to one version.
 [script('bash')]
 check-versions:
     set -euo pipefail
@@ -45,7 +50,9 @@ check-versions:
     boltffi=$(sed -nE 's/^boltffi_version := "(.*)"/\1/p' lib.just)
     binaryen=$(sed -nE 's/^binaryen_version := "(.*)"/\1/p' lib.just)
     facet=$(sed -nE 's/^facet_version := "(.*)"/\1/p' lib.just)
-    if [ -z "$boltffi" ] || [ -z "$binaryen" ] || [ -z "$facet" ]; then
+    kotlin=$(sed -nE 's/^kotlin_version := "(.*)"/\1/p' lib.just)
+    coroutines=$(sed -nE 's/^kotlinx_coroutines_version := "(.*)"/\1/p' lib.just)
+    if [ -z "$boltffi" ] || [ -z "$binaryen" ] || [ -z "$facet" ] || [ -z "$kotlin" ] || [ -z "$coroutines" ]; then
         echo "  {{ style("error") }}✗ could not read the expected versions from lib.just{{ NORMAL }}"
         exit 1
     fi
@@ -93,14 +100,42 @@ check-versions:
         status=1
     fi
 
+    coroutines_checked=0
+    while IFS= read -r hit; do
+        [ -n "$hit" ] || continue
+        file=${hit%%:*}
+        found=$(printf '%s' "${hit#*:}" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+        coroutines_checked=$((coroutines_checked + 1))
+        if [ "$found" != "$coroutines" ]; then
+            echo "  {{ style("error") }}✗ $file pins kotlinx-coroutines $found, expected $coroutines{{ NORMAL }}"
+            status=1
+        fi
+    done <<COROUTINES_PINS
+    $(grep -HoE 'KOTLIN_COROUTINES_VERSION: &str = "[0-9]+\.[0-9]+\.[0-9]+"' crux_core/src/type_generation/facet/plugins/core/mod.rs || true)
+    $(grep -HoE 'kotlinx-coroutines-core:[0-9]+\.[0-9]+\.[0-9]+' crux_core/src/type_generation/facet/plugins/tests.rs || true)
+    $(grep -HoE '^kotlinxCoroutines = "[0-9]+\.[0-9]+\.[0-9]+"' examples/*/Android/gradle/libs.versions.toml || true)
+    $(grep -HoE '^ *coroutines_version=[0-9]+\.[0-9]+\.[0-9]+' .github/workflows/build.yaml || true)
+    COROUTINES_PINS
+
+    if [ "$coroutines_checked" -lt 7 ]; then
+        echo "  {{ style("error") }}✗ only found $coroutines_checked kotlinx-coroutines pins, expected at least 7 — has a pin site moved or been renamed?{{ NORMAL }}"
+        status=1
+    fi
+
     ci_binaryen=$(sed -nE 's/^ *binaryen_version=([0-9]+).*/\1/p' .github/workflows/examples.yaml | head -n 1)
     if [ "$ci_binaryen" != "$binaryen" ]; then
         echo "  {{ style("error") }}✗ examples.yaml installs Binaryen $ci_binaryen, expected $binaryen{{ NORMAL }}"
         status=1
     fi
 
+    ci_kotlin=$(sed -nE 's/^ *kotlin_version=([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' .github/workflows/build.yaml | head -n 1)
+    if [ "$ci_kotlin" != "$kotlin" ]; then
+        echo "  {{ style("error") }}✗ build.yaml installs the Kotlin compiler $ci_kotlin, expected $kotlin{{ NORMAL }}"
+        status=1
+    fi
+
     if [ "$status" -eq 0 ]; then
-        echo "  ✓ $checked BoltFFI pins at $boltffi, Binaryen at $binaryen, $facet_checked facet pins at $facet"
+        echo "  ✓ $checked BoltFFI pins at $boltffi, Binaryen at $binaryen, $facet_checked facet pins at $facet, Kotlin at $kotlin, $coroutines_checked kotlinx-coroutines pins at $coroutines"
     fi
     exit $status
 
@@ -130,10 +165,16 @@ test:
     @echo '{{ style("command") }}test:{{ NORMAL }}'
     cargo insta test --review --test-runner nextest --all-features --lib
 
-# Mirror the `build` CI workflow — root workspace only, no examples
+# Mirror the `build` CI workflow — root workspace only, no examples.
+#
+# CRUX_REQUIRE_SHELL_TOOLCHAINS changes a "toolchain not on PATH" skip into a
+# failure, as the workflow does. This run then compiles the generated code in
+# Swift, Kotlin, TypeScript and C#. Plain `just test`
+# does not set it, so a contributor without one of the toolchains can still
+# run the tests.
 ci: check build
     @echo '{{ style("command") }}test:{{ NORMAL }}'
-    cargo nextest run --all-features
+    CRUX_REQUIRE_SHELL_TOOLCHAINS=1 cargo nextest run --all-features
     cargo test --doc --all-features
     @echo '{{ style("command") }}test (crux_http with http-types compat feature):{{ NORMAL }}'
     cargo nextest run -p crux_http --features crux_http/http-types
