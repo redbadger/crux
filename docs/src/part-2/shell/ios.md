@@ -18,6 +18,7 @@ WeatherKit never touches the Rust FFI. Neither, in fact, does any code we wrote:
 Here's the app entry point:
 
 ```swift
+// Swift
 {{#include ../../../../examples/weather/apple/WeatherApp/WeatherApp.swift:start}}
 ```
 
@@ -30,6 +31,7 @@ Build the generated `Core` from a `WeatherHandler`, keep it in `@State`, wire up
 `Core(handler:)` is a convenience: underneath, `Core` talks to Rust through a `CoreBridge` protocol with three byte-level methods — `update` and `resolve` return the serialized requests the core produced, `view` the serialized view model — and the generated package implements it over BoltFFI's `CoreFfi` in a file of its own, `FfiBridge.swift`:
 
 ```swift
+// Swift
 public struct FfiBridge: CoreBridge, @unchecked Sendable {
     private let ffi = Shared.CoreFfi()
 
@@ -50,6 +52,7 @@ public struct FfiBridge: CoreBridge, @unchecked Sendable {
 Nothing here knows about bincode or about Swift types — the generated `Core` does the serializing — so this is the only place that knows `CoreFfi` exists, and it is generated because the codegen was told where BoltFFI put it:
 
 ```rust,ignore
+// Rust
 .boltffi(BoltFfi::new().swift("Shared") /* … */)
 ```
 
@@ -62,6 +65,7 @@ One annotation is worth a look. `CoreBridge` is `Sendable` while `CoreFfi` is a 
 The loop — serialize the event, call the bridge, deserialize the requests, dispatch each one, resolve, go round again — is the generated `Core`. Its whole public surface is:
 
 ```swift
+// Swift
 @available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
 @Observable @MainActor public final class Core {
     public private(set) var view: ViewModel
@@ -78,6 +82,7 @@ The loop — serialize the event, call the bridge, deserialize the requests, dis
 What the shell writes is the `EffectHandler`. In WeatherKit that is `WeatherHandler`:
 
 ```swift
+// Swift
 {{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/WeatherHandler.swift}}
 ```
 
@@ -98,6 +103,7 @@ The generated `Core` is `@Observable`, so `WeatherApp` puts it straight into the
 The root `ContentView` dispatches on the top-level `ViewModel` variants:
 
 ```swift
+// Swift
 {{#include ../../../../examples/weather/apple/WeatherApp/ContentView.swift}}
 ```
 
@@ -110,6 +116,7 @@ When the user taps a button, the view sends an event via the `CoreUpdater` that 
 Because WeatherKit never touches the FFI, previews don't need the Rust framework. They do need a `Core`, since that is what the views read from, so `PreviewCore.swift` provides the two things a real `Core` is built from: a `CoreBridge` that answers `view()` with a fixed view model and returns no requests, and an `EffectHandler` whose methods never run, because a preview never sends an event. With those and a `CoreUpdater.forPreview()` that swallows events, a preview builds a genuine generated `Core` and injects it:
 
 ```swift
+// Swift
 {{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Preview/PreviewCore.swift}}
 ```
 
