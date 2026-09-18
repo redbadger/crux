@@ -409,3 +409,43 @@ mod facet_clash_test {
         );
     }
 }
+
+mod duplicate_root_type_names {
+    use crux_core::type_generation::facet::{TypeGenError, TypeRegistry};
+    use facet::Facet;
+
+    mod first {
+        use super::Facet;
+        #[derive(Facet)]
+        pub struct Delete {
+            pub key: String,
+        }
+    }
+
+    mod second {
+        use super::Facet;
+        #[derive(Facet)]
+        pub struct Delete {
+            pub value: String,
+        }
+    }
+
+    #[test]
+    fn duplicate_generated_type_names_are_rejected() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_type::<first::Delete>()
+            .expect("first type should register");
+        let error = registry
+            .register_type::<second::Delete>()
+            .err()
+            .expect("duplicate generated names should be rejected");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(message.contains("Delete"), "unexpected message: {message}");
+        assert!(message.contains("first"), "unexpected message: {message}");
+        assert!(message.contains("second"), "unexpected message: {message}");
+    }
+}

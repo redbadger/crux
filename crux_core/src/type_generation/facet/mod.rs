@@ -155,6 +155,7 @@ const RESERVED_TYPE_NAMES: &[&str] = &[
 pub struct TypeRegistry {
     builder: RegistryBuilder,
     effects: Vec<EffectMeta>,
+    registered_type_names: std::collections::HashMap<QualifiedTypeName, &'static str>,
 }
 
 pub struct CodeGenerator {
@@ -172,6 +173,7 @@ impl TypeRegistry {
         Self {
             builder: RegistryBuilder::new(),
             effects: Vec::new(),
+            registered_type_names: std::collections::HashMap::new(),
         }
     }
 
@@ -226,6 +228,25 @@ impl TypeRegistry {
     where
         T: Facet<'a>,
     {
+        let generated_name = match self.builder.format_of::<T>().map_err(|e| {
+            TypeGenError::Generation(format!(
+                "couldn't determine generated name for {}: {e}",
+                std::any::type_name::<T>()
+            ))
+        })? {
+            Format::TypeName(name) => Some(name),
+            _ => None,
+        };
+        if let Some(name) = &generated_name
+            && let Some(previous) = self.registered_type_names.get(name)
+            && *previous != std::any::type_name::<T>()
+        {
+            return Err(TypeGenError::Generation(format!(
+                "types `{previous}` and `{}` both generate as `{name}`; rename one of them with `#[facet(rename = \"...\")]` or give it a distinct namespace",
+                std::any::type_name::<T>()
+            )));
+        }
+
         let builder = std::mem::take(&mut self.builder);
         self.builder = builder.add_type::<T>().map_err(|e| {
             TypeGenError::Generation(format!(
@@ -234,6 +255,11 @@ impl TypeRegistry {
                 T::SHAPE.type_identifier
             ))
         })?;
+
+        if let Some(name) = generated_name {
+            self.registered_type_names
+                .insert(name, std::any::type_name::<T>());
+        }
 
         Ok(self)
     }
@@ -282,6 +308,7 @@ impl TypeRegistry {
     pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
         let builder = std::mem::take(&mut self.builder);
         let effects: Arc<[EffectMeta]> = std::mem::take(&mut self.effects).into();
+        self.registered_type_names.clear();
         let registry = builder
             .build()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
