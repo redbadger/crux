@@ -7,12 +7,14 @@ The Android shell talks to the Rust core the same way the iOS shell does — ser
 The Android app uses [Dagger Hilt](https://dagger.dev/hilt/) to wire up the core and its dependencies. `WeatherApplication` is annotated `@HiltAndroidApp`, which bootstraps the DI graph, and `MainActivity` is `@AndroidEntryPoint`, which lets it receive `@Inject` field injection. Handlers use constructor injection, so the module that provides the app's own dependencies is small:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/AppModule.kt}}
 ```
 
 The explicit providers are the three handlers `crux_http`, `crux_kv` and `crux_time` ship: they are generated into the package rather than annotated for Hilt, so the module constructs them — `UrlConnectionHttpHandler` with the app's timeouts, `FileKeyValueHandler` over a directory of the app's own, `CoroutineTimeHandler` once for the life of the app. The app's own handlers get `@Inject constructor(...)` and Hilt figures out the graph from there. The generated `Core` is the other thing Hilt can't construct on its own — it has no `@Inject` constructor — so a second module builds it:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/CoreModule.kt:start}}
 ```
 
@@ -27,6 +29,7 @@ One thing to flag upfront: the word "ViewModel" shows up in two senses on Androi
 Underneath the two-argument constructor, `Core` talks to Rust through a `CoreBridge` interface with three byte-level methods, and the generated package implements it over BoltFFI's `CoreFfi` in `FfiBridge.kt`:
 
 ```kotlin
+// Kotlin
 class FfiBridge(private val ffi: CoreFfi = CoreFfi()) : CoreBridge, AutoCloseable {
     override fun update(event: ByteArray): ByteArray = ffi.update(event)
 
@@ -47,6 +50,7 @@ One build detail: `Core` uses `StateFlow` and `launch`, so the `shared` Gradle m
 The loop is the generated `Core`:
 
 ```kotlin
+// Kotlin
 class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
     constructor(handler: EffectHandler, scope: CoroutineScope)
     val view: StateFlow<ViewModel>
@@ -61,6 +65,7 @@ class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
 What the shell writes is the handler, `WeatherHandler`, whose methods are one-liners that delegate to the injected handlers. HTTP, for example:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/WeatherHandler.kt:handle_http}}
 ```
 
@@ -83,6 +88,7 @@ works there.
 The generated `Core` exposes the current view model as `view: StateFlow<ViewModel>`, so Compose can collect it with `collectAsState()` and recompose when it changes; `core/Projections.kt` adds per-screen extension functions (`core.homeViewModel()` and friends) that narrow it to one branch. The root of the view tree lives in `MainActivity.onCreate`:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/MainActivity.kt:content_view}}
 ```
 
