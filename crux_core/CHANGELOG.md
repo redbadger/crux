@@ -346,9 +346,9 @@ and this project adheres to
 
   ```text
   Attempted to resolve a request that is not expected to be resolved.  // id 0
-  Request id 0x09000001 names variant 9 of `shared::Effect`, which has only 2 variants.
-  Request id 0x01000001 names `Render` (variant 1), but request 1 was issued for `Http` (variant 0).
-  Request id 0x00800001 is marked as a Stream request, but request 1 was issued as a Request.
+  `shared::Effect` has only 2 variants, but response id 0x09000001 carries variant 9.
+  Request 1 expects `Http` (variant 0), but response id 0x01000001 carries `Render` (variant 1).
+  Request 1 expects the Request kind, but response id 0x00800001 carries the Stream kind.
   ```
 
   Ids are printed in hex so the effect index, kind bit and sequence can be read

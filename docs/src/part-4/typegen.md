@@ -691,7 +691,7 @@ the enum does not have, or disagreeing with the request its sequence
 belongs to, is rejected as that rather than as an unknown id:
 
 ```text
-Request id 0x01000001 names `Render` (variant 1), but request 1 was issued for `Http` (variant 0).
+Request 1 expects `Http` (variant 0), but response id 0x01000001 carries `Render` (variant 1).
 ```
 
 So the mapping from id to effect that a crash report needs still exists,
