@@ -4,3 +4,16 @@
 failure-output = "immediate-final"
 # Do not cancel the test run on the first failure.
 fail-fast = false
+
+# A cold `dotnet` configures itself on first use, and that takes a named mutex
+# under `/tmp/.dotnet/shm`. The .NET PAL puts the mutex there whatever
+# `TMPDIR` and `DOTNET_CLI_HOME` say. If two builds start together, they race
+# for the mutex, and the loser stops before it compiles anything. The typegen
+# tests that run `dotnet build` are each named for what they compile, so they
+# run one at a time.
+[test-groups]
+dotnet = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'test(/csharp.*compiles/)'
+test-group = 'dotnet'
