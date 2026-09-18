@@ -12,6 +12,20 @@ binaryen_version := "123"
 # rather than as a version conflict.
 facet_version := "0.46.5"
 
+# The Kotlin compiler the `build` workflow installs, so that the `shell_source`
+# tests compile and run the shipped Kotlin rather than skipping it. The runner
+# image ships a Kotlin of its own, but an unpinned one that moves with the
+# image, so CI installs this exact release and puts it first on PATH.
+kotlin_version := "2.4.20"
+
+# kotlinx-coroutines, which the generated Kotlin package depends on — `Core`
+# uses CoroutineScope, launch and StateFlow, none of them in the standard
+# library. The generator is the source of truth (KOTLIN_COROUTINES_VERSION in
+# crux_core); this pin exists so that the Android shells, and the jar CI puts
+# on the `shell_source` harness's classpath, name the same version the
+# generated build.gradle.kts asks for.
+kotlinx_coroutines_version := "1.10.2"
+
 # Check if a tool is installed, report status (does not fail build)
 [no-cd]
 [script('bash')]

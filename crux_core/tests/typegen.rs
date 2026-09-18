@@ -1617,12 +1617,33 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     // Compiling the shipped C#
     // -----------------------------------------------------------------------
 
+    /// Whether a toolchain this test needs, and cannot find, should fail
+    /// rather than skip.
+    ///
+    /// Set in CI and by `just ci`, where the .NET SDK is installed and a skip
+    /// would mean the generated C# went uncompiled with nobody told. Unset —
+    /// a Rust contributor without the SDK still gets a green run.
+    fn toolchains_required() -> bool {
+        std::env::var_os("CRUX_REQUIRE_SHELL_TOOLCHAINS").is_some_and(|value| !value.is_empty())
+    }
+
+    /// Reports a toolchain this test needs and did not find: a failure when
+    /// `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set, and a printed skip otherwise.
+    fn unavailable(missing: &str, consequence: &str) {
+        assert!(
+            !toolchains_required(),
+            "{missing}, so {consequence}. CRUX_REQUIRE_SHELL_TOOLCHAINS is set, so a missing \
+             toolchain fails rather than skips: install it, or unset the variable."
+        );
+        println!("skipping: {missing}, so {consequence}");
+    }
+
     /// Builds a generated C# package with `dotnet`, or says why it did not.
     ///
     /// The shipped sources are the one part of a capability crate `cargo test`
     /// cannot compile, so this is where a C# handler that does not build gets
-    /// caught. It is skipped rather than failed when the toolchain is missing:
-    /// a Rust contributor should not need the .NET SDK.
+    /// caught. Missing toolchains skip unless `CRUX_REQUIRE_SHELL_TOOLCHAINS`
+    /// says otherwise: a Rust contributor should not need the .NET SDK.
     fn dotnet_build(dir: &Path) {
         match Command::new("dotnet")
             .current_dir(dir)
@@ -1636,7 +1657,10 @@ public sealed class InMemoryStoreHandler : IStoreHandler
                 String::from_utf8_lossy(&output.stderr)
             ),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                println!("skipping: `dotnet` is not on PATH, so the generated C# is not compiled");
+                unavailable(
+                    "`dotnet` is not on PATH",
+                    "the generated C# is not compiled",
+                );
             }
             Err(e) => panic!("could not run `dotnet build`: {e}"),
         }
