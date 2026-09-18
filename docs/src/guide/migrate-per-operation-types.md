@@ -46,6 +46,7 @@ writes the `Operation` implementation, its `Output`, the kind and the matching
 marker trait so the three cannot disagree:
 
 ```rust
+// Rust
 use crux_core::macros::Operation;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
@@ -97,6 +98,7 @@ to migrate your own capabilities to take `crux_core` 0.21.
 If you'd rather not use the derive, declare the kind and the marker together:
 
 ```rust,ignore
+// Rust
 impl Operation for Get {
     type Output = ValueResult;
     const KIND: Option<OperationKind> = Some(OperationKind::Request);
@@ -118,7 +120,7 @@ six-variant response, so every call site had to rule out the four variants that
 could not apply to it:
 
 ```rust,ignore
-// Before
+// Rust — Before
 pub enum SecretRequest {
     Fetch(String),
     Store(String, String),
@@ -156,7 +158,7 @@ After, each operation is its own type and the narrow response types it already
 had become its output:
 
 ```rust,ignore
-// After
+// Rust — After
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(request, output = SecretFetchResponse)]
 pub struct Fetch(pub String);
@@ -205,7 +207,7 @@ with the same signatures and the same `DataResult` / `StatusResult` /
 changes is the `Effect` enum.
 
 ```rust,ignore
-// Before
+// Rust — Before
 use crux_kv::{KeyValue, KeyValueOperation, error::KeyValueError};
 
 #[effect(facet_typegen)]
@@ -218,7 +220,7 @@ KeyValue::get("note").then_send(Event::Load)
 ```
 
 ```rust,ignore
-// After
+// Rust — After
 use crux_kv::{error::KeyValueError, operation as kv, store::KeyValue};
 
 #[effect(facet_typegen)]
@@ -242,6 +244,7 @@ The operations and their outputs:
 | `operation::ListKeys` | `prefix: String, cursor: u64` | `KeysResult` | request |
 
 ```rust,ignore
+// Rust
 pub enum ValueResult { Ok(Value), Err(KeyValueError) }
 pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
 pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
@@ -280,7 +283,7 @@ the root type is deprecated, and the breaking release re-exports `clock::Time`
 in its place.
 
 ```rust,ignore
-// Before
+// Rust — Before
 use crux_time::{TimeRequest, command::{Time, TimerHandle, TimerOutcome}};
 
 #[effect(facet_typegen)]
@@ -292,7 +295,7 @@ let (notify_after, handle) = Time::notify_after(duration);
 ```
 
 ```rust,ignore
-// After
+// Rust — After
 use crux_time::{TimerHandle, TimerOutcome, clock::Time, operation as time};
 
 #[effect(facet_typegen)]
@@ -343,6 +346,7 @@ Renaming variants renames the test helpers `#[effect]` generates from them, whic
 is usually the largest mechanical diff in an app's test suite:
 
 ```rust,ignore
+// Rust
 // Before                              // After
 effects.next().unwrap()                effects.next().unwrap()
     .expect_key_value()                    .expect_kv_get()
@@ -390,6 +394,7 @@ The bridge between `Core` and BoltFFI's `CoreFfi` is generated too, once the
 codegen knows where BoltFFI put its output:
 
 ```rust,ignore
+// Rust
 TypeRegistry::new()
     .register_app::<Weather>()?
     .build()?
@@ -422,6 +427,7 @@ Implement the handler on the class that already owned the effect loop, and let
 the dispatcher replace the nested `switch`. From the notes example:
 
 ```typescript
+// TypeScript
 // Before — nested match helpers, hand-built responses, and an id in a ref
 private processEffect(id: number, effect: Effect) {
   matchEffect(effect, {
@@ -444,6 +450,7 @@ private processEffect(id: number, effect: Effect) {
 ```
 
 ```typescript
+// TypeScript
 // After — a handler with one method per operation, and the generated Core
 // owning the loop and the bridge to the wasm module
 export class NotesHandler implements EffectHandler {
@@ -483,6 +490,7 @@ around that untyped promise goes too. Construct the core in an effect, not in a
 ### Swift
 
 ```swift
+// Swift
 // Before — a switch, and a resolve call per capability
 func processEffect(_ request: Request) {
     switch request.effect {
@@ -498,6 +506,7 @@ func processEffect(_ request: Request) {
 ```
 
 ```swift
+// Swift
 // After — a handler with one method per operation, and the generated Core
 // owning the loop and the bridge to CoreFfi
 @MainActor public final class WeatherHandler {
@@ -539,6 +548,7 @@ a `platforms:` floor at least as high as `Shared` declares — set it on the
 A handler that delegates, and the generated `Core` provided by Hilt:
 
 ```kotlin
+// Kotlin
 @Singleton
 class WeatherHandler @Inject constructor(/* … */) : EffectHandler {
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
@@ -587,6 +597,7 @@ output that request resolves with. The weather Leptos shell just grew from six
 arms to eleven:
 
 ```rust,ignore
+// Rust
 fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
     match effect {
         Effect::Render(_) => render.set(core.view()),
@@ -621,6 +632,7 @@ mechanism; this is the migration.
    `build()`:
 
    ```rust,ignore
+   // Rust
    let mut registry = TypeRegistry::new();
    registry.register_app::<App>()?;
    registry
@@ -647,6 +659,7 @@ mechanism; this is the migration.
    each method in one line:
 
    ```swift
+   // Swift
    let http = URLSessionHttpHandler.shared
    let kv = UserDefaultsKeyValueHandler(suiteName: "com.example.app.store")
    let time = TaskTimeHandler()
@@ -659,6 +672,7 @@ mechanism; this is the migration.
    ```
 
    ```kotlin
+   // Kotlin
    private val http = UrlConnectionHttpHandler { it.connectTimeout = 15_000 }
    private val kv = FileKeyValueHandler(File(context.filesDir, "key_value_store"))
    private val time = CoroutineTimeHandler()
@@ -669,6 +683,7 @@ mechanism; this is the migration.
    ```
 
    ```typescript
+   // TypeScript
    private readonly http = fetchHttpHandler;
    private readonly kv = createLocalStorageKeyValueHandler("app.");
    private readonly time = new TimeoutTimeHandler();
@@ -679,6 +694,7 @@ mechanism; this is the migration.
    ```
 
    ```csharp
+   // C#
    private readonly IHttpHandler http = HttpClientHttpHandler.Shared;
    private readonly IKeyValueHandler kv = new FileKeyValueHandler(storeDirectory);
    private readonly ITimeHandler time = new TaskTimeHandler();
@@ -748,6 +764,7 @@ pattern that works is a `nonisolated` extension that hops to the main actor only
 where it touches main-actor state:
 
 ```swift
+// Swift
 nonisolated extension WeatherHandler: EffectHandler {
     public func kvGet(_ operation: Get) async -> ValueResult {
         await MainActor.run { keyValueStore.get(operation.key) }
@@ -772,10 +789,12 @@ isolation.
 Swift, Kotlin and TypeScript all have one already. Alias it at the import:
 
 ```kotlin
+// Kotlin
 import com.example.weather.Set as KeyValueSet
 ```
 
 ```typescript
+// TypeScript
 import type { Set as SetValue } from "shared_types/app";
 ```
 
