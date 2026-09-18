@@ -5,8 +5,11 @@ This RFC is **proposed**. It builds on the
 [per-operation types RFC](./per-operation-types.md) and the
 [generated `Core` RFC](./generated-core.md). It is written against the
 compat release of per-operation types, but nothing in it depends on the
-`Operation` trait, which the breaking release replaces with `Notify`,
-`Request` and `Stream`.
+shape of the `Operation` trait, which the
+[operation kind traits RFC](./operation-kind-traits.md) proposes to change in
+the breaking release: `Operation` stays as the supertrait, and
+`operation::{Notify, Request, Stream}` gain the payload type under the word
+that fits each kind.
 ```
 
 This RFC proposes that a capability crate can ship the shell side of its
@@ -360,8 +363,8 @@ declares its own names, so an extension lists only the names of its
 implementation, and it cannot declare a name that a protocol declares.
 
 That is the whole declaration. The `Operation` derive and trait are
-untouched, and the breaking release's move to `Notify`, `Request` and
-`Stream` does not affect it.
+untouched, and the breaking release's reshaping of
+`operation::{Notify, Request, Stream}` does not affect it.
 
 `protocol` is there because a shipped source implements the whole capability,
 while an app's `Effect` may carry only some of its operations. The weather
