@@ -3,7 +3,10 @@
 ```admonish
 This RFC is **proposed**. It builds on the
 [per-operation types RFC](./per-operation-types.md) and the
-[generated `Core` RFC](./generated-core.md).
+[generated `Core` RFC](./generated-core.md). Nothing in it depends on the
+shape of the `Operation` trait, which the
+[operation kind traits RFC](./operation-kind-traits.md) proposes to change in
+the breaking release.
 ```
 
 This RFC proposes that a capability states its contract with the shell in the
