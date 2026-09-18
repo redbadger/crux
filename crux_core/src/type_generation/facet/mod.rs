@@ -174,7 +174,7 @@ pub use self::boltffi::{BoltFfi, CSharpFfi, KotlinFfi, SwiftFfi, TypeScriptFfi};
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
 use self::plugins::{
     COMPANION_FILE_STEMS, CorePlugin, EffectHandlerPlugin, FFI_BRIDGE_FILE, OperationKindPlugin,
-    RequestIdPlugin, ShellProtocolPlugin,
+    ShellProtocolPlugin,
 };
 pub(crate) use self::shell_protocol::Language;
 pub use self::shell_protocol::{ProtocolSource, RegisterTypes, ShellProtocol};
@@ -216,8 +216,6 @@ impl Export for () {
 /// shadowed, so [`TypeRegistry::build`] rejects it instead.
 const RESERVED_TYPE_NAMES: &[&str] = &[
     "OperationKind",
-    "EffectKind",
-    "RequestId",
     "EffectHandler",
     "IEffectHandler",
     "EffectSink",
@@ -740,13 +738,11 @@ impl CodeGenerator {
 
         fs::create_dir_all(&path)?;
 
-        let mut installer =
-            swift::Installer::new(&config.package_name, &path).plugin(BincodePlugin);
+        let mut installer = swift::Installer::new(&config.package_name, &path)
+            .plugin(BincodePlugin)
+            .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
-            installer = installer
-                .plugin(OperationKindPlugin::new(&self.effects))
-                .plugin(EffectHandlerPlugin::new(&self.effects))
-                .plugin(RequestIdPlugin::new(&self.effects));
+            installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
@@ -790,13 +786,11 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        let mut installer =
-            kotlin::Installer::new(&config.package_name, &config.out_dir).plugin(BincodePlugin);
+        let mut installer = kotlin::Installer::new(&config.package_name, &config.out_dir)
+            .plugin(BincodePlugin)
+            .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
-            installer = installer
-                .plugin(OperationKindPlugin::new(&self.effects))
-                .plugin(EffectHandlerPlugin::new(&self.effects))
-                .plugin(RequestIdPlugin::new(&self.effects));
+            installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
@@ -839,13 +833,11 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
-        let mut installer =
-            csharp::Installer::new(&config.package_name, &config.out_dir).plugin(BincodePlugin);
+        let mut installer = csharp::Installer::new(&config.package_name, &config.out_dir)
+            .plugin(BincodePlugin)
+            .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
-            installer = installer
-                .plugin(OperationKindPlugin::new(&self.effects))
-                .plugin(EffectHandlerPlugin::new(&self.effects))
-                .plugin(RequestIdPlugin::new(&self.effects));
+            installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
@@ -882,13 +874,11 @@ impl CodeGenerator {
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
-        let mut installer =
-            typescript::Installer::new(&config.package_name, output_dir).plugin(BincodePlugin);
+        let mut installer = typescript::Installer::new(&config.package_name, output_dir)
+            .plugin(BincodePlugin)
+            .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
-            installer = installer
-                .plugin(OperationKindPlugin::new(&self.effects))
-                .plugin(EffectHandlerPlugin::new(&self.effects))
-                .plugin(RequestIdPlugin::new(&self.effects));
+            installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
@@ -958,13 +948,17 @@ impl CodeGenerator {
         self.app.as_ref()
     }
 
-    /// Turns off emission of the `OperationKind` and `EffectKind` types, the
-    /// `RequestId` decoder, the effect handler API, and — because it is built
-    /// on the dispatcher — the generated `Core`.
+    /// Turns off emission of the effect handler API — `EffectSink`,
+    /// `EffectHandler` and `EffectDispatcher` — and, because they are built
+    /// on the dispatcher, the generated `CoreBridge` and `Core`.
     ///
-    /// Only the types you registered are generated, exactly as before Crux
-    /// 0.21. Use this if your shell dispatches effects by hand and the extra
-    /// declarations are in the way.
+    /// Use this if your shell dispatches effects by hand and the handler
+    /// declarations are in the way. The `OperationKind` type and the
+    /// per-effect accessor stay: a shell that resolves requests itself is
+    /// exactly the shell that needs to know whether to resolve each one
+    /// never, once, or many times, and the accessor is a plain method on the
+    /// effect, as usable from a hand-written `switch` as from the dispatcher.
+    /// Shell protocols stay for the same reason.
     #[must_use]
     pub const fn without_effect_handlers(mut self) -> Self {
         self.handlers = false;

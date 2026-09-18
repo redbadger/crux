@@ -458,11 +458,9 @@ diagnosis on the way back in:
 - A log line or a crash report carrying a bare id says which effect and which
   request it belonged to.
 
-The layout stays an implementation detail. Shells read ids through the
-generated `EffectKind` enum and `RequestId` decoder, which are emitted from the
-same effect metadata the bridge builds ids from, and resolve with the id
-exactly as it arrived. The effect index is eight bits, so `#[effect]` rejects an
-enum with more than 256 variants.
+The layout is internal to the bridge. Nothing is generated for a shell to take
+an id apart; it resolves with the id exactly as it arrived. The effect index is
+eight bits, so `#[effect]` rejects an enum with more than 256 variants.
 
 The `Output` types the bridge deserializes into become specific to the
 operation. A response that does not parse as the expected `Output` is reported
@@ -485,18 +483,14 @@ with what.
 Everything below is emitted next to the generated `Effect`, in Swift, Kotlin,
 TypeScript and C#, by plugins that live in `crux_core`
 (`type_generation::facet::plugins`) rather than in facet-generate. The names
-`OperationKind`, `EffectKind`, `RequestId`, `EffectSink`, `EffectHandler`
-(`IEffectSink` / `IEffectHandler` in C#), `EffectDispatcher`, `Core` and
-`CoreBridge` (`ICoreBridge`) are reserved: `TypeRegistry::build` reports an
-error if a shared type or an effect variant claims one.
-`CodeGenerator::without_core()` turns off the generated `Core` and its bridge
-protocol; `without_effect_handlers()` turns all of it off.
-
-Alongside the handler API, the plugins emit an `EffectKind` enum — one case per
-effect variant, valued by its declaration index — and a `RequestId` decoder
-that reads an id's effect, kind and sequence. Those exist because the id is
-[structured](#the-serialized-lane-and-the-wire), and are for logging and
-assertions: a request is always resolved with the id exactly as it arrived.
+`OperationKind`, `EffectSink`, `EffectHandler` (`IEffectSink` /
+`IEffectHandler` in C#), `EffectDispatcher`, `Core` and `CoreBridge`
+(`ICoreBridge`) are reserved: `TypeRegistry::build` reports an error if a
+shared type or an effect variant claims one. `CodeGenerator::without_core()`
+turns off the generated `Core` and its bridge protocol;
+`without_effect_handlers()` turns off the handler API and `Core` together, and
+leaves the kind property in place, since a shell dispatching by hand still has
+to know how many times to resolve each effect.
 
 Taking an effect with one variant of each kind, plus one legacy operation that
 declares no kind:
