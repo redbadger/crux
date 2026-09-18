@@ -19,6 +19,7 @@ Three consequences for the Crux shell:
 The root of the tree is a `CoreProvider`:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:provider}}
 ```
 
@@ -35,6 +36,7 @@ The `dispatch` callback is wrapped in `useCallback(_, [])` so its reference is s
 Same directional story as Leptos: state flows in, events flow out. The mechanisms are different, but the shape is the same. Two separate contexts:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:context}}
 ```
 
@@ -43,12 +45,14 @@ Splitting them matters. With both `view` and `dispatch` in one context, every `v
 Consumers pull either side with a hook:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:hooks}}
 ```
 
 Then components fire events with:
 
 ```typescript
+// TypeScript
 const dispatch = useDispatch();
 dispatch(eventActive(activeEventResetApiKey()));
 ```
@@ -60,6 +64,7 @@ Both directions cross the FFI as bincode. `dispatch` is just a JS callback aroun
 The root reads the whole `ViewModel` and picks off per-stage slices for each screen:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/app/page.tsx:app}}
 ```
 
@@ -72,12 +77,14 @@ So the win here is mostly clarity: the stage-picking logic lives in one place, a
 The shell writes two small things and the generated `Core` owns the loop between them:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:core_base}}
 ```
 
 `Core` serialises an event with `BincodeSerializer`, calls the bridge's `update`, deserialises the returned bytes into `Request` objects, handles `Render` itself (re-read the view, call `onView`), and hands everything else to the generated `EffectDispatcher`. There is no `switch` over the effect union anywhere: the dispatcher calls the method for the variant it received and resolves the request with what that method returns. When it does, `Core` calls the bridge's `resolve` and loops through any **new** effect requests that come back — a Crux command with `.await` points produces its next effect only after the previous one resolves, so the loop has to keep going until the command's task actually finishes, and now nothing in the shell has to remember to. Its public surface:
 
 ```typescript
+// TypeScript
 export class Core {
     view: ViewModel;
     constructor(bridge: CoreBridge, handler: EffectHandler,
@@ -93,6 +100,7 @@ export class Core {
 The bridge is the generated `CoreBridge` interface over the WASM export, and because the codegen was told which npm package BoltFFI produces (`.boltffi(BoltFfi::new().typescript("shared", …))`), the generated module implements it too:
 
 ```typescript
+// TypeScript
 export class FfiBridge implements CoreBridge {
   private readonly ffi = boltffi.CoreFfi.new();
   update(event: Uint8Array): Uint8Array { return this.ffi.update(event); }
@@ -106,6 +114,7 @@ Bytes in, bytes out. `CoreFfi.new()` touches the WASM module, so an `FfiBridge` 
 The handler is `WeatherHandler`, one method per operation. HTTP looks like this:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/handler.ts:http}}
 ```
 
@@ -125,6 +134,7 @@ operation is resolved once per message from a peer, so the generated handler
 method takes a sink instead of returning a value:
 
 ```typescript
+// TypeScript
 subscribe(_operation: Subscribe, sink: EffectSink<Message>): void {
   // Every message a peer broadcasts becomes one item on this sink, for as
   // long as the page lives.
@@ -145,6 +155,7 @@ Screens compose a set of Tailwind-styled presentational components in `src/app/c
 The `Home` screen pulls its slice from props, calls `useDispatch` once, and wires buttons to events:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/app/components/HomeView.tsx:home_view}}
 ```
 
