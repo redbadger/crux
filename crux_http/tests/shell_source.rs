@@ -73,6 +73,27 @@ fn generator() -> CodeGenerator {
     registry.build().expect("should build the registry")
 }
 
+/// Whether a toolchain this test needs, and cannot find, should fail rather
+/// than skip.
+///
+/// Set in CI and by `just ci`, where every toolchain is installed and a skip
+/// would mean a source went unbuilt with nobody told. Unset — a contributor
+/// without the .NET SDK or Swift still gets a green run.
+fn toolchains_required() -> bool {
+    std::env::var_os("CRUX_REQUIRE_SHELL_TOOLCHAINS").is_some_and(|value| !value.is_empty())
+}
+
+/// Reports a toolchain this test needs and did not find: a failure when
+/// `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set, and a printed skip otherwise.
+fn unavailable(missing: &str, consequence: &str) {
+    assert!(
+        !toolchains_required(),
+        "{missing}, so {consequence}. CRUX_REQUIRE_SHELL_TOOLCHAINS is set, so a missing \
+         toolchain fails rather than skips: install it, or unset the variable."
+    );
+    println!("skipping: {missing}, so {consequence}");
+}
+
 /// Builds a generated Swift package, or says why it did not.
 fn swift_build(dir: &Path) {
     match Command::new("swift").current_dir(dir).arg("build").output() {
@@ -83,7 +104,10 @@ fn swift_build(dir: &Path) {
             String::from_utf8_lossy(&output.stderr)
         ),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            println!("skipping: `swift` is not on PATH, so the shipped Swift is not compiled");
+            unavailable(
+                "`swift` is not on PATH",
+                "the shipped Swift is not compiled",
+            );
         }
         Err(e) => panic!("could not run `swift build`: {e}"),
     }
@@ -103,7 +127,7 @@ fn dotnet_build(dir: &Path) {
             String::from_utf8_lossy(&output.stderr)
         ),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            println!("skipping: `dotnet` is not on PATH, so the shipped C# is not compiled");
+            unavailable("`dotnet` is not on PATH", "the shipped C# is not compiled");
         }
         Err(e) => panic!("could not run `dotnet build`: {e}"),
     }
@@ -199,12 +223,16 @@ fn write_harness(dir: &Path, files: &[(&str, &str)]) {
 ///
 /// A missing toolchain is a skip, exactly as the compile tests above skip, so
 /// that a contributor without a Swift, .NET, Kotlin or Node install still gets
-/// a green run.
+/// a green run — unless `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set, where it is a
+/// failure naming what is missing.
 fn run(program: &str, args: &[&str], dir: &Path) -> Option<Output> {
     match Command::new(program).current_dir(dir).args(args).output() {
         Ok(output) => Some(output),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            println!("skipping: `{program}` is not on PATH, so the shipped source is not run");
+            unavailable(
+                &format!("`{program}` is not on PATH"),
+                "the shipped source is not run",
+            );
             None
         }
         Err(e) => panic!("could not run `{program}`: {e}"),
@@ -301,9 +329,10 @@ fn the_kotlin_cookie_jar_behaves() {
     write_harness(&harness, &[("Main.kt", include_str!("harness/Main.kt"))]);
 
     let Some(coroutines) = coroutines_jar() else {
-        println!(
-            "skipping: no kotlinx-coroutines-core jar under ~/.gradle or ~/.m2, and `kotlinc` \
-             ships only the standard library, so the shipped Kotlin is not run"
+        unavailable(
+            "there is no kotlinx-coroutines-core jar in KOTLINX_COROUTINES_JAR or under \
+             ~/.gradle or ~/.m2, and `kotlinc` ships only the standard library",
+            "the shipped Kotlin is not run",
         );
         return;
     };
