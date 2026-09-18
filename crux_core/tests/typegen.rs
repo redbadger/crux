@@ -143,14 +143,17 @@ mod facet_shared {
 
 #[cfg(feature = "facet_typegen")]
 mod facet_test {
-    use std::{fs, path::Path, process::Command};
+    use std::fs;
 
     use crux_core::{
         OperationKind,
         type_generation::facet::{BoltFfi, Config, Format, PackageLocation, TypeRegistry},
     };
 
-    use super::facet_shared::{App, OtherApp};
+    use super::{
+        facet_shared::{App, OtherApp},
+        toolchain::build,
+    };
 
     #[test]
     fn register_app_records_event_and_view_model() {
@@ -713,28 +716,6 @@ mod facet_test {
         assert!(source.contains("public var operationKind: OperationKind? {"));
     }
 
-    /// Builds a generated C# package with `dotnet`, or skips with a message
-    /// when the .NET SDK is not installed: a Rust contributor should not need
-    /// it to get a green run.
-    fn dotnet_build(dir: &Path) {
-        match Command::new("dotnet")
-            .current_dir(dir)
-            .args(["build", "--nologo"])
-            .output()
-        {
-            Ok(output) => assert!(
-                output.status.success(),
-                "`dotnet build` failed:\n{}{}",
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            ),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                println!("skipping: `dotnet` is not on PATH, so the generated C# is not compiled");
-            }
-            Err(e) => panic!("could not run `dotnet build`: {e}"),
-        }
-    }
-
     /// The kind accessor is a property *inside* the effect record, which the
     /// emitter does not declare `partial`, so a shell that turns the handler
     /// API off is the one configuration where it could be left stranded.
@@ -752,7 +733,11 @@ mod facet_test {
         assert!(source.contains("public Example.Shared.OperationKind? OperationKind"));
         assert!(!source.contains("IEffectHandler"));
 
-        dotnet_build(dir.path());
+        build(
+            "dotnet",
+            &["build", "--nologo"].map(std::ffi::OsStr::new),
+            dir.path(),
+        );
     }
 
     #[test]
@@ -992,5 +977,51 @@ mod facet_clash_test {
             message.contains("`FfiBridge` is generated for the shell API"),
             "unexpected message: {message}"
         );
+    }
+}
+
+/// Helpers that compile generated code with the toolchain of each shell
+/// language. A test skips a toolchain that is not installed, unless
+/// `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set.
+#[cfg(feature = "facet_typegen")]
+mod toolchain {
+    use std::{path::Path, process::Command};
+
+    /// Whether a toolchain that this test cannot find is a failure, not a
+    /// skip. Set `CRUX_REQUIRE_SHELL_TOOLCHAINS` where every toolchain is
+    /// installed, so that a skip cannot hide a source that does not compile.
+    fn toolchains_required() -> bool {
+        std::env::var_os("CRUX_REQUIRE_SHELL_TOOLCHAINS").is_some_and(|value| !value.is_empty())
+    }
+
+    /// Reports a toolchain that the test did not find: a failure when
+    /// `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set, and a printed skip if not.
+    fn unavailable(missing: &str, consequence: &str) {
+        assert!(
+            !toolchains_required(),
+            "{missing}, so {consequence}. CRUX_REQUIRE_SHELL_TOOLCHAINS is set, so a missing \
+             toolchain fails rather than skips: install it, or unset the variable."
+        );
+        println!("skipping: {missing}, so {consequence}");
+    }
+
+    /// Runs `program` in `dir` and asserts that it succeeded. A program that
+    /// is not on `PATH` goes to [`unavailable`].
+    pub fn build(program: &str, args: &[&std::ffi::OsStr], dir: &Path) {
+        match Command::new(program).current_dir(dir).args(args).output() {
+            Ok(output) => assert!(
+                output.status.success(),
+                "`{program}` failed:\n{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                unavailable(
+                    &format!("`{program}` is not on PATH"),
+                    "the generated code is not compiled",
+                );
+            }
+            Err(e) => panic!("could not run `{program}`: {e}"),
+        }
     }
 }

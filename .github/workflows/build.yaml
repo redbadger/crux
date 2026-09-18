@@ -108,14 +108,43 @@ jobs:
         with:
           version: latest
 
-      # The capability crates' `shell_source` tests, and `crux_core`'s typegen
-      # tests, run `dotnet build` over a generated C# package, which the
-      # generator targets at `net10.0`. They skip when `dotnet` is missing
-      # rather than fail, so without this the shipped C# would quietly go
-      # uncompiled.
+      # The typegen tests of `crux_core` run `dotnet build` over a generated C#
+      # package, which the generator targets at `net10.0`. Without this step,
+      # nothing compiles the generated C#. Swift and Node need no step of their
+      # own, because the runner image has both.
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+
+      # The typegen tests compile the generated Kotlin with `kotlinc`, which
+      # needs a JRE. The runner image has a JDK and its own Kotlin, but that
+      # Kotlin changes with the image. This step installs the pinned release
+      # and puts it first on PATH, so a green run tells which compiler agreed.
+      # `just check-versions` holds the version to lib.just.
+      - name: Install the Kotlin compiler
+        shell: bash
+        run: |
+          set -euxo pipefail
+          kotlin_version=2.4.20
+          curl -fsSL -o "$RUNNER_TEMP/kotlin-compiler.zip" \
+            "https://github.com/JetBrains/kotlin/releases/download/v${kotlin_version}/kotlin-compiler-${kotlin_version}.zip"
+          unzip -q "$RUNNER_TEMP/kotlin-compiler.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+
+      # `kotlinc` has only the standard library, but the generated Kotlin
+      # imports kotlinx.coroutines, so the compiler needs the jar on its
+      # classpath. Locally, the tests find a jar that Gradle cached. CI has no
+      # such cache, so this step fetches the version that the generator writes
+      # into build.gradle.kts, and points the tests at it.
+      - name: Fetch the kotlinx-coroutines jar
+        shell: bash
+        run: |
+          set -euxo pipefail
+          coroutines_version=1.10.2
+          jar="$RUNNER_TEMP/kotlinx-coroutines-core-jvm-${coroutines_version}.jar"
+          curl -fsSL -o "$jar" \
+            "https://repo1.maven.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/${coroutines_version}/kotlinx-coroutines-core-jvm-${coroutines_version}.jar"
+          echo "KOTLINX_COROUTINES_JAR=$jar" >> "$GITHUB_ENV"
 
       - name: Build crux
         shell: bash
@@ -129,6 +158,12 @@ jobs:
 
       - name: Tests
         shell: bash
+        # Swift, Kotlin, Node and the .NET SDK are all on this job. If a test
+        # cannot find one of them, the job is broken, so the test fails and
+        # names the tool. Without this variable, the test prints a skip that
+        # nobody reads.
+        env:
+          CRUX_REQUIRE_SHELL_TOOLCHAINS: 1
         run: |
           cargo nextest run --all-features
           cargo test --doc --all-features
