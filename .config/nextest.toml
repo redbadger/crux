@@ -4,3 +4,15 @@
 failure-output = "immediate-final"
 # Do not cancel the test run on the first failure.
 fail-fast = false
+
+# A cold `dotnet` configures itself on first use, and that takes a named mutex
+# under `/tmp/.dotnet/shm`, which .NET's PAL puts there whatever `TMPDIR` and
+# `DOTNET_CLI_HOME` say. Two builds starting together race for it and the loser
+# dies before it has compiled anything, which is a flake in CI and nowhere else.
+# The tests that shell out to `dotnet build` therefore run one at a time.
+[test-groups]
+dotnet = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'test(csharp_shipped_source_compiles) + test(csharp_compiles_without_the_effect_handler_api)'
+test-group = 'dotnet'
