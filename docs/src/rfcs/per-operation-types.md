@@ -1,5 +1,8 @@
 # RFC: Per-operation types with static request kinds
 
+Superseded in part by [One trait per operation kind](operation-kind-traits.md),
+which replaces this RFC's breaking-release stage.
+
 ```admonish
 This RFC is **proposed**. Its compat stage is implemented in a stack of pull
 requests alongside this text, so that reviewers can read real code — see the
