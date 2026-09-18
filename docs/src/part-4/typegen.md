@@ -70,10 +70,12 @@ with `Serialize` and `Deserialize` for the FFI serialization). Here's
 the counter example:
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter/shared/src/app.rs:10:16}}
 ```
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter/shared/src/app.rs:29:32}}
 ```
 
@@ -87,6 +89,7 @@ tells the `#[effect]` macro to generate the type registration code
 that the codegen binary needs:
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter/shared/src/app.rs:18:22}}
 ```
 
@@ -104,6 +107,7 @@ events (ones the shell never sends) can be excluded from the generated
 output with `#[facet(skip)]`:
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter-middleware/shared/src/app.rs:38:60}}
 ```
 
@@ -123,6 +127,7 @@ Each shared crate includes a small binary that drives the type
 generation. Here's the one from the counter example:
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter/shared/src/bin/codegen.rs}}
 ```
 
@@ -156,12 +161,14 @@ The codegen binary needs a few additions to your `shared/Cargo.toml`.
 Declare the binary, gated on a `codegen` feature:
 
 ```toml
+# TOML
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen_bin}}
 ```
 
 Enable `facet_typegen` in `crux_core`:
 
 ```toml
+# TOML
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen}}
 ```
 
@@ -169,6 +176,7 @@ And add `facet` as a dependency — all types that cross the FFI
 boundary derive `Facet`:
 
 ```toml
+# TOML
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen_deps}}
 ```
 
@@ -199,6 +207,7 @@ Each shell's `Justfile` has a `typegen` recipe. For example, the Apple
 shell runs:
 
 ```sh
+# Shell
 RUST_LOG=info cargo run \
     --package shared \
     --bin codegen \
@@ -272,6 +281,7 @@ kind, plus a `Legacy` operation that declares nothing.
 **Swift**
 
 ```swift
+// Swift
 public enum OperationKind: Hashable, Sendable { case notify, request, stream }
 
 extension Effect {
@@ -302,6 +312,7 @@ public struct EffectDispatcher: Sendable {
 **Kotlin**
 
 ```kotlin
+// Kotlin
 enum class OperationKind { NOTIFY, REQUEST, STREAM }
 
 val Effect.operationKind: OperationKind?
@@ -327,6 +338,7 @@ for instance — so the rest are not held up behind it.
 **TypeScript**
 
 ```typescript
+// TypeScript
 export type OperationKind = "notify" | "request" | "stream";
 export function effectOperationKind(effect: Effect): OperationKind | undefined;
 
@@ -354,6 +366,7 @@ property.
 **C#**
 
 ```csharp
+// C#
 public enum OperationKind { Notify, Request, Stream }
 
 // emitted inside the generated Effect record, which is not partial
@@ -397,6 +410,7 @@ whatever produces the bytes, and hand it to `Core` with your
 `EffectHandler`:
 
 ```swift
+// Swift
 public protocol CoreBridge: Sendable {
     func update(_ event: [UInt8]) -> [UInt8]
     func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8]
@@ -417,6 +431,7 @@ public final class Core {
 ```
 
 ```kotlin
+// Kotlin
 interface CoreBridge {
     fun update(event: ByteArray): ByteArray
     fun resolve(id: UInt, output: ByteArray): ByteArray
@@ -433,6 +448,7 @@ class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
 ```
 
 ```typescript
+// TypeScript
 export interface CoreBridge {
     update(event: Uint8Array): Uint8Array;
     resolve(id: uint32, output: Uint8Array): Uint8Array;
@@ -498,6 +514,7 @@ decisions you made in `boltffi.toml` and `ffi.rs`. Repeat them in the
 codegen and type generation emits the bridge for you:
 
 ```rust,ignore
+// Rust
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
     .build()?
@@ -522,18 +539,22 @@ Swift `Data` conversion and the `@unchecked Sendable` declaration where
 they belong — and `Core` gains a constructor that takes only the handler:
 
 ```swift
+// Swift
 let core = Core(handler: WeatherHandler())
 ```
 
 ```kotlin
+// Kotlin
 val core = Core(handler, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 ```
 
 ```typescript
+// TypeScript
 const core = await Core.create(new WeatherHandler(), setView);
 ```
 
 ```csharp
+// C#
 var core = new Core(new CounterHandler());
 ```
 
@@ -555,6 +576,7 @@ Two consequences for the build:
   package a `platforms:` floor to match through the `Config`:
 
   ```rust,ignore
+  // Rust
   Config::builder("App", &out_dir)
       .platform(".iOS(.v16)")
       .platform(".macOS(.v13)")
@@ -589,6 +611,7 @@ You ask in the codegen binary, per capability, on the registry before you
 build it:
 
 ```rust,ignore
+// Rust
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
     .shell_handler(&crux_http::HTTP)?
@@ -617,6 +640,7 @@ returns, and at least one implementation. Your handler holds an instance
 and delegates:
 
 ```swift
+// Swift
 struct WeatherHandler: EffectHandler {
     let http = URLSessionHttpHandler.shared
     let time = TaskTimeHandler()
@@ -665,6 +689,7 @@ generated from the same effect metadata the core builds ids from rather
 than written by hand in each shell:
 
 ```swift
+// Swift
 public enum EffectKind: UInt8, Hashable, Sendable { case render = 0, http = 1 /* ... */ }
 
 public struct RequestId: Hashable, Sendable {
