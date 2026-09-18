@@ -26,11 +26,13 @@ use crate::{EffectFFI, EffectVariant, OperationKind, ResolveError};
 /// core will never wait on, so every notification carries that same id, and
 /// resolving one is a [`ResolveError::Never`] rather than a lookup miss.
 ///
-/// The bit layout is an implementation detail and may change. Read the pieces
-/// through [`effect_index`](Self::effect_index), [`kind`](Self::kind) and
-/// [`sequence`](Self::sequence) — and, on the shell side, through the
-/// generated `RequestId` decoder rather than by picking the integer apart by
-/// hand.
+/// The bit layout is the bridge's own business and may change. On the Rust
+/// side, read the pieces through [`effect_index`](Self::effect_index),
+/// [`kind`](Self::kind) and [`sequence`](Self::sequence) rather than by
+/// picking the integer apart. Nothing is generated for the shell to read them
+/// with: a shell resolves with the id exactly as it arrived, and how many
+/// times to do so is answered by the `OperationKind` accessor on the effect,
+/// not by anything in the id.
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
