@@ -6,8 +6,6 @@
 //! * [`EffectHandlerPlugin`] emits `EffectSink`, `EffectHandler` and
 //!   `EffectDispatcher` — a shell writes the handler, the dispatcher does the
 //!   resolving.
-//! * [`RequestIdPlugin`] emits `EffectKind` and `RequestId`, which read the
-//!   structured request id the core issues.
 //! * [`CorePlugin`] emits `CoreBridge` and `Core` — the loop that carries
 //!   events into the core, requests out of it, and the view back to the shell.
 //! * [`ShellHandlerPlugin`] emits the shell handlers a capability ships, for
@@ -24,7 +22,6 @@
 mod core;
 mod handler;
 mod operation_kind;
-mod request_id;
 mod shell_handler;
 #[cfg(test)]
 mod tests;
@@ -38,7 +35,6 @@ use heck::ToLowerCamelCase;
 pub(super) use core::CorePlugin;
 pub(super) use handler::EffectHandlerPlugin;
 pub(super) use operation_kind::OperationKindPlugin;
-pub(super) use request_id::RequestIdPlugin;
 pub(super) use shell_handler::ShellHandlerPlugin;
 
 use super::{EffectMeta, EffectVariantMeta};
