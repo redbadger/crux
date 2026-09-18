@@ -62,7 +62,7 @@ class WeatherHandler
 
         override suspend fun isLocationEnabled(operation: IsLocationEnabled): Boolean = locationHandler.isLocationEnabled()
 
-        override suspend fun getLocation(operation: GetLocation): Location? = locationHandler.getLastLocation()
+        override suspend fun getLocation(operation: GetLocation): Location? = locationHandler.getLocation()
 
         override suspend fun fetchSecret(operation: FetchSecret): SecretFetchResponse = secretStore.fetch(operation.value)
 
