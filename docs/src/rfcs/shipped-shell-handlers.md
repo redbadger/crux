@@ -4,8 +4,11 @@
 This RFC is **proposed**. It builds on the
 [per-operation types RFC](./per-operation-types.md) and the
 [generated `Core` RFC](./generated-core.md). Nothing in it depends on the
-`Operation` trait, which the breaking release of per-operation types replaces
-with `Notify`, `Request` and `Stream`.
+shape of the `Operation` trait, which the
+[operation kind traits RFC](./operation-kind-traits.md) proposes to change in
+the breaking release: `Operation` stays as the supertrait, and
+`operation::{Notify, Request, Stream}` gain the payload type under the word
+that fits each kind.
 ```
 
 This RFC proposes that each capability crate ships the shell side of its
