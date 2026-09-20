@@ -299,9 +299,10 @@ supersedes the target shape this section originally gave and
 short: `Operation` keeps `Output` for the machinery generic over every kind,
 the kind traits name the same payload under the word that fits the kind —
 `Response` on a request, `Item` on a stream, nothing on a notification — and
-the two are bound together so they cannot disagree. Whether the kind traits
-are implemented alongside `Operation` or blanket-implemented from `Kind` is
-the question that RFC puts to review.
+the two are bound together so they cannot disagree. `Operation` is hidden and
+sealed, so that only `#[derive(Operation)]` implements it and a hand-written
+impl is not supported; that RFC also explains why the supertrait cannot be
+removed, and what removing it would cost.
 
 **This shape is breaking.** Associated type defaults are unstable (E0658,
 rust-lang/rust#29661), so `type Kind` cannot default to "unspecified" and every
@@ -376,7 +377,8 @@ The derive generates the `Operation` impl, the kind declaration — in the
 compat release, `const KIND` and the matching marker impl together, so they
 cannot disagree — and the typegen registration that today's impls write by
 hand. There is nothing else to write. What it emits in the breaking release,
-and the renaming of a stream's `output =` to `item =`, are in the
+and the renaming of `output =` to a request's `response =` and a stream's
+`item =`, are in the
 [one trait per operation kind RFC](./operation-kind-traits.md#what-the-derive-emits).
 
 Outputs are concrete types that type generation can emit. `ValueResult` here is
@@ -746,8 +748,8 @@ is fine in practice.
 For users' own capabilities, the mechanical migration is: one struct per
 variant, `#[operation(..)]` on each, and replace the response enum with the
 per-operation output types. Code bounded on the compat release's markers does
-not change in the breaking release, and neither does a derived request or
-notification. What a derived stream and a hand-written `impl Operation` block
+not change in the breaking release, and neither does a derived notification.
+What a derived request or stream and a hand-written `impl Operation` block
 have to change is set out in the
 [one trait per operation kind RFC](./operation-kind-traits.md#migration).
 
