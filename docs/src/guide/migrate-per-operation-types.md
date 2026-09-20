@@ -839,46 +839,41 @@ module or the item silences the warning.
 Written against this release's derive and marker traits, most of your code does
 not change: `#[derive(Operation)]` keeps working, so does any bound on
 `operation::{Notify, Request, Stream}`, and so does every `Op::Output`. Three
-things are rewritten: a stream's `output =` argument becomes `item =`, a
-hand-written `impl Operation` block becomes the pair shown in the first item
-below, and anything that read `Op::KIND` — a middleware or router of your own,
-generic over `Operation` — reads `<Op::Kind as operation::Kind>::VALUE`. What
-changes:
+things are rewritten: the derive's payload argument takes the kind's word —
+a request's `output =` becomes `response =`, a stream's becomes `item =` — a
+hand-written `impl Operation` block becomes the derive, and anything that read
+`Op::KIND` — a middleware or router of your own, generic over `Operation` —
+reads `<Op::Kind as operation::Kind>::VALUE`. What changes:
 
-- **The kind becomes an associated type, and the kind traits name the
-  payload.** `Operation` survives as the supertrait, with
-  `type Kind: operation::Kind` in place of `const KIND` — the kinds are sealed
-  unit types `operation::kind::{Notify, Request, Stream}` — and `type Output`
-  exactly as today, which is what `Request<Op>` and the rest of the machinery
-  generic over `Operation` keep reading. The three traits
+- **The kind becomes an associated type, the kind traits name the payload,
+  and only the derive writes `Operation`.** `Operation` survives as the
+  supertrait, with `type Kind: operation::Kind` in place of `const KIND` — the
+  kinds are sealed unit types `operation::kind::{Notify, Request, Stream}` —
+  and `type Output` exactly as today, which is what `Request<Op>` and the rest
+  of the machinery generic over `Operation` keep reading. The three traits
   `operation::{Notify, Request, Stream}` each require `Operation` with the
   matching `Kind`, and the two that have a payload name it under the word
   that fits: `operation::Request` has `type Response`, `operation::Stream` has
-  `type Item`, and `operation::Notify` has none. Each is bounded so that
-  `Output` must equal that type, so an impl that says one thing on `Operation`
-  and another on the kind trait does not compile — an `E0271` type mismatch
-  that names the bound. Under an `operation::Stream` bound, `Op::Output` still
-  compiles but `Op::Item` is the spelling to prefer. The derive writes both
-  impls, from `#[operation(request, output = ..)]`,
-  `#[operation(stream, item = ..)]` or `#[operation(notify)]`, which writes
-  `Output = ()`. By hand, the request from [above](#by-hand) becomes:
+  `type Item`, and `operation::Notify` has none. Under an `operation::Stream`
+  bound, `Op::Output` still compiles but `Op::Item` is the spelling to prefer.
+  `Operation` itself is hidden from the documentation and sealed: the derive
+  implements it, from `#[operation(request, response = ..)]`,
+  `#[operation(stream, item = ..)]` or `#[operation(notify)]`, and a
+  hand-written `impl Operation` is no longer supported. The request from
+  [above](#by-hand) becomes the derive:
 
   ```rust,ignore
   // Rust
-  impl Operation for Get {
-      type Kind = operation::kind::Request;
-      type Output = ValueResult;
-  }
-
-  impl operation::Request for Get {
-      type Response = ValueResult;
+  #[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug)]
+  #[operation(request, response = ValueResult)]
+  pub struct Get {
+      pub key: String,
   }
   ```
 
   The [one trait per operation kind RFC](../rfcs/operation-kind-traits.md)
-  has the design and its reasoning, and compares this shape with one in which
-  the kind traits are blanket-implemented from `Kind`, so the second impl is
-  never written; the derive and your bounds are the same under both.
+  has the design and its reasoning, including why the supertrait cannot be
+  removed and why nothing but the derive should implement it.
 
 - **`Command` bounds tighten** to the kind traits, so the wrong constructor is
   an ordinary `E0277` you see in `cargo check` and in your editor — reading
