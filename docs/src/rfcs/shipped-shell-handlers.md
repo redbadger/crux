@@ -7,9 +7,9 @@ This RFC is **proposed**. It builds on the
 written against the compat release of per-operation types, but nothing in it
 depends on the shape of the `Operation` trait, which the
 [operation kind traits RFC](./operation-kind-traits.md) proposes to change in
-the breaking release: `Operation` stays as the supertrait, and
-`operation::{Notify, Request, Stream}` gain the payload type under the word
-that fits each kind.
+the breaking release: `Operation` stays as the supertrait, hidden and
+implemented only by the derive, and `operation::{Notify, Request, Stream}`
+gain the payload type under the word that fits each kind.
 ```
 
 This RFC proposes that a capability crate can ship the shell side of its
