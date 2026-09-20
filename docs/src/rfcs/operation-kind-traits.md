@@ -5,9 +5,10 @@ This RFC is **proposed**. It builds on the
 [per-operation types RFC](./per-operation-types.md) and supersedes that RFC's
 breaking stage — the target shape its Design section originally specified,
 reproduced below under [What the parent proposed](#what-the-parent-proposed)
-— and it is not yet implemented. Both shapes it compares have been compiled
-and checked on stable Rust, but nothing here has shipped; if accepted, it
-would land in the next major release of `crux_core`.
+— and it is not yet implemented. The shape it proposes, and each of the
+alternatives it rejects, have been compiled and checked on stable Rust, but
+nothing here has shipped; if accepted, it would land in the next major
+release of `crux_core`.
 ```
 
 This RFC proposes that the three operation kinds — notify, request and stream
@@ -15,10 +16,20 @@ This RFC proposes that the three operation kinds — notify, request and stream
 answered with, under the word that fits the kind: a request's `Response`, a
 stream's `Item`, and nothing for a notification. `Operation` survives as the
 supertrait of all three, keeping the kind as an associated type and its
-existing `Output`, which the machinery generic over every kind reads and which
-the kind traits are bound to, so the two can never disagree. Two ways of
-writing that bound are compared, and choosing between them is the question
-this RFC most wants answered.
+existing `Output`, which the machinery generic over every kind reads. What
+changes about `Operation` is who writes it: only `#[derive(Operation)]` does.
+The trait is hidden from the documentation and sealed, so an author declares
+an operation with one attribute and never sees two impls, and nothing an
+author can write disagrees with itself.
+
+Review asked whether the supertrait is needed at all. This RFC answers that it
+is, for a reason narrower than the one it first gave: the `#[effect]` macro
+sees each variant as a type path and nothing else, and everything it generates
+for that variant has to work whatever the operation's kind is. Without one
+trait every kind implements, the macro cannot be written. The
+[Alternatives](#alternatives-considered) section shows the three ways of
+removing the trait that Rust rejects, and the one that works, which costs
+the effect enum having to name each variant's kind.
 
 ## Summary
 
@@ -34,15 +45,17 @@ stream, and, for a notification, a `()` that has to be there because the trait
 demands a type.
 
 The proposal is to keep `Operation` and its `Output`, make the kind an
-associated type, and have each kind trait name the payload under its own word,
-bound to `Output` so that the two are one declaration:
+associated type, hide the trait, and have each kind trait name the payload
+under its own word, bound to `Output` so that the two are one declaration:
 
 ```rust
-pub trait Operation: Send + 'static {
+// crux_core::capability — #[doc(hidden)]; only the derive implements it
+pub trait Operation: __private::Sealed + Send + 'static {
     type Kind: operation::Kind;
     type Output: Send + Unpin + 'static; // unchanged from today
 }
 
+// crux_core::operation — public; what bounds are written against
 pub mod operation {
     pub trait Notify: Operation<Kind = kind::Notify, Output = ()> {}
 
@@ -60,11 +73,21 @@ pub mod operation {
 }
 ```
 
-With the bounds written this way — the *tied* shape — an operation is two
-impls, which the derive writes: `Operation`, naming its `Kind` and `Output`,
-and one kind trait, naming the same payload under the kind's own word.
+An author writes the derive and one attribute:
 
 ```rust
+#[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
+#[operation(request, response = ValueResult)]
+pub struct Get { pub key: String }
+```
+
+and the derive writes the three impls that attribute stands for — the sealing
+marker, `Operation` naming `Kind` and `Output`, and the kind trait naming the
+same payload under the kind's own word:
+
+```rust
+impl crux_core::__private::Sealed for Get {}
+
 impl Operation for Get {
     type Kind = operation::kind::Request;
     type Output = ValueResult;
@@ -75,25 +98,16 @@ impl operation::Request for Get {
 }
 ```
 
-The kind traits can instead be blanket-implemented from `Kind`, reading the
-payload off `Operation` — the *blanket* shape — in which case an operation
-is the first impl alone and the kind trait is derived, never declared.
-[Two ways to bind the kind traits](#two-ways-to-bind-the-kind-traits) compares
-them, with the compiler's output for each mistake an author can make. This RFC
-leans towards the tied shape, for one reason above the others: with it, the
-wrong `Command` constructor is an unimplemented trait, so
-`#[diagnostic::on_unimplemented]` fires and the author reads an authored
-message; with the blanket shape it is an associated-type mismatch, the
-attribute does not fire, and the author reads the compiler's walk through the
-bounds. The choice is open.
-
-Either way, three things follow. The wrong constructor is a trait-bound error
-that `cargo check` and the editor report, rather than the compat release's
-post-monomorphisation `const` assertion. The payload has the right name where
-an author writes it and where kind-specific code reads it. And `Request<Op>`,
-the bridge registry, the effect router, middleware and type generation keep
-reading `Op::Output` from a single `Op: Operation` bound, exactly as they do
-today, so none of them changes.
+Four things follow. The wrong `Command` constructor is a trait-bound error
+that `cargo check` and the editor report, with an authored message naming the
+right constructor, rather than the compat release's post-monomorphisation
+`const` assertion. The payload has the right name where an author writes it
+and where kind-specific code reads it. `Request<Op>`, the bridge registry, the
+effect router, middleware and type generation keep reading `Op::Output` from a
+single `Op: Operation` bound, exactly as they do today, so none of them
+changes. And because nothing outside `crux_core` implements `Operation`, its
+items can change in a minor release: a future binding for shipped shell
+handlers, or a change to how the kind is carried, would not be breaking.
 
 ## Why?
 
@@ -131,8 +145,8 @@ this way:
 The parent RFC's answer was to make the kind an associated type,
 `type Kind: Kind`, with sealed unit types `kind::{Notify, Request, Stream}`,
 and to make the markers blanket impls from it, so that the kind is declared
-once and the marker follows. That much is kept here, as one of the two shapes
-compared. What it left in place is the payload.
+once and the marker follows. That much is kept here. What it left in place is
+the payload, and the possibility of a hand-written impl at all.
 
 ### `Output` means three things
 
@@ -164,36 +178,53 @@ that the guide say the compat shape is temporary and that the request's
 payload type will move to the `Request` trait. This RFC is the proposal that
 comment asked for.
 
+### The derive already writes every operation that declares a kind
+
+Of the operations in this repository that declare a kind, two are written by
+hand: `crux_http`'s `HttpRequest` and `crux_core`'s own `RenderOperation`.
+Every other one — `crux_kv`'s five, `crux_time`'s four, the `notes` example's
+notification and stream, the `weather` example's five — is a derive and an
+attribute. The derive handles generic operations and `where` clauses, and a
+type from another crate cannot implement a `crux_core` trait by hand either,
+because of the orphan rules; it has to be wrapped, and the wrapper can derive.
+So a hand-written `impl Operation` buys nothing the derive does not, and it is
+the only way to write the inconsistency review objected to. This RFC takes it
+away.
+
 ## Goals
 
 1. The name an author writes for an operation's payload is the right one for
    its kind: `Response` for a request, `Item` for a stream, nothing for a
    notification.
-2. An operation's kind and payload cannot be declared inconsistently. Any
-   disagreement between the `Operation` impl and the kind trait impl is a
-   compile error at the declaration, not at a use site — or, in the blanket
-   shape, cannot be written at all.
+2. An operation's kind and payload cannot be declared inconsistently, because
+   only the derive declares them. A hand-written `impl Operation` is not
+   supported.
 3. The wrong `Command` constructor is a trait-bound error, visible to
-   `cargo check` and the editor, and as far as the compiler allows it names
-   the right constructor.
+   `cargo check` and the editor, that names the right constructor.
 4. The machinery generic over every kind — `Request<Op>`, the bridge registry,
    the effect router, middleware, type generation, the `#[effect]` macro's
    generated helpers — keeps a single `Op: Operation` bound and keeps reading
    `Op::Output`, so it does not change.
 5. Code written against the compat release's bounds and derive changes as
    little as possible, and every change is a rename.
+6. `Operation` can change in a minor release, because nothing outside
+   `crux_core` implements it.
 
 ## Non-goals
 
 - Changing the wire format, the generated shell API, or anything a shell
   sees. The kind reaches shells the way it does today.
+- Changing how an effect enum is written. `#[effect]` keeps taking
+  `Http(HttpRequest)`; the variant does not say what kind `HttpRequest` is.
+  This is the constraint the rest of the design answers to.
 - Redesigning `Command`, the effect router or middleware. The `Command` and
   `CommandContext` bounds tighten to the kind traits, as the parent RFC
   proposed. Nothing else changes.
 - Using the never type. `operation::Notify` declaring no payload type of its
   own is what makes `Output = !` unnecessary; this RFC does not propose
   adopting `!` when it becomes available.
-- Removing `Operation`. The alternatives section explains why not.
+- Removing `Operation`. The Design section explains why it cannot go, and the
+  Alternatives section shows what removing it would cost.
 
 ## Design
 
@@ -259,26 +290,39 @@ pub mod operation {
 
 Everything above the kind traits is kept: `OperationKind`, `type Kind` on
 `Operation`, the sealed `Kind` trait and its three unit types, and `Output`
-staying on `Operation`. What changes is the three kind traits, which stop
-being payload-free markers and carry the payload type under the kind's own
-word. The concession about `type Item` dissolves, because the uniform name
-generic code needs is `Output` on the supertrait, and the kind trait is free
-to use the word that reads best.
+staying on `Operation`. Two things change. The three kind traits stop being
+payload-free markers and carry the payload type under the kind's own word.
+And `Operation` stops being something an author implements: the derive writes
+it, and it is hidden and sealed so that nothing else does. The concession
+about `type Item` dissolves, because the uniform name generic code needs is
+`Output` on the supertrait, and the kind trait is free to use the word that
+reads best.
 
 ### The shape
 
 ```rust
-pub trait Operation: Send + 'static {
-    /// How many times this operation expects to be resolved, as a type.
-    type Kind: operation::Kind;
+pub mod capability {
+    /// Implemented by `#[derive(Operation)]`, never by hand. Generic code
+    /// reads it; an author reads the kind traits.
+    #[doc(hidden)]
+    pub trait Operation: crate::__private::Sealed + Send + 'static {
+        /// How many times this operation expects to be resolved, as a type.
+        type Kind: operation::Kind;
 
-    /// The value the shell resolves with, named without reference to the
-    /// kind: `()` for a notification, a request's `Response`, a stream's
-    /// `Item`. Generic code reads this one. An author writes the kind
-    /// trait's word for it, and the derive writes both.
-    type Output: Send + Unpin + 'static;
+        /// The value the shell resolves with, named without reference to the
+        /// kind: `()` for a notification, a request's `Response`, a stream's
+        /// `Item`. Generic code reads this one.
+        type Output: Send + Unpin + 'static;
 
-    // register_types_facet as today, bounded on Self::Output
+        // register_types_facet as today, bounded on Self::Output
+    }
+}
+
+#[doc(hidden)]
+pub mod __private {
+    /// The derive implements this alongside `Operation`. The path says what
+    /// the documentation cannot: this is not for you to write.
+    pub trait Sealed {}
 }
 
 pub mod operation {
@@ -330,22 +374,34 @@ Each kind trait has `Operation` as a supertrait, with its `Kind` pinned to the
 matching unit type and its `Output` pinned to the kind trait's own payload
 type — `()` for `Notify`, `<Self as Request>::Response` for `Request`,
 `<Self as Stream>::Item` for `Stream`. The supertrait bound is what makes the
-two impls one declaration: implementing `operation::Request` for a type
-obliges its `Operation` impl to say `Kind = kind::Request` and
+impls one declaration: implementing `operation::Request` for a type obliges
+its `Operation` impl to say `Kind = kind::Request` and
 `Output = <that type's Response>`, and the compiler checks the obligation
-where the kind trait is implemented.
+where the kind trait is implemented. The derive writes both, so the check
+never fails; it is there so that the shape is sound on its own terms, not
+only because of who writes it.
 
 `Notify` pins `Output = ()`. Nothing reads a notification's payload, so the
-type could be left free, but pinning it gives a hand-written notification one
-right answer and keeps the compat release's guarantee that a notification
-cannot claim a payload. It is the price of `Request<Op>` holding notifications
-in the same container as everything else, and it is one line the derive
-writes.
+type could be left free, but pinning it gives the derive one right answer and
+keeps the compat release's guarantee that a notification cannot claim a
+payload. It is the price of `Request<Op>` holding notifications in the same
+container as everything else, and it is one line the derive writes and no
+author reads.
 
 `const KIND` goes, and with it its `Option`: every operation declares a kind,
 because an associated type cannot default. `<Op::Kind as Kind>::VALUE` is the
 static kind, readable in any generic context that has `Op: Operation`, which
 is what `Op::KIND` gave type generation in the compat release.
+
+`Operation` is `#[doc(hidden)]` and has `__private::Sealed` as a supertrait.
+The sealing is by convention, in the way `serde` and others do it: the marker
+lives in a hidden module whose path names its purpose, the derive implements
+it, and a determined author can too. Rust has no way to seal a trait against a
+downstream crate while a proc macro in another crate implements it, so this
+is as far as the language goes. What it achieves is enough: the documented
+way to declare an operation is the derive, an author who writes
+`impl crux_core::__private::Sealed for Get {}` knows they are off the path,
+and `crux_core` is free to treat `Operation`'s items as its own.
 
 The `#[diagnostic::on_unimplemented]` messages are the static form the
 attribute allows. It accepts only `message`, `label` and `note`, and
@@ -355,7 +411,7 @@ and associated-type interpolation, so a message cannot say what kind the type
 the two constructors that send the other kinds, is what stable Rust can
 produce, and it is quoted from the compiler below.
 
-### Why `Operation` survives as a supertrait
+### Why `Operation` survives
 
 The obvious alternative, once each kind has a trait of its own, is to remove
 `Operation` altogether and leave `Notify`, `Request` and `Stream` as the only
@@ -367,246 +423,177 @@ traits, with `Notify` having no associated type at all. Review of the derive
 > `Operation` later. Maybe something like a blanket impl of a trait for each
 > of the three subtraits?
 
-It does not work, for one concrete reason. `crux_core::Request<Op>` is the
-container every effect variant holds, for all three kinds — notifications
-included, since `notify_shell` builds one with `Request::resolves_never`. It
-names the payload type from a single bound:
+An earlier draft of this RFC answered that `Request<Op>` needs one bound from
+which to name the payload. That is true but it is not the constraint, because
+`Request<Op>` could be replaced. The constraint is the `#[effect]` macro.
 
-```rust
-pub struct Request<Op>
-where
-    Op: Operation,
-{
-    pub operation: Op,
-    pub handle: RequestHandle<Op::Output>,
-}
-```
+An effect enum is written as `Http(HttpRequest)`. The macro sees the variant's
+name and a type path, and from those two tokens it generates the field type
+`Request<HttpRequest>` with a typed handle inside it, `From` and `TryFrom`
+between the container and the enum, the `EffectFFI::serialize` arm that turns
+the request into bytes and a deserialising resolver, type generation's
+`.variant::<HttpRequest>("Http")` and `HttpRequest::register_types_facet`,
+and the `resolve_http` test helper whose closure returns the payload. Every
+one of those is a single, kind-agnostic piece of code that has to be correct
+whether `HttpRequest` is a notification, a request or a stream, and the macro
+has no way to find out which. A kind-agnostic call resolves through a trait
+that every kind implements, and there are only so many ways to obtain one.
+Stable Rust rejects all but one.
 
-So does everything downstream of it. The bridge deserialises a response into
-`Op::Output` before it reaches the handle; the effect router's registry parks
-requests in a `Storage<Op::Output>` and middleware's
-`EffectResolver<<Op as Operation>::Output>` names the same type; type
-generation's `EffectBuilder::variant::<Op>` reflects `Op::Output` for the
-shell; `Operation::register_types_facet` bounds it; and the `#[effect]` macro
-generates `resolve_*` and `expect_*` helpers whose signatures spell
-`<Op as Operation>::Output`. Each of these is written once, over `Operation`,
-and is correct for every kind. Third-party middleware and routers are written
-the same way.
-
-Without `Operation`, or with an `Operation` that has no payload type,
-`Request<Op>` has nothing to name. Every one of those sites would have to
-become three — one per kind trait — or be rewritten around an enum of the
-three, which is the coarseness this whole design set out to remove. That is
-the delicate part of the codebase, and both shapes proposed here are chosen so
-that it does not change at all.
-
-The blanket impl of a common trait from the three kind traits, the shape the
-review comment reached for, is what Rust rejects:
-
-```rust
-impl<Op: operation::Request> Operation for Op { type Output = Op::Response; }
-impl<Op: operation::Stream> Operation for Op { type Output = Op::Item; }
-impl<Op: operation::Notify> Operation for Op { type Output = (); }
-```
-
-The three impls overlap — nothing proves that a type cannot implement two of
-the kind traits — and coherence does not accept a proof that the kinds are
-disjoint, because there is no way to state one. So the supertrait keeps its
-one kind-neutral associated type, `Output`, and the kind traits are bound to
-it rather than the other way round.
-
-### Two ways to bind the kind traits
-
-Both shapes keep `Operation { type Kind; type Output }`, both give the kind
-traits their payload words, and both compile against a `Request<Op>` generic
-over all three kinds, constructors bounded on the kind traits, and an
-operation of each kind. They differ in who writes the kind trait impl.
-
-**Tied bounds** — the shape above. The kind trait's supertrait bound pins
-`Operation`'s `Kind` and `Output`; an author (or the derive) writes both impls.
-
-**Blanket impls** — the parent RFC's shape, carrying the payload. The kind
-trait is implemented for every `Operation` with the matching `Kind`, reading
-the payload off the supertrait; an author writes only the `Operation` impl.
-
-```rust
-pub trait Request: Operation<Kind = kind::Request> {
-    type Response: Send + Unpin + 'static;
-}
-
-impl<Op: Operation<Kind = kind::Request>> Request for Op {
-    type Response = <Op as Operation>::Output;
-}
-
-// and likewise for Notify (with Output = ()) and Stream (type Item)
-```
-
-The comparison, with the compiler's output for each mistake. The transcripts
-are from rustc 1.98.1, edition 2021, abridged to the lines that matter. They
-come from a standalone reproduction of each shape — the traits, a
-`Request<Op>` generic over all three kinds, constructors bounded on the kind
-traits, and one operation of each kind — compiled outside the repository, so
-the file names and line numbers they cite are that reproduction's, not
-anything in `crux_core`.
-
-**Impls per operation.** Tied: two, which the derive writes. Blanket: one; the
-kind trait is derived, never declared.
-
-**Disagreement between the two.** Tied: possible to write, rejected where the
-kind trait is implemented, pointing at both lines:
+**Blanket impls from the three kind traits** — the shape the review comment
+reached for. Three impls of one trait, each bounded on a different kind trait,
+overlap: nothing proves that a type cannot implement two of the kind traits,
+and coherence does not accept a proof that the kinds are disjoint, because
+there is no way to state one.
 
 ```text
-error[E0271]: type mismatch resolving `<Get as Operation>::Kind == Request`
-  --> sw_tied_mismatch.rs:62:29
-   |
-62 | impl operation::Request for Get { type Response = String; }
-   |                             ^^^ type mismatch resolving `<Get as Operation>::Kind == Request`
-   |
-note: expected this to be `kind::Request`
-  --> sw_tied_mismatch.rs:61:38
-   |
-61 | impl Operation for Get { type Kind = kind::Notify; type Output = String; }
-   |                                      ^^^^^^^^^^^^
-note: required by a bound in `operation::Request`
-  --> sw_tied_mismatch.rs:32:34
-   |
-32 |     pub trait Request: Operation<Kind = kind::Request, Output = <Self as Request>::Response> {
-   |                                  ^^^^^^^^^^^^^^^^^^^^ required by this bound in `Request`
+error[E0119]: conflicting implementations of trait `Operation`
+ --> blanket_overlap.rs:9:1
+  |
+8 | impl<Op: Request> Operation for Op { type Output = Op::Response; }
+  | ---------------------------------- first implementation here
+9 | impl<Op: Stream> Operation for Op { type Output = Op::Item; }
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 ```
 
-A payload that differs between the two impls fails the same way, resolving
-`<Get as Operation>::Output == String`. Blanket: unrepresentable. There is no
-second impl to disagree.
+**A trait on the container, written by the derive.** If the unifying trait
+were implemented for `Request<Get>` rather than for `Get`, the three impls
+would be on three distinct types and could not overlap — but the derive runs
+in the author's crate, and `Request` and the trait are both `crux_core`'s.
+That is an orphan impl, and the language forbids it whatever the type
+parameter is.
 
-**The orphan.** Tied: a type may declare `type Kind = kind::Request` and never
-implement `operation::Request`. It satisfies every `Op: Operation` site —
-`Request<Op>`, the registries, type generation — and no constructor can send
-it, and when someone tries, the error says "`Get` is not a request", which the
-type's own impl claims it is. The derive always writes both impls, so only a
-hand-written operation can be an orphan, but nothing stops one. Blanket:
-cannot happen; the kind trait follows from `Kind`.
+```text
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+ --> container_orphan.rs:6:1
+  |
+6 | impl crux_fake::Envelope for crux_fake::Request<Get> { type Output = String; }
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------
+  |                              |
+  |                              `crux_fake::Request` is not defined in the current crate
+  |
+  = note: impl doesn't have any local type before any uncovered type parameters
+```
 
-**The wrong constructor.** This is the mistake the whole design exists to
-catch, and it is where the two shapes part. Tied: an unimplemented trait,
-E0277, so `#[diagnostic::on_unimplemented]` fires and the author reads the
-message the trait carries:
+**Erasing the payload inside the container.** `Request<Op>` could hold a
+type-erased handle and recover the payload type where the kind is known, at
+`Request::resolve` under an `Op: operation::Request` bound. It fails at the
+bridge. The deserialising resolver the bridge stores has to be built where the
+payload type is known, which is inside `request_from_shell`; but that
+function knows neither the FFI format the bridge will use nor that the payload
+is deserialisable at all, and the effect router's opaque lane exists precisely
+for payloads that are not. The information the bridge needs is available only
+at the macro's kind-agnostic call, which is where the design has nothing to
+resolve it with.
+
+What remains is a single trait on the operation type, implemented once per
+operation, that names the payload for generic code. That is `Operation`. Its
+only alternative is for the effect enum to state each variant's kind, so that
+the macro can generate kind-specific code; the Alternatives section works
+that design through and gives its cost. Keeping the supertrait costs one
+hidden trait and one line per derived notification; removing it costs every
+effect enum ever written.
+
+The question was also put the other way round: where does the runtime *need*
+to treat the kinds uniformly, and could `Core::resolve` for requests and a
+separate `Core::send_item` for streams do without a common trait? At the
+resolve site it already does. `Core::resolve<Output>` takes
+`&mut impl Resolvable<Output>`, `Request<Op>` implements
+`Resolvable<Op::Output>`, and the handle inside it — the `RequestHandle`
+enum's `Once` or `Many` — decides whether this is a request being answered
+or a stream receiving an item. The indirection is hidden in the handle, as
+the review guessed it might be, and no split of `Core::resolve` is needed.
+That the runtime manages without a common trait is exactly why it is easy to
+believe the trait is unnecessary; the macro is where the belief fails.
+
+### Why only the derive writes it
+
+An earlier draft of this RFC compared two ways of binding the kind traits to
+the supertrait and asked review to choose. Sealing the supertrait makes the
+choice, by taking the best of each.
+
+With *tied* bounds — the shape above, written by hand — an author writes two
+impls, and the compiler rejects a disagreement between them where the kind
+trait is implemented. The wrong constructor is an unimplemented trait, so
+`#[diagnostic::on_unimplemented]` fires. But a hand-written `Operation` impl
+that declares `Kind = kind::Request` and never implements `operation::Request`
+compiles, satisfies every generic site, and cannot be sent; the diagnostic
+then says it is not a request, which its own impl claims it is.
+
+With *blanket* impls — the parent RFC's shape, the kind traits derived from
+`Kind` — an author writes one impl and the disagreement and the orphan cannot
+be written at all. But the wrong constructor is then an associated-type
+mismatch in the blanket impl's `where` clause, E0271, which the attribute
+cannot decorate; the author reads the compiler's walk through the bounds
+rather than a sentence.
+
+When the derive is the only author, the tied shape loses its two weaknesses.
+Nothing can disagree, because one macro writes both impls from one attribute.
+Nothing can be orphaned, for the same reason. And the diagnostic is the
+authored one. This is the transcript, from a standalone reproduction of the
+proposed shape compiled outside the repository with rustc 1.98.1, edition
+2021, abridged to the lines that matter; the file name and line numbers are
+the reproduction's, not anything in `crux_core`:
 
 ```text
 error[E0277]: `Get` is not a notification
-  --> sw_tied_diag.rs:78:26
-   |
-78 |     let _ = notify_shell(Get); // wrong constructor
-   |             ------------ ^^^ not a notification
-   |             |
-   |             required by a bound introduced by this call
-   |
+   --> derive_only.rs:121:37
+    |
+121 |     let _ = crux_core::notify_shell(Get); // wrong constructor
+    |             ----------------------- ^^^ not a notification
+    |             |
+    |             required by a bound introduced by this call
+    |
 help: the trait `operation::Notify` is not implemented for `Get`
-  --> sw_tied_diag.rs:65:1
-   |
-65 | pub struct Get;
-   | ^^^^^^^^^^^^^^
-   = note: a request is sent with request_from_shell, a stream with stream_from_shell
+   --> derive_only.rs:102:1
+    |
+102 | pub struct Get;
+    | ^^^^^^^^^^^^^^
+    = note: a request is sent with request_from_shell, a stream with stream_from_shell
 help: the trait `operation::Notify` is implemented for `Publish`
 ```
 
-Blanket: an associated-type mismatch, E0271, because `Notify` *is*
-implemented for every `Operation` and the failure is in the blanket impl's
-where-clause. The same attribute is present and does not fire; the author
-reads the compiler's walk through the bounds instead:
-
-```text
-error[E0271]: type mismatch resolving `<Get as Operation>::Kind == Notify`
-  --> sw_blanket_diag.rs:73:26
-   |
-73 |     let _ = notify_shell(Get); // wrong constructor
-   |             ------------ ^^^ type mismatch resolving `<Get as Operation>::Kind == Notify`
-   |             |
-   |             required by a bound introduced by this call
-   |
-note: expected this to be `kind::Notify`
-  --> sw_blanket_diag.rs:64:38
-   |
-64 | impl Operation for Get { type Kind = kind::Request; type Output = String; }
-   |                                      ^^^^^^^^^^^^^
-note: required for `Get` to implement `operation::Notify`
-  --> sw_blanket_diag.rs:31:59
-   |
-31 |     impl<Op: Operation<Kind = kind::Notify, Output = ()>> Notify for Op {}
-   |                        -------------------                ^^^^^^     ^^
-   |                        |
-   |                        unsatisfied trait bound introduced here
-note: required by a bound in `notify_shell`
-```
-
-The blanket error has one thing the tied error lacks: it points at the
-author's own `type Kind = kind::Request` line. The tied error has what the
-parent RFC promised and what a newcomer needs: a sentence saying what is
-wrong and a note naming the constructor to use.
-
-**Opting out.** Tied: an author who wants to hand-write the kind impl does so;
-it is the ordinary way to declare an operation without the derive. Blanket:
-the kind impl cannot be written by hand at all, because the blanket impl
-already covers the type:
-
-```text
-error[E0119]: conflicting implementations of trait `operation::Request` for type `Get`
-  --> sw_blanket_optout.rs:64:1
-   |
-31 |     impl<Op: Operation<Kind = kind::Request>> Request for Op {
-   |     -------------------------------------------------------- first implementation here
-...
-64 | impl operation::Request for Get { type Response = String; }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Get`
-```
-
-This is not a defect in the blanket shape — there is nothing an author would
-need to write — but it does mean the shape is closed to extension in a way the
-tied one is not.
-
-**Where this RFC leans.** Towards the tied bounds, because of the wrong
-constructor. The parent RFC promises an authored message naming the right
-constructor, the error in question is the one a first-time capability author
-is most likely to hit, and only the tied shape can produce it on stable Rust.
-Against that, the blanket shape delivers what the review of #583 asked for —
-the inconsistency is impossible, not checked — and has no orphan. The derive
-narrows the gap considerably, since derived operations cannot disagree or be
-orphaned in either shape, which leaves the choice resting on hand-written
-operations and on the diagnostic. This is the question the RFC most wants a
-reviewer's answer to.
+The same reproduction, with the offending line removed, compiles and runs:
+one operation of each kind, three constructors bounded on the kind traits, a
+`Request<Op>` generic over all three, and a function generic over
+`Op: Operation` reading `<Op::Kind as Kind>::VALUE`.
 
 ### What the derive emits
 
-`#[derive(Operation)]` writes both impls in the tied shape, and the one impl
-in the blanket shape. Its arguments become:
+`#[derive(Operation)]` writes three impls: the sealing marker, `Operation`,
+and the kind trait. Its arguments become:
 
 ```rust
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(notify)]
 pub struct Publish(pub Vec<u8>);
-// impl Operation { Kind = kind::Notify; Output = (); }
-// impl operation::Notify {}                        (tied shape only)
+// impl __private::Sealed for Publish {}
+// impl Operation for Publish { type Kind = kind::Notify; type Output = (); }
+// impl operation::Notify for Publish {}
 
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
-#[operation(request, output = ValueResult)]
+#[operation(request, response = ValueResult)]
 pub struct Get { pub key: String }
-// impl Operation { Kind = kind::Request; Output = ValueResult; }
-// impl operation::Request { Response = ValueResult; }  (tied shape only)
+// impl __private::Sealed for Get {}
+// impl Operation for Get { type Kind = kind::Request; type Output = ValueResult; }
+// impl operation::Request for Get { type Response = ValueResult; }
 
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(stream, item = Message)]
 pub struct Subscribe;
-// impl Operation { Kind = kind::Stream; Output = Message; }
-// impl operation::Stream { Item = Message; }         (tied shape only)
+// impl __private::Sealed for Subscribe {}
+// impl Operation for Subscribe { type Kind = kind::Stream; type Output = Message; }
+// impl operation::Stream for Subscribe { type Item = Message; }
 ```
 
-`item =` on a stream is the one change to the derive's surface. A request
-keeps `output =`, which still names a type literally called `Output` on the
-operation's `Operation` impl; whether the derive should also, or instead,
-accept `response =` is an open question below. `output =` on a stream, and
-`item =` on a request, are errors that name the right argument, as an
-`output =` on a notification is today. The `Output = ()` a notification needs
-is written by the derive; no author writes it unless they write the impls by
-hand.
+The payload argument takes the kind trait's word: `response =` on a request,
+`item =` on a stream, nothing on a notification. `output =` goes. It named a
+type called `Output` on a trait the author could see; with `Operation` hidden
+there is no `Output` in the author's view to name, and the argument should
+say what the kind trait says. The derive rejects `output =` with an error
+naming the right argument for the kind, as it rejects `response =` on a
+stream, `item =` on a request, and either on a notification. The `Output = ()`
+a notification needs is written by the derive; no author writes it.
 
 ### What generic code reads
 
@@ -615,9 +602,14 @@ the router, middleware, type generation, the `#[effect]` macro's output —
 keeps `Op: Operation` and keeps reading `Op::Output`. Type generation, the one
 site that reads `Op::KIND`, reads `<Op::Kind as operation::Kind>::VALUE`
 instead; the bridge takes a request's kind from its handle and does not
-change. Code generic over one kind is bounded on that kind's trait, as the
-parent RFC's `Command` constructors already are, and reads the payload under
-the kind's own word:
+change. A hidden trait is still a trait: `use crux_core::capability::Operation`
+in a middleware or a router of your own keeps compiling, and so does every
+`<Op as Operation>::Output` written against it. What the hiding changes is the
+documentation and the expectation, not the path.
+
+Code generic over one kind is bounded on that kind's trait, as the parent
+RFC's `Command` constructors already are, and reads the payload under the
+kind's own word:
 
 ```rust
 pub fn request_from_shell<Op>(operation: Op) -> RequestBuilder<Effect, Event, impl Future<Output = Op::Response>>
@@ -639,9 +631,20 @@ container to the kind-neutral machinery. Under an `operation::Stream` bound,
 `Op::Output` still compiles and still names the item, but `Op::Item` is the
 spelling to prefer.
 
+One method on `Operation` has callers outside generic code:
+`register_types_facet`, which a capability's typegen support calls by name —
+`HttpRequest::register_types_facet(registry)` in `crux_http`, and its
+siblings in `crux_kv` and `crux_time` — and which the shipped shell handlers
+RFC coerces to a plain function pointer. A method on a hidden trait is an
+awkward thing to document a call to. The proposal is a provided method of the
+same name and signature on each public kind trait, delegating to the hidden
+one, so that `Get::register_types_facet` reads as a method of
+`operation::Request` and keeps compiling. Whether that or a free function in
+`type_generation::facet` is the better home is an open question below.
+
 ### What this settles
 
-Four review threads on the compat stack are answered by this shape, and each
+Five review threads on the compat stack are answered by this shape, and each
 answer follows from it rather than being a separate decision.
 
 - The request's payload type moves to the `Request` trait, as asked on #588,
@@ -654,50 +657,66 @@ answer follows from it rather than being a separate decision.
   question. `operation::Notify` declares no payload type of its own; the `()`
   is `Output` on the supertrait, written by the derive and read only by
   generic code.
+- The inconsistency review of #583 objected to is not merely checked but
+  unwritable, because only the derive writes the declaration — which is what
+  that review said removing `Operation` would achieve, achieved without
+  removing it.
 - `const KIND` and its post-monomorphisation `const` assertion go, so the
   wrong constructor is visible to `cargo check` and the editor, as the parent
   RFC promised.
 
 ## Drawbacks
 
-**Two impls per operation, in the tied shape.** The derive writes both, and a
-hand-written operation was already two blocks in the compat release — the
-`Operation` impl and the marker — so for anyone on the compat shape the count
-does not change. For anyone still on a single legacy `impl Operation` with no
-kind, it goes from one block to two, or to the derive. A reader of
-hand-written code sees the payload named twice, as `Output` and as `Response`
-or `Item`; the bound guarantees they agree, but they are two lines.
+**No hand-written operations.** An author who wants to see or control what the
+derive writes cannot, short of implementing a trait whose path tells them not
+to. The derive handles generics and `where` clauses, and foreign types have to
+be wrapped regardless, so nothing is lost in what can be expressed; what is
+lost is a teaching device — the book has always shown `impl Operation for` to
+say what an operation is — and the option of not depending on a proc macro.
+The book can show the derive's expansion instead, and every Crux app already
+depends on `crux_macros` for `#[effect]`.
 
-**The orphan, in the tied shape.** A hand-written `Operation` impl with
-`type Kind = kind::Request` and no `impl operation::Request` compiles, passes
-every generic site, and cannot be sent by any constructor; the diagnostic then
-says it is not a request. Only hand-written operations can do this. The
-blanket shape has no such case.
+**`crux_macros` becomes a required dependency.** It is optional today, behind
+`crux_core`'s default feature. A trait only the derive implements cannot be
+behind a feature that turns the derive off. No crate in this repository
+disables the default features, and an app cannot declare an effect without
+the macro crate, so this formalises what is already true.
 
-**No authored diagnostic, in the blanket shape.** The wrong constructor is an
-E0271 the attribute cannot decorate, as the transcript above shows. It points
-at the offending `type Kind` line, which helps, and then walks through the
-blanket impl's bounds, which does not.
+**The hidden trait still exists, and so does `Output = ()`.** A notification's
+supertrait impl carries a unit type that nothing reads, and a reader who opens
+the derive's expansion sees a trait the documentation does not show. Both are
+the price of `Request<Op>` holding notifications in the same container as
+everything else, and both are written by the derive and read by nothing an
+author writes.
+
+**Sealing is by convention.** A hidden module and a marker trait stop nobody
+who is determined. What they do is make the unsupported path visibly
+unsupported, which is what the language allows.
+
+**`output =` renames for every derived request.** The compat release's
+`#[operation(request, output = T)]` becomes `#[operation(request, response = T)]`,
+which touches every request in `crux_kv`, `crux_time` and the `weather`
+example, and every request in an application written against the compat
+release. It is a rename the derive reports with the new spelling, so nothing
+compiles with a silently wrong meaning; but it is a rename the previous draft
+of this RFC did not ask for.
 
 **Every operation must declare a kind.** This is the parent RFC's breaking
 change, not a new one — `type Kind` cannot default — but this RFC is where
 it lands. Migration says what that costs and how to pay it.
-
-**`Output = ()` is still there.** A notification's supertrait impl carries a
-unit type that nothing reads. It is one line the derive writes, and it is the
-price of `Request<Op>` holding notifications in the same container as
-everything else.
 
 ## Migration
 
 This is a breaking change, and it lands with the rest of the parent RFC's
 breaking stage. What it costs, by who pays:
 
-**Derive users.** A request or a notification does not change. A stream
-renames `output =` to `item =`; the derive rejects the old spelling with a
-message naming the new one, so nothing compiles with a silently wrong meaning.
-In this repository the only derived stream is the `notes` example's
-`Subscribe`.
+**Derive users.** A notification does not change. A request renames
+`output =` to `response =`, a stream renames `output =` to `item =`; the
+derive rejects the old spelling with a message naming the new one, so nothing
+compiles with a silently wrong meaning. In this repository that is every
+derived request — `crux_kv/src/operation.rs`, `crux_time/src/operation.rs`,
+the `weather` example's `location` and `secret` effects — and the one derived
+stream, the `notes` example's `Subscribe`.
 
 **Bounds.** `Op: operation::Notify`, `Op: operation::Request` and
 `Op: operation::Stream` do not change. `Op::Output` still compiles under any of
@@ -709,13 +728,13 @@ becomes `<Op::Kind as operation::Kind>::VALUE`; in `crux_core` that is type
 generation's `EffectBuilder::variant`, and outside it, any middleware or
 router that read the const, which nothing in this repository does. Third-party
 middleware and routers written against `<Op as Operation>::Output` compile
-unchanged.
+unchanged; the trait is hidden from the documentation, not from the compiler.
 
-**Hand-written `impl Operation` blocks that declared a kind.** `const KIND`
-becomes `type Kind`, and in the tied shape the marker impl gains the payload
-type. In this repository that is `crux_http`'s `HttpRequest`
-(`crux_http/src/protocol.rs`) and `crux_core`'s own `RenderOperation`, a
-hand-written notification:
+**Hand-written `impl Operation` blocks.** They stop compiling — a hidden
+supertrait they do not implement, a `Kind` they do not name — and the recipe
+is the same for all of them: delete the impls, derive. In this repository the
+two that declare a kind are `crux_http`'s `HttpRequest`
+(`crux_http/src/protocol.rs`) and `crux_core`'s own `RenderOperation`:
 
 ```rust
 // compat release
@@ -725,66 +744,53 @@ impl Operation for RenderOperation {
 }
 impl operation::Notify for RenderOperation {}
 
-// breaking release, tied shape
-impl Operation for RenderOperation {
-    type Kind = operation::kind::Notify;
-    type Output = ();
-}
-impl operation::Notify for RenderOperation {}
+// breaking release
+#[derive(Operation, Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[operation(notify)]
+pub struct RenderOperation;
 ```
 
-**Hand-written `impl Operation` blocks that declared no kind.** This is the
-largest cost, because the compat release let them be and the breaking release
-cannot. An unmigrated impl stops compiling with `E0046`, and one that set the
-const also gets `E0438`; both point at the impl, not at a use site. As with
-the transcripts above, this one is from a standalone reproduction compiled
-outside the repository, and its file name is the reproduction's:
-
-```text
-error[E0046]: not all trait items implemented, missing: `Kind`
-  --> legacy_unmigrated.rs:17:1
-   |
-11 |     type Kind: Kind;
-   |     --------------- `Kind` from trait
-...
-17 | impl Operation for Legacy {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Kind` in implementation
-
-error[E0438]: const `KIND` is not a member of trait `Operation`
-  --> legacy_unmigrated.rs:25:5
-   |
-25 |     const KIND: Option<OperationKind> = Some(OperationKind::Request);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Operation`
-```
-
-The recipe is to look at how the operation is sent and declare that. An
-operation only ever passed to `request_from_shell` adds
-`type Kind = operation::kind::Request;` and, in the tied shape,
-`impl operation::Request for It { type Response = <its Output>; }` — or
-switches to `#[derive(Operation)]` with `#[operation(request, output = ..)]`,
-which is shorter and cannot be got wrong. An operation sent through two
-different constructors has to split into two types, one per kind, because a
-type has one `Kind`. The parent RFC looked for such a case across the
-repository and its examples and found none; the eight kind-less impls in this
-repository — `doctest_support/src/{basic_delay,delay,lib}.rs`,
+**Hand-written `impl Operation` blocks that declared no kind.** These are the
+larger group, because the compat release let them be and the breaking release
+cannot. The recipe is to look at how the operation is sent and declare that:
+an operation only ever passed to `request_from_shell` becomes
+`#[operation(request, response = <its Output>)]`. In this repository they are
+the eight the parent RFC counted — `doctest_support/src/{basic_delay,delay,lib}.rs`,
 `examples/counter-http/shared/src/sse.rs`, and `capabilities/{mod,sse}.rs` in
-`counter-middleware` and `counter-routing` — are each sent one way, and each
-is the parent RFC's remaining-examples migration.
+`counter-middleware` and `counter-routing` — and the operations in
+`crux_core`'s own tests, each of which is sent one way.
+
+Except that not all of them are. The parent RFC said it looked for an
+operation sent through two different constructors and found none; this RFC's
+exploration found them. `crux_core/tests/middleware.rs` declares one
+`RandomNumberRequest`, sends it with `request_from_shell` for the first dice
+and `stream_from_shell` for the rest, and resolves it from one middleware
+either way. Four of the doctests on `command/builder.rs` send one
+`AnOperation` through `request_from_shell` and then `notify_shell`, or a
+request and then a stream, or a stream and then a request. A type has one
+`Kind`, so each of these splits into two operation types, one per kind, and
+the middleware or the effect enum gains a variant. None of these is library
+code, and the pattern appears nowhere in the capability crates or the
+examples' applications, but the claim that it did not exist was wrong, and
+an application that leaned on the legacy flexibility in the same way will
+have to split its operation too.
+
+**`default-features = false`.** An application that disabled `crux_core`'s
+default features to drop the macros loses them anyway: the breaking release
+makes `crux_macros` a plain dependency. Nothing in this repository does this.
 
 **The transitional machinery goes.** Each of these exists only because the
 compat release checks the kind after monomorphisation, or lets an operation
-declare none:
+declare none, or lets an author write the declaration by hand:
 
 - `crux_core/tests/trybuild.rs`, whose module doc explains that the `fail/`
   cases are post-monomorphisation and so need `cargo build`, and why their
   `.stderr` snapshots depend on `rust-src`.
 - The four `tests/ui/fail` cases that snapshot the E0080 assertion message:
   `derive_notify_requested`, `notify_op_requested`, `request_op_notified` and
-  `request_op_streamed`. The fifth, `notify_marker_needs_unit_output`, holds
-  a claim that survives — a notification whose payload is not `()` does not
-  compile — but under either shape it is an ordinary error that `cargo check`
-  reports, so it can become a compile-fail doctest on `operation::Notify`
-  rather than a `trybuild` case.
+  `request_op_streamed`. The fifth, `notify_marker_needs_unit_output`, held a
+  claim about hand-written impls — a notification whose payload is not `()`
+  does not compile — that the derive makes unwritable, so it goes too.
 - `tests/ui/pass/legacy_operation_takes_any_constructor.rs` and
   `an_operation_without_a_kind_takes_any_constructor` in
   `crux_core/src/command/tests/basic_effects.rs`, which pin the behaviour of
@@ -803,21 +809,120 @@ carries the user-facing version of this list.
 ## Alternatives considered
 
 **Remove `Operation` outright.** `Notify`, `Request` and `Stream` as the only
-traits, with `Notify` carrying no associated type at all — the shape suggested
-in review of the derive. As the Design section explains, `Request<Op>` and
-everything generic over it then have no single bound from which to name the
-payload, and recovering one with blanket impls of `Operation` from the three
-kind traits is rejected as overlapping. The generic machinery would have to be
-written three times or built around an enum of the kinds. Keeping the
-supertrait costs one associated type and one line per derived notification;
-removing it costs the part of the codebase this design most wants to leave
-alone.
+traits, with `Notify` carrying no associated type at all — the shape
+suggested in review of the derive, and the question this RFC's exploration
+set out to answer. The Design section gives the three routes to it that Rust
+rejects: blanket impls of a common trait from the three kind traits overlap;
+a common trait on the container, written by the derive, is an orphan impl;
+and erasing the payload inside the container leaves the bridge nothing to
+deserialise with. One route works, and it was carried far enough to compile:
+
+```rust
+pub mod operation {
+    pub trait Notify: Send + 'static {}
+    pub trait Request: Send + 'static { type Response: Send + Unpin + 'static; }
+    pub trait Stream: Send + 'static { type Item: Send + Unpin + 'static; }
+}
+
+// Three containers, one per kind, in place of today's Request<Op>.
+pub struct Notification<Op: operation::Notify> { pub operation: Op }
+pub struct Request<Op: operation::Request> { pub operation: Op, pub handle: RequestHandle<Op::Response> }
+pub struct Subscription<Op: operation::Stream> { pub operation: Op, pub handle: RequestHandle<Op::Item> }
+
+// The unifying trait, on the three containers crux_core owns. Sealed;
+// implemented exactly three times, so it cannot overlap and nobody else
+// writes it.
+pub trait Envelope: sealed::Sealed + Send + 'static {
+    type Op: Send + 'static;
+    type Output: Send + Unpin + 'static;
+    const KIND: OperationKind;
+    fn split(self) -> (Self::Op, RequestHandle<Self::Output>);
+}
+```
+
+Generic code bounds on `E: Envelope` instead of `Op: Operation`, and the
+`#[effect]` macro learns each variant's kind from the container the author
+names in the enum:
+
+```rust
+// The `notes` example's effect enum, in this shape.
+#[effect(facet_typegen)]
+pub enum Effect {
+    Render(Notification<RenderOperation>),
+    Publish(Notification<pub_sub::Publish>),
+    Subscribe(Subscription<pub_sub::Subscribe>),
+    KvGet(Request<kv::Get>),
+    KvSet(Request<kv::Set>),
+    TimeNotifyAfter(Request<time::NotifyAfter>),
+    TimeClear(Request<time::Clear>),
+}
+```
+
+It has real virtues. There is no hidden trait and no `Output = ()`; the
+parent RFC's `type Kind`, sealed `Kind` trait and unit types are not needed,
+because the container is the kind; `Request<Op>` implements `Resolvable` and
+`Notification<Op>` does not, so resolving a notification stops compiling
+instead of failing at run time; and an effect enum documents, at a glance,
+which of its variants fire and forget, which are answered once and which
+stream. The container for a stream is called `Subscription` rather than
+`Stream` because capability code imports `futures::Stream` in the same
+module — the `notes` example's pub/sub capability already does — and the
+collision would be constant.
+
+What it costs is why it is rejected. The kind is declared twice, in the
+derive and in the enum, which is the shape this whole design exists to
+remove; a mismatch is caught, but an application author writing
+`Clear(???<crux_time::operation::Clear>)` has to know whether `Clear` is a
+request before they can write the variant. Every effect enum ever written
+changes: in this repository, thirty-seven in code and forty-two in doctests.
+`capability::Operation` and `Op::Output` go, which this RFC promised third
+parties they would keep. `Request<Op>` gaining a struct bound ripples the
+container into every generic parameter that held an operation —
+`ResolveSink<Op>` becomes `ResolveSink<Request<Op>>`, likewise `Parked` and
+the router's `Registry` — and `register_types_facet` leaves the operation for
+the container. Stream and notification capabilities change their public
+bounds, from `From<Request<Subscribe>>` to `From<Subscription<Subscribe>>`.
+A reproduction of the design compiles and runs; an estimate against this
+repository put the change at over a hundred files. And the decisive point is
+the first one: the effect enum should not have to say what kind an operation
+is, because the operation already says so.
+
+**A hidden `Kinded` trait written by the derive, to keep `Http(HttpRequest)`
+while removing `Operation`.** `trait Kinded { type Envelope: Envelope<Op = Self>; }`,
+so that the macro writes `Http(<HttpRequest as Kinded>::Envelope)`. This is
+the supertrait under another name: one trait every operation implements once,
+written by the derive, unable to be blanket-implemented from the kind traits
+for the same overlap. It relocates `Output` from the operation to the
+container and drops `Output = ()` from notifications, which is a naming
+improvement, not a structural one, and it keeps every cost of the three
+containers. Keeping `Operation`, hidden, is the same shape with less churn.
+
+**Tied bounds, hand-written impls allowed.** The previous draft's lean: the
+shape above with `Operation` public, an author free to write both impls. It
+has the authored diagnostic and the right payload words, and it reintroduces
+the two things the derive-only shape removes: a disagreement between the
+impls, which is at least a compile error at the declaration, and the orphan
+— a `Kind = kind::Request` with no `impl operation::Request`, which compiles,
+satisfies every generic site, cannot be sent, and is then told it is not a
+request. Both are only reachable by hand, and the derive-only shape closes
+the hand-written path for exactly that reason.
+
+**Blanket impls.** The parent RFC's shape, carrying the payload:
+`impl<Op: Operation<Kind = kind::Request>> Request for Op { type Response = Op::Output; }`
+and likewise for the other two. An author writes one impl, and a disagreement
+or an orphan cannot be written. But the payload word the author writes is
+`Output`, which is the word this RFC is trying to get rid of at the
+declaration; and the wrong constructor is an E0271 that
+`#[diagnostic::on_unimplemented]` cannot decorate, so the author reads the
+compiler's walk through the blanket impl's bounds — which does point at their
+own `type Kind` line, and then keeps going. The derive-only shape has
+everything this shape has and the authored message besides.
 
 **A payload-free `Operation`.** Keep the supertrait for the kind and the
-typegen hooks, but with no payload type on it. This fails in the same place
-and for the same reason: `Request<Op>` needs to name the type of its handle
-from `Op: Operation`, and a supertrait without a payload gives it nothing to
-name.
+typegen hooks, but with no payload type on it. This fails where removing the
+trait fails: `Request<Op>` and the macro's kind-agnostic calls need to name
+the payload from `Op: Operation`, and a supertrait without a payload gives
+them nothing to name.
 
 **The names the other way round.** Rename `Operation::Output` to `Response`,
 as the kind-neutral word, and give `operation::Request` a `type Output`. It
@@ -830,9 +935,9 @@ bridge's errors use.
 
 **Leave `Notify`'s payload free.** `operation::Notify: Operation<Kind =
 kind::Notify>` without `Output = ()`, since nothing reads a notification's
-payload. It would let a hand-written notification declare any `Output`, which
-the compat release's `notify_marker_needs_unit_output` test exists to forbid,
-and the derive would still have to pick something. Pinned is proposed.
+payload. With the derive the only author it would make no difference to what
+is written, but it would leave the derive picking a type for no reason and
+generic code unable to rely on one. Pinned is proposed.
 
 **Keep `const KIND` and the assertion permanently.** The parent RFC's
 transitional shape could stay. A defaulted const is the only stable way for
@@ -846,34 +951,44 @@ no reason to keep any of it.
 
 ## Open questions
 
-1. **Tied bounds or blanket impls.** The comparison above is the whole of the
-   question: an authored diagnostic at the wrong constructor and an open door
-   for hand-written impls, against an inconsistency that cannot be written and
-   no orphan. The RFC leans tied. A reviewer who weighs the #583 request for
-   impossibility above the diagnostic should say so; the derive, the generic
-   machinery and everything a shell sees are the same in both.
-2. **The derive's argument for a request.** `output =` is kept because it
-   still names a type called `Output` and because it spares every derived
-   request a rename. `response =` would match the trait. The derive could
-   accept both, with one deprecated; or `output =` could stay as the one
-   spelling that means "the payload, whatever this kind calls it".
+1. **Sealing by convention, or not at all.** `#[doc(hidden)]` on `Operation`
+   with the derive documented as the only way to declare an operation may be
+   enough; the `__private::Sealed` supertrait adds one impl to the derive's
+   output and one unmistakable signal to anyone who writes the trait by hand.
+   The RFC proposes both. A reviewer who finds the marker theatrical should
+   say so; nothing else in the design depends on it.
+2. **Where `register_types_facet` lives for callers.** Provided methods on
+   the three public kind traits, delegating to the hidden one, keep
+   `HttpRequest::register_types_facet` compiling and reading naturally. A free
+   function `type_generation::facet::register_operation::<Op>(registry)` is
+   the other choice, one name instead of three, at the cost of every call site
+   in the capability crates and the shipped shell handlers RFC changing.
 
 ## Next steps
 
-1. Settle open question 1 in review, then land the shape in the breaking
-   release: the traits, the derive's `item =` argument and (in the tied shape)
-   its second impl, the `#[diagnostic::on_unimplemented]` messages, and the
-   `Command` and `CommandContext` bounds on the kind traits.
-2. Replace `Op::KIND` with `<Op::Kind as operation::Kind>::VALUE` in type
+1. Land the shape in the breaking release: the hidden, sealed `Operation` with
+   `type Kind`; the kind traits with `Response` and `Item` and their
+   `#[diagnostic::on_unimplemented]` messages; the `Command` and
+   `CommandContext` bounds on the kind traits; `crux_macros` as a required
+   dependency of `crux_core`.
+2. The derive emits three impls from `#[operation(notify)]`,
+   `#[operation(request, response = ..)]` and `#[operation(stream, item = ..)]`,
+   and rejects `output =` with the right word for the kind.
+3. Replace `Op::KIND` with `<Op::Kind as operation::Kind>::VALUE` in type
    generation, and spell the payload `Op::Response` and `Op::Item` where a
-   kind-specific bound is already in place.
-3. Migrate the two hand-written kind-declaring impls, `HttpRequest` and
-   `RenderOperation`, and the eight kind-less impls in `doctest_support` and
-   the remaining examples, alongside the parent RFC's other breaking-stage
-   items: removing the deprecated enum APIs and re-exporting `store::KeyValue`
-   and `clock::Time` at the crate roots.
-4. Delete the `const` assertion and the transitional machinery listed under
+   kind-specific bound is already in place. Give `register_types_facet` its
+   public home, per open question 2.
+4. Migrate `HttpRequest` and `RenderOperation` to the derive; rename
+   `output =` in `crux_kv`, `crux_time` and the `weather` example; declare a
+   kind on the kind-less operations in `doctest_support`, the remaining
+   examples and `crux_core`'s tests, splitting `RandomNumberRequest` in the
+   middleware test and `AnOperation` in the builder doctests into one type per
+   kind — alongside the parent RFC's other breaking-stage items: removing the
+   deprecated enum APIs and re-exporting `store::KeyValue` and `clock::Time`
+   at the crate roots.
+5. Delete the `const` assertion and the transitional machinery listed under
    Migration.
-5. Update the [migration guide](../guide/migrate-per-operation-types.md) and
+6. Update the [migration guide](../guide/migrate-per-operation-types.md) and
    the [capabilities chapter](../part-2/capabilities.md) from "what the breaking
-   release will do" to what it does.
+   release will do" to what it does, showing the derive's expansion where the
+   chapter shows a hand-written impl today.
