@@ -391,6 +391,40 @@ fn namespaced_config(registry: &Registry) -> CodeGeneratorConfig {
     config
 }
 
+/// A type in a namespace is generated into a module of its own, and every
+/// module's plugins are asked for their imports and companion files. Only the
+/// module that generates the effect has a `Core`, and `FfiBridge` names
+/// `CoreBridge`, which is declared there and nowhere else. A companion file in
+/// another module would therefore not compile.
+#[test]
+fn a_namespaced_module_gets_no_bridge_and_no_imports() {
+    let (registry, effects) = fixture();
+    let config = namespaced_config(&registry);
+    let app = app_meta(&registry);
+
+    let plugin = CorePlugin::new(&effects.into(), app, Some(boltffi()));
+
+    assert!(EmitterPlugin::<Swift>::companion_files(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<Kotlin>::companion_files(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<CSharp>::companion_files(&plugin, &config).is_empty());
+    assert_eq!(
+        EmitterPlugin::<Swift>::imports(&plugin, &config),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        EmitterPlugin::<Kotlin>::imports(&plugin, &config),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        EmitterPlugin::<CSharp>::imports(&plugin, &config),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        EmitterPlugin::<TypeScript>::imports(&plugin, &config),
+        Vec::<String>::new()
+    );
+}
+
 /// TypeScript emits one file per module, so there is no companion — the bridge
 /// is in the module, and the package is imported wholesale because the
 /// `initialized` promise is not in its type declarations.
