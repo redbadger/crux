@@ -162,7 +162,13 @@ impl EmitterPlugin<Swift> for ShellExtensionPlugin {
 
     /// A Swift package entry declares the package; the target still needs its
     /// edge to the product, which is the extension's to name.
-    fn target_dependencies(&self) -> Vec<String> {
+    ///
+    /// The app's target, since that is where the sources were emitted — every
+    /// module is asked, and a namespaced one has none of them.
+    fn target_dependencies(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.is_app_module(config) {
+            return vec![];
+        }
         self.union(
             |extension| extension.swift.as_ref(),
             |shipped| shipped.target_dependencies,
