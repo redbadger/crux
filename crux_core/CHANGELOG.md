@@ -366,6 +366,19 @@ and this project adheres to
   carry variant index zero, and its errors number variants instead of naming
   them.
 
+### 🐛 Bug Fixes
+
+- **Two shared types that generate the same name are now an error.** The type
+  registry used to keep whichever it met first and drop the other without a
+  word, so an app's own `Delete` beside `crux_kv`'s `Delete` produced a single
+  generated `Delete` and shells that failed to compile far from the cause
+  ([#601](https://github.com/redbadger/crux/issues/601)). `TypeRegistry` now
+  rejects the pair at registration, naming both Rust types and the fix: rename
+  one with `#[facet(rename = "...")]` or give it its own namespace. This holds
+  for types registered directly and for types reached through a field or
+  variant. The check lives in `facet_generate`
+  ([redbadger/facet-generate#137](https://github.com/redbadger/facet-generate/pull/137)).
+
 ### ⚙️ Miscellaneous Tasks
 
 - **Facet type generation now requires `facet_generate` 0.21.** Only the
