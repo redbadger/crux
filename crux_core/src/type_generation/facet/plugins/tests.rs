@@ -416,6 +416,33 @@ fn a_namespaced_module_gets_no_bridge_and_no_imports() {
         EmitterPlugin::<TypeScript>::imports(&plugin, &config),
         Vec::<String>::new()
     );
+    // Every module is an SPM target of its own, and only the app's names the
+    // bridge — so only its target needs the edge to the FFI package.
+    assert_eq!(
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &config),
+        Vec::<String>::new()
+    );
+}
+
+/// The app's own module still gets all of it, which is what the assertions
+/// above would otherwise be satisfied by a plugin that emitted nothing at all.
+#[test]
+fn the_app_module_gets_the_bridge_and_the_target_edge() {
+    let (registry, effects) = fixture();
+    let mut config = CodeGeneratorConfig::new("Shared".to_string());
+    config.update_from(&registry);
+    let app = app_meta(&registry);
+
+    let plugin = CorePlugin::new(&effects.into(), app, Some(boltffi()), "Shared");
+
+    assert_eq!(
+        EmitterPlugin::<Swift>::companion_files(&plugin, &config).len(),
+        1
+    );
+    assert_eq!(
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &config),
+        vec![r#".product(name: "Shared", package: "Shared")"#.to_string()]
+    );
 }
 
 /// TypeScript emits one file per module, so there is no companion — the bridge
@@ -446,6 +473,8 @@ fn typescript_has_no_companion_and_imports_the_package() {
 #[test]
 fn swift_depends_on_the_package_the_bindings_are_in() {
     let (registry, effects) = fixture();
+    let mut config = CodeGeneratorConfig::new("Shared".to_string());
+    config.update_from(&registry);
     let app = app_meta(&registry);
     let effects: std::sync::Arc<[EffectMeta]> = effects.into();
 
@@ -455,7 +484,7 @@ fn swift_depends_on_the_package_the_bindings_are_in() {
         vec![r#".package(path: "../Shared")"#.to_string()]
     );
     assert_eq!(
-        EmitterPlugin::<Swift>::target_dependencies(&plugin),
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &config),
         vec![r#".product(name: "Shared", package: "Shared")"#.to_string()]
     );
 
@@ -468,7 +497,7 @@ fn swift_depends_on_the_package_the_bindings_are_in() {
         vec![r#".package(path: "../generated/Shared")"#.to_string()]
     );
     assert_eq!(
-        EmitterPlugin::<Swift>::target_dependencies(&plugin),
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &config),
         vec![r#".product(name: "SharedLib", package: "Shared")"#.to_string()]
     );
 }
