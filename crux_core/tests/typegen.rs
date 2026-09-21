@@ -331,13 +331,6 @@ mod facet_test {
                 "func legacy(_ operation: Legacy, requestId: UInt32,",
                 "public struct EffectDispatcher: Sendable {",
                 "public func dispatch(_ request: Request) {",
-                "public enum EffectKind: UInt8, Hashable, Sendable {",
-                "case render = 0",
-                "case legacy = 5",
-                "public struct RequestId: Hashable, Sendable {",
-                "public var effectKind: EffectKind? {",
-                "public var operationKind: OperationKind {",
-                "public var sequence: UInt32 {",
                 "extension EffectHandler {",
                 "public func render(_ operation: RenderOperation) {}",
                 "import Observation",
@@ -380,13 +373,6 @@ mod facet_test {
                 "fun legacy(operation: com.example.shared.Legacy, requestId: UInt, resolve: (ByteArray) -> Unit)",
                 "class EffectDispatcher(",
                 "suspend fun dispatch(request: Request) {",
-                "enum class EffectKind(val index: UByte) {",
-                "RENDER(0u),",
-                "LEGACY(5u);",
-                "data class RequestId(val rawValue: UInt) {",
-                "val effectKind: EffectKind?",
-                "val operationKind: OperationKind",
-                "val sequence: UInt",
                 "import kotlinx.coroutines.flow.StateFlow",
                 "interface CoreBridge {",
                 "class Core(",
@@ -421,13 +407,6 @@ mod facet_test {
                 "void Legacy(Example.Shared.Legacy operation, uint requestId, Action<byte[]> resolve);",
                 "public sealed class EffectDispatcher",
                 "public void Dispatch(Example.Shared.Request request)",
-                "public enum EffectKind : byte",
-                "Render = 0,",
-                "Legacy = 5,",
-                "public sealed record RequestId(uint RawValue)",
-                "public Example.Shared.EffectKind? EffectKind",
-                "public Example.Shared.OperationKind OperationKind",
-                "public uint Sequence => RawValue & 0x7fffffu;",
                 "using System.ComponentModel;",
                 "public interface ICoreBridge",
                 "public sealed class Core : INotifyPropertyChanged",
@@ -465,9 +444,6 @@ mod facet_test {
                 "legacy(operation: Legacy, requestId: uint32, resolve: (bytes: Uint8Array) => void): void;",
                 "export class EffectDispatcher {",
                 "public dispatch(request: Request): void {",
-                r#"export type EffectKind = "Render" | "Get" | "Publish" | "Subscribe" | "Probe" | "Legacy";"#,
-                "export interface RequestId {",
-                "export function decodeRequestId(rawValue: number): RequestId {",
                 r#"import { BincodeDeserializer } from "./bincode";"#,
                 "render?(operation: RenderOperation): void;",
                 "export interface CoreBridge {",
@@ -726,13 +702,15 @@ mod facet_test {
     fn effect_handlers_can_be_turned_off() {
         let source = swift_source(&generator().without_effect_handlers());
 
-        assert!(!source.contains("OperationKind"));
         assert!(!source.contains("EffectHandler"));
-        assert!(!source.contains("EffectKind"));
-        assert!(!source.contains("RequestId"));
+        assert!(!source.contains("EffectDispatcher"));
         // `Core` is built on the dispatcher, so it goes too.
         assert!(!source.contains("CoreBridge"));
         assert!(!source.contains("public final class Core {"));
+        // The kind accessor stays: a shell dispatching by hand still has to
+        // know how many times to resolve.
+        assert!(source.contains("public enum OperationKind: Hashable, Sendable {"));
+        assert!(source.contains("public var operationKind: OperationKind? {"));
     }
 
     #[test]
@@ -1672,6 +1650,26 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         generator(&[&STORE])
             .csharp(&Config::builder("Example.Shared", dir.path()).build())
             .expect("c# type generation should succeed");
+
+        dotnet_build(dir.path());
+    }
+
+    /// The kind accessor is a property *inside* the effect record, which the
+    /// emitter does not declare `partial`, so a shell that turns the handler
+    /// API off is the one configuration where it could be left stranded.
+    #[test]
+    fn csharp_compiles_without_the_effect_handler_api() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&STORE])
+            .without_effect_handlers()
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+
+        let source = fs::read_to_string(dir.path().join("Example/Shared/Shared.cs"))
+            .expect("should write a C# module");
+        assert!(source.contains("public enum OperationKind"));
+        assert!(source.contains("public Example.Shared.OperationKind? OperationKind"));
+        assert!(!source.contains("IEffectHandler"));
 
         dotnet_build(dir.path());
     }

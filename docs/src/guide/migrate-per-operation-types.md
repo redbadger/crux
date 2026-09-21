@@ -110,6 +110,15 @@ impl crux_core::operation::Request for Get {}
 Import the module, not the items — `operation::Request` reads unambiguously
 where a bare `Request` collides with `crux_core::Request<Op>`.
 
+```admonish note title="This pair is transitional"
+`const KIND` is this release's shape. In the breaking release it becomes
+`type Kind = operation::kind::Request`, `type Output` stays as it is, and
+`operation::Request` gains a `type Response` naming the same type, with the
+bounds holding the two together. See
+[Coming in the breaking release](#coming-in-the-breaking-release), and the
+[RFC](../rfcs/operation-kind-traits.md) for the reasoning.
+```
+
 ---
 
 ## Replacing a response enum
@@ -827,18 +836,49 @@ module or the item silences the warning.
 
 ## Coming in the breaking release
 
-Written against this release's derive and marker traits, your code does not
-change. What changes:
+Written against this release's derive and marker traits, most of your code does
+not change: `#[derive(Operation)]` keeps working, so does any bound on
+`operation::{Notify, Request, Stream}`, and so does every `Op::Output`. Three
+things are rewritten: the derive's payload argument takes the kind's word —
+a request's `output =` becomes `response =`, a stream's becomes `item =` — a
+hand-written `impl Operation` block becomes the derive, and anything that read
+`Op::KIND` — a middleware or router of your own, generic over `Operation` —
+reads `<Op::Kind as operation::Kind>::VALUE`. What changes:
 
-- **The kind becomes an associated type.** `type Kind: operation::Kind` replaces
-  `const KIND`, with sealed unit types `operation::kind::{Notify, Request,
-  Stream}`, and the markers `operation::{Notify, Request, Stream}` become blanket
-  impls from it. The derive emits `type Kind = kind::Request;` instead of a const
-  plus a marker impl, so only hand-written `impl Operation` blocks need editing.
-- **`Command` bounds tighten** to the markers, so the wrong constructor is an
-  ordinary `E0277` you see in `cargo check` and in your editor — with a
-  `#[diagnostic::on_unimplemented]` message naming the right one — and the
-  post-monomorphisation `const` assertion goes.
+- **The kind becomes an associated type, the kind traits name the payload,
+  and only the derive writes `Operation`.** `Operation` survives as the
+  supertrait, with `type Kind: operation::Kind` in place of `const KIND` — the
+  kinds are sealed unit types `operation::kind::{Notify, Request, Stream}` —
+  and `type Output` exactly as today, which is what `Request<Op>` and the rest
+  of the machinery generic over `Operation` keep reading. The three traits
+  `operation::{Notify, Request, Stream}` each require `Operation` with the
+  matching `Kind`, and the two that have a payload name it under the word
+  that fits: `operation::Request` has `type Response`, `operation::Stream` has
+  `type Item`, and `operation::Notify` has none. Under an `operation::Stream`
+  bound, `Op::Output` still compiles but `Op::Item` is the spelling to prefer.
+  `Operation` itself is hidden from the documentation and sealed: the derive
+  implements it, from `#[operation(request, response = ..)]`,
+  `#[operation(stream, item = ..)]` or `#[operation(notify)]`, and a
+  hand-written `impl Operation` is no longer supported. The request from
+  [above](#by-hand) becomes the derive:
+
+  ```rust,ignore
+  // Rust
+  #[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug)]
+  #[operation(request, response = ValueResult)]
+  pub struct Get {
+      pub key: String,
+  }
+  ```
+
+  The [one trait per operation kind RFC](../rfcs/operation-kind-traits.md)
+  has the design and its reasoning, including why the supertrait cannot be
+  removed and why nothing but the derive should implement it.
+
+- **`Command` bounds tighten** to the kind traits, so the wrong constructor is
+  an ordinary `E0277` you see in `cargo check` and in your editor — reading
+  "`Get` is not a notification", with a note naming the constructors for the
+  other two kinds — and the post-monomorphisation `const` assertion goes.
 - **The deprecated items above are removed**, along with the `command` module
   re-export shims and the legacy "no declared kind" handling in the bridge and in
   type generation. Every operation will have to declare a kind.
