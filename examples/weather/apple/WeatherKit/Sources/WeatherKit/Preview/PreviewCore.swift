@@ -58,15 +58,15 @@ import App
             neverRuns()
         }
 
-        func fetchSecret(_: Fetch) async -> SecretFetchResponse {
+        func fetchSecret(_: FetchSecret) async -> SecretFetchResponse {
             neverRuns()
         }
 
-        func storeSecret(_: Store) async -> SecretStoreResponse {
+        func storeSecret(_: StoreSecret) async -> SecretStoreResponse {
             neverRuns()
         }
 
-        func deleteSecret(_: Delete) async -> SecretDeleteResponse {
+        func deleteSecret(_: DeleteSecret) async -> SecretDeleteResponse {
             neverRuns()
         }
     }
