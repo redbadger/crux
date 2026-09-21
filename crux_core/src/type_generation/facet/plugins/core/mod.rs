@@ -50,15 +50,39 @@ pub struct CorePlugin {
     effects: Arc<[EffectMeta]>,
     app: AppMeta,
     ffi: Option<BoltFfi>,
+    /// The module the app's own types are in, which is the only one any of
+    /// this belongs to. A type in a namespace is generated into a module of
+    /// its own, and every module's plugins are asked for their imports and
+    /// companion files.
+    package: String,
 }
 
 impl CorePlugin {
-    pub fn new(effects: &Arc<[EffectMeta]>, app: AppMeta, ffi: Option<BoltFfi>) -> Self {
+    pub fn new(
+        effects: &Arc<[EffectMeta]>,
+        app: AppMeta,
+        ffi: Option<BoltFfi>,
+        package: &str,
+    ) -> Self {
         Self {
             effects: Arc::clone(effects),
             app,
             ffi,
+            package: package.to_string(),
         }
+    }
+
+    /// Whether this is the module the app's types are in, rather than one
+    /// generated for a namespace of theirs.
+    ///
+    /// The `Core` itself lands in the right place without asking, because
+    /// `after_type` only fires for the effect enum — but the module-level
+    /// hooks are called for every module, and a namespaced one has no `Core`
+    /// for an `FfiBridge` to bridge to. Emitting one there is not merely
+    /// untidy: the companion file names `CoreBridge`, which is declared in
+    /// this module alone, so it does not compile.
+    fn is_app_module(&self, config: &CodeGeneratorConfig) -> bool {
+        config.module_name() == self.package
     }
 
     /// `Core` uses fixed names and owns the view loop, so it is emitted for the
@@ -102,8 +126,8 @@ impl EmitterPlugin<Swift> for CorePlugin {
     ///
     /// The FFI module is deliberately *not* imported here: only `FfiBridge`
     /// names it, and that lives in its own file.
-    fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.emits_core() {
+    fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core() || !self.is_app_module(config) {
             return vec![];
         }
         vec!["Observation".to_string()]
@@ -116,6 +140,9 @@ impl EmitterPlugin<Swift> for CorePlugin {
     }
 
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
+        if !self.is_app_module(config) {
+            return vec![];
+        }
         let Some(ffi) = self.ffi() else {
             return vec![];
         };
@@ -160,8 +187,8 @@ impl EmitterPlugin<Swift> for CorePlugin {
 }
 
 impl EmitterPlugin<Kotlin> for CorePlugin {
-    fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.emits_core() {
+    fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core() || !self.is_app_module(config) {
             return vec![];
         }
         [
@@ -192,6 +219,9 @@ impl EmitterPlugin<Kotlin> for CorePlugin {
     }
 
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
+        if !self.is_app_module(config) {
+            return vec![];
+        }
         let Some(ffi) = self.ffi() else {
             return vec![];
         };
@@ -223,7 +253,7 @@ impl EmitterPlugin<Kotlin> for CorePlugin {
 
 impl EmitterPlugin<TypeScript> for CorePlugin {
     fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.emits_core() {
+        if !self.emits_core() || !self.is_app_module(config) {
             return vec![];
         }
         let path = bincode_import_path(config);
@@ -265,8 +295,8 @@ impl EmitterPlugin<TypeScript> for CorePlugin {
 impl EmitterPlugin<CSharp> for CorePlugin {
     /// `Core` raises `PropertyChanged`, so it needs the interface, the delegate
     /// and the event args.
-    fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.emits_core() {
+    fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core() || !self.is_app_module(config) {
             return vec![];
         }
         vec!["using System.ComponentModel;".to_string()]
@@ -279,6 +309,9 @@ impl EmitterPlugin<CSharp> for CorePlugin {
     }
 
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
+        if !self.is_app_module(config) {
+            return vec![];
+        }
         let Some(ffi) = self.ffi() else {
             return vec![];
         };
