@@ -867,6 +867,34 @@ mod facet_clash_test {
         pub whoops: String,
     }
 
+    /// Two modules, each with a type whose name generates the same way.
+    pub mod first {
+        use facet::Facet;
+
+        #[allow(clippy::unsafe_derive_deserialize)]
+        #[derive(Facet)]
+        pub struct Delete {
+            pub key: String,
+        }
+    }
+
+    pub mod second {
+        use facet::Facet;
+
+        #[allow(clippy::unsafe_derive_deserialize)]
+        #[derive(Facet)]
+        pub struct Delete {
+            pub value: String,
+        }
+    }
+
+    /// Reaches `second::Delete` through a field rather than registering it.
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(Facet)]
+    pub struct Holder {
+        pub inner: second::Delete,
+    }
+
     #[effect(facet_typegen)]
     pub enum Effect {
         Render(RenderOperation),
@@ -948,6 +976,62 @@ mod facet_clash_test {
         };
         assert!(
             message.contains("`FfiBridge` is generated for the shell API"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// Keeping one and dropping the other silently gave shells a single
+    /// `Delete` and a compile error far from the cause.
+    #[test]
+    fn two_types_cannot_share_a_generated_name() {
+        let error = TypeRegistry::new()
+            .register_type::<first::Delete>()
+            .expect("should register the first type")
+            .register_type::<second::Delete>()
+            .err()
+            .expect("should reject the clashing type");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains(r#"two types generate as "Delete""#),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("first::Delete"),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("second::Delete"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// The clash is just as real when the second type is reached through a
+    /// field of a registered type.
+    #[test]
+    fn a_nested_type_cannot_share_a_generated_name() {
+        let error = TypeRegistry::new()
+            .register_type::<first::Delete>()
+            .expect("should register the first type")
+            .register_type::<Holder>()
+            .err()
+            .expect("should reject the clashing type");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains(r#"two types generate as "Delete""#),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("first::Delete"),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("second::Delete"),
             "unexpected message: {message}"
         );
     }
