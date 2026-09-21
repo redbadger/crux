@@ -171,8 +171,12 @@ impl EmitterPlugin<Swift> for CorePlugin {
             .unwrap_or_default()
     }
 
-    /// …and the generated target has to depend on its product.
-    fn target_dependencies(&self) -> Vec<String> {
+    /// …and the generated target has to depend on its product — the app's
+    /// target, that is, which is the only one that names the bridge.
+    fn target_dependencies(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.is_app_module(config) {
+            return vec![];
+        }
         self.ffi()
             .and_then(BoltFfi::swift_ffi)
             .map(|swift| {
