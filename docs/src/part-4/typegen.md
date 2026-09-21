@@ -734,8 +734,9 @@ name the generated module imports from the serialization runtime (such as
 extension of another capability declares, or the name of a type registered
 in the root namespace. The same applies to a type a capability registers:
 `crux_kv` brings its `Delete` with it, and an app with a `Delete` of its own
-renames one of them with `#[facet(rename = "...")]`. The extensions of one
-capability declare the same names, and that is not a clash.
+is told so at registration, with both Rust types named, and renames one of
+them with `#[facet(rename = "...")]`. The extensions of one capability
+declare the same names, and that is not a clash.
 
 Each source file is written beside the module under its own name, so the
 name must work as a file name in every language: an ASCII letter, then
