@@ -682,8 +682,9 @@ name the generated module imports from the serialization runtime (such as
 `Serializer`), the name of one of your namespaces, a name another
 registered extension declares, or the name of a type registered in the
 root namespace. The same goes for a type a capability registers: `crux_kv`
-brings its `Delete` with it, and an app with a `Delete` of its own renames
-one of them with `#[facet(rename = "...")]`. The extension's own name only
+brings its `Delete` with it, and an app with a `Delete` of its own is told
+so at registration, with both Rust types named, and renames one of them
+with `#[facet(rename = "...")]`. The extension's own name only
 names its files, so it has to work as a file name (an ASCII letter, then
 ASCII letters, digits or `_`), and two extensions with the same name,
 ignoring case, cannot both be registered, because their files would
