@@ -79,8 +79,8 @@ crux_core::__crux_core_facet_typegen_items! {
     /// A shell implements the whole protocol, so every type that the protocol
     /// names must be generated, including the types of the operations that the
     /// app never sends. Thus these names are taken in the app's generated
-    /// module whether or not the app sends the operations. Do not give an app
-    /// type one of these names.
+    /// module whether or not the app sends the operations. Type generation
+    /// rejects an app type that generates under one of these names.
     ///
     /// # Errors
     /// Returns a [`TypeGenError`] if a type cannot be registered.

@@ -8,7 +8,7 @@
 //! developer-facing command builders live in the [`command`] submodule.
 //!
 //! The names include `Secret` because the generated shell types share one
-//! namespace, and two types with the same name would become one type.
+//! namespace, and type generation rejects two types with the same name.
 
 pub mod command;
 

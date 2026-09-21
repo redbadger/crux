@@ -646,11 +646,13 @@ each language (C# adds an `I` to the name of the interface).
 
 A protocol declares top-level names in your generated module, such as
 `HttpHandler` or `IKeyValueHandler`. The build fails if one of your registered
-types has one of those names. The same applies to the types of a capability:
-`crux_kv` brings its `DeleteValue`, and if your app also has a `DeleteValue`,
-rename one of them with `#[facet(rename = "...")]`. A type in your shell with
-the same name as a protocol does not cause a build failure, but it can be
-confusing. If that is a problem, rename your type.
+types has one of those names. The same applies to the types of a capability.
+For example, `crux_kv` brings its `DeleteValue`, even when your app does not
+send it. If your app also has a `DeleteValue`, type generation rejects the
+pair and names both Rust types. Rename one of them with
+`#[facet(rename = "...")]`. A type in your shell with the same name as a
+protocol does not cause a build failure, but it can be confusing. If that is a
+problem, rename your type.
 
 ### Shell extensions
 
@@ -789,11 +791,11 @@ the serialization runtime (such as `Serializer`), the name of one of your
 namespaces, a name that an extension of another capability declares, a name
 that a protocol declares, or the name of a type registered in the root
 namespace. The protocol declares its own names (`HttpHandler`), so an
-extension does not list them. The same applies to a type a capability
-registers: `crux_kv` brings its `DeleteValue` with it, and an app with a
-`DeleteValue` of its own renames one of them with `#[facet(rename = "...")]`.
-The extensions of one capability declare the same names, and that is not a
-clash.
+extension does not list them. The same applies to a type that a capability
+registers. `crux_kv` brings its `DeleteValue` with it. If your app has a
+`DeleteValue` of its own, type generation rejects the pair at registration and
+names both Rust types. Rename one of them with `#[facet(rename = "...")]`. The
+extensions of one capability declare the same names, and that is not a clash.
 
 Each source file is written beside the module under its own name, so the
 name must work as a file name in every language: an ASCII letter, then
