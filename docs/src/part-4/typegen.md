@@ -646,11 +646,13 @@ each language (C# adds an `I` to the name of the interface).
 
 A protocol declares top-level names in your generated module, such as
 `HttpHandler` or `IKeyValueHandler`. The build fails if one of your registered
-types has one of those names. The same applies to the types of a capability:
-`crux_kv` brings its `DeleteValue`, and if your app also has a `DeleteValue`,
-rename one of them with `#[facet(rename = "...")]`. A type in your shell with
-the same name as a protocol does not cause a build failure, but it can be
-confusing. If that is a problem, rename your type.
+types has one of those names. The same applies to the types of a capability.
+For example, `crux_kv` brings its `DeleteValue`, even when your app does not
+send it. If your app also has a `DeleteValue`, type generation rejects the
+pair and names both Rust types. Rename one of them with
+`#[facet(rename = "...")]`. A type in your shell with the same name as a
+protocol does not cause a build failure, but it can be confusing. If that is a
+problem, rename your type.
 
 ### Request ids
 

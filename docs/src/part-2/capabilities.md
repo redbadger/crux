@@ -137,7 +137,7 @@ Now each operation names only its own outcomes:
 
 Three operations, three outputs, two variants each. There is no wide `SecretResponse` and no `unreachable!()` anywhere, because a `SecretStoreResponse` is not a possible answer to a `FetchSecret` — the type says so, and the shell's generated handler method for `FetchSecret` returns a `SecretFetchResponse` or nothing at all.
 
-The operation names carry the capability's name for a reason that has nothing to do with Rust: type generation puts every operation of every capability into one namespace on the shell side, so a bare `Delete` here would clash with any other capability or app operation called `Delete`. An app-defined operation with a generic name is worth prefixing from the start.
+The operation names carry the capability's name for a reason that has nothing to do with Rust: type generation puts every operation of every capability into one namespace on the shell side, so a bare `Delete` here would clash with any other capability or app operation called `Delete`. Type generation rejects two shared types that generate the same name. An app-defined operation with a generic name is worth prefixing from the start.
 
 The developer API is correspondingly plain:
 
@@ -219,7 +219,7 @@ Keep the `shell` module itself unconditional, and put only its items inside the 
 
 The name (`"KeyValue"`) names the file that type generation writes. The second argument of each language is the list of top-level names that the file declares. Type generation checks each name for a clash with the generated code and with the app's types.
 
-`register_types` registers every operation of the capability, because a shell implements the whole shell protocol. Thus the app's generated code has every type that the shell protocol names, including the types of the operations that the app does not send.
+`register_types` registers every operation of the capability, because a shell implements the whole shell protocol. Thus the app's generated code has every type that the shell protocol names, including the types of the operations that the app does not send. Type generation rejects an app type that generates under one of those names, and the error names both Rust types.
 
 Last, name the shell protocol on every operation, with `protocol =`:
 
