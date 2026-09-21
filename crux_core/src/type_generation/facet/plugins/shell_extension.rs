@@ -129,7 +129,13 @@ impl EmitterPlugin<Swift> for ShellExtensionPlugin {
 
     /// A Swift package entry declares the package; the target still needs its
     /// edge to the product, which is the extension's to name.
-    fn target_dependencies(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
+    ///
+    /// The root module's target, since that is where the sources were emitted.
+    /// Every module is asked, and a namespaced one has none of them.
+    fn target_dependencies(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !is_root_module(config) {
+            return vec![];
+        }
         self.target_dependencies.clone()
     }
 }
