@@ -496,10 +496,11 @@ many operations has many of them.
 output the sources name is generated, including ones the app never sends, and
 all of them land in the app's root namespace. That is more surface for a name
 to collide in: the weather example's own `secret::Delete` met `crux_kv`'s
-`Delete` this way, and today the registry keeps one of them without a word
-([#601](https://github.com/redbadger/crux/issues/601)). Renaming the app's
-type is the fix, as it is for `Set`; a facet namespace for capability types
-would be the structural one.
+`Delete` this way. The registry used to keep one of them without a word
+([#601](https://github.com/redbadger/crux/issues/601)); it now rejects the
+pair at registration, naming both Rust types. Renaming the app's type is the
+fix, as it is for `Set`; a facet namespace for capability types would be the
+structural one.
 
 **The app has to know to register it.** Type generation cannot suggest a
 shipped handler, because it does not know which crates ship one until they
