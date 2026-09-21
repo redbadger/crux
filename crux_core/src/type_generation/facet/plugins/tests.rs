@@ -202,7 +202,7 @@ where
     CorePlugin: EmitterPlugin<L>,
 {
     emit(|w, ctx, effects, app| {
-        let plugin = CorePlugin::new(&effects.to_vec().into(), app.clone(), None);
+        let plugin = CorePlugin::new(&effects.to_vec().into(), app.clone(), None, "Shared");
         EmitterPlugin::<L>::after_type(&plugin, w, ctx)
     })
 }
@@ -222,7 +222,12 @@ where
     CorePlugin: EmitterPlugin<L>,
 {
     emit(|w, ctx, effects, app| {
-        let plugin = CorePlugin::new(&effects.to_vec().into(), app.clone(), Some(boltffi()));
+        let plugin = CorePlugin::new(
+            &effects.to_vec().into(),
+            app.clone(),
+            Some(boltffi()),
+            "Shared",
+        );
         EmitterPlugin::<L>::after_type(&plugin, w, ctx)
     })
 }
@@ -239,7 +244,7 @@ where
     config.update_from(&registry);
     let app = app_meta(&registry);
 
-    let plugin = CorePlugin::new(&effects.into(), app, Some(ffi));
+    let plugin = CorePlugin::new(&effects.into(), app, Some(ffi), "Shared");
     let mut files = EmitterPlugin::<L>::companion_files(&plugin, &config);
 
     assert_eq!(files.len(), 1, "expected exactly one companion file");
@@ -378,6 +383,29 @@ fn ffi_bridge_csharp() {
     insta::assert_snapshot!(file.contents);
 }
 
+/// A type in a namespace is generated into a module of its own, and every
+/// module's plugins are asked for their imports and companion files — but only
+/// the app's module has a `Core`, and `FfiBridge` names `CoreBridge`, which is
+/// declared there and nowhere else. A companion file in a namespaced module
+/// would therefore not compile.
+#[test]
+fn a_namespaced_module_gets_no_bridge_and_no_imports() {
+    let (registry, effects) = fixture();
+    let mut config = CodeGeneratorConfig::new("Feature".to_string()).with_parent("Shared");
+    config.update_from(&registry);
+    let app = app_meta(&registry);
+
+    let plugin = CorePlugin::new(&effects.into(), app, Some(boltffi()), "Shared");
+
+    assert!(EmitterPlugin::<Swift>::companion_files(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<Kotlin>::companion_files(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<CSharp>::companion_files(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<Swift>::imports(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<Kotlin>::imports(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<CSharp>::imports(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<TypeScript>::imports(&plugin, &config).is_empty());
+}
+
 /// TypeScript emits one file per module, so there is no companion — the bridge
 /// is in the module, and the package is imported wholesale because the
 /// `initialized` promise is not in its type declarations.
@@ -388,7 +416,7 @@ fn typescript_has_no_companion_and_imports_the_package() {
     config.update_from(&registry);
     let app = app_meta(&registry);
 
-    let plugin = CorePlugin::new(&effects.into(), app, Some(boltffi()));
+    let plugin = CorePlugin::new(&effects.into(), app, Some(boltffi()), "Shared");
 
     assert!(EmitterPlugin::<TypeScript>::companion_files(&plugin, &config).is_empty());
     assert!(
@@ -409,7 +437,7 @@ fn swift_depends_on_the_package_the_bindings_are_in() {
     let app = app_meta(&registry);
     let effects: std::sync::Arc<[EffectMeta]> = effects.into();
 
-    let plugin = CorePlugin::new(&effects, app.clone(), Some(boltffi()));
+    let plugin = CorePlugin::new(&effects, app.clone(), Some(boltffi()), "Shared");
     assert_eq!(
         EmitterPlugin::<Swift>::manifest_dependencies(&plugin),
         vec![r#".package(path: "../Shared")"#.to_string()]
@@ -422,7 +450,7 @@ fn swift_depends_on_the_package_the_bindings_are_in() {
     // SPM names the package by the last component of the path, whatever the
     // module is called.
     let ffi = BoltFfi::new().swift_package("Shared", "SharedLib", "../generated/Shared");
-    let plugin = CorePlugin::new(&effects, app, Some(ffi));
+    let plugin = CorePlugin::new(&effects, app, Some(ffi), "Shared");
     assert_eq!(
         EmitterPlugin::<Swift>::manifest_dependencies(&plugin),
         vec![r#".package(path: "../generated/Shared")"#.to_string()]
@@ -488,7 +516,7 @@ fn boltffi_class_can_be_renamed() {
 
     // TypeScript has no companion, so read it out of the module instead.
     let typescript = emit(|w, ctx, effects, app| {
-        let plugin = CorePlugin::new(&effects.to_vec().into(), app.clone(), Some(ffi));
+        let plugin = CorePlugin::new(&effects.to_vec().into(), app.clone(), Some(ffi), "Shared");
         EmitterPlugin::<TypeScript>::after_type(&plugin, w, ctx)
     });
     assert!(typescript.contains("private readonly ffi = boltffi.MyCore.new();"));
@@ -504,7 +532,12 @@ fn an_unnamed_language_gets_no_bridge() {
     let app = app_meta(&registry);
 
     // Swift only.
-    let plugin = CorePlugin::new(&effects.into(), app, Some(BoltFfi::new().swift("Shared")));
+    let plugin = CorePlugin::new(
+        &effects.into(),
+        app,
+        Some(BoltFfi::new().swift("Shared")),
+        "Shared",
+    );
 
     assert!(EmitterPlugin::<Kotlin>::companion_files(&plugin, &config).is_empty());
     assert!(EmitterPlugin::<CSharp>::companion_files(&plugin, &config).is_empty());
@@ -556,7 +589,7 @@ fn no_core_is_emitted_without_a_render_variant() {
     let mut buffer = Vec::new();
     {
         let mut w = IndentedWriter::new(&mut buffer, IndentConfig::Space(4));
-        let plugin = CorePlugin::new(&effects.into(), app, None);
+        let plugin = CorePlugin::new(&effects.into(), app, None, "Shared");
         EmitterPlugin::<Swift>::after_type(&plugin, &mut w, &ctx).expect("should write nothing");
     }
 
@@ -573,7 +606,7 @@ fn typescript_imports_the_serializer_only_when_the_handler_does_not() {
     let app = app_meta(&registry);
 
     // The fixture has a request and a stream, so the handler serializes.
-    let plugin = CorePlugin::new(&effects.clone().into(), app.clone(), None);
+    let plugin = CorePlugin::new(&effects.clone().into(), app.clone(), None, "Shared");
     assert_eq!(
         EmitterPlugin::<TypeScript>::imports(&plugin, &config),
         vec![r#"import { BincodeDeserializer } from "./bincode";"#.to_string()]
@@ -584,7 +617,7 @@ fn typescript_imports_the_serializer_only_when_the_handler_does_not() {
     notifications[0]
         .variants
         .retain(|variant| variant.kind == Some(OperationKind::Notify));
-    let plugin = CorePlugin::new(&notifications.into(), app, None);
+    let plugin = CorePlugin::new(&notifications.into(), app, None, "Shared");
     assert_eq!(
         EmitterPlugin::<TypeScript>::imports(&plugin, &config),
         vec![
@@ -604,7 +637,7 @@ fn observation_is_imported_only_when_a_core_is_emitted() {
     config.update_from(&registry);
     let app = app_meta(&registry);
 
-    let plugin = CorePlugin::new(&effects.clone().into(), app.clone(), None);
+    let plugin = CorePlugin::new(&effects.clone().into(), app.clone(), None, "Shared");
     assert_eq!(
         EmitterPlugin::<Swift>::imports(&plugin, &config),
         vec!["Observation".to_string()]
@@ -616,7 +649,7 @@ fn observation_is_imported_only_when_a_core_is_emitted() {
 
     let mut without_render = effects;
     without_render[0].variants.retain(|variant| !variant.render);
-    let plugin = CorePlugin::new(&without_render.into(), app, None);
+    let plugin = CorePlugin::new(&without_render.into(), app, None, "Shared");
     assert!(EmitterPlugin::<Swift>::imports(&plugin, &config).is_empty());
     assert!(EmitterPlugin::<CSharp>::imports(&plugin, &config).is_empty());
 }
@@ -630,7 +663,7 @@ fn kotlin_asks_for_coroutines_only_when_it_emits_a_core() {
     config.update_from(&registry);
     let app = app_meta(&registry);
 
-    let plugin = CorePlugin::new(&effects.clone().into(), app.clone(), None);
+    let plugin = CorePlugin::new(&effects.clone().into(), app.clone(), None, "Shared");
     assert!(
         EmitterPlugin::<Kotlin>::imports(&plugin, &config)
             .contains(&"import kotlinx.coroutines.flow.StateFlow".to_string())
@@ -645,7 +678,7 @@ fn kotlin_asks_for_coroutines_only_when_it_emits_a_core() {
 
     let mut without_render = effects;
     without_render[0].variants.retain(|variant| !variant.render);
-    let plugin = CorePlugin::new(&without_render.into(), app, None);
+    let plugin = CorePlugin::new(&without_render.into(), app, None, "Shared");
     assert!(EmitterPlugin::<Kotlin>::imports(&plugin, &config).is_empty());
     assert!(EmitterPlugin::<Kotlin>::manifest_dependencies(&plugin).is_empty());
 }
@@ -677,8 +710,12 @@ fn nothing_is_emitted_for_a_type_that_is_not_the_effect() {
             .expect("should write nothing");
         EmitterPlugin::<Swift>::after_type(&EffectHandlerPlugin::new(&effects), &mut w, &ctx)
             .expect("should write nothing");
-        EmitterPlugin::<Swift>::after_type(&CorePlugin::new(&effects, app, None), &mut w, &ctx)
-            .expect("should write nothing");
+        EmitterPlugin::<Swift>::after_type(
+            &CorePlugin::new(&effects, app, None, "Shared"),
+            &mut w,
+            &ctx,
+        )
+        .expect("should write nothing");
     }
 
     assert!(buffer.is_empty(), "expected nothing, got {buffer:?}");
