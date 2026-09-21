@@ -672,8 +672,9 @@ declares any, reach your `Package.swift`, `build.gradle.kts` or
 platform standard library. `<Name>Handler` joins the reserved names, and
 registering two handlers with the same name is an error. So is one of your
 own types sharing a name with a capability's — registering `crux_kv` brings
-its `Delete` with it, and an app with a `Delete` of its own renames one of
-them with `#[facet(rename = "...")]`.
+its `Delete` with it, and an app with a `Delete` of its own is told so at
+registration, with both Rust types named, and renames one of them with
+`#[facet(rename = "...")]`.
 [Building capabilities](../part-2/capabilities.md) covers the other side:
 how a capability declares what it ships.
 
