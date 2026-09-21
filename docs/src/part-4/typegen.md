@@ -92,7 +92,10 @@ that the codegen binary needs:
 
 The macro discovers the operation types carried by each variant (e.g.
 `RenderOperation`) and registers them for type generation
-automatically.
+automatically. It also records, per variant, the operation kind the
+operation declares and the `Format` of its `Output` — that's the data
+behind the [operation kinds and handler API](#operation-kinds-and-the-effect-handler-api)
+below.
 
 ### Skipping and opaque types
 
@@ -141,7 +144,10 @@ The key steps are:
 
 BoltFFI binding generation is run separately by the shell build recipes with
 `boltffi pack ...`. The codegen binary is intentionally focused on Crux app
-types.
+types; the one thing it can be told about BoltFFI is where its output
+lives, with `.boltffi(BoltFfi::new()...)` on the `CodeGenerator`, so that
+the generated `Core` can be constructed over it without a hand-written
+adapter — see [Bridging to BoltFFI](#bridging-to-boltffi).
 
 ### Cargo.toml setup
 
@@ -208,7 +214,10 @@ reference it. The TypeScript shells use `generated/types` to keep the
 types separate from the wasm package (which lives in `generated/pkg`).
 
 The `generated/` directories are gitignored and regenerated as part of
-the build process. Each shell's `build` recipe depends on `typegen`.
+the build process. Each shell's `build` recipe depends on `typegen`, and
+where the codegen is configured to bridge to BoltFFI, `typegen` in turn
+depends on the `boltffi pack` recipe, because the generated package
+refers to BoltFFI's.
 
 ## What gets generated
 
@@ -222,6 +231,434 @@ For each target language, the codegen produces:
   effects and view models.
 - **Helper extensions** — like `Requests.swift`, which provides
   convenience methods for working with effect requests.
+- **An operation-kind accessor, a typed effect handler API and a `Core`
+  that drives the loop** — see the next sections.
 
 For Swift, Kotlin, TypeScript, and C#, this typegen output sits beside the
 BoltFFI-generated binding package for the byte-oriented core API.
+
+## Operation kinds and the effect handler API
+
+A shell holding a `Request { id, effect }` has to know two things that
+are not in the bytes: what type to answer with, and *how many times*.
+Both are static properties of the operation each `Effect` variant
+carries — an operation declares a
+[operation kind](../part-2/capabilities.md#one-output-per-operation), notify,
+request or stream, and one `Output` — so type generation emits them.
+
+Next to the generated `Effect`, you get:
+
+- an `OperationKind` type and a per-variant accessor, which is `nil` /
+  `null` / `undefined` for an operation that declares no kind;
+- an `EffectHandler` protocol or interface with one method per variant:
+  a notification's method returns nothing, a request's method returns
+  the operation's `Output`, a stream's method takes an
+  `EffectSink<Output>`, and a legacy variant's method is handed
+  `(operation, requestId, resolve)` exactly as before;
+- an `EffectDispatcher(handler, resolve)` that calls the right method
+  and resolves the request never, once, or once per sink item,
+  serializing each output with the generated bincode serializers;
+- an `EffectKind` enum and a `RequestId` decoder, for reading the id a
+  request arrived with — see [reading a request
+  id](#reading-a-request-id).
+
+The `resolve` you hand the dispatcher is your own
+`(requestId, bytes) -> ()` callback around the core's `resolve` FFI —
+the same one you would have called by hand.
+
+Here is what that looks like for an effect with one variant of each
+kind, plus a `Legacy` operation that declares nothing.
+
+**Swift**
+
+```swift
+public enum OperationKind: Hashable, Sendable { case notify, request, stream }
+
+extension Effect {
+    public var operationKind: OperationKind? { /* generated switch */ }
+}
+
+public struct EffectSink<Item>: Sendable {
+    public func send(_ item: Item)
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public protocol EffectHandler: Sendable {
+    func render(_ operation: RenderOperation)
+    func http(_ operation: HttpRequest) async -> HttpResult
+    func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>)
+    func legacy(_ operation: LegacyOperation, requestId: UInt32,
+                resolve: @escaping @Sendable ([UInt8]) -> Void)
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+public struct EffectDispatcher: Sendable {
+    public init(handler: any EffectHandler,
+                resolve: @escaping @Sendable (UInt32, [UInt8]) -> Void)
+    public func dispatch(_ request: Request)
+}
+```
+
+**Kotlin**
+
+```kotlin
+enum class OperationKind { NOTIFY, REQUEST, STREAM }
+
+val Effect.operationKind: OperationKind?
+
+fun interface EffectSink<in T> { fun send(item: T) }
+
+interface EffectHandler {
+    fun render(operation: RenderOperation)
+    suspend fun http(operation: HttpRequest): HttpResult
+    fun subscribe(operation: Subscribe, sink: EffectSink<Message>)
+    fun legacy(operation: LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
+}
+
+class EffectDispatcher(handler: EffectHandler, resolve: (UInt, ByteArray) -> Unit) {
+    suspend fun dispatch(request: Request)
+}
+```
+
+`dispatch` is `suspend`, because a request's handler method may be. Give
+each request its own coroutine if one of them can take a while — a timer,
+for instance — so the rest are not held up behind it.
+
+**TypeScript**
+
+```typescript
+export type OperationKind = "notify" | "request" | "stream";
+export function effectOperationKind(effect: Effect): OperationKind | undefined;
+
+export interface EffectSink<T> { send(item: T): void }
+
+export interface EffectHandler {
+    render(operation: RenderOperation): void;
+    http(operation: HttpRequest): Promise<HttpResult>;
+    subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
+    legacy(operation: LegacyOperation, requestId: uint32,
+           resolve: (bytes: Uint8Array) => void): void;
+}
+
+export class EffectDispatcher {
+    constructor(handler: EffectHandler,
+                resolve: (id: uint32, bytes: Uint8Array) => void);
+    public dispatch(request: Request): void;
+}
+```
+
+The generated union already uses `kind` as its discriminant, so the
+accessor is the free function `effectOperationKind(effect)` rather than a
+property.
+
+**C#**
+
+```csharp
+public enum OperationKind { Notify, Request, Stream }
+
+// emitted inside the generated Effect record, which is not partial
+public OperationKind? OperationKind { get; }
+
+public interface IEffectSink<in T> { void Send(T item); }
+
+public interface IEffectHandler
+{
+    void Render(RenderOperation operation);
+    Task<HttpResult> Http(HttpRequest operation);
+    void Subscribe(Subscribe operation, IEffectSink<Message> sink);
+    void Legacy(LegacyOperation operation, uint requestId, Action<byte[]> resolve);
+}
+
+public sealed class EffectDispatcher
+{
+    public EffectDispatcher(IEffectHandler handler, Action<uint, byte[]> resolve);
+    public void Dispatch(Request request);
+}
+```
+
+### The generated Core
+
+With the dispatcher doing the resolving, the loop a shell still has to
+write around it is the same in every Crux app: serialize the `Event`,
+call the core's `update`, deserialize the `Requests`, re-read the view
+when a `Render` arrives, dispatch everything else, and when a request
+is resolved call the core's `resolve` and process the requests that
+come back. Type generation knows every type in that loop, so it emits
+it as a `Core` class, next to the handler API.
+
+`Core` talks to the Rust core through a `CoreBridge` protocol (Swift,
+Kotlin, TypeScript) or `ICoreBridge` interface (C#) with three
+byte-level methods. If BoltFFI generates your bindings, tell the codegen
+where they are and type generation implements the protocol for you (see
+[Bridging to BoltFFI](#bridging-to-boltffi) below), so a shell constructs
+`Core` from nothing but its `EffectHandler`. Otherwise — another binding
+generator, a test double, a preview — you implement it yourself around
+whatever produces the bytes, and hand it to `Core` with your
+`EffectHandler`:
+
+```swift
+public protocol CoreBridge: Sendable {
+    func update(_ event: [UInt8]) -> [UInt8]
+    func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8]
+    func view() -> [UInt8]
+}
+
+@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
+@Observable
+@MainActor
+public final class Core {
+    public private(set) var view: ViewModel
+    public init(bridge: any CoreBridge, handler: any EffectHandler)
+    public convenience init(handler: any EffectHandler)   // with a BoltFFI config
+    public func update(_ event: Event)
+    public func process(_ requests: [Request])
+    public func process(bytes: [UInt8])
+}
+```
+
+```kotlin
+interface CoreBridge {
+    fun update(event: ByteArray): ByteArray
+    fun resolve(id: UInt, output: ByteArray): ByteArray
+    fun view(): ByteArray
+}
+
+class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
+    constructor(handler: EffectHandler, scope: CoroutineScope)   // with a BoltFFI config
+    val view: StateFlow<ViewModel>
+    fun update(event: Event)
+    fun process(requests: List<Request>)
+    fun process(bytes: ByteArray)
+}
+```
+
+```typescript
+export interface CoreBridge {
+    update(event: Uint8Array): Uint8Array;
+    resolve(id: uint32, output: Uint8Array): Uint8Array;
+    view(): Uint8Array;
+}
+
+export class Core {
+    view: ViewModel;
+    constructor(bridge: CoreBridge, handler: EffectHandler,
+                onView: (view: ViewModel) => void);
+    static create(handler: EffectHandler,                 // with a BoltFFI config
+                  onView: (view: ViewModel) => void): Promise<Core>;
+    update(event: Event): void;
+    process(requests: Request[]): void;
+    processBytes(bytes: Uint8Array): void;
+}
+```
+
+C# gets `ICoreBridge` and `sealed class Core(ICoreBridge, IEffectHandler)`,
+which implements `INotifyPropertyChanged` and raises `PropertyChanged` for
+its `View` property, with `Update(Event)`, `Process(IReadOnlyList<Request>)`
+and `Process(byte[])`. With a BoltFFI config it also has a
+`Core(IEffectHandler)` constructor.
+
+Things worth knowing:
+
+- **`Core` owns `Render`.** It recognizes the variant carrying
+  `crux_core::render::RenderOperation`, re-reads the view from the bridge
+  when one arrives, keeps it in `view`, and publishes it the way each
+  platform expects: `view` is an `@Observable` property in Swift, a
+  `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a
+  `PropertyChanged` event in C#. The initial view is read in the
+  constructor without a notification. Because `Core` handles it, `EffectHandler.render`
+  has a default that does nothing (a protocol extension in Swift, a
+  default method in Kotlin and C#, an optional `render?` in TypeScript).
+  Implement it only if you drive `EffectDispatcher` without `Core`.
+- **The view is held, not just forwarded.** That is deliberate: it is
+  where diff-based view updates will be applied when they arrive, without
+  changing how you use `Core`.
+- **`process(bytes)` is for middleware.** A Rust side that pushes
+  effects to the shell asynchronously — the `CruxShell.process_effects`
+  callback in the middleware examples — can hand those bytes straight to
+  `Core`. It tolerates an empty byte array.
+- **Concurrency.** The Swift `Core` is `@MainActor`; the dispatcher's
+  resolve hops back to the main actor before touching the bridge, as the
+  hand-written shells did. The Kotlin `Core` dispatches each request, and
+  processes each resolution, in its own coroutine on the scope you pass.
+  In C#, `PropertyChanged` may be raised on a thread-pool thread after
+  an asynchronous request completes, so marshal to your UI thread in the
+  handler.
+- **No `Render`, no `Core`.** An effect enum without a `RenderOperation`
+  variant has no view loop to own, so only the handler API is emitted
+  for it.
+- **Turning it off.** `CodeGenerator::without_core()` leaves the handler
+  API in place; `without_effect_handlers()` turns off both, because
+  `Core` depends on the dispatcher.
+
+### Bridging to BoltFFI
+
+Type generation does not read BoltFFI's output — the two generators are
+independent, and the package, module and class names BoltFFI uses are
+decisions you made in `boltffi.toml` and `ffi.rs`. Repeat them in the
+codegen and type generation emits the bridge for you:
+
+```rust,ignore
+let typegen = TypeRegistry::new()
+    .register_app::<Weather>()?
+    .build()?
+    .boltffi(
+        BoltFfi::new()
+            .swift("Shared")   // the Swift module; the package is at ../Shared
+            .kotlin()          // CoreFfi is in the generated package
+            .typescript("shared", PackageLocation::Path("../pkg".into()))
+            .csharp(),         // CoreFfi is in the generated namespace
+    );
+```
+
+Each language is opted in separately; one you do not name gets exactly
+the output described above. `BoltFfi::class(..)` renames the exported
+class if yours is not `CoreFfi`; `swift_package(..)`, `kotlin_package(..)`,
+`typescript_package(..)` and `csharp_namespace(..)` cover bindings that
+live somewhere other than the defaults.
+
+For a named language the generated module gains an `FfiBridge` —
+`CoreBridge` implemented over `CoreFfi`, bytes in and bytes out, with the
+Swift `Data` conversion and the `@unchecked Sendable` declaration where
+they belong — and `Core` gains a constructor that takes only the handler:
+
+```swift
+let core = Core(handler: WeatherHandler())
+```
+
+```kotlin
+val core = Core(handler, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+```
+
+```typescript
+const core = await Core.create(new WeatherHandler(), setView);
+```
+
+```csharp
+var core = new Core(new CounterHandler());
+```
+
+TypeScript's is an `async` factory because the wasm module loads
+asynchronously: `Core.create` awaits the package's `initialized` promise
+before touching `CoreFfi`, which is the one thing every hand-written web
+shell had to remember. `CoreBridge` and the two-argument constructors are
+still emitted, so a preview or a test can hand `Core` a fake, and a shell
+whose FFI has a different shape — the middleware examples, whose
+`CoreFfi::new` takes a callback — still writes its own adapter.
+
+Two consequences for the build:
+
+- **Swift.** `FfiBridge.swift` imports the BoltFFI module, so the generated
+  package now depends on the BoltFFI package: `Package.swift` gains
+  `.package(path: "../Shared")` and the target depends on its product. SPM
+  requires a dependent package's deployment target to be at least its
+  dependency's, and BoltFFI's package declares one, so give the generated
+  package a `platforms:` floor to match through the `Config`:
+
+  ```rust,ignore
+  Config::builder("App", &out_dir)
+      .platform(".iOS(.v16)")
+      .platform(".macOS(.v13)")
+      .build()
+  ```
+
+  Your app target no longer needs to link the BoltFFI package itself; it
+  reaches it through the generated one.
+- **TypeScript.** The generated `package.json` depends on the BoltFFI
+  package (`"shared": "file:../pkg"`), and type generation runs
+  `pnpm install` in the generated package, so run `boltffi pack wasm`
+  *before* typegen. The Android recipes already pack first; the web
+  recipes in the examples were reordered to match.
+
+Kotlin and C# need nothing else when the bindings share the generated
+package or namespace, which is how the examples are configured.
+
+Setting `boltffi(..)` when there is no `Core` to bridge — no registered
+app, no `Render` variant, or `without_core()` — is reported as an error
+rather than silently ignored.
+
+### Reading a request id
+
+The `id` on a `Request` is not a bare counter. It packs, from the top,
+the effect's variant index, one bit saying whether the shell resolves
+the request once or many times, and an ascending sequence number. Id `0`
+is reserved for notifications, which the core never waits on.
+
+You still resolve with the id exactly as it arrived — the decoder is for
+logging, tracing and assertions, so that a stray id in a crash report
+says *which* effect and *which* request it belonged to. The layout is an
+implementation detail of the bridge, which is why the decoder is
+generated from the same effect metadata the core builds ids from rather
+than written by hand in each shell:
+
+```swift
+public enum EffectKind: UInt8, Hashable, Sendable { case render = 0, http = 1 /* ... */ }
+
+public struct RequestId: Hashable, Sendable {
+    public init(_ rawValue: UInt32)
+    public var rawValue: UInt32 { get }
+    public var isNotification: Bool { get }
+    public var effectKind: EffectKind? { get }   // nil for a notification
+    public var operationKind: OperationKind { get }
+    public var sequence: UInt32 { get }
+}
+```
+
+Kotlin gets `enum class EffectKind(val index: UByte)` with an
+`EffectKind.fromIndex(..)` companion and a `data class RequestId(val
+rawValue: UInt)` carrying the same four properties. C# gets
+`enum EffectKind : byte` and
+`public sealed record RequestId(uint RawValue)`. TypeScript, whose
+effect union already discriminates on the variant name, gets
+`export type EffectKind = "Render" | "Http" | ...` and a
+`decodeRequestId(rawValue: number): RequestId` function.
+
+The bridge checks the same structure on the way back in: resolving a
+notification's id is reported as "not expected to be resolved", and an
+id naming an effect the enum does not have, or disagreeing with the
+request its sequence belongs to, is rejected as that rather than as an
+unknown id. An effect enum is limited to 256 variants, because the
+variant index is eight bits — `#[effect]` rejects a larger one.
+
+### Notes and escape hatches
+
+- The emission is **additive**. A shell that matches on `Effect` and
+  calls `resolve` by hand keeps working unchanged, which is what Crux's
+  Rust shells do — the [Leptos shell](../part-2/shell/leptos.md) matches
+  the enum directly, because in Rust the match is already as precise as
+  a handler interface.
+- The Swift protocol and dispatcher carry
+  `@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)`,
+  because `Task {}` needs those versions and the generated
+  `Package.swift` declares no `platforms:`. A package that declares its
+  own platforms conforms without repeating the annotation. Note also
+  that the generated operation and output types are not `Sendable`, so
+  a `@MainActor` type conforming to the `Sendable` `EffectHandler`
+  needs a `nonisolated` extension — see the
+  [iOS chapter](../part-2/shell/ios.md). The generated `Core` is
+  `@Observable`, so it alone carries
+  `@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)` and the
+  generated file imports `Observation`; a shell with an older deployment
+  target keeps the handler API and dispatcher, which stay at the lower
+  bar, and drives the loop itself. `CoreBridge` is `Sendable`; an adapter around BoltFFI's
+  non-`Sendable` `CoreFfi` class declares itself `@unchecked Sendable`,
+  which is sound because the Rust bridge guards its state with mutexes.
+  The generated `FfiBridge` carries that declaration; write it yourself
+  only on an adapter of your own.
+- `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`,
+  `EffectHandler`, `EffectDispatcher`, `Core`, `CoreBridge` and
+  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names.
+  `TypeRegistry::build` fails if one of your shared types or effect
+  variants claims one.
+- `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`, and
+  with them the BoltFFI bridge, which is an error to configure alongside
+  it; `CodeGenerator::without_effect_handlers()` turns off those and the
+  handler API, the kind accessor and the request-id decoder, leaving
+  only the types you registered.
+- The generated Kotlin module declares a dependency on
+  `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
+  `StateFlow` and coroutine launches need.
+- Operation names collide with standard library types more often than
+  you'd expect — `crux_kv`'s `Set` shadows `Set` in Swift, Kotlin and
+  TypeScript. Alias it at the import site
+  (`import com.example.Set as KeyValueSet`, `import { Set as SetValue }`).
+- Facet type generation requires `facet_generate` 0.21 or later.

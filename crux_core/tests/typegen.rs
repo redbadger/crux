@@ -34,6 +34,22 @@ mod facet_shared {
     #[operation(stream, output = Message)]
     pub struct Subscribe;
 
+    /// An operation whose output lives in a namespace of its own, which is what
+    /// the generated handler signature has to be able to name from inside the
+    /// module's own package.
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(request, output = Presence)]
+    #[facet(facet_generate_attrs::namespace = "Kit")]
+    pub struct Probe;
+
+    #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+    #[repr(C)]
+    #[facet(facet_generate_attrs::namespace = "Kit")]
+    pub enum Presence {
+        Present,
+        Absent,
+    }
+
     /// An operation that declares no kind, so the shell resolves it by hand.
     #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
     pub struct Legacy {
@@ -68,6 +84,7 @@ mod facet_shared {
         Get(Get),
         Publish(Publish),
         Subscribe(Subscribe),
+        Probe(Probe),
         Legacy(Legacy),
     }
 
@@ -88,6 +105,40 @@ mod facet_shared {
             ViewModel
         }
     }
+
+    #[derive(Facet)]
+    #[repr(C)]
+    pub enum OtherEvent {
+        None,
+    }
+
+    #[derive(Facet)]
+    pub struct OtherViewModel;
+
+    /// A second app over the same effect, for checking that the recorded
+    /// [`AppMeta`](crux_core::type_generation::facet::AppMeta) is the first
+    /// one's.
+    #[derive(Default)]
+    pub struct OtherApp;
+
+    impl crux_core::App for OtherApp {
+        type Event = OtherEvent;
+        type Model = ();
+        type ViewModel = OtherViewModel;
+        type Effect = Effect;
+
+        fn update(
+            &self,
+            _event: OtherEvent,
+            _model: &mut Self::Model,
+        ) -> Command<Effect, OtherEvent> {
+            Command::done()
+        }
+
+        fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+            OtherViewModel
+        }
+    }
 }
 
 #[cfg(feature = "facet_typegen")]
@@ -96,10 +147,62 @@ mod facet_test {
 
     use crux_core::{
         OperationKind,
-        type_generation::facet::{Config, Format, TypeRegistry},
+        type_generation::facet::{BoltFfi, Config, Format, PackageLocation, TypeRegistry},
     };
 
-    use super::facet_shared::App;
+    use super::facet_shared::{App, OtherApp};
+
+    #[test]
+    fn register_app_records_event_and_view_model() {
+        let mut registry = TypeRegistry::new();
+        let generator = registry
+            .register_app::<App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry");
+
+        let app = generator.app().expect("the app should be recorded");
+        assert_eq!(app.event.name, "Event");
+        assert_eq!(app.view_model.name, "ViewModel");
+
+        // The generated `Core` uses fixed names, so the first app wins.
+        let generator = registry
+            .register_app::<OtherApp>()
+            .expect("should register the second app")
+            .build()
+            .expect("should build the registry");
+
+        let app = generator.app().expect("the app should be recorded");
+        assert_eq!(app.event.name, "Event");
+        assert_eq!(app.view_model.name, "ViewModel");
+    }
+
+    #[test]
+    fn a_render_variant_is_recorded() {
+        let generator = TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry");
+
+        let flags: Vec<_> = generator.effects()[0]
+            .variants
+            .iter()
+            .map(|variant| (variant.ident.as_str(), variant.render))
+            .collect();
+
+        assert_eq!(
+            flags,
+            vec![
+                ("Render", true),
+                ("Get", false),
+                ("Publish", false),
+                ("Subscribe", false),
+                ("Probe", false),
+                ("Legacy", false),
+            ]
+        );
+    }
 
     #[test]
     fn effect_variants_carry_their_declared_operation_kind() {
@@ -128,6 +231,7 @@ mod facet_test {
                 ("Get", Some(OperationKind::Request)),
                 ("Publish", Some(OperationKind::Notify)),
                 ("Subscribe", Some(OperationKind::Stream)),
+                ("Probe", Some(OperationKind::Request)),
                 ("Legacy", None),
             ]
         );
@@ -230,6 +334,25 @@ mod facet_test {
                 "func legacy(_ operation: Legacy, requestId: UInt32,",
                 "public struct EffectDispatcher: Sendable {",
                 "public func dispatch(_ request: Request) {",
+                "public enum EffectKind: UInt8, Hashable, Sendable {",
+                "case render = 0",
+                "case legacy = 5",
+                "public struct RequestId: Hashable, Sendable {",
+                "public var effectKind: EffectKind? {",
+                "public var operationKind: OperationKind {",
+                "public var sequence: UInt32 {",
+                "extension EffectHandler {",
+                "public func render(_ operation: RenderOperation) {}",
+                "import Observation",
+                "public protocol CoreBridge: Sendable {",
+                "@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)",
+                "@Observable",
+                "public final class Core {",
+                "public private(set) var view: ViewModel",
+                "public init(bridge: any CoreBridge, handler: any EffectHandler) {",
+                "public func update(_ event: Event) {",
+                "public func process(bytes: [UInt8]) {",
+                "public func process(_ requests: [Request]) {",
             ],
         );
     }
@@ -252,10 +375,29 @@ mod facet_test {
                 "fun interface EffectSink<in T> {",
                 "interface EffectHandler {",
                 "suspend fun get(operation: com.example.shared.Get): GetResult",
+                // A sibling namespace has to be named from the root package: a
+                // bare `Kit.Presence` does not resolve from inside
+                // `com.example.shared`.
+                "suspend fun probe(operation: com.example.shared.Kit.Probe): com.example.shared.Kit.Presence",
                 "fun subscribe(operation: com.example.shared.Subscribe, sink: EffectSink<Message>)",
                 "fun legacy(operation: com.example.shared.Legacy, requestId: UInt, resolve: (ByteArray) -> Unit)",
                 "class EffectDispatcher(",
                 "suspend fun dispatch(request: Request) {",
+                "enum class EffectKind(val index: UByte) {",
+                "RENDER(0u),",
+                "LEGACY(5u);",
+                "data class RequestId(val rawValue: UInt) {",
+                "val effectKind: EffectKind?",
+                "val operationKind: OperationKind",
+                "val sequence: UInt",
+                "import kotlinx.coroutines.flow.StateFlow",
+                "interface CoreBridge {",
+                "class Core(",
+                "private val scope: CoroutineScope,",
+                "val view: StateFlow<ViewModel> = _view.asStateFlow()",
+                "fun update(event: Event) {",
+                "fun process(bytes: ByteArray) {",
+                "fun process(requests: List<Request>) {",
             ],
         );
     }
@@ -282,6 +424,21 @@ mod facet_test {
                 "void Legacy(Example.Shared.Legacy operation, uint requestId, Action<byte[]> resolve);",
                 "public sealed class EffectDispatcher",
                 "public void Dispatch(Example.Shared.Request request)",
+                "public enum EffectKind : byte",
+                "Render = 0,",
+                "Legacy = 5,",
+                "public sealed record RequestId(uint RawValue)",
+                "public Example.Shared.EffectKind? EffectKind",
+                "public Example.Shared.OperationKind OperationKind",
+                "public uint Sequence => RawValue & 0x7fffffu;",
+                "using System.ComponentModel;",
+                "public interface ICoreBridge",
+                "public sealed class Core : INotifyPropertyChanged",
+                "public event PropertyChangedEventHandler? PropertyChanged;",
+                "public Core(ICoreBridge bridge, IEffectHandler handler)",
+                "public void Update(Event @event)",
+                "public void Process(byte[] bytes)",
+                "public void Process(IReadOnlyList<Example.Shared.Request> requests)",
             ],
         );
     }
@@ -311,6 +468,16 @@ mod facet_test {
                 "legacy(operation: Legacy, requestId: uint32, resolve: (bytes: Uint8Array) => void): void;",
                 "export class EffectDispatcher {",
                 "public dispatch(request: Request): void {",
+                r#"export type EffectKind = "Render" | "Get" | "Publish" | "Subscribe" | "Probe" | "Legacy";"#,
+                "export interface RequestId {",
+                "export function decodeRequestId(rawValue: number): RequestId {",
+                r#"import { BincodeDeserializer } from "./bincode";"#,
+                "render?(operation: RenderOperation): void;",
+                "export interface CoreBridge {",
+                "export class Core {",
+                "public update(event: Event): void {",
+                "public processBytes(bytes: Uint8Array): void {",
+                "public process(requests: Request[]): void {",
             ],
         );
 
@@ -320,11 +487,348 @@ mod facet_test {
         );
     }
 
+    /// Reads the Swift module a `CodeGenerator` writes, for the tests that
+    /// only care about what is and is not in it.
+    fn swift_source(generator: &crux_core::type_generation::facet::CodeGenerator) -> String {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        fs::read_to_string(
+            dir.path()
+                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
+        )
+        .expect("should write a Swift module")
+    }
+
+    // -----------------------------------------------------------------------
+    // Bridging to the BoltFFI bindings
+    // -----------------------------------------------------------------------
+
+    /// Swift is the language that needs the most from the installer: a
+    /// companion file, a package dependency, a target dependency and a
+    /// deployment-target floor.
     #[test]
-    fn effect_handlers_can_be_turned_off() {
+    fn generates_swift_ffi_bridge() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
         generator()
-            .without_effect_handlers()
+            .boltffi(BoltFfi::new().swift("Shared"))
+            .swift(
+                &Config::builder("SharedTypes", dir.path())
+                    .platform(".iOS(.v16)")
+                    .platform(".macOS(.v13)")
+                    .build(),
+            )
+            .expect("swift type generation should succeed");
+
+        let manifest = fs::read_to_string(dir.path().join("SharedTypes/Package.swift"))
+            .expect("should write a package manifest");
+        assert_generated(
+            &manifest,
+            &[
+                "platforms: [.iOS(.v16), .macOS(.v13)],",
+                r#".package(path: "../Shared")"#,
+                r#".product(name: "Shared", package: "Shared")"#,
+            ],
+        );
+
+        let bridge = fs::read_to_string(
+            dir.path()
+                .join("SharedTypes/Sources/SharedTypes/FfiBridge.swift"),
+        )
+        .expect("should write the bridge beside the module");
+        assert_generated(
+            &bridge,
+            &[
+                "import Foundation",
+                "import Shared",
+                "public struct FfiBridge: CoreBridge, @unchecked Sendable {",
+                "private let ffi = Shared.CoreFfi()",
+                "[UInt8](ffi.update(data: Data(event)))",
+            ],
+        );
+
+        let source = fs::read_to_string(
+            dir.path()
+                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
+        )
+        .expect("should write a Swift module");
+        assert_generated(
+            &source,
+            &["public convenience init(handler: any EffectHandler) {"],
+        );
+        // The FFI module is named by the bridge alone.
+        assert!(!source.contains("import Shared"));
+    }
+
+    /// Without the configuration nothing changes: no bridge, no dependency, no
+    /// platforms.
+    #[test]
+    fn swift_without_boltffi_has_no_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        assert!(
+            !dir.path()
+                .join("SharedTypes/Sources/SharedTypes/FfiBridge.swift")
+                .exists()
+        );
+
+        let manifest = fs::read_to_string(dir.path().join("SharedTypes/Package.swift"))
+            .expect("should write a package manifest");
+        assert!(!manifest.contains("platforms:"));
+        assert!(!manifest.contains("../Shared"));
+
+        let source = fs::read_to_string(
+            dir.path()
+                .join("SharedTypes/Sources/SharedTypes/SharedTypes.swift"),
+        )
+        .expect("should write a Swift module");
+        assert!(!source.contains("FfiBridge"));
+        assert!(!source.contains("convenience init"));
+    }
+
+    #[test]
+    fn generates_kotlin_ffi_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .boltffi(BoltFfi::new().kotlin())
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        let bridge = fs::read_to_string(dir.path().join("com/example/shared/FfiBridge.kt"))
+            .expect("should write the bridge beside the module");
+        assert_generated(
+            &bridge,
+            &[
+                "package com.example.shared",
+                "class FfiBridge(private val ffi: CoreFfi = CoreFfi()) : CoreBridge, AutoCloseable {",
+                "override fun close() = ffi.close()",
+            ],
+        );
+        // `CoreFfi` is in the package the file declares, so no import.
+        assert!(!bridge.contains("import com.example.shared.CoreFfi"));
+
+        let source = fs::read_to_string(dir.path().join("com/example/shared/Shared.kt"))
+            .expect("should write a Kotlin module");
+        assert_generated(
+            &source,
+            &[
+                "constructor(handler: EffectHandler, scope: CoroutineScope) : this(FfiBridge(), handler, scope)",
+            ],
+        );
+    }
+
+    #[test]
+    fn kotlin_ffi_bridge_in_another_package() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .boltffi(BoltFfi::new().kotlin_package("com.example.ffi"))
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        let bridge = fs::read_to_string(dir.path().join("com/example/shared/FfiBridge.kt"))
+            .expect("should write the bridge beside the module");
+        assert_generated(&bridge, &["import com.example.ffi.CoreFfi"]);
+    }
+
+    #[test]
+    fn generates_csharp_ffi_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .boltffi(BoltFfi::new().csharp())
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+
+        let bridge = fs::read_to_string(dir.path().join("Example/Shared/FfiBridge.cs"))
+            .expect("should write the bridge beside the module");
+        assert_generated(
+            &bridge,
+            &[
+                "namespace Example.Shared;",
+                "public sealed class FfiBridge : ICoreBridge, IDisposable",
+                "private readonly CoreFfi _ffi = new();",
+                "public void Dispose() => _ffi.Dispose();",
+            ],
+        );
+
+        let source = fs::read_to_string(dir.path().join("Example/Shared/Shared.cs"))
+            .expect("should write a C# module");
+        assert_generated(
+            &source,
+            &["public Core(IEffectHandler handler) : this(new FfiBridge(), handler) {}"],
+        );
+    }
+
+    /// Runs `pnpm` and `tsc` against a stub `shared` package, so the bridge is
+    /// really type-checked against the shape `BoltFFI` emits.
+    #[test]
+    fn generates_typescript_ffi_bridge() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let pkg = dir.path().join("pkg");
+        fs::create_dir_all(&pkg).expect("should create the stub package");
+        fs::write(
+            pkg.join("package.json"),
+            r#"{ "name": "shared", "version": "0.1.0", "main": "./shared.js", "types": "./shared.d.ts" }"#,
+        )
+        .expect("should write the stub manifest");
+        fs::write(pkg.join("shared.js"), "module.exports = {};\n")
+            .expect("should write the stub module");
+        fs::write(
+            pkg.join("shared.d.ts"),
+            "export declare class CoreFfi {\n\
+             \x20 static new(): CoreFfi;\n\
+             \x20 update(event: Uint8Array): Uint8Array;\n\
+             \x20 resolve(id: number, output: Uint8Array): Uint8Array;\n\
+             \x20 view(): Uint8Array;\n\
+             }\n",
+        )
+        .expect("should write the stub declarations");
+
+        let types = dir.path().join("types");
+        generator()
+            .boltffi(BoltFfi::new().typescript("shared", PackageLocation::Path("../pkg".into())))
+            .typescript(&Config::builder("shared_types", &types).build())
+            .expect("typescript type generation should succeed");
+
+        let manifest =
+            fs::read_to_string(types.join("package.json")).expect("should write a package.json");
+        assert_generated(&manifest, &[r#""shared": "file:../pkg""#]);
+
+        let source =
+            fs::read_to_string(types.join("shared_types.ts")).expect("should write a TS module");
+        assert_generated(
+            &source,
+            &[
+                r#"import * as boltffi from "shared";"#,
+                "export class FfiBridge implements CoreBridge {",
+                "private readonly ffi = boltffi.CoreFfi.new();",
+                "public static async create(",
+                "await (boltffi as unknown as { initialized: Promise<void> }).initialized;",
+            ],
+        );
+
+        assert!(
+            types.join("shared_types.d.ts").exists(),
+            "tsc should have emitted declarations, so the generated module compiles"
+        );
+    }
+
+    /// The bridge is part of the generated `Core`, so asking for one without a
+    /// `Core` is an error rather than a silent no-op.
+    #[test]
+    fn boltffi_needs_the_core() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let error = generator()
+            .without_core()
+            .boltffi(BoltFfi::new().swift("Shared"))
+            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .expect_err("should reject the configuration");
+
+        let crux_core::type_generation::facet::TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains("`boltffi`"),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("without_core()"),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn effect_handlers_can_be_turned_off() {
+        let source = swift_source(&generator().without_effect_handlers());
+
+        assert!(!source.contains("OperationKind"));
+        assert!(!source.contains("EffectHandler"));
+        assert!(!source.contains("EffectKind"));
+        assert!(!source.contains("RequestId"));
+        // `Core` is built on the dispatcher, so it goes too.
+        assert!(!source.contains("CoreBridge"));
+        assert!(!source.contains("public final class Core {"));
+    }
+
+    #[test]
+    fn core_can_be_turned_off() {
+        let source = swift_source(&generator().without_core());
+
+        assert!(source.contains("public protocol EffectHandler: Sendable {"));
+        assert!(source.contains("public struct EffectDispatcher: Sendable {"));
+        assert!(!source.contains("CoreBridge"));
+        assert!(!source.contains("public final class Core {"));
+        // `Observation` is imported only for `Core`.
+        assert!(!source.contains("import Observation"));
+    }
+}
+
+/// An effect with nothing to render has no view loop to own, so it gets no
+/// `Core` — but it keeps the handler API, so the shell can drive the
+/// dispatcher itself.
+#[cfg(feature = "facet_typegen")]
+mod facet_no_render {
+    use std::fs;
+
+    use crux_core::{
+        Command,
+        macros::{Operation, effect},
+        type_generation::facet::{BoltFfi, Config, TypeGenError, TypeRegistry},
+    };
+    use facet::Facet;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Facet)]
+    #[repr(C)]
+    pub enum Event {
+        None,
+    }
+
+    #[derive(Facet)]
+    pub struct ViewModel;
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(request, output = Vec<u8>)]
+    pub struct Get {
+        pub key: String,
+    }
+
+    #[effect(facet_typegen)]
+    pub enum Effect {
+        Get(Get),
+    }
+
+    #[derive(Default)]
+    pub struct App;
+
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = ();
+        type ViewModel = ViewModel;
+        type Effect = Effect;
+
+        fn update(&self, _event: Event, _model: &mut Self::Model) -> Command<Effect, Event> {
+            Command::done()
+        }
+
+        fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+            ViewModel
+        }
+    }
+
+    #[test]
+    fn no_core_is_generated_without_a_render_variant() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry")
             .swift(&Config::builder("SharedTypes", dir.path()).build())
             .expect("swift type generation should succeed");
 
@@ -334,8 +838,37 @@ mod facet_test {
         )
         .expect("should write a Swift module");
 
-        assert!(!source.contains("OperationKind"));
-        assert!(!source.contains("EffectHandler"));
+        assert!(source.contains("public protocol EffectHandler: Sendable {"));
+        assert!(!source.contains("CoreBridge"));
+        assert!(!source.contains("public final class Core {"));
+        // `Observation` is imported only for `Core`.
+        assert!(!source.contains("import Observation"));
+    }
+
+    /// …so there is nothing for a bridge to be the bridge of.
+    #[test]
+    fn boltffi_needs_a_render_variant() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let error = TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry")
+            .boltffi(BoltFfi::new().swift("Shared"))
+            .swift(&Config::builder("SharedTypes", dir.path()).build())
+            .expect_err("should reject the configuration");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains("`boltffi`"),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("render variant"),
+            "unexpected message: {message}"
+        );
     }
 }
 
@@ -363,6 +896,18 @@ mod facet_clash_test {
     #[allow(clippy::unsafe_derive_deserialize)]
     #[derive(Facet)]
     pub struct OperationKind {
+        pub whoops: String,
+    }
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(Facet)]
+    pub struct Core {
+        pub whoops: String,
+    }
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(Facet)]
+    pub struct FfiBridge {
         pub whoops: String,
     }
 
@@ -404,7 +949,49 @@ mod facet_clash_test {
             panic!("expected a generation error");
         };
         assert!(
-            message.contains("`OperationKind` is generated for the effect handler API"),
+            message.contains("`OperationKind` is generated for the shell API"),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn a_type_cannot_be_called_core() {
+        let error = TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .register_type::<Core>()
+            .expect("should register the clashing type")
+            .build()
+            .err()
+            .expect("should reject the clashing type");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains("`Core` is generated for the shell API"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// `FfiBridge` is reserved whether or not `boltffi` is configured: whether
+    /// a shared type clashes should not depend on how the shell is wired up.
+    #[test]
+    fn a_type_cannot_be_called_ffi_bridge() {
+        let error = TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .register_type::<FfiBridge>()
+            .expect("should register the clashing type")
+            .build()
+            .err()
+            .expect("should reject the clashing type");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains("`FfiBridge` is generated for the shell API"),
             "unexpected message: {message}"
         );
     }

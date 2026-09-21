@@ -1135,7 +1135,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "crux_core"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1154,7 +1154,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "darling 0.24.0",
  "heck 0.5.0",
@@ -2220,7 +2220,7 @@ dependencies = [
 [[package]]
 name = "facet-generate-attrs"
 version = "0.18.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2#c949b1cc25c24c5b763c675f31a96032e19c8233"
+source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
 dependencies = [
  "facet",
 ]
@@ -2273,7 +2273,7 @@ dependencies = [
 [[package]]
 name = "facet_generate"
 version = "0.21.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2#c949b1cc25c24c5b763c675f31a96032e19c8233"
+source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
 dependencies = [
  "derive_builder",
  "facet",

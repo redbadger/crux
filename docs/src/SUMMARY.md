@@ -48,6 +48,7 @@
 
 1. [Migrating crux_http to native http types](./guide/migrate-crux-http.md)
 1. [Handling crux_http rejections](./guide/http-rejections.md)
+1. [Migrating to per-operation types](./guide/migrate-per-operation-types.md)
 
 # RFCs
 
@@ -56,3 +57,5 @@
 1. [Effect Router](./rfcs/effect-router.md)
 1. [Decouple crux_http from http-types](./rfcs/decouple-from-http-types.md)
 1. [Per-operation types with static request kinds](./rfcs/per-operation-types.md)
+1. [A generated shell-side Core](./rfcs/generated-core.md)
+1. [Shell handlers shipped with capabilities](./rfcs/shipped-shell-handlers.md)

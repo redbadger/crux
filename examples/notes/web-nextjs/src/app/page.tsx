@@ -10,9 +10,8 @@ import Textarea, {
   SelectEvent,
 } from "../components/Textarea/Textarea";
 
-import * as sharedWasm from "shared";
-import { SyncMessage, Core } from "./core";
-import type { EffectSink } from "shared_types/app";
+import { SyncMessage, createCore } from "./core";
+import type { Core, EffectSink } from "shared_types/app";
 import {
   TextCursor,
   matchTextCursor,
@@ -26,10 +25,6 @@ import {
 } from "shared_types/app";
 
 const LOG_EDITS = false;
-
-const wasmInitialized = (
-  sharedWasm as unknown as { initialized: Promise<void> }
-).initialized;
 
 type Selection = {
   start: number;
@@ -58,7 +53,7 @@ const Home: NextPage = () => {
   // item on this sink.
   const subscription = useRef<EffectSink<Message> | null>(null);
   const channel = useRef(new BroadcastChannel("crux-note"));
-  const core = useRef(new Core(setView, channel, subscription));
+  const core = useRef<Core | null>(null);
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
     let message = event.data;
@@ -84,10 +79,9 @@ const Home: NextPage = () => {
 
         (async () => {
           try {
-            await wasmInitialized;
-
-            // Initialize the Core with WASM after module is loaded
-            core.current.initialize();
+            // `Core.create` waits for the WASM module before building the
+            // generated bridge over it.
+            core.current = await createCore(setView, channel, subscription);
 
             // Subscribe to the BroadcastChannel
             channel.current.onmessage = onMessage;
@@ -120,7 +114,7 @@ const Home: NextPage = () => {
   const onChange = ({ start, end, text }: ChangeEvent): void => {
     log(`onChange ${start} ${end} "${text}"`);
 
-    core.current.update(eventReplace(BigInt(start), BigInt(end), text));
+    core.current?.update(eventReplace(BigInt(start), BigInt(end), text));
   };
 
   const onSelect = ({ start, end }: SelectEvent): void => {
@@ -131,7 +125,7 @@ const Home: NextPage = () => {
         ? eventMoveCursor(BigInt(end))
         : eventSelect(BigInt(start), BigInt(end));
 
-    core.current.update(event);
+    core.current?.update(event);
   };
 
   const [inputLog, updateLog] = useState<string[]>([]);

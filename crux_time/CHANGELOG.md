@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.19.0](https://github.com/redbadger/crux/compare/crux_time-v0.18.0...crux_time-v0.19.0) - 2026-09-06
 
 ### 💥 Breaking Changes
 
@@ -76,9 +76,31 @@ and this project adheres to
   after the core has cleared it does no harm: the core has stopped waiting for that
   request and ignores the late answer.
 
-  Nothing is deprecated in this release: `Time`, `TimeRequest`, `TimeResponse` and
-  `TimerFuture` are unchanged, and an app can use both APIs side by side.
+  The enum API is unchanged and still works — an app can use both side by side, and
+  migrate one call at a time — but it is deprecated from this release; see below.
 
+### ⚠️ Deprecated
+
+- **The enum-shaped API is deprecated in favour of the per-operation types.** Nothing
+  is removed in this release and nothing changes on the wire for `Time`; each item
+  warns, names its replacement, and will be removed in the next breaking release.
+
+  | Deprecated | Since | Use instead |
+  | --- | --- | --- |
+  | `Time` | 0.19.0 | `clock::Time` |
+  | `TimeRequest` | 0.19.0 | `operation::{Now, NotifyAt, NotifyAfter, Clear}` |
+  | `TimeResponse` | 0.19.0 | `Instant` (for `Now`), `TimerId` (for `NotifyAt`, `NotifyAfter` and `Clear`) |
+  | `TimerFuture` | 0.19.0 | nothing — an implementation detail of `Time`; `clock::Time` needs no equivalent |
+
+  `TimerHandle`, `CompletedTimerHandle`, `TimerOutcome`, `TimerId`, `Instant` and
+  `Duration` are **not** deprecated: both APIs share them.
+
+  Clearing a timer works as it always has: `Clear` is a request answered with its
+  `TimerId`, as `TimeRequest::Clear` was with `TimeResponse::Cleared`, and the cleared
+  outcome arrives once the shell has answered. A shell whose timer fires after the
+  core has cleared it does no harm, because the core ignores the late answer. The
+  [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html)
+  covers the shell side.
 ## [0.18.0](https://github.com/redbadger/crux/compare/crux_time-v0.17.0...crux_time-v0.18.0) - 2026-08-06
 
 ### ⚙️ Miscellaneous Tasks

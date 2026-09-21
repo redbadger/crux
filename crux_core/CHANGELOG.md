@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.21.0](https://github.com/redbadger/crux/compare/crux_core-v0.20.0...crux_core-v0.21.0) - 2026-09-06
 
 ### 💥 Breaking Changes
 
@@ -194,6 +194,173 @@ and this project adheres to
 
   Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
   every top-level type and exposes the helpers these plugins need.
+
+- **Type generation also emits a shell-side `Core`.** With the handler API in
+  place, what every shell still wrote by hand was the same loop: serialize the
+  `Event`, call the core's `update`, deserialize the `Requests`, re-read the view
+  on `Render`, dispatch the rest, and on each resolve call the core's `resolve`
+  and loop over what it returns. Beside `EffectHandler` and `EffectDispatcher`,
+  every generated package now carries a `CoreBridge` protocol/interface
+  (`ICoreBridge` in C#) over bytes — `update(event)`, `resolve(id, output)` and
+  `view()` — and a `Core` that owns that loop. The shell writes a few-line
+  adapter from BoltFFI's `CoreFfi` to `CoreBridge` (or a fake, for previews and
+  tests), an `EffectHandler` for the platform work, and is done.
+
+  Swift:
+
+  ```swift
+  public protocol CoreBridge: Sendable {
+      func update(_ event: [UInt8]) -> [UInt8]
+      func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8]
+      func view() -> [UInt8]
+  }
+
+  @available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
+  @Observable @MainActor public final class Core {
+      public private(set) var view: ViewModel
+      public init(bridge: any CoreBridge, handler: any EffectHandler)
+      public func update(_ event: Event)
+      public func process(_ requests: [Request])
+      public func process(bytes: [UInt8])
+  }
+  ```
+
+  The Swift `Core` is `@Observable`, so a SwiftUI shell puts it in the
+  environment and reads `core.view`; it alone requires iOS 17 / macOS 14,
+  while the handler API keeps its iOS 13 / macOS 10.15 bar. Kotlin gets
+  `interface CoreBridge` and `class Core(bridge, handler, scope:
+  CoroutineScope)` exposing `val view: StateFlow<ViewModel>`; TypeScript gets
+  `interface CoreBridge` and `class Core(bridge, handler, onView)` with
+  `update`, `process(requests)` and `processBytes(bytes)`; C# gets
+  `ICoreBridge` and `sealed class Core(bridge, handler)`, which implements
+  `INotifyPropertyChanged` and raises `PropertyChanged` for `View`, with
+  `Update` and two `Process` overloads. `process(bytes)` is there for the
+  requests middleware pushes to the shell asynchronously.
+
+  `Core` handles `Render` itself — it re-reads the view, holds it and
+  publishes it — so **`EffectHandler.render` now has a default that does nothing**
+  in all four languages (a Swift protocol extension, a Kotlin or C# default
+  method, an optional member in TypeScript). Implement it only if you drive
+  `EffectDispatcher` without `Core`. `Core` is emitted only when the effect
+  enum has a `crux_core::render::RenderOperation` variant;
+  `CodeGenerator::without_core()` turns it off and leaves the handler API, and
+  `without_effect_handlers()` turns off both. `Core`, `CoreBridge` and
+  `ICoreBridge` join the reserved names. The generated Kotlin module now
+  declares `kotlinx-coroutines-core` in its `build.gradle.kts`.
+
+  `TypeRegistry::register_app` now records the app's `Event` and `ViewModel`
+  types as an `AppMeta`, read back with `CodeGenerator::app()`, and
+  `EffectVariantMeta` gains `render: bool`.
+
+- **Type generation can bridge `Core` to BoltFFI's bindings itself.** Tell the
+  `CodeGenerator` where BoltFFI put its output and the adapter is generated
+  too, so a shell constructs `Core` from nothing but its `EffectHandler`:
+
+  ```rust,ignore
+  TypeRegistry::new().register_app::<App>()?.build()?.boltffi(
+      BoltFfi::new()
+          .swift("Shared")                                        // import Shared, ../Shared
+          .kotlin()                                               // CoreFfi is in the generated package
+          .typescript("shared", PackageLocation::Path("../pkg".into()))
+          .csharp(),                                              // CoreFfi is in the generated namespace
+  )
+  ```
+
+  Each language is opted in on its own; one you do not name is unchanged. For
+  a named language the generated module gains `FfiBridge` — `CoreBridge` over
+  `CoreFfi`, with the Swift `Data` conversion and `@unchecked Sendable` where
+  they belong — and `Core` gains `Core(handler:)` in Swift, `Core(handler,
+  scope)` in Kotlin, `static async create(handler, onView)` in TypeScript
+  (it awaits the wasm module's `initialized` promise) and `Core(handler)` in
+  C#. `BoltFfi::class(..)` renames the exported class; `swift_package(..)`,
+  `kotlin_package(..)` and `csharp_namespace(..)` cover non-default layouts.
+  `CoreBridge` and the two-argument constructors are still emitted for fakes
+  and for FFI shapes the bridge does not cover, such as the middleware
+  examples' `CoreFfi::new(shell)`.
+
+  Two build consequences. The generated Swift package now depends on BoltFFI's
+  (`.package(path: "../Shared")` and the product on its target) and needs a
+  `platforms:` floor no lower than that package's, set with
+  `Config::builder(..).platform(".iOS(.v16)")`, a new `Config` setting that
+  works with or without the bridge; your app target no longer has to link the
+  BoltFFI package directly. The generated TypeScript `package.json` depends on
+  the wasm package, so run `boltffi pack wasm` before typegen. `FfiBridge`
+  joins the reserved names, and a `boltffi(..)` configuration with no `Core`
+  to bridge (`without_core()`, no registered app, or no `Render` variant) is
+  an error rather than a no-op. Requires `facet_generate` with the
+  companion-file and manifest hooks (0.21).
+
+- **Request ids are structured, so a bad resolve says what is wrong with it.**
+  An `EffectId` used to be a bare counter. It now packs, from the top, eight
+  bits of effect variant index, one bit that is set for a stream and clear for
+  a request, and twenty-three bits of sequence. Sequences start at one, wrap
+  within their own bits and step over anything still outstanding, so counting
+  can never disturb the effect or the kind. Id `0` is reserved: every
+  notification is issued that one id, and — as before — nothing is stored for
+  it.
+
+  Read the pieces through `EffectId::{effect_index, kind, sequence}`. The
+  layout itself stays an implementation detail; shells should use the generated
+  `RequestId` decoder.
+
+  The bridge checks the structure before it deserializes anything, and
+  `ResolveError` gains three variants to report what it finds:
+
+  ```text
+  Attempted to resolve a request that is not expected to be resolved.  // id 0
+  Request id 0x09000001 names variant 9 of `shared::Effect`, which has only 2 variants.
+  Request id 0x01000001 names `Render` (variant 1), but request 1 was issued for `Http` (variant 0).
+  Request id 0x00800001 is marked as a Stream request, but request 1 was issued as a Request.
+  ```
+
+  Ids are printed in hex so the effect index, kind bit and sequence can be read
+  off them. `WrongEffect` carries both sides as `EffectVariant { index, name }`,
+  and `NoSuchEffect` names the effect type.
+
+  `NotFound` now means only what it says — never issued, or already resolved.
+  Resolving a notification used to report `NotFound` and now reports
+  `ResolveError::Never`. `ResolveError` is also `#[non_exhaustive]`, so later
+  additions are not breaking.
+
+  `EffectFFI` gains a defaulted `variant_index()` method, a `VARIANT_COUNT`
+  constant and a `variant_name(index)` function, all of which `#[effect]`
+  overrides; a hand-written implementation keeps compiling, its ids simply
+  carry variant index zero, and its errors number variants instead of naming
+  them.
+
+- **Type generation emits `EffectKind` and a `RequestId` decoder**, in Swift,
+  Kotlin, TypeScript and C#, from the same effect metadata the core builds ids
+  from — so the two cannot drift apart:
+
+  ```swift
+  public enum EffectKind: UInt8, Hashable, Sendable { case render = 0, http = 1 /* ... */ }
+
+  public struct RequestId: Hashable, Sendable {
+      public init(_ rawValue: UInt32)
+      public var isNotification: Bool { get }
+      public var effectKind: EffectKind? { get }
+      public var operationKind: OperationKind { get }
+      public var sequence: UInt32 { get }
+  }
+  ```
+
+  TypeScript gets `EffectKind` as the union of variant names — the same
+  discriminant the effect union uses — plus `decodeRequestId(rawValue)`. A
+  request is still resolved with the id exactly as it arrived; the decoder is
+  for logging, tracing and assertions. `EffectKind` and `RequestId` join the
+  reserved names, and `without_effect_handlers()` turns them off along with the
+  rest.
+
+### ⚙️ Miscellaneous Tasks
+
+- **Facet type generation now requires `facet_generate` 0.21.** Only the
+  `facet_typegen` feature is affected; every other feature of this crate is
+  unchanged.
+- Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.
+- Released in lockstep with `crux_http` 0.21, `crux_kv` 0.15 and `crux_time`
+  0.19. The two capability crates deprecate their enum APIs in favour of the
+  per-operation types; see their changelogs and the
+  [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html).
 
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
 

@@ -1,3 +1,4 @@
+import App
 import SwiftUI
 import WeatherKit
 
@@ -8,10 +9,11 @@ struct WeatherApp: App {
 
     // ANCHOR: start
     init() {
-        let bridge = LiveBridge()
-        let core = Core(bridge: bridge)
+        let core = Core(handler: WeatherHandler())
+
         _core = State(wrappedValue: core)
         updater = CoreUpdater { core.update($0) }
+
         core.update(.start)
     }
     // ANCHOR_END: start

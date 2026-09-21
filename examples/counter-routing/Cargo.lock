@@ -580,7 +580,7 @@ checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 
 [[package]]
 name = "crux_core"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -599,14 +599,14 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "async-trait",
  "crux_core",
  "derive_builder",
  "encoding_rs",
  "facet",
- "facet-generate-attrs 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "facet-generate-attrs",
  "futures-util",
  "http",
  "mime",
@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "crux_macros"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "darling 0.24.0",
  "heck",
@@ -898,16 +898,7 @@ dependencies = [
 [[package]]
 name = "facet-generate-attrs"
 version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8759a95863bc332c2cdbdacdbe2595573aa3431ce42609b66a1eccf62f1ee1bb"
-dependencies = [
- "facet",
-]
-
-[[package]]
-name = "facet-generate-attrs"
-version = "0.18.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2#c949b1cc25c24c5b763c675f31a96032e19c8233"
+source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
 dependencies = [
  "facet",
 ]
@@ -960,11 +951,11 @@ dependencies = [
 [[package]]
 name = "facet_generate"
 version = "0.21.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2#c949b1cc25c24c5b763c675f31a96032e19c8233"
+source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
 dependencies = [
  "derive_builder",
  "facet",
- "facet-generate-attrs 0.18.0 (git+https://github.com/redbadger/facet-generate?rev=c949b1cc25c2)",
+ "facet-generate-attrs",
  "heck",
  "include_dir",
  "indent",

@@ -107,7 +107,6 @@ apple/
 ├── WeatherApp/
 │   ├── WeatherApp.swift            # @main entry point — inits Core, sends Start event
 │   ├── ContentView.swift           # Root view — switches on ViewModel state
-│   ├── LiveBridge.swift            # CoreFfi wrapper — bincode serialization boundary
 │   ├── Info-iOS.plist
 │   └── Info-macOS.plist
 └── WeatherKit/                     # Swift package with all views + effect handlers
