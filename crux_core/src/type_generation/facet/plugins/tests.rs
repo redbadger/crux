@@ -20,7 +20,7 @@ use facet_generate::{
         swift::Swift,
         typescript::TypeScript,
     },
-    reflection::format::Namespace,
+    reflection::format::{Namespace, QualifiedTypeName},
 };
 
 use super::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, ShellExtensionPlugin};
@@ -422,6 +422,91 @@ fn a_namespaced_module_gets_no_bridge_and_no_imports() {
     assert_eq!(
         EmitterPlugin::<TypeScript>::imports(&plugin, &config),
         Vec::<String>::new()
+    );
+    // Every module is an SPM target of its own, and only the app's names the
+    // bridge — so only its target needs the edge to the FFI package.
+    assert_eq!(
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &config),
+        Vec::<String>::new()
+    );
+}
+
+/// The app's own module still gets all of it, which is what the assertions
+/// above would otherwise be satisfied by a plugin that emitted nothing at all.
+#[test]
+fn the_app_module_gets_the_bridge_and_the_target_edge() {
+    let (registry, effects) = fixture();
+    let mut config = CodeGeneratorConfig::new("Shared".to_string());
+    config.update_from(&registry);
+    let app = app_meta(&registry);
+
+    let plugin = CorePlugin::new(&effects.into(), app, Some(boltffi()));
+
+    assert_eq!(
+        EmitterPlugin::<Swift>::companion_files(&plugin, &config).len(),
+        1
+    );
+    assert_eq!(
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &config),
+        vec![r#".product(name: "Shared", package: "Shared")"#.to_string()]
+    );
+}
+
+/// The module that gets `Core` is the one that generates the effect, which
+/// need not be the root. With the effect in namespace `Feature`, the root
+/// module gets no bridge, no imports and no target edge, and the `Feature`
+/// module gets all three.
+#[test]
+fn a_namespaced_effect_puts_the_bridge_in_its_own_module() {
+    let (registry, mut effects) = fixture();
+    effects[0].effect = QualifiedTypeName::namespaced("Feature".to_string(), "Effect".to_string());
+    let app = app_meta(&registry);
+    let plugin = CorePlugin::new(&effects.into(), app, Some(boltffi()));
+
+    let mut root = CodeGeneratorConfig::new("Shared".to_string());
+    root.update_from(&registry);
+
+    assert!(EmitterPlugin::<Swift>::companion_files(&plugin, &root).is_empty());
+    assert!(EmitterPlugin::<Kotlin>::companion_files(&plugin, &root).is_empty());
+    assert!(EmitterPlugin::<CSharp>::companion_files(&plugin, &root).is_empty());
+    assert_eq!(
+        EmitterPlugin::<Swift>::imports(&plugin, &root),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        EmitterPlugin::<TypeScript>::imports(&plugin, &root),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &root),
+        Vec::<String>::new()
+    );
+
+    let feature = namespaced_config(&registry);
+
+    assert_eq!(
+        EmitterPlugin::<Swift>::companion_files(&plugin, &feature).len(),
+        1
+    );
+    assert_eq!(
+        EmitterPlugin::<Kotlin>::companion_files(&plugin, &feature).len(),
+        1
+    );
+    assert_eq!(
+        EmitterPlugin::<CSharp>::companion_files(&plugin, &feature).len(),
+        1
+    );
+    assert_eq!(
+        EmitterPlugin::<Swift>::imports(&plugin, &feature),
+        vec!["Observation".to_string()]
+    );
+    assert!(
+        EmitterPlugin::<TypeScript>::imports(&plugin, &feature)
+            .contains(&r#"import * as boltffi from "shared";"#.to_string())
+    );
+    assert_eq!(
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &feature),
+        vec![r#".product(name: "Shared", package: "Shared")"#.to_string()]
     );
 }
 
@@ -834,5 +919,9 @@ fn a_namespaced_module_gets_no_shell_extensions() {
     assert!(EmitterPlugin::<Swift>::companion_files(&swift, &config).is_empty());
     assert!(EmitterPlugin::<Kotlin>::companion_files(&kotlin, &config).is_empty());
     assert!(EmitterPlugin::<CSharp>::companion_files(&csharp, &config).is_empty());
+    assert_eq!(
+        EmitterPlugin::<Swift>::target_dependencies(&swift, &config),
+        Vec::<String>::new()
+    );
     assert_eq!(footer(&config), "");
 }
