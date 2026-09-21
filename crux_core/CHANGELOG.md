@@ -365,6 +365,19 @@ and this project adheres to
 
 ### 🐛 Bug Fixes
 
+- **Two shared types that generate the same name are now an error.** The type
+  registry used to keep whichever it met first and drop the other without a
+  word, so an app's own `ListKeys` beside `crux_kv`'s `ListKeys` produced a
+  single generated `ListKeys` and shells that failed to compile far from the
+  cause ([#601](https://github.com/redbadger/crux/issues/601)). `TypeRegistry`
+  now rejects the pair at registration, naming both Rust types and the fix:
+  rename one with `#[facet(rename = "...")]` or give it its own namespace. This
+  holds for types registered directly, for types reached through a field or
+  variant, and for the operations that a capability's shell protocol registers.
+  The protocol registers every operation of the capability, so an app type can
+  clash with an operation that the app does not send. The check lives in
+  `facet_generate` ([redbadger/facet-generate#137](https://github.com/redbadger/facet-generate/pull/137)).
+
 - **The bridge ignores a late item for a stream.** If the core no longer
   listens to a stream, `Bridge::resolve` returns `Ok(())` for a new item on
   that stream. Before, it returned `ResolveError::FinishedMany`. An FFI
