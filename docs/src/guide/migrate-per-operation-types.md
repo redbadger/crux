@@ -732,8 +732,9 @@ operation does.
 **Names.** Registering a capability puts all of its operation types into your
 generated module's root namespace — `crux_kv` brings `Get`, `Set`, `Delete`,
 `Exists` and `ListKeys`. An operation of your own with one of those names
-collides, and today the registry keeps one of the two without a word
-([#601](https://github.com/redbadger/crux/issues/601)). Rename yours with
+collides, and registration fails with an error that names both Rust types
+(the registry used to keep one of the two without a word,
+[#601](https://github.com/redbadger/crux/issues/601)). Rename yours with
 `#[facet(rename = "...")]` or, better, give app-defined operations names
 that carry their capability, as the weather example's `FetchSecret`,
 `StoreSecret` and `DeleteSecret` do.
