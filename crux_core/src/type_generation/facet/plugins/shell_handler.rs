@@ -146,7 +146,13 @@ impl EmitterPlugin<Swift> for ShellHandlerPlugin {
 
     /// A Swift package entry declares the package; the target still needs its
     /// edge to the product, which is the handler's to name.
-    fn target_dependencies(&self) -> Vec<String> {
+    ///
+    /// The app's target, since that is where the sources were emitted — every
+    /// module is asked, and a namespaced one has none of them.
+    fn target_dependencies(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.is_app_module(config) {
+            return vec![];
+        }
         self.union(
             |handler| handler.swift.as_ref(),
             |shipped| shipped.target_dependencies,

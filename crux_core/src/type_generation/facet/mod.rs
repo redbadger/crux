@@ -609,7 +609,7 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin() {
+            if let Some(core) = self.core_plugin(&config.package_name) {
                 installer = installer.plugin(core);
             }
         }
@@ -655,7 +655,7 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin() {
+            if let Some(core) = self.core_plugin(&config.package_name) {
                 installer = installer.plugin(core);
             }
         }
@@ -700,7 +700,7 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin() {
+            if let Some(core) = self.core_plugin(&config.package_name) {
                 installer = installer.plugin(core);
             }
         }
@@ -740,7 +740,7 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin() {
+            if let Some(core) = self.core_plugin(&config.package_name) {
                 installer = installer.plugin(core);
             }
         }
@@ -917,13 +917,13 @@ impl CodeGenerator {
     ///
     /// `Core` is built on the dispatcher and names the app's `Event` and
     /// `ViewModel`, so it needs the handler API and a registered app.
-    fn core_plugin(&self) -> Option<CorePlugin> {
+    fn core_plugin(&self, package_name: &str) -> Option<CorePlugin> {
         if !(self.handlers && self.core) {
             return None;
         }
         self.app
             .clone()
-            .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
+            .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone(), package_name))
     }
 
     /// A handler's source is written beside the module as `<Name>.swift`,
