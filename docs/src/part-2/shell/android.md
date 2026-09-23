@@ -72,15 +72,7 @@ What the shell writes is the handler, `WeatherHandler`, whose methods are one-li
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/HttpHandler.kt:request}}
 ```
 
-Because the handler interface owns the response types, the per-capability handlers lost their `when` blocks too: `KeyValueHandler.get(operation: Get): ValueResult` takes exactly the operation it serves and returns exactly its output, rather than matching a wide operation enum and constructing a matching response variant.
-
-```admonish note title="Kotlin name collisions"
-`crux_kv`'s `Set` operation generates a Kotlin class called `Set`, which
-collides with `kotlin.collections.Set`. `WeatherHandler.kt` imports it as
-`import com.crux.example.weather.Set as KeyValueSet`. The same collision
-appears in Swift and TypeScript, and the same fix — an alias at the import —
-works there.
-```
+Because the handler interface owns the response types, the per-capability handlers lost their `when` blocks too: `KeyValueHandler.get(operation: GetValue): ValueResult` takes exactly the operation it serves and returns exactly its output, rather than matching a wide operation enum and constructing a matching response variant.
 
 ## Views driven by the Crux view model
 
