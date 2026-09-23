@@ -6,7 +6,7 @@ use facet_generate::{
     generation::{
         CodeGeneratorConfig,
         bincode::csharp::write_serialize_value,
-        csharp::{escape_identifier, render_type, requalify},
+        csharp::{escape_identifier, render_type},
         indent::IndentWrite,
     },
     reflection::format::Format,
@@ -14,6 +14,8 @@ use facet_generate::{
 
 use super::{super::Matched, AppMeta, BoltFfi, render};
 
+/// `app` names the event and view model in the emitter's spelling, as the
+/// formats in `m` are.
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
@@ -119,14 +121,11 @@ fn emit_core(
         .render_variant()
         .expect("the plugin only matches an effect with a render variant");
     let event_param = escape_identifier("event");
-    // The app's types are named as the registry spells them, and the emitter
-    // functions take the spelling the generator rewrites references to.
-    let event = render_type(&Format::TypeName(requalify(config, &app.event)), config);
-    let view_model_type = requalify(config, &app.view_model);
-    let view_model = render_type(&Format::TypeName(view_model_type.clone()), config);
+    let event = render_type(&Format::TypeName(app.event.clone()), config);
+    let view_model = render_type(&Format::TypeName(app.view_model.clone()), config);
     // A C-style enum keeps its bincode entry points in a companion static
     // class, exactly as the bincode emitter spells it.
-    let view_model_bincode = if config.is_unit_enum(&view_model_type) {
+    let view_model_bincode = if config.is_unit_enum(&app.view_model) {
         format!("{view_model}Bincode")
     } else {
         view_model.clone()
@@ -285,12 +284,7 @@ fn emit_methods(
     writeln!(w, "{{")?;
     w.indent();
     writeln!(w, "var serializer = new BincodeSerializer();")?;
-    write_serialize_value(
-        w,
-        event_param,
-        &Format::TypeName(requalify(config, &app.event)),
-        config,
-    )?;
+    write_serialize_value(w, event_param, &Format::TypeName(app.event.clone()), config)?;
     writeln!(w, "Process(_bridge.Update(serializer.GetBytes()));")?;
     w.unindent();
     writeln!(w, "}}")?;
