@@ -137,7 +137,7 @@ Now each operation names only its own outcomes:
 
 Three operations, three outputs, two variants each. There is no wide `SecretResponse` and no `unreachable!()` anywhere, because a `SecretStoreResponse` is not a possible answer to a `FetchSecret` — the type says so, and the shell's generated handler method for `FetchSecret` returns a `SecretFetchResponse` or nothing at all.
 
-The operation names carry the capability's name for a reason that has nothing to do with Rust: type generation puts every operation of every capability into one namespace on the shell side, and the weather app also uses `crux_kv`, whose `Delete` would otherwise land on top of a bare `Delete` here. An app-defined operation with a generic name is worth prefixing from the start.
+The operation names carry the capability's name for a reason that has nothing to do with Rust: type generation puts every operation of every capability into one namespace on the shell side, so a bare `Delete` here would clash with any other capability or app operation called `Delete`, and type generation refuses two shared types that generate the same name. An app-defined operation with a generic name is worth prefixing from the start.
 
 The developer API is correspondingly plain:
 
@@ -223,7 +223,7 @@ public protocol TimeHandler: Sendable {
     func now(_ operation: Now) async -> Instant
     func notifyAt(_ operation: NotifyAt) async -> TimerId
     func notifyAfter(_ operation: NotifyAfter) async -> TimerId
-    func clear(_ operation: Clear) async -> TimerId
+    func clear(_ operation: ClearTimer) async -> TimerId
 }
 
 public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {

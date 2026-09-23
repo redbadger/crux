@@ -644,7 +644,7 @@ struct WeatherHandler: EffectHandler {
 
     func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
     func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
-    func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
+    func timeClear(_ operation: ClearTimer) async -> TimerId { await time.clear(operation) }
     // the app's own operations…
 }
 ```
@@ -672,8 +672,8 @@ declares any, reach your `Package.swift`, `build.gradle.kts` or
 platform standard library. `<Name>Handler` joins the reserved names, and
 registering two handlers with the same name is an error. So is one of your
 own types sharing a name with a capability's — registering `crux_kv` brings
-its `Delete` with it, and an app with a `Delete` of its own is told so at
-registration, with both Rust types named, and renames one of them with
+its `DeleteValue` with it, and an app with a `DeleteValue` of its own is told
+so at registration, with both Rust types named, and renames one of them with
 `#[facet(rename = "...")]`.
 [Building capabilities](../part-2/capabilities.md) covers the other side:
 how a capability declares what it ships.
@@ -740,8 +740,9 @@ rejects a larger one.
 - The generated Kotlin module declares a dependency on
   `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
   `StateFlow` and coroutine launches need.
-- Operation names collide with standard library types more often than
-  you'd expect — `crux_kv`'s `Set` shadows `Set` in Swift, Kotlin and
-  TypeScript. Alias it at the import site
-  (`import com.example.Set as KeyValueSet`, `import { Set as SetValue }`).
+- A shared type named after a standard library type shadows it in the
+  generated module — an operation called `Set` hides `Set` in Swift, Kotlin
+  and TypeScript, and every shell then has to alias one of them at the
+  import. The bundled capabilities avoid this with verb+noun names such as
+  `SetValue`, and your own operations are worth naming the same way.
 - Facet type generation requires `facet_generate` 0.21 or later.

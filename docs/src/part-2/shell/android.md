@@ -73,15 +73,7 @@ What the shell writes is the handler, `WeatherHandler`, whose methods are one-li
 
 `httpHandler.request(...)` is the `suspend` function on the `HttpHandler` interface that `crux_http` ships. Because the codegen binary registers `crux_http::HTTP`, the generated package contains `Http.kt`: the interface, and `UrlConnectionHttpHandler`, which turns an `HttpRequest` into an `HttpURLConnection`, reads the response back into an `HttpResult`, and knows which failures are `HttpError.Timeout`, which are `HttpError.Io` and which are `HttpError.Url`. Those rules are the capability's, written once next to the Rust that defines the protocol, and this shell never spells them out. `KeyValue.kt` and `Time.kt` arrive the same way, from `crux_kv` and `crux_time`. A shell that wanted OkHttp instead would implement `HttpHandler` over it and provide that from `AppModule` — nothing else changes. See [Shipped shell handlers](../../part-4/typegen.md#shipped-shell-handlers).
 
-The shipped handlers have the same shape as the interface they serve: `KeyValueHandler.get(operation: Get): ValueResult` takes exactly the operation it serves and returns exactly its output, so each `WeatherHandler` method is one expression. The app's own handlers — `LocationHandler`, `SecretStore` — follow the same pattern.
-
-```admonish note title="Kotlin name collisions"
-`crux_kv`'s `Set` operation generates a Kotlin class called `Set`, which
-collides with `kotlin.collections.Set`. `WeatherHandler.kt` imports it as
-`import com.crux.example.weather.Set as KeyValueSet`. The same collision
-appears in Swift and TypeScript, and the same fix — an alias at the import —
-works there.
-```
+The shipped handlers have the same shape as the interface they serve: `KeyValueHandler.get(operation: GetValue): ValueResult` takes exactly the operation it serves and returns exactly its output, so each `WeatherHandler` method is one expression. The app's own handlers — `LocationHandler`, `SecretStore` — follow the same pattern.
 
 ## Views driven by the Crux view model
 
