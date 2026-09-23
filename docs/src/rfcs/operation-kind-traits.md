@@ -851,10 +851,10 @@ pub enum Effect {
     Render(Notification<RenderOperation>),
     Publish(Notification<pub_sub::Publish>),
     Subscribe(Subscription<pub_sub::Subscribe>),
-    KvGet(Request<kv::Get>),
-    KvSet(Request<kv::Set>),
+    KvGet(Request<kv::GetValue>),
+    KvSet(Request<kv::SetValue>),
     TimeNotifyAfter(Request<time::NotifyAfter>),
-    TimeClear(Request<time::Clear>),
+    TimeClear(Request<time::ClearTimer>),
 }
 ```
 
@@ -872,7 +872,8 @@ collision would be constant.
 What it costs is why it is rejected. The kind is declared twice, in the
 derive and in the enum, which is the shape this whole design exists to
 remove; a mismatch is caught, but an application author writing
-`Clear(???<crux_time::operation::Clear>)` has to know whether `Clear` is a
+`TimeClear(???<crux_time::operation::ClearTimer>)` has to know whether
+`ClearTimer` is a
 request before they can write the variant. Every effect enum ever written
 changes: in this repository, thirty-seven in code and forty-two in doctests.
 `capability::Operation` and `Op::Output` go, which this RFC promised third
