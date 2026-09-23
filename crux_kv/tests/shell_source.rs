@@ -25,7 +25,7 @@ use crux_core::{
     render::RenderOperation,
     type_generation::facet::{CodeGenerator, Config, TypeRegistry},
 };
-use crux_kv::operation::{Delete, Exists, Get, ListKeys, Set};
+use crux_kv::operation::{DeleteValue, GetValue, KeyExists, ListKeys, SetValue};
 use facet::Facet;
 
 #[derive(Facet)]
@@ -41,10 +41,10 @@ pub struct ViewModel;
 #[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
-    KvGet(Get),
-    KvSet(Set),
-    KvDelete(Delete),
-    KvExists(Exists),
+    KvGet(GetValue),
+    KvSet(SetValue),
+    KvDelete(DeleteValue),
+    KvExists(KeyExists),
     KvListKeys(ListKeys),
 }
 

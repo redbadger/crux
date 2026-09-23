@@ -14,8 +14,8 @@ import java.net.URLEncoder
 /// class MyHandler(context: Context) : EffectHandler {
 ///     private val kv = FileKeyValueHandler(context.filesDir)
 ///
-///     override suspend fun kvGet(operation: Get): ValueResult = kv.get(operation)
-///     override suspend fun kvSet(operation: Set): ValueResult = kv.set(operation)
+///     override suspend fun kvGet(operation: GetValue): ValueResult = kv.get(operation)
+///     override suspend fun kvSet(operation: SetValue): ValueResult = kv.set(operation)
 /// }
 /// ```
 ///
@@ -30,16 +30,16 @@ import java.net.URLEncoder
 /// the store itself failed; a missing key is an answer.
 interface KeyValueHandler {
     /// Read the bytes stored under `operation.key`.
-    suspend fun get(operation: Get): ValueResult
+    suspend fun get(operation: GetValue): ValueResult
 
     /// Write `operation.value`, answering with the value it replaced.
-    suspend fun set(operation: Set): ValueResult
+    suspend fun set(operation: SetValue): ValueResult
 
     /// Remove `operation.key`, answering with the value it removed.
-    suspend fun delete(operation: Delete): ValueResult
+    suspend fun delete(operation: DeleteValue): ValueResult
 
     /// Whether `operation.key` is in the store.
-    suspend fun exists(operation: Exists): BoolResult
+    suspend fun exists(operation: KeyExists): ExistsResult
 
     /// The keys starting with `operation.prefix`, from `operation.cursor`.
     suspend fun listKeys(operation: ListKeys): KeysResult
@@ -70,12 +70,12 @@ interface KeyValueHandler {
 class FileKeyValueHandler(
     private val directory: File,
 ) : KeyValueHandler {
-    override suspend fun get(operation: Get): ValueResult =
+    override suspend fun get(operation: GetValue): ValueResult =
         withContext(Dispatchers.IO) {
             io { ValueResult.Ok(read(operation.key)) }
         }
 
-    override suspend fun set(operation: Set): ValueResult =
+    override suspend fun set(operation: SetValue): ValueResult =
         withContext(Dispatchers.IO) {
             io {
                 val previous = read(operation.key)
@@ -85,7 +85,7 @@ class FileKeyValueHandler(
             }
         }
 
-    override suspend fun delete(operation: Delete): ValueResult =
+    override suspend fun delete(operation: DeleteValue): ValueResult =
         withContext(Dispatchers.IO) {
             io {
                 val previous = read(operation.key)
@@ -94,14 +94,14 @@ class FileKeyValueHandler(
             }
         }
 
-    override suspend fun exists(operation: Exists): BoolResult =
+    override suspend fun exists(operation: KeyExists): ExistsResult =
         withContext(Dispatchers.IO) {
             try {
-                BoolResult.Ok(file(operation.key).isFile)
+                ExistsResult.Ok(file(operation.key).isFile)
             } catch (e: IOException) {
-                BoolResult.Err(KeyValueError.Io(e.message ?: "IO error"))
+                ExistsResult.Err(KeyValueError.Io(e.message ?: "IO error"))
             } catch (e: SecurityException) {
-                BoolResult.Err(KeyValueError.Io(e.message ?: "access denied"))
+                ExistsResult.Err(KeyValueError.Io(e.message ?: "access denied"))
             }
         }
 

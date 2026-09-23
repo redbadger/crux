@@ -26,8 +26,8 @@ use crate::{CompletedTimerHandle, TimerHandle, TimerOutcome, get_timer_id, opera
 /// Cancellation works exactly as it does with the enum-based API: the
 /// [`TimerHandle`] returned by [`notify_at`](Time::notify_at) and
 /// [`notify_after`](Time::notify_after) clears the timer, which asks the shell
-/// to release it with an [`operation::Clear`] request and resolves the timer's
-/// future with [`TimerOutcome::Cleared`] once the shell has answered.
+/// to release it with an [`operation::ClearTimer`] request and resolves the
+/// timer's future with [`TimerOutcome::Cleared`] once the shell has answered.
 ///
 /// The bounds are per method, so an app's `Effect` only has to carry the
 /// operations it actually uses:
@@ -38,9 +38,9 @@ use crate::{CompletedTimerHandle, TimerHandle, TimerOutcome, get_timer_id, opera
 ///
 /// #[effect]
 /// enum Effect {
-///     Now(operation::Now),
-///     NotifyAfter(operation::NotifyAfter),
-///     Clear(operation::Clear),
+///     TimeNow(operation::Now),
+///     TimeNotifyAfter(operation::NotifyAfter),
+///     TimeClear(operation::ClearTimer),
 /// }
 ///
 /// # enum Event { Now(std::time::SystemTime), Elapsed(TimerOutcome) }
@@ -83,7 +83,7 @@ where
         TimerHandle,
     )
     where
-        Effect: From<Request<operation::NotifyAt>> + From<Request<operation::Clear>>,
+        Effect: From<Request<operation::NotifyAt>> + From<Request<operation::ClearTimer>>,
     {
         let timer_id = get_timer_id();
         let (sender, mut receiver) = oneshot::channel();
@@ -129,9 +129,9 @@ where
 
                     // Ask the shell to clear the timer, so it can clean up, and
                     // wait for it to say it has.
-                    let id = ctx.request_from_shell(operation::Clear { id: cleared_id }).await;
+                    let id = ctx.request_from_shell(operation::ClearTimer { id: cleared_id }).await;
 
-                    assert_eq!(id, cleared_id, "Clear resolved with an unexpected timer ID");
+                    assert_eq!(id, cleared_id, "ClearTimer resolved with an unexpected timer ID");
 
                     TimerOutcome::Cleared
                 }
@@ -155,7 +155,7 @@ where
         TimerHandle,
     )
     where
-        Effect: From<Request<operation::NotifyAfter>> + From<Request<operation::Clear>>,
+        Effect: From<Request<operation::NotifyAfter>> + From<Request<operation::ClearTimer>>,
     {
         let timer_id = get_timer_id();
         let (sender, mut receiver) = oneshot::channel();
@@ -197,9 +197,9 @@ where
 
                     // Ask the shell to clear the timer, so it can clean up, and
                     // wait for it to say it has.
-                    let id = ctx.request_from_shell(operation::Clear { id: cleared_id }).await;
+                    let id = ctx.request_from_shell(operation::ClearTimer { id: cleared_id }).await;
 
-                    assert_eq!(id, cleared_id, "Clear resolved with an unexpected timer ID");
+                    assert_eq!(id, cleared_id, "ClearTimer resolved with an unexpected timer ID");
 
                     TimerOutcome::Cleared
                 }

@@ -81,7 +81,7 @@ var pending = time.NotifyAfter(
 // Long enough for the handler to have the timer in its table before it is
 // asked to take it out again.
 await Task.Delay(50);
-var cleared = await time.Clear(new Clear { Id = new TimerId { Value = 4 } });
+var cleared = await time.Clear(new ClearTimer { Id = new TimerId { Value = 4 } });
 Expect("Clear answers with the id it was given", cleared.Value, 4UL);
 
 var waited = Stopwatch.StartNew();
@@ -95,7 +95,7 @@ Expect(
 
 // Clearing a timer that is not there is not an error: the shell need not race
 // a timer that has already fired.
-var unknown = await time.Clear(new Clear { Id = new TimerId { Value = 99 } });
+var unknown = await time.Clear(new ClearTimer { Id = new TimerId { Value = 99 } });
 Expect("Clear of an unknown timer answers with the id it was given", unknown.Value, 99UL);
 
 if (failures.Count == 0)

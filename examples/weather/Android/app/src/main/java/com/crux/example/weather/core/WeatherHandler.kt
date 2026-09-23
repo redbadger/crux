@@ -1,11 +1,11 @@
 package com.crux.example.weather.core
 
-import com.crux.example.weather.Clear
+import com.crux.example.weather.ClearTimer
 import com.crux.example.weather.DeleteSecret
 import com.crux.example.weather.EffectHandler
 import com.crux.example.weather.FetchSecret
-import com.crux.example.weather.Get
 import com.crux.example.weather.GetLocation
+import com.crux.example.weather.GetValue
 import com.crux.example.weather.HttpHandler
 import com.crux.example.weather.HttpRequest
 import com.crux.example.weather.HttpResult
@@ -16,13 +16,13 @@ import com.crux.example.weather.NotifyAfter
 import com.crux.example.weather.SecretDeleteResponse
 import com.crux.example.weather.SecretFetchResponse
 import com.crux.example.weather.SecretStoreResponse
+import com.crux.example.weather.SetValue
 import com.crux.example.weather.StoreSecret
 import com.crux.example.weather.TimeHandler
 import com.crux.example.weather.TimerId
 import com.crux.example.weather.ValueResult
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.crux.example.weather.Set as KeyValueSet
 
 /// The shell's side of the effect protocol: one method per operation the app
 /// declares, each returning the single output that operation is answered with.
@@ -52,13 +52,13 @@ class WeatherHandler
         override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
         // ANCHOR_END: handle_http
 
-        override suspend fun kvGet(operation: Get): ValueResult = keyValueHandler.get(operation)
+        override suspend fun kvGet(operation: GetValue): ValueResult = keyValueHandler.get(operation)
 
-        override suspend fun kvSet(operation: KeyValueSet): ValueResult = keyValueHandler.set(operation)
+        override suspend fun kvSet(operation: SetValue): ValueResult = keyValueHandler.set(operation)
 
         override suspend fun timeNotifyAfter(operation: NotifyAfter): TimerId = timeHandler.notifyAfter(operation)
 
-        override suspend fun timeClear(operation: Clear): TimerId = timeHandler.clear(operation)
+        override suspend fun timeClear(operation: ClearTimer): TimerId = timeHandler.clear(operation)
 
         override suspend fun isLocationEnabled(operation: IsLocationEnabled): Boolean = locationHandler.isLocationEnabled()
 

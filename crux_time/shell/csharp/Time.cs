@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 ///     private readonly ITimeHandler _time = new TaskTimeHandler();
 ///
 ///     public Task&lt;TimerId&gt; TimeNotifyAfter(NotifyAfter operation) => _time.NotifyAfter(operation);
-///     public Task&lt;TimerId&gt; TimeClear(Clear operation) => _time.Clear(operation);
+///     public Task&lt;TimerId&gt; TimeClear(ClearTimer operation) => _time.Clear(operation);
 /// }
 /// </code>
 /// <para>
@@ -44,7 +44,7 @@ public interface ITimeHandler
     Task<TimerId> NotifyAfter(NotifyAfter operation);
 
     /// <summary>Cancel the timer <c>operation.Id</c> names, and answer with it.</summary>
-    Task<TimerId> Clear(Clear operation);
+    Task<TimerId> Clear(ClearTimer operation);
 }
 
 /// <summary>
@@ -81,7 +81,7 @@ public sealed class TaskTimeHandler : ITimeHandler
         // A tick is 100ns, which is the finest a `TimeSpan` goes.
         Sleep(operation.Id, TimeSpan.FromTicks((long)(operation.Duration.Nanos / 100)));
 
-    public Task<TimerId> Clear(Clear operation)
+    public Task<TimerId> Clear(ClearTimer operation)
     {
         // Cancelling wakes the delay, so the task waiting on it completes and
         // answers too. Nothing acts on that answer.

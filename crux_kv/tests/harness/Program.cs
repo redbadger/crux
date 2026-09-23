@@ -51,10 +51,10 @@ List<string> Keys(KeysResult result)
     return [.. ok.Value.Keys];
 }
 
-static bool Present(BoolResult result) =>
+static bool Present(ExistsResult result) =>
     result switch
     {
-        BoolResult.Ok ok => ok.Value,
+        ExistsResult.Ok ok => ok.Value,
         _ => throw new InvalidOperationException($"expected Ok, got {result}"),
     };
 
@@ -75,8 +75,8 @@ IKeyValueHandler kv = new FileKeyValueHandler(store);
 
 // A store whose directory does not exist yet.
 Expect("the store's directory does not exist yet", Directory.Exists(store), false);
-Expect("Get of a missing key is Value.None, not an error", Bytes(await kv.Get(new Get { Key = "alpha" })), null);
-Expect("Exists is false for a missing key", Present(await kv.Exists(new Exists { Key = "alpha" })), false);
+Expect("Get of a missing key is Value.None, not an error", Bytes(await kv.Get(new GetValue { Key = "alpha" })), null);
+Expect("Exists is false for a missing key", Present(await kv.Exists(new KeyExists { Key = "alpha" })), false);
 Expect(
     "ListKeys of an empty store answers with no keys",
     Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 0 })),
@@ -84,7 +84,7 @@ Expect(
 );
 Expect(
     "Delete of a missing key is Value.None, not an error",
-    Bytes(await kv.Delete(new Delete { Key = "alpha" })),
+    Bytes(await kv.Delete(new DeleteValue { Key = "alpha" })),
     null
 );
 
@@ -92,22 +92,22 @@ Expect(
 // is visible rather than plausible.
 foreach (var key in written)
 {
-    var set = new Set { Key = key, Value = new ObservableCollection<byte>(Stored(key)) };
+    var set = new SetValue { Key = key, Value = new ObservableCollection<byte>(Stored(key)) };
     Expect("Set of a new key answers with Value.None", Bytes(await kv.Set(set)), null);
 }
 
 foreach (var key in written)
 {
-    Expect($"Get returns the bytes set under {key}", Bytes(await kv.Get(new Get { Key = key })), Stored(key));
-    Expect($"Exists is true for {key}", Present(await kv.Exists(new Exists { Key = key })), true);
+    Expect($"Get returns the bytes set under {key}", Bytes(await kv.Get(new GetValue { Key = key })), Stored(key));
+    Expect($"Exists is true for {key}", Present(await kv.Exists(new KeyExists { Key = key })), true);
 }
 
 Expect(
     "Set of an existing key answers with the value it replaced",
-    Bytes(await kv.Set(new Set { Key = "beta", Value = [9, 9] })),
+    Bytes(await kv.Set(new SetValue { Key = "beta", Value = [9, 9] })),
     Stored("beta")
 );
-Expect("Get returns the replacement", Bytes(await kv.Get(new Get { Key = "beta" })), [9, 9]);
+Expect("Get returns the replacement", Bytes(await kv.Get(new GetValue { Key = "beta" })), [9, 9]);
 
 // The regression: everything the store lists is a key the app wrote. The store
 // holds a directory of half-written values beside the keys, and a directory is
@@ -139,15 +139,15 @@ Expect(
     new KeysResult.Err(new KeyValueError.CursorNotFound())
 );
 
-Expect("the awkward key survives the round trip", Bytes(await kv.Get(new Get { Key = Awkward })), Stored(Awkward));
+Expect("the awkward key survives the round trip", Bytes(await kv.Get(new GetValue { Key = Awkward })), Stored(Awkward));
 
 Expect(
     "Delete answers with the value it removed",
-    Bytes(await kv.Delete(new Delete { Key = "delta" })),
+    Bytes(await kv.Delete(new DeleteValue { Key = "delta" })),
     Stored("delta")
 );
-Expect("Exists is false once the key is deleted", Present(await kv.Exists(new Exists { Key = "delta" })), false);
-Expect("Get is Value.None once the key is deleted", Bytes(await kv.Get(new Get { Key = "delta" })), null);
+Expect("Exists is false once the key is deleted", Present(await kv.Exists(new KeyExists { Key = "delta" })), false);
+Expect("Get is Value.None once the key is deleted", Bytes(await kv.Get(new GetValue { Key = "delta" })), null);
 Expect(
     "ListKeys no longer answers with the deleted key",
     Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 0 })),

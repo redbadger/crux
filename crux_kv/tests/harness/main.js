@@ -101,32 +101,32 @@ const main = async () => {
   const kv = shared.createLocalStorageKeyValueHandler("harness.", storage);
 
   // An empty store, before anything has been written to it.
-  expect("get of a missing key is Value.None, not an error", bytes(await kv.get(new shared.Get("alpha"))), null);
-  expect("exists is false for a missing key", present(await kv.exists(new shared.Exists("alpha"))), false);
+  expect("get of a missing key is Value.None, not an error", bytes(await kv.get(new shared.GetValue("alpha"))), null);
+  expect("exists is false for a missing key", present(await kv.exists(new shared.KeyExists("alpha"))), false);
   expect("listKeys of an empty store answers with no keys", keys(await kv.listKeys(new shared.ListKeys("", 0n))), []);
   expect(
     "delete of a missing key is Value.None, not an error",
-    bytes(await kv.delete(new shared.Delete("alpha"))),
+    bytes(await kv.delete(new shared.DeleteValue("alpha"))),
     null,
   );
 
   // Each key holds its own name, so a value that comes back under the wrong
   // key is visible rather than plausible.
   for (const key of written) {
-    expect("set of a new key answers with Value.None", bytes(await kv.set(new shared.Set(key, value(key)))), null);
+    expect("set of a new key answers with Value.None", bytes(await kv.set(new shared.SetValue(key, value(key)))), null);
   }
 
   for (const key of written) {
-    expect(`get returns the bytes set under ${key}`, bytes(await kv.get(new shared.Get(key))), value(key));
-    expect(`exists is true for ${key}`, present(await kv.exists(new shared.Exists(key))), true);
+    expect(`get returns the bytes set under ${key}`, bytes(await kv.get(new shared.GetValue(key))), value(key));
+    expect(`exists is true for ${key}`, present(await kv.exists(new shared.KeyExists(key))), true);
   }
 
   expect(
     "set of an existing key answers with the value it replaced",
-    bytes(await kv.set(new shared.Set("beta", [9, 9]))),
+    bytes(await kv.set(new shared.SetValue("beta", [9, 9]))),
     value("beta"),
   );
-  expect("get returns the replacement", bytes(await kv.get(new shared.Get("beta"))), [9, 9]);
+  expect("get returns the replacement", bytes(await kv.get(new shared.GetValue("beta"))), [9, 9]);
 
   // The regression: everything the store lists is a key the app wrote, and
   // nothing the store shares its storage with.
@@ -148,11 +148,11 @@ const main = async () => {
     shared.keysResultErr(shared.keyValueErrorCursorNotFound()),
   );
 
-  expect("the awkward key survives the round trip", bytes(await kv.get(new shared.Get(awkward))), value(awkward));
+  expect("the awkward key survives the round trip", bytes(await kv.get(new shared.GetValue(awkward))), value(awkward));
 
-  expect("delete answers with the value it removed", bytes(await kv.delete(new shared.Delete("delta"))), value("delta"));
-  expect("exists is false once the key is deleted", present(await kv.exists(new shared.Exists("delta"))), false);
-  expect("get is Value.None once the key is deleted", bytes(await kv.get(new shared.Get("delta"))), null);
+  expect("delete answers with the value it removed", bytes(await kv.delete(new shared.DeleteValue("delta"))), value("delta"));
+  expect("exists is false once the key is deleted", present(await kv.exists(new shared.KeyExists("delta"))), false);
+  expect("get is Value.None once the key is deleted", bytes(await kv.get(new shared.GetValue("delta"))), null);
   expect("listKeys no longer answers with the deleted key", keys(await kv.listKeys(new shared.ListKeys("", 0n))), [
     "alpha",
     awkward,

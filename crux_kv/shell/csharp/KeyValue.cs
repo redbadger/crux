@@ -17,8 +17,8 @@ using System.Threading.Tasks;
 /// {
 ///     private readonly IKeyValueHandler _kv = new FileKeyValueHandler(directory);
 ///
-///     public Task&lt;ValueResult&gt; KvGet(Get operation) => _kv.Get(operation);
-///     public Task&lt;ValueResult&gt; KvSet(Set operation) => _kv.Set(operation);
+///     public Task&lt;ValueResult&gt; KvGet(GetValue operation) => _kv.Get(operation);
+///     public Task&lt;ValueResult&gt; KvSet(SetValue operation) => _kv.Set(operation);
 /// }
 /// </code>
 /// <para>
@@ -35,16 +35,16 @@ using System.Threading.Tasks;
 public interface IKeyValueHandler
 {
     /// <summary>Read the bytes stored under <c>operation.Key</c>.</summary>
-    Task<ValueResult> Get(Get operation);
+    Task<ValueResult> Get(GetValue operation);
 
     /// <summary>Write <c>operation.Value</c>, answering with the value it replaced.</summary>
-    Task<ValueResult> Set(Set operation);
+    Task<ValueResult> Set(SetValue operation);
 
     /// <summary>Remove <c>operation.Key</c>, answering with the value it removed.</summary>
-    Task<ValueResult> Delete(Delete operation);
+    Task<ValueResult> Delete(DeleteValue operation);
 
     /// <summary>Whether <c>operation.Key</c> is in the store.</summary>
-    Task<BoolResult> Exists(Exists operation);
+    Task<ExistsResult> Exists(KeyExists operation);
 
     /// <summary>The keys starting with <c>operation.Prefix</c>, from <c>operation.Cursor</c>.</summary>
     Task<KeysResult> ListKeys(ListKeys operation);
@@ -83,10 +83,10 @@ public sealed class FileKeyValueHandler : IKeyValueHandler
         _directory = directory;
     }
 
-    public Task<ValueResult> Get(Get operation) =>
+    public Task<ValueResult> Get(GetValue operation) =>
         Task.FromResult(Io(() => new ValueResult.Ok(Read(Path(operation.Key)))));
 
-    public Task<ValueResult> Set(Set operation) =>
+    public Task<ValueResult> Set(SetValue operation) =>
         Task.FromResult(Io(() =>
         {
             var path = Path(operation.Key);
@@ -98,7 +98,7 @@ public sealed class FileKeyValueHandler : IKeyValueHandler
             return new ValueResult.Ok(previous);
         }));
 
-    public Task<ValueResult> Delete(Delete operation) =>
+    public Task<ValueResult> Delete(DeleteValue operation) =>
         Task.FromResult(Io(() =>
         {
             var path = Path(operation.Key);
@@ -116,15 +116,15 @@ public sealed class FileKeyValueHandler : IKeyValueHandler
             return new ValueResult.Ok(previous);
         }));
 
-    public Task<BoolResult> Exists(Exists operation)
+    public Task<ExistsResult> Exists(KeyExists operation)
     {
         try
         {
-            return Task.FromResult<BoolResult>(new BoolResult.Ok(File.Exists(Path(operation.Key))));
+            return Task.FromResult<ExistsResult>(new ExistsResult.Ok(File.Exists(Path(operation.Key))));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            return Task.FromResult<BoolResult>(new BoolResult.Err(new KeyValueError.Io(e.Message)));
+            return Task.FromResult<ExistsResult>(new ExistsResult.Err(new KeyValueError.Io(e.Message)));
         }
     }
 

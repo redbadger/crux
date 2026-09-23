@@ -261,10 +261,10 @@ so nothing on either side of the boundary has to guess:
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
-    KvGet(kv::Get),
-    KvSet(kv::Set),
+    KvGet(kv::GetValue),
+    KvSet(kv::SetValue),
     TimeNotifyAfter(time::NotifyAfter),
-    TimeClear(time::Clear),
+    TimeClear(time::ClearTimer),
     IsLocationEnabled(IsLocationEnabled),
     GetLocation(GetLocation),
     FetchSecret(Fetch),
