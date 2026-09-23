@@ -35,8 +35,8 @@ use crate::{
 ///
 /// #[effect]
 /// enum Effect {
-///     Get(operation::Get),
-///     Set(operation::Set),
+///     KvGet(operation::GetValue),
+///     KvSet(operation::SetValue),
 /// }
 ///
 /// # enum Event { Loaded(crux_kv::DataResult), Saved(crux_kv::DataResult) }
@@ -60,9 +60,9 @@ where
         key: impl Into<String>,
     ) -> RequestBuilder<Effect, Event, impl Future<Output = DataResult>>
     where
-        Effect: From<Request<operation::Get>>,
+        Effect: From<Request<operation::GetValue>>,
     {
-        Command::request_from_shell(operation::Get { key: key.into() }).map(Into::into)
+        Command::request_from_shell(operation::GetValue { key: key.into() }).map(Into::into)
     }
 
     /// Set `key` to be the provided `value`. Typically the bytes would be
@@ -72,9 +72,9 @@ where
         value: Vec<u8>,
     ) -> RequestBuilder<Effect, Event, impl Future<Output = DataResult>>
     where
-        Effect: From<Request<operation::Set>>,
+        Effect: From<Request<operation::SetValue>>,
     {
-        Command::request_from_shell(operation::Set {
+        Command::request_from_shell(operation::SetValue {
             key: key.into(),
             value,
         })
@@ -86,9 +86,9 @@ where
         key: impl Into<String>,
     ) -> RequestBuilder<Effect, Event, impl Future<Output = DataResult>>
     where
-        Effect: From<Request<operation::Delete>>,
+        Effect: From<Request<operation::DeleteValue>>,
     {
-        Command::request_from_shell(operation::Delete { key: key.into() }).map(Into::into)
+        Command::request_from_shell(operation::DeleteValue { key: key.into() }).map(Into::into)
     }
 
     /// Check to see if a `key` exists
@@ -96,9 +96,9 @@ where
         key: impl Into<String>,
     ) -> RequestBuilder<Effect, Event, impl Future<Output = StatusResult>>
     where
-        Effect: From<Request<operation::Exists>>,
+        Effect: From<Request<operation::KeyExists>>,
     {
-        Command::request_from_shell(operation::Exists { key: key.into() }).map(Into::into)
+        Command::request_from_shell(operation::KeyExists { key: key.into() }).map(Into::into)
     }
 
     /// List keys that start with the provided `prefix`, starting from the provided `cursor`.
