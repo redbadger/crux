@@ -7,7 +7,7 @@ use facet_generate::{
         CodeGeneratorConfig,
         bincode::typescript::write_serialize_value,
         indent::IndentWrite,
-        typescript::{render_type, requalify, write_doc},
+        typescript::{render_type, write_doc},
     },
     reflection::format::{Format, QualifiedTypeName},
 };
@@ -15,6 +15,8 @@ use heck::ToUpperCamelCase;
 
 use super::{super::Matched, AppMeta, BoltFfi};
 
+/// `app` names the event and view model in the emitter's spelling, as the
+/// formats in `m` are.
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
@@ -99,13 +101,8 @@ fn emit_core(
     let render = m
         .render_variant()
         .expect("the plugin only matches an effect with a render variant");
-    // The app's types are named as the registry spells them, and the emitter
-    // functions take the spelling the generator rewrites references to.
-    let event = render_type(&Format::TypeName(requalify(config, &app.event)), config);
-    let view_model = render_type(
-        &Format::TypeName(requalify(config, &app.view_model)),
-        config,
-    );
+    let event = render_type(&Format::TypeName(app.event.clone()), config);
+    let view_model = render_type(&Format::TypeName(app.view_model.clone()), config);
 
     writeln!(w)?;
     write_doc(
@@ -206,12 +203,7 @@ fn emit_methods(
     writeln!(w, "public update(event: {event}): void {{")?;
     w.indent();
     writeln!(w, "const serializer = new BincodeSerializer();")?;
-    write_serialize_value(
-        w,
-        "event",
-        &Format::TypeName(requalify(config, &app.event)),
-        config,
-    )?;
+    write_serialize_value(w, "event", &Format::TypeName(app.event.clone()), config)?;
     writeln!(
         w,
         "this.processBytes(this.bridge.update(serializer.getBytes()));"
@@ -262,13 +254,19 @@ fn emit_methods(
 }
 
 /// How the bincode emitter spells "read one of these from `deserializer`": an
-/// enum has a free function, everything else a static method.
+/// enum has a free function, reached through its namespace's import like the
+/// type itself, and everything else a static method. `name` is in the
+/// emitter's spelling, which is what the enum lookup is keyed by.
 fn deserialize_expr(name: &QualifiedTypeName, config: &CodeGeneratorConfig) -> String {
-    let name = requalify(config, name);
-    let type_name = name.format(ToUpperCamelCase::to_upper_camel_case, ".");
-    if config.is_enum(&name) {
-        format!("deserialize{type_name}(deserializer)")
+    if config.is_enum(name) {
+        let function = QualifiedTypeName {
+            namespace: name.namespace.clone(),
+            name: format!("deserialize{}", name.name),
+        };
+        let function = function.format(ToUpperCamelCase::to_upper_camel_case, ".");
+        format!("{function}(deserializer)")
     } else {
+        let type_name = name.format(ToUpperCamelCase::to_upper_camel_case, ".");
         format!("{type_name}.deserialize(deserializer)")
     }
 }
