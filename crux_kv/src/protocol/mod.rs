@@ -20,7 +20,7 @@ pub use value::*;
 #[allow(deprecated)]
 #[deprecated(
     since = "0.15.0",
-    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
+    note = "use crux_kv::operation::{GetValue, SetValue, DeleteValue, KeyExists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
 )]
 pub enum KeyValueOperation {
     /// Read bytes stored under a key
@@ -91,7 +91,7 @@ impl std::fmt::Debug for KeyValueOperation {
 #[allow(deprecated)]
 #[deprecated(
     since = "0.15.0",
-    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
+    note = "use crux_kv::operation::{GetValue, SetValue, DeleteValue, KeyExists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
 )]
 pub enum KeyValueResult {
     Ok { response: KeyValueResponse },
@@ -103,7 +103,7 @@ pub enum KeyValueResult {
 #[allow(deprecated)]
 #[deprecated(
     since = "0.15.0",
-    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
+    note = "use crux_kv::operation::{GetValue, SetValue, DeleteValue, KeyExists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
 )]
 pub enum KeyValueResponse {
     /// Response to a `KeyValueOperation::Get`,

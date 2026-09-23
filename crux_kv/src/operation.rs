@@ -13,8 +13,8 @@
 //!
 //! #[effect]
 //! enum Effect {
-//!     Get(operation::Get),
-//!     Set(operation::Set),
+//!     KvGet(operation::GetValue),
+//!     KvSet(operation::SetValue),
 //!     Render(RenderOperation),
 //! }
 //!
@@ -24,7 +24,7 @@
 //! ```
 //!
 //! The outputs are the wire types the shell resolves with:
-//! [`ValueResult`], [`BoolResult`] and [`KeysResult`]. Each converts to and
+//! [`ValueResult`], [`ExistsResult`] and [`KeysResult`]. Each converts to and
 //! from the [`Result`] alias an app sees — [`DataResult`], [`StatusResult`]
 //! and [`ListResult`] — so a shell written against either API can serve the
 //! other.
@@ -44,14 +44,14 @@ use crate::{
 /// Read the bytes stored under `key`.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = ValueResult)]
-pub struct Get {
+pub struct GetValue {
     pub key: String,
 }
 
 /// Write `value` under `key`, answering with the value it replaced.
 #[derive(Operation, Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = ValueResult)]
-pub struct Set {
+pub struct SetValue {
     pub key: String,
     #[serde(with = "serde_bytes")]
     pub value: Vec<u8>,
@@ -60,14 +60,14 @@ pub struct Set {
 /// Remove `key` and its value, answering with the value it removed.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = ValueResult)]
-pub struct Delete {
+pub struct DeleteValue {
     pub key: String,
 }
 
 /// Test whether `key` is present in the store.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = BoolResult)]
-pub struct Exists {
+#[operation(request, output = ExistsResult)]
+pub struct KeyExists {
     pub key: String,
 }
 
@@ -87,8 +87,8 @@ pub struct ListKeys {
     pub cursor: u64,
 }
 
-/// The value a [`Get`], [`Set`] or [`Delete`] answers with, or the error that
-/// prevented it.
+/// The value a [`GetValue`], [`SetValue`] or [`DeleteValue`] answers with, or
+/// the error that prevented it.
 ///
 /// Note: we can't use [`core::result::Result`] here because it is not
 /// currently supported across the FFI boundary, when using `facet_typegen`.
@@ -99,10 +99,10 @@ pub enum ValueResult {
     Err(KeyValueError),
 }
 
-/// The answer to an [`Exists`], or the error that prevented it.
+/// The answer to a [`KeyExists`], or the error that prevented it.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[repr(C)]
-pub enum BoolResult {
+pub enum ExistsResult {
     Ok(bool),
     Err(KeyValueError),
 }
@@ -126,7 +126,7 @@ pub struct KeyPage {
     pub next_cursor: u64,
 }
 
-impl std::fmt::Debug for Set {
+impl std::fmt::Debug for SetValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let value_repr = std::str::from_utf8(&self.value).map_or_else(
             |_| format!("<binary data - {} bytes>", self.value.len()),
@@ -139,7 +139,7 @@ impl std::fmt::Debug for Set {
             },
         );
 
-        f.debug_struct("Set")
+        f.debug_struct("SetValue")
             .field("key", &self.key)
             .field("value", &format_args!("{value_repr}"))
             .finish()
@@ -164,16 +164,16 @@ impl From<DataResult> for ValueResult {
     }
 }
 
-impl From<BoolResult> for StatusResult {
-    fn from(result: BoolResult) -> Self {
+impl From<ExistsResult> for StatusResult {
+    fn from(result: ExistsResult) -> Self {
         match result {
-            BoolResult::Ok(is_present) => Ok(is_present),
-            BoolResult::Err(error) => Err(error),
+            ExistsResult::Ok(is_present) => Ok(is_present),
+            ExistsResult::Err(error) => Err(error),
         }
     }
 }
 
-impl From<StatusResult> for BoolResult {
+impl From<StatusResult> for ExistsResult {
     fn from(result: StatusResult) -> Self {
         match result {
             Ok(is_present) => Self::Ok(is_present),

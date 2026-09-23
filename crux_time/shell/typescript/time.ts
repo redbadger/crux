@@ -30,7 +30,7 @@ export interface TimeHandler {
   /// Answer with `operation.id` once `operation.duration` has elapsed.
   notifyAfter(operation: NotifyAfter): Promise<TimerId>;
   /// Cancel the timer `operation.id` names, and answer with it.
-  clear(operation: Clear): Promise<TimerId>;
+  clear(operation: ClearTimer): Promise<TimerId>;
 }
 
 /// The longest delay `setTimeout` honours, in milliseconds.
@@ -67,7 +67,7 @@ export class TimeoutTimeHandler implements TimeHandler {
     return this.sleep(operation.id, Number(operation.duration.nanos) / 1e6);
   }
 
-  async clear(operation: Clear): Promise<TimerId> {
+  async clear(operation: ClearTimer): Promise<TimerId> {
     const timer = this.timers.get(operation.id.value);
     if (timer !== undefined) {
       clearTimeout(timer.handle);

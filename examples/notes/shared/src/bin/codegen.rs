@@ -33,8 +33,8 @@ fn main() -> Result<()> {
     // shell holds an instance of what these emit and delegates to it rather
     // than writing the protocols' rules out itself. Registering a handler also
     // registers the types its sources name, so the operations this app never
-    // sends — `Delete`, `Exists`, `ListKeys`, `Now` and `NotifyAt` — are
-    // generated too: the shipped source implements the whole capability.
+    // sends — `DeleteValue`, `KeyExists`, `ListKeys`, `Now` and `NotifyAt` —
+    // are generated too: the shipped source implements the whole capability.
     registry
         .shell_handler(&crux_kv::KEY_VALUE)?
         .shell_handler(&crux_time::TIME)?;

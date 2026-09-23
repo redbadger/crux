@@ -23,7 +23,7 @@ pub use shell::KEY_VALUE;
 #[allow(deprecated)]
 #[deprecated(
     since = "0.15.0",
-    note = "use crux_kv::operation::{Get, Set, Delete, Exists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
+    note = "use crux_kv::operation::{GetValue, SetValue, DeleteValue, KeyExists, ListKeys} and crux_kv::store::KeyValue; removed in the next breaking release"
 )]
 pub struct KeyValue<Effect, Event> {
     // Allow the impl to declare trait bounds once. Thanks rustc
