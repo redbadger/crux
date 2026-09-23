@@ -9,8 +9,8 @@ import Foundation
 /// struct MyHandler: EffectHandler {
 ///     let kv = InMemoryKeyValueHandler()
 ///
-///     func kvGet(_ operation: Get) async -> ValueResult { await kv.get(operation) }
-///     func kvSet(_ operation: Set) async -> ValueResult { await kv.set(operation) }
+///     func kvGet(_ operation: GetValue) async -> ValueResult { await kv.get(operation) }
+///     func kvSet(_ operation: SetValue) async -> ValueResult { await kv.set(operation) }
 /// }
 /// ```
 ///
@@ -27,13 +27,13 @@ import Foundation
 /// the store itself failed; a missing key is an answer.
 public protocol KeyValueHandler: Sendable {
     /// Read the bytes stored under `operation.key`.
-    func get(_ operation: Get) async -> ValueResult
+    func get(_ operation: GetValue) async -> ValueResult
     /// Write `operation.value`, answering with the value it replaced.
-    func set(_ operation: Set) async -> ValueResult
+    func set(_ operation: SetValue) async -> ValueResult
     /// Remove `operation.key`, answering with the value it removed.
-    func delete(_ operation: Delete) async -> ValueResult
+    func delete(_ operation: DeleteValue) async -> ValueResult
     /// Whether `operation.key` is in the store.
-    func exists(_ operation: Exists) async -> BoolResult
+    func exists(_ operation: KeyExists) async -> ExistsResult
     /// The keys starting with `operation.prefix`, from `operation.cursor`.
     func listKeys(_ operation: ListKeys) async -> KeysResult
 }
@@ -53,19 +53,19 @@ public final class InMemoryKeyValueHandler: KeyValueHandler, @unchecked Sendable
 
     public init() {}
 
-    public func get(_ operation: Get) async -> ValueResult {
+    public func get(_ operation: GetValue) async -> ValueResult {
         .ok(Self.value(locked { values[operation.key] }))
     }
 
-    public func set(_ operation: Set) async -> ValueResult {
+    public func set(_ operation: SetValue) async -> ValueResult {
         .ok(Self.value(locked { values.updateValue(operation.value, forKey: operation.key) }))
     }
 
-    public func delete(_ operation: Delete) async -> ValueResult {
+    public func delete(_ operation: DeleteValue) async -> ValueResult {
         .ok(Self.value(locked { values.removeValue(forKey: operation.key) }))
     }
 
-    public func exists(_ operation: Exists) async -> BoolResult {
+    public func exists(_ operation: KeyExists) async -> ExistsResult {
         .ok(locked { values[operation.key] != nil })
     }
 

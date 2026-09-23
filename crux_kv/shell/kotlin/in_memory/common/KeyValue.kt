@@ -10,8 +10,8 @@ import java.util.concurrent.ConcurrentHashMap
  * class MyHandler : EffectHandler {
  *     private val kv = InMemoryKeyValueHandler()
  *
- *     override suspend fun kvGet(operation: Get): ValueResult = kv.get(operation)
- *     override suspend fun kvSet(operation: Set): ValueResult = kv.set(operation)
+ *     override suspend fun kvGet(operation: GetValue): ValueResult = kv.get(operation)
+ *     override suspend fun kvSet(operation: SetValue): ValueResult = kv.set(operation)
  * }
  * ```
  *
@@ -29,16 +29,16 @@ import java.util.concurrent.ConcurrentHashMap
  */
 interface KeyValueHandler {
     /** Read the bytes stored under `operation.key`. */
-    suspend fun get(operation: Get): ValueResult
+    suspend fun get(operation: GetValue): ValueResult
 
     /** Write `operation.value`, answering with the value it replaced. */
-    suspend fun set(operation: Set): ValueResult
+    suspend fun set(operation: SetValue): ValueResult
 
     /** Remove `operation.key`, answering with the value it removed. */
-    suspend fun delete(operation: Delete): ValueResult
+    suspend fun delete(operation: DeleteValue): ValueResult
 
     /** Whether `operation.key` is in the store. */
-    suspend fun exists(operation: Exists): BoolResult
+    suspend fun exists(operation: KeyExists): ExistsResult
 
     /** The keys starting with `operation.prefix`, from `operation.cursor`. */
     suspend fun listKeys(operation: ListKeys): KeysResult
@@ -54,14 +54,14 @@ interface KeyValueHandler {
 class InMemoryKeyValueHandler : KeyValueHandler {
     private val values = ConcurrentHashMap<String, List<UByte>>()
 
-    override suspend fun get(operation: Get): ValueResult = ValueResult.Ok(value(values[operation.key]))
+    override suspend fun get(operation: GetValue): ValueResult = ValueResult.Ok(value(values[operation.key]))
 
-    override suspend fun set(operation: Set): ValueResult =
+    override suspend fun set(operation: SetValue): ValueResult =
         ValueResult.Ok(value(values.put(operation.key, operation.value.toList())))
 
-    override suspend fun delete(operation: Delete): ValueResult = ValueResult.Ok(value(values.remove(operation.key)))
+    override suspend fun delete(operation: DeleteValue): ValueResult = ValueResult.Ok(value(values.remove(operation.key)))
 
-    override suspend fun exists(operation: Exists): BoolResult = BoolResult.Ok(values.containsKey(operation.key))
+    override suspend fun exists(operation: KeyExists): ExistsResult = ExistsResult.Ok(values.containsKey(operation.key))
 
     override suspend fun listKeys(operation: ListKeys): KeysResult {
         val keys = values.keys.filter { it.startsWith(operation.prefix) }.sorted()

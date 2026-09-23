@@ -18,23 +18,23 @@ nonisolated final class UserDefaultsKeyValueHandler: KeyValueHandler, @unchecked
         defaults = UserDefaults(suiteName: suiteName) ?? .standard
     }
 
-    func get(_ operation: Get) async -> ValueResult {
+    func get(_ operation: GetValue) async -> ValueResult {
         .ok(value(operation.key))
     }
 
-    func set(_ operation: App.Set) async -> ValueResult {
+    func set(_ operation: SetValue) async -> ValueResult {
         let previous = value(operation.key)
         defaults.set(Data(operation.value), forKey: operation.key)
         return .ok(previous)
     }
 
-    func delete(_ operation: Delete) async -> ValueResult {
+    func delete(_ operation: DeleteValue) async -> ValueResult {
         let previous = value(operation.key)
         defaults.removeObject(forKey: operation.key)
         return .ok(previous)
     }
 
-    func exists(_ operation: Exists) async -> BoolResult {
+    func exists(_ operation: KeyExists) async -> ExistsResult {
         .ok(defaults.data(forKey: operation.key) != nil)
     }
 

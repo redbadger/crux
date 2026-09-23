@@ -7,8 +7,8 @@
 //! them, so no call site has to rule out variants that cannot happen. The
 //! developer-facing command builders live in the [`command`] submodule.
 //!
-//! The names include `Secret` so that they do not collide with `crux_kv`'s
-//! `Delete` in the generated shell types.
+//! The names include `Secret` because the generated shell types share one
+//! namespace, and type generation rejects two types with the same name.
 
 pub mod command;
 

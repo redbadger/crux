@@ -1,13 +1,13 @@
-import com.example.shared.BoolResult
-import com.example.shared.Delete
-import com.example.shared.Exists
-import com.example.shared.Get
+import com.example.shared.DeleteValue
+import com.example.shared.ExistsResult
+import com.example.shared.GetValue
 import com.example.shared.InMemoryKeyValueHandler
+import com.example.shared.KeyExists
 import com.example.shared.KeyValueError
 import com.example.shared.KeyValueHandler
 import com.example.shared.KeysResult
 import com.example.shared.ListKeys
-import com.example.shared.Set
+import com.example.shared.SetValue
 import com.example.shared.Value
 import com.example.shared.ValueResult
 import kotlinx.coroutines.runBlocking
@@ -65,10 +65,10 @@ fun keys(result: KeysResult): List<String> =
         is KeysResult.Err -> error("expected Ok, got $result")
     }
 
-fun present(result: BoolResult): Boolean =
+fun present(result: ExistsResult): Boolean =
     when (result) {
-        is BoolResult.Ok -> result.value
-        is BoolResult.Err -> error("expected Ok, got $result")
+        is ExistsResult.Ok -> result.value
+        is ExistsResult.Err -> error("expected Ok, got $result")
     }
 
 fun value(key: String): List<UByte> = key.toByteArray(Charsets.UTF_8).map { it.toUByte() }
@@ -88,28 +88,28 @@ val written = listOf("alpha", AWKWARD, "beta", "delta")
  */
 suspend fun check(kv: KeyValueHandler) {
     // An empty store, before anything has been written to it.
-    expect("get of a missing key is Value.None, not an error", bytes(kv.get(Get("alpha"))) == null)
-    expect("exists is false for a missing key", present(kv.exists(Exists("alpha"))), false)
+    expect("get of a missing key is Value.None, not an error", bytes(kv.get(GetValue("alpha"))) == null)
+    expect("exists is false for a missing key", present(kv.exists(KeyExists("alpha"))), false)
     expect("listKeys of an empty store answers with no keys", keys(kv.listKeys(ListKeys("", 0uL))), emptyList())
-    expect("delete of a missing key is Value.None, not an error", bytes(kv.delete(Delete("alpha"))) == null)
+    expect("delete of a missing key is Value.None, not an error", bytes(kv.delete(DeleteValue("alpha"))) == null)
 
     // Each key holds its own name, so a value that comes back under the wrong
     // key is visible rather than plausible.
     for (key in written) {
-        expect("set of a new key answers with Value.None", bytes(kv.set(Set(key, value(key)))) == null)
+        expect("set of a new key answers with Value.None", bytes(kv.set(SetValue(key, value(key)))) == null)
     }
 
     for (key in written) {
-        expect("get returns the bytes set under $key", bytes(kv.get(Get(key))), value(key))
-        expect("exists is true for $key", present(kv.exists(Exists(key))), true)
+        expect("get returns the bytes set under $key", bytes(kv.get(GetValue(key))), value(key))
+        expect("exists is true for $key", present(kv.exists(KeyExists(key))), true)
     }
 
     expect(
         "set of an existing key answers with the value it replaced",
-        bytes(kv.set(Set("beta", listOf<UByte>(9u, 9u)))),
+        bytes(kv.set(SetValue("beta", listOf<UByte>(9u, 9u)))),
         value("beta"),
     )
-    expect("get returns the replacement", bytes(kv.get(Get("beta"))), listOf<UByte>(9u, 9u))
+    expect("get returns the replacement", bytes(kv.get(GetValue("beta"))), listOf<UByte>(9u, 9u))
 
     // Everything the store lists is a key the app wrote.
     expect(
@@ -129,11 +129,11 @@ suspend fun check(kv: KeyValueHandler) {
         kv.listKeys(ListKeys("", written.size.toULong() + 1uL)) == KeysResult.Err(KeyValueError.CursorNotFound),
     )
 
-    expect("the awkward key survives the round trip", bytes(kv.get(Get(AWKWARD))), value(AWKWARD))
+    expect("the awkward key survives the round trip", bytes(kv.get(GetValue(AWKWARD))), value(AWKWARD))
 
-    expect("delete answers with the value it removed", bytes(kv.delete(Delete("delta"))), value("delta"))
-    expect("exists is false once the key is deleted", present(kv.exists(Exists("delta"))), false)
-    expect("get is Value.None once the key is deleted", bytes(kv.get(Get("delta"))) == null)
+    expect("delete answers with the value it removed", bytes(kv.delete(DeleteValue("delta"))), value("delta"))
+    expect("exists is false once the key is deleted", present(kv.exists(KeyExists("delta"))), false)
+    expect("get is Value.None once the key is deleted", bytes(kv.get(GetValue("delta"))) == null)
     expect(
         "listKeys no longer answers with the deleted key",
         keys(kv.listKeys(ListKeys("", 0uL))),
@@ -159,16 +159,16 @@ fun main() =
         // what it holds, so a caller that changes a list does not change the
         // stored value.
         val given = mutableListOf<UByte>(1u, 2u, 3u)
-        memory.set(Set("copied", given))
+        memory.set(SetValue("copied", given))
         given[0] = 9u
         expect(
             "a change to the list given to set does not change the stored value",
-            bytes(memory.get(Get("copied"))),
+            bytes(memory.get(GetValue("copied"))),
             listOf<UByte>(1u, 2u, 3u),
         )
         // If the list in the answer is read-only, the caller cannot change it,
         // and the check passes.
-        val answered = bytes(memory.get(Get("copied")))
+        val answered = bytes(memory.get(GetValue("copied")))
         if (answered is MutableList<UByte>) {
             try {
                 answered[0] = 9u
@@ -177,7 +177,7 @@ fun main() =
         }
         expect(
             "a change to the list in the answer to get does not change the stored value",
-            bytes(memory.get(Get("copied"))),
+            bytes(memory.get(GetValue("copied"))),
             listOf<UByte>(1u, 2u, 3u),
         )
 

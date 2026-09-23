@@ -34,11 +34,11 @@ import App
             neverRuns()
         }
 
-        func kvGet(_: App.Get) async -> ValueResult {
+        func kvGet(_: GetValue) async -> ValueResult {
             neverRuns()
         }
 
-        func kvSet(_: App.Set) async -> ValueResult {
+        func kvSet(_: SetValue) async -> ValueResult {
             neverRuns()
         }
 
@@ -46,7 +46,7 @@ import App
             neverRuns()
         }
 
-        func timeClear(_: Clear) async -> TimerId {
+        func timeClear(_: ClearTimer) async -> TimerId {
             neverRuns()
         }
 

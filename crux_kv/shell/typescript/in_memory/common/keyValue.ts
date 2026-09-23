@@ -27,13 +27,13 @@
  */
 export interface KeyValueHandler {
   /** Read the bytes stored under `operation.key`. */
-  get(operation: Get): Promise<ValueResult>;
+  get(operation: GetValue): Promise<ValueResult>;
   /** Write `operation.value`, answering with the value it replaced. */
-  set(operation: Set): Promise<ValueResult>;
+  set(operation: SetValue): Promise<ValueResult>;
   /** Remove `operation.key`, answering with the value it removed. */
-  delete(operation: Delete): Promise<ValueResult>;
+  delete(operation: DeleteValue): Promise<ValueResult>;
   /** Whether `operation.key` is in the store. */
-  exists(operation: Exists): Promise<BoolResult>;
+  exists(operation: KeyExists): Promise<ExistsResult>;
   /** The keys starting with `operation.prefix`, from `operation.cursor`. */
   listKeys(operation: ListKeys): Promise<KeysResult>;
 }
@@ -54,24 +54,24 @@ export function createInMemoryKeyValueHandler(): KeyValueHandler {
     valueResultOk(value === undefined ? valueNone() : valueBytes([...value]));
 
   return {
-    async get(operation: Get): Promise<ValueResult> {
+    async get(operation: GetValue): Promise<ValueResult> {
       return answer(values.get(operation.key));
     },
 
-    async set(operation: Set): Promise<ValueResult> {
+    async set(operation: SetValue): Promise<ValueResult> {
       const previous = values.get(operation.key);
       values.set(operation.key, Array.from(operation.value));
       return answer(previous);
     },
 
-    async delete(operation: Delete): Promise<ValueResult> {
+    async delete(operation: DeleteValue): Promise<ValueResult> {
       const previous = values.get(operation.key);
       values.delete(operation.key);
       return answer(previous);
     },
 
-    async exists(operation: Exists): Promise<BoolResult> {
-      return boolResultOk(values.has(operation.key));
+    async exists(operation: KeyExists): Promise<ExistsResult> {
+      return existsResultOk(values.has(operation.key));
     },
 
     async listKeys(operation: ListKeys): Promise<KeysResult> {
