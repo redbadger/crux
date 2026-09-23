@@ -20,7 +20,7 @@ use crux_kv::operation as kv;
 use crux_time::operation as time;
 
 use crate::effects::location::{GetLocation, IsLocationEnabled};
-use crate::effects::secret::{Delete, Fetch, Store};
+use crate::effects::secret::{DeleteSecret, FetchSecret, StoreSecret};
 
 // ANCHOR: effect
 /// Every side-effect the core can ask the shell to perform.
@@ -40,23 +40,23 @@ pub enum Effect {
     /// Perform an HTTP request — weather and geocoding API calls.
     Http(HttpRequest),
     /// Read the favourites list from the shell's key-value store.
-    KvGet(kv::Get),
+    KvGet(kv::GetValue),
     /// Write the favourites list to the shell's key-value store.
-    KvSet(kv::Set),
+    KvSet(kv::SetValue),
     /// Schedule a timer — used to debounce the search input on the
     /// add-favourite screen.
     TimeNotifyAfter(time::NotifyAfter),
     /// Release a timer the core no longer cares about.
-    TimeClear(time::Clear),
+    TimeClear(time::ClearTimer),
     /// Ask whether location services are enabled.
     IsLocationEnabled(IsLocationEnabled),
     /// Ask for the device's coordinates.
     GetLocation(GetLocation),
     /// Fetch a secret (the OpenWeatherMap API key).
-    FetchSecret(Fetch),
+    FetchSecret(FetchSecret),
     /// Store a secret.
-    StoreSecret(Store),
+    StoreSecret(StoreSecret),
     /// Delete a secret.
-    DeleteSecret(Delete),
+    DeleteSecret(DeleteSecret),
 }
 // ANCHOR_END: effect

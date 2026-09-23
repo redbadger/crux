@@ -10,7 +10,7 @@ pub enum Effect {
     Now(operation::Now),
     NotifyAt(operation::NotifyAt),
     NotifyAfter(operation::NotifyAfter),
-    Clear(operation::Clear),
+    Clear(operation::ClearTimer),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -188,7 +188,7 @@ fn clearing_a_timer_asks_the_shell_and_waits_for_its_answer() {
 
     // ...the original command asks the shell to clear it
     let mut clear = cmd.expect_one_effect().expect_clear();
-    assert_eq!(clear.operation, operation::Clear { id: timer_id });
+    assert_eq!(clear.operation, operation::ClearTimer { id: timer_id });
 
     // ...and nothing happens until the shell has answered
     cmd.expect_no_events();
@@ -215,7 +215,7 @@ fn answering_a_cleared_timer_late_is_ignored() {
     app.update(Event::Cancel, &mut model)
         .expect_no_effect_or_events();
     let mut clear = cmd.expect_one_effect().expect_clear();
-    assert_eq!(clear.operation, operation::Clear { id: timer_id });
+    assert_eq!(clear.operation, operation::ClearTimer { id: timer_id });
 
     // ...and only then does the shell get round to answering the original
     // `NotifyAfter`. The core has stopped listening, so the answer is dropped:
@@ -223,7 +223,7 @@ fn answering_a_cleared_timer_late_is_ignored() {
     notify.resolve(timer_id).expect("effect should resolve");
     cmd.expect_no_effect_or_events();
 
-    // the `Clear` still resolves as normal
+    // the `ClearTimer` still resolves as normal
     clear.resolve(timer_id).expect("effect should resolve");
     let event = cmd.expect_one_event();
     assert_eq!(event, Event::Completed(TimerOutcome::Cleared));
@@ -278,11 +278,11 @@ fn operations_serialize_to_json() {
         notify_after
     );
 
-    let clear = operation::Clear { id: TimerId(3) };
+    let clear = operation::ClearTimer { id: TimerId(3) };
     let serialized = serde_json::to_string(&clear).unwrap();
     assert_eq!(&serialized, r#"{"id":3}"#);
     assert_eq!(
-        serde_json::from_str::<operation::Clear>(&serialized).unwrap(),
+        serde_json::from_str::<operation::ClearTimer>(&serialized).unwrap(),
         clear
     );
 }
@@ -295,6 +295,7 @@ fn outputs_serialize_to_json() {
         r#"{"seconds":1,"nanos":2}"#
     );
 
-    // `NotifyAt`, `NotifyAfter` and `Clear` are all answered with a `TimerId`
+    // `NotifyAt`, `NotifyAfter` and `ClearTimer` are all answered with a
+    // `TimerId`
     assert_eq!(serde_json::to_string(&TimerId(4)).unwrap(), "4");
 }
