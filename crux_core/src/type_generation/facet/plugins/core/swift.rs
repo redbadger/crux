@@ -17,6 +17,8 @@ use super::{
 };
 use crate::type_generation::facet::SwiftFfi;
 
+/// `app` names the event and view model in the emitter's spelling, as the
+/// formats in `m` are.
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,

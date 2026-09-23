@@ -257,7 +257,7 @@ fn emit_resolve(
 ) -> io::Result<()> {
     writeln!(w, "resolve(id, serializeEffectOutput {{ serializer in")?;
     w.indent();
-    if let Some(output) = variant.output {
+    if let Some(output) = &variant.output {
         write_serialize_value(w, value, output, config)?;
     }
     w.unindent();
@@ -269,5 +269,6 @@ fn emit_resolve(
 fn render_output(variant: &super::super::Variant<'_>, config: &CodeGeneratorConfig) -> String {
     variant
         .output
+        .as_ref()
         .map_or_else(|| "Unit".to_string(), |format| render_type(format, config))
 }
