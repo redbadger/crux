@@ -2,14 +2,11 @@
 
 use std::io;
 
-use facet_generate::{
-    generation::{
-        CodeGeneratorConfig,
-        bincode::swift::write_serialize_value,
-        indent::IndentWrite,
-        swift::{case_name, render_type, requalify_format, write_doc},
-    },
-    reflection::format::Format,
+use facet_generate::generation::{
+    CodeGeneratorConfig,
+    bincode::swift::write_serialize_value,
+    indent::IndentWrite,
+    swift::{case_name, render_type, write_doc},
 };
 
 use super::{super::SWIFT_AVAILABILITY as AVAILABILITY, Matched};
@@ -263,8 +260,8 @@ fn emit_resolve(
 ) -> io::Result<()> {
     writeln!(w, "resolve(id, serializeEffectOutput {{ serializer in")?;
     w.indent();
-    if let Some(output) = output_format(variant, config) {
-        write_serialize_value(w, value, &output, config)?;
+    if let Some(output) = &variant.output {
+        write_serialize_value(w, value, output, config)?;
     }
     w.unindent();
     writeln!(w, "}})")?;
@@ -273,22 +270,8 @@ fn emit_resolve(
 }
 
 fn render_output(variant: &super::super::Variant<'_>, config: &CodeGeneratorConfig) -> String {
-    output_format(variant, config)
-        .map_or_else(|| "Unit".to_string(), |format| render_type(&format, config))
-}
-
-/// The output type, in the spelling the emitter functions take.
-///
-/// The `Format`s on the effect metadata are recorded during reflection, so,
-/// unlike the formats reached through the registry, they have not been
-/// requalified by the generator.
-fn output_format(
-    variant: &super::super::Variant<'_>,
-    config: &CodeGeneratorConfig,
-) -> Option<Format> {
-    variant.output.map(|format| {
-        let mut format = format.clone();
-        requalify_format(config, &mut format);
-        format
-    })
+    variant
+        .output
+        .as_ref()
+        .map_or_else(|| "Unit".to_string(), |format| render_type(format, config))
 }
