@@ -6,7 +6,7 @@ private nonisolated let logger = Log.keyValue
 nonisolated extension WeatherHandler {
     /// `KvGet` is answered with a `ValueResult` — the value stored under the
     /// key, or the error that stopped us reading it.
-    public func kvGet(_ operation: App.Get) async -> ValueResult {
+    public func kvGet(_ operation: GetValue) async -> ValueResult {
         logger.debug("Getting value for key: \(operation.key)")
         let value = await read(key: operation.key)
         logger.debug("Retrieved value: \(value.isEmpty ? "empty" : value)")
@@ -14,7 +14,7 @@ nonisolated extension WeatherHandler {
     }
 
     /// `KvSet` is answered with the value it replaced.
-    public func kvSet(_ operation: App.Set) async -> ValueResult {
+    public func kvSet(_ operation: SetValue) async -> ValueResult {
         logger.debug("Setting value for key: \(operation.key)")
         let value = String(bytes: operation.value, encoding: .utf8) ?? ""
         let previous = await write(key: operation.key, value: value)

@@ -7,7 +7,7 @@
 //! [`TimeResponse`](crate::TimeResponse) and the capability has to check at
 //! runtime that the shell answered the question it was asked.
 //!
-//! [`Clear`] is a request like the rest: it asks the shell to release the
+//! [`ClearTimer`] is a request like the rest: it asks the shell to release the
 //! resources behind a timer, and is answered with the [`TimerId`] it named.
 //!
 //! [`NotifyEvery`] is a stream operation. It asks for a repeating timer, and
@@ -20,8 +20,8 @@
 //!
 //! #[effect]
 //! enum Effect {
-//!     NotifyAfter(operation::NotifyAfter),
-//!     Clear(operation::Clear),
+//!     TimeNotifyAfter(operation::NotifyAfter),
+//!     TimeClear(operation::ClearTimer),
 //! }
 //!
 //! # enum Event { Elapsed(TimerOutcome) }
@@ -59,7 +59,7 @@ pub struct NotifyAfter {
 /// Ask to be notified each time `period` elapses, answering with `id` each time.
 ///
 /// This operation is a stream. The shell answers with `id` once per period.
-/// The shell continues until a [`Clear`] request for `id` arrives, or until a
+/// The shell continues until a [`ClearTimer`] request for `id` arrives, or until a
 /// resolve returns an error. An error tells the shell that the core no longer
 /// listens for the ticks.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,6 +82,6 @@ pub struct NotifyEvery {
 /// error, and the shell can ignore that error.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[operation(request, output = TimerId)]
-pub struct Clear {
+pub struct ClearTimer {
     pub id: TimerId,
 }

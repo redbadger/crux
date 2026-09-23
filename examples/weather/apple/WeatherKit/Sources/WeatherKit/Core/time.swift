@@ -27,7 +27,7 @@ nonisolated extension WeatherHandler {
 
     /// `TimeClear` is a request: cancel the timer, release what it was holding,
     /// and answer with the id it named.
-    public func timeClear(_ operation: Clear) async -> TimerId {
+    public func timeClear(_ operation: ClearTimer) async -> TimerId {
         let id = operation.id.value
         logger.debug("clearing timer (\(id))")
         await cancelTimer(id: id)

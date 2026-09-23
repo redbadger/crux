@@ -205,7 +205,7 @@ impl ActiveModel {
 #[cfg(test)]
 mod tests {
     use crate::effects::EffectTestExt;
-    use crate::effects::secret::{self, Delete};
+    use crate::effects::secret::{self, DeleteSecret};
 
     use super::favorites::model::Favorites;
     use super::*;
@@ -224,7 +224,7 @@ mod tests {
 
         let mut cmd = outcome.expect_continue().into_command();
         cmd.expect_only_delete_secret_with(|op| {
-            assert_eq!(op, &Delete(secret::API_KEY_NAME.to_string()));
+            assert_eq!(op, &DeleteSecret(secret::API_KEY_NAME.to_string()));
         });
     }
 

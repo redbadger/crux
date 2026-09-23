@@ -1,6 +1,6 @@
-import type { Clear, NotifyAfter, TimerId } from "shared_types/app";
+import type { ClearTimer, NotifyAfter, TimerId } from "shared_types/app";
 
-/// Live timeouts, so a `Clear` can cancel the one it names — each paired with
+/// Live timeouts, so a `ClearTimer` can cancel the one it names — each paired with
 /// the `resolve` of the `NotifyAfter` promise it belongs to.
 const timers = new Map<
   bigint,
@@ -10,7 +10,7 @@ const timers = new Map<
 /// `NotifyAfter` is answered exactly once, with the id of the timer that
 /// fired.
 ///
-/// If `Clear` arrives first the timeout is cancelled and this promise settles
+/// If `ClearTimer` arrives first the timeout is cancelled and this promise settles
 /// there and then, answering anyway. That is harmless: the core stops
 /// listening for this request the moment it clears the timer, and ignores the
 /// answer.
@@ -29,8 +29,8 @@ export function notifyAfter(operation: NotifyAfter): Promise<TimerId> {
   });
 }
 
-/// `Clear` is a request: drop the timer and answer with the id it named.
-export function clear(operation: Clear): Promise<TimerId> {
+/// `ClearTimer` is a request: drop the timer and answer with the id it named.
+export function clear(operation: ClearTimer): Promise<TimerId> {
   const timerId = operation.id.value;
   console.debug(`time: clear (id=${timerId})`);
   const timer = timers.get(timerId);

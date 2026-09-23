@@ -1,14 +1,14 @@
 package com.crux.example.weather.core
 
 import android.util.Log
-import com.crux.example.weather.Get
+import com.crux.example.weather.GetValue
+import com.crux.example.weather.SetValue
 import com.crux.example.weather.Value
 import com.crux.example.weather.ValueResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.crux.example.weather.Set as KeyValueSet
 
 @Singleton
 class KeyValueHandler
@@ -16,13 +16,13 @@ class KeyValueHandler
     constructor(
         private val delegate: KeyValueDataStoreDelegate,
     ) {
-        suspend fun get(operation: Get): ValueResult =
+        suspend fun get(operation: GetValue): ValueResult =
             withContext(Dispatchers.IO) {
                 Log.d(TAG, "get: ${operation.key}")
                 ValueResult.Ok(delegate.get(operation.key).toValue())
             }
 
-        suspend fun set(operation: KeyValueSet): ValueResult =
+        suspend fun set(operation: SetValue): ValueResult =
             withContext(Dispatchers.IO) {
                 Log.d(TAG, "set: ${operation.key}")
                 val newValue = operation.value.decodeToString()
