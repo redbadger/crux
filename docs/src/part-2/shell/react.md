@@ -118,15 +118,14 @@ The handler is `WeatherHandler`, one method per operation. HTTP looks like this:
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/handler.ts:http}}
 ```
 
-One method, returning a `Promise<HttpResult>`. The operation declares that it is answered exactly once with an `HttpResult`, so that's the signature, and the dispatcher awaits it and resolves. `createFetchHttpHandler` and `TimeoutTimeHandler` are the handlers that `crux_http` and `crux_time` ship, so the app needs no code of its own for those capabilities. `crux_kv` ships only an in-memory store, so the app keeps its favourites in a store of its own, `createLocalStorageKeyValueHandler` in `kv.ts`. That store implements the shipped `KeyValueHandler` interface over `localStorage`. If the shipped handlers do not suit your app (for example, you need a different store or HTTP client), see [Shipping the shell side too](../capabilities.md#shipping-the-shell-side-too). `timeClear(operation: Clear): Promise<TimerId>` answers with the id once the timeout is cleared, like every other request. There is no `render` method at all: `Core` owns it, and the generated interface makes it optional.
+One method, returning a `Promise<HttpResult>`. The operation declares that it is answered exactly once with an `HttpResult`, so that's the signature, and the dispatcher awaits it and resolves. `createFetchHttpHandler` and `TimeoutTimeHandler` are the handlers that `crux_http` and `crux_time` ship, so the app needs no code of its own for those capabilities. `crux_kv` ships only an in-memory store, so the app keeps its favourites in a store of its own, `createLocalStorageKeyValueHandler` in `kv.ts`. That store implements the shipped `KeyValueHandler` interface over `localStorage`. If the shipped handlers do not suit your app (for example, you need a different store or HTTP client), see [Shipping the shell side too](../capabilities.md#shipping-the-shell-side-too). `timeClear(operation: ClearTimer): Promise<TimerId>` answers with the id once the timeout is cleared, like every other request. There is no `render` method at all: `Core` owns it, and the generated interface makes it optional.
 
 The app's own capabilities — `location` and `secret` — follow the same shape: one method per operation, returning that operation's output, implemented in this shell because only this shell knows how.
 
-```admonish note title="Two TypeScript details"
-`crux_kv`'s `Set` operation generates a type called `Set`, which shadows the
-built-in — `handler.ts` imports it as `Set as SetValue`. And the generated union
-already uses `kind` as its discriminant, so the operation-kind accessor is a free
-function, `effectOperationKind(effect)`, rather than a property.
+```admonish note title="A TypeScript detail"
+The generated union already uses `kind` as its discriminant, so the
+operation-kind accessor is a free function, `effectOperationKind(effect)`,
+rather than a property.
 ```
 
 The notes example goes one step further and uses a **stream**. Its `Subscribe`
