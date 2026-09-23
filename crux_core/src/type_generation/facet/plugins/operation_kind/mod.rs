@@ -21,7 +21,7 @@ use facet_generate::generation::{
     typescript::TypeScript,
 };
 
-use super::{Matched, matched};
+use super::{Matched, Requalify, matched};
 use crate::type_generation::facet::EffectMeta;
 
 /// Emits `OperationKind` and the per-effect accessor.
@@ -37,27 +37,28 @@ impl OperationKindPlugin {
         }
     }
 
-    fn matched<'a>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
-        matched(&self.effects, ctx)
+    fn matched<'a, L: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
+        matched::<L>(&self.effects, ctx)
     }
 }
 
 impl EmitterPlugin<Swift> for OperationKindPlugin {
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx).map_or(Ok(()), |m| swift::emit(w, &m))
+        self.matched::<Swift>(ctx)
+            .map_or(Ok(()), |m| swift::emit(w, &m))
     }
 }
 
 impl EmitterPlugin<Kotlin> for OperationKindPlugin {
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx)
+        self.matched::<Kotlin>(ctx)
             .map_or(Ok(()), |m| kotlin::emit(w, &m, ctx))
     }
 }
 
 impl EmitterPlugin<TypeScript> for OperationKindPlugin {
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx)
+        self.matched::<TypeScript>(ctx)
             .map_or(Ok(()), |m| typescript::emit(w, &m, ctx))
     }
 }
@@ -67,12 +68,12 @@ impl EmitterPlugin<CSharp> for OperationKindPlugin {
     /// emitter does not declare that record `partial`, so a property cannot be
     /// added from outside the way Swift and Kotlin extensions do.
     fn type_body(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx)
+        self.matched::<CSharp>(ctx)
             .map_or(Ok(()), |m| csharp::emit_accessor(w, &m, ctx))
     }
 
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx)
+        self.matched::<CSharp>(ctx)
             .map_or(Ok(()), |m| csharp::emit_enum(w, &m))
     }
 }

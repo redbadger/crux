@@ -13,6 +13,8 @@ use heck::ToUpperCamelCase;
 
 use super::{super::Matched, AppMeta, BoltFfi};
 
+/// `app` names the event and view model in the emitter's spelling, as the
+/// formats in `m` are.
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
@@ -249,12 +251,19 @@ fn emit_methods(
 }
 
 /// How the bincode emitter spells "read one of these from `deserializer`": an
-/// enum has a free function, everything else a static method.
+/// enum has a free function, reached through its namespace's import like the
+/// type itself, and everything else a static method. `name` is in the
+/// emitter's spelling, which is what the enum lookup is keyed by.
 fn deserialize_expr(name: &QualifiedTypeName, config: &CodeGeneratorConfig) -> String {
-    let type_name = name.format(ToUpperCamelCase::to_upper_camel_case, ".");
-    if config.enum_type_names.contains(&type_name) {
-        format!("deserialize{type_name}(deserializer)")
+    if config.is_enum(name) {
+        let function = QualifiedTypeName {
+            namespace: name.namespace.clone(),
+            name: format!("deserialize{}", name.name),
+        };
+        let function = function.format(ToUpperCamelCase::to_upper_camel_case, ".");
+        format!("{function}(deserializer)")
     } else {
+        let type_name = name.format(ToUpperCamelCase::to_upper_camel_case, ".");
         format!("{type_name}.deserialize(deserializer)")
     }
 }
