@@ -73,14 +73,6 @@ What the shell writes is the handler, `WeatherHandler`, whose methods are one-li
 
 `httpHandler.request(...)` is the `suspend` function on the `HttpHandler` interface that `crux_http` ships. Each shipped handler takes exactly the operation and returns exactly its output, so each `WeatherHandler` method is one expression. The app's own handlers, `LocationHandler` and `SecretStore`, follow the same pattern.
 
-```admonish note title="Kotlin name collisions"
-`crux_kv`'s `Set` operation generates a Kotlin class called `Set`, which
-collides with `kotlin.collections.Set`. `WeatherHandler.kt` imports it as
-`import com.crux.example.weather.Set as KeyValueSet`. The same collision
-appears in Swift and TypeScript, and the same fix — an alias at the import —
-works there.
-```
-
 ## Views driven by the Crux view model
 
 The generated `Core` exposes the current view model as `view: StateFlow<ViewModel>`, so Compose can collect it with `collectAsState()` and recompose when it changes; `core/Projections.kt` adds per-screen extension functions (`core.homeViewModel()` and friends) that narrow it to one branch. The root of the view tree lives in `MainActivity.onCreate`:
