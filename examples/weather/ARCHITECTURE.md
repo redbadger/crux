@@ -95,7 +95,7 @@ shared/src/
     │   ├── mod.rs                  # Location, IsLocationEnabled, GetLocation operations
     │   └── command.rs              # is_location_enabled(), get_location() builders
     └── secret/
-        ├── mod.rs                  # Fetch/Store/Delete operations + their responses, API_KEY_NAME
+        ├── mod.rs                  # FetchSecret/StoreSecret/DeleteSecret + their responses, API_KEY_NAME
         └── command.rs              # fetch(), store(), delete() command builders
 ```
 
@@ -261,15 +261,15 @@ so nothing on either side of the boundary has to guess:
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
-    KvGet(kv::Get),
-    KvSet(kv::Set),
+    KvGet(kv::GetValue),
+    KvSet(kv::SetValue),
     TimeNotifyAfter(time::NotifyAfter),
-    TimeClear(time::Clear),
+    TimeClear(time::ClearTimer),
     IsLocationEnabled(IsLocationEnabled),
     GetLocation(GetLocation),
-    FetchSecret(Fetch),
-    StoreSecret(Store),
-    DeleteSecret(Delete),
+    FetchSecret(FetchSecret),
+    StoreSecret(StoreSecret),
+    DeleteSecret(DeleteSecret),
 }
 ```
 

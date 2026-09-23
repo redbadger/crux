@@ -22,7 +22,7 @@ and this project adheres to
   #[effect]
   enum Effect {
       NotifyEvery(operation::NotifyEvery),
-      Clear(operation::Clear),
+      Clear(operation::ClearTimer),
   }
 
   let (ticks, handle) = Time::notify_every(Duration::from_secs(1));
@@ -33,8 +33,8 @@ and this project adheres to
   | --- | --- | --- | --- |
   | `NotifyEvery` | `id: TimerId, period: Duration` | `TimerId` | `Stream` |
 
-  The shell answers with `id` once per period until a `Clear` request for that `id`
-  arrives, or until a resolve returns an error.
+  The shell answers with `id` once per period until a `ClearTimer` request for that
+  `id` arrives, or until a resolve returns an error.
 
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_time-v0.18.0...crux_time-v0.19.0) - 2026-09-06
 
