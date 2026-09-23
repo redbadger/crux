@@ -128,7 +128,9 @@ Now each operation names only its own outcomes:
 {{#include ../../../examples/weather/shared/src/effects/secret/mod.rs}}
 ```
 
-Three operations, three outputs, two variants each. There is no wide `SecretResponse` and no `unreachable!()` anywhere, because a `SecretStoreResponse` is not a possible answer to a `Fetch` — the type says so, and the shell's generated handler method for `Fetch` returns a `SecretFetchResponse` or nothing at all.
+Three operations, three outputs, two variants each. There is no wide `SecretResponse` and no `unreachable!()` anywhere, because a `SecretStoreResponse` is not a possible answer to a `FetchSecret` — the type says so, and the shell's generated handler method for `FetchSecret` returns a `SecretFetchResponse` or nothing at all.
+
+The operation names carry the capability's name for a reason that has nothing to do with Rust: type generation puts every operation of every capability into one namespace on the shell side, so a bare `Delete` here would clash with any other capability or app operation called `Delete`. An app-defined operation with a generic name is worth prefixing from the start.
 
 The developer API is correspondingly plain:
 
