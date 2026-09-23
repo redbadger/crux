@@ -16,8 +16,8 @@ using System.Threading.Tasks;
 /// {
 ///     private readonly IKeyValueHandler _kv = new InMemoryKeyValueHandler();
 ///
-///     public Task&lt;ValueResult&gt; KvGet(Get operation) => _kv.Get(operation);
-///     public Task&lt;ValueResult&gt; KvSet(Set operation) => _kv.Set(operation);
+///     public Task&lt;ValueResult&gt; KvGet(GetValue operation) => _kv.Get(operation);
+///     public Task&lt;ValueResult&gt; KvSet(SetValue operation) => _kv.Set(operation);
 /// }
 /// </code>
 /// <para>
@@ -36,16 +36,16 @@ using System.Threading.Tasks;
 public interface IKeyValueHandler
 {
     /// <summary>Read the bytes stored under <c>operation.Key</c>.</summary>
-    Task<ValueResult> Get(Get operation);
+    Task<ValueResult> Get(GetValue operation);
 
     /// <summary>Write <c>operation.Value</c>, answering with the value it replaced.</summary>
-    Task<ValueResult> Set(Set operation);
+    Task<ValueResult> Set(SetValue operation);
 
     /// <summary>Remove <c>operation.Key</c>, answering with the value it removed.</summary>
-    Task<ValueResult> Delete(Delete operation);
+    Task<ValueResult> Delete(DeleteValue operation);
 
     /// <summary>Whether <c>operation.Key</c> is in the store.</summary>
-    Task<BoolResult> Exists(Exists operation);
+    Task<ExistsResult> Exists(KeyExists operation);
 
     /// <summary>The keys starting with <c>operation.Prefix</c>, from <c>operation.Cursor</c>.</summary>
     Task<KeysResult> ListKeys(ListKeys operation);
@@ -67,7 +67,7 @@ public sealed class InMemoryKeyValueHandler : IKeyValueHandler
     private readonly Dictionary<string, byte[]> _values = new();
     private readonly object _lock = new();
 
-    public Task<ValueResult> Get(Get operation)
+    public Task<ValueResult> Get(GetValue operation)
     {
         lock (_lock)
         {
@@ -76,7 +76,7 @@ public sealed class InMemoryKeyValueHandler : IKeyValueHandler
         }
     }
 
-    public Task<ValueResult> Set(Set operation)
+    public Task<ValueResult> Set(SetValue operation)
     {
         var bytes = new byte[operation.Value.Count];
         operation.Value.CopyTo(bytes, 0);
@@ -88,7 +88,7 @@ public sealed class InMemoryKeyValueHandler : IKeyValueHandler
         }
     }
 
-    public Task<ValueResult> Delete(Delete operation)
+    public Task<ValueResult> Delete(DeleteValue operation)
     {
         lock (_lock)
         {
@@ -97,11 +97,11 @@ public sealed class InMemoryKeyValueHandler : IKeyValueHandler
         }
     }
 
-    public Task<BoolResult> Exists(Exists operation)
+    public Task<ExistsResult> Exists(KeyExists operation)
     {
         lock (_lock)
         {
-            return Task.FromResult<BoolResult>(new BoolResult.Ok(_values.ContainsKey(operation.Key)));
+            return Task.FromResult<ExistsResult>(new ExistsResult.Ok(_values.ContainsKey(operation.Key)));
         }
     }
 

@@ -1,6 +1,6 @@
 import type { KeyValueHandler, ValueResult } from "shared_types/app";
 import {
-  boolResultOk,
+  existsResultOk,
   KeyPage,
   keysResultErr,
   keysResultOk,
@@ -56,7 +56,7 @@ export function createLocalStorageKeyValueHandler(
     },
 
     async exists({ key }) {
-      return boolResultOk(localStorage.getItem(prefix + key) !== null);
+      return existsResultOk(localStorage.getItem(prefix + key) !== null);
     },
 
     async listKeys({ prefix: start, cursor }) {
