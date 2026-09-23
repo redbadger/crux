@@ -7,14 +7,14 @@
 import "./wasm-getrandom";
 
 import type {
-  Clear,
+  ClearTimer,
   EffectHandler,
   EffectSink,
-  Get,
+  GetValue,
   Message,
   NotifyAfter,
   Publish,
-  Set as SetValue,
+  SetValue,
   Subscribe,
   TimerId,
   ValueResult,
@@ -41,7 +41,7 @@ export type SyncMessage = {
 /// nothing here calls `resolve` by hand, and there is no `render` method
 /// because the generated `Core` handles `Render` itself.
 export class NotesHandler implements EffectHandler {
-  /// Live timeouts, so a `Clear` can cancel the one it names — each paired
+  /// Live timeouts, so a `ClearTimer` can cancel the one it names — each paired
   /// with the `resolve` of the `NotifyAfter` promise it belongs to.
   private readonly timers = new Map<
     bigint,
@@ -67,7 +67,7 @@ export class NotesHandler implements EffectHandler {
     this.subscription.current = sink;
   }
 
-  kvGet(operation: Get): Promise<ValueResult> {
+  kvGet(operation: GetValue): Promise<ValueResult> {
     const data = window.localStorage.getItem(operation.key);
     const bytes: number[] = data == null ? [] : JSON.parse(data);
 
@@ -87,7 +87,7 @@ export class NotesHandler implements EffectHandler {
   }
 
   /// `NotifyAfter` is answered exactly once, with the id of the timer that
-  /// fired. If `Clear` arrives first the timeout is cancelled and the promise
+  /// fired. If `ClearTimer` arrives first the timeout is cancelled and the promise
   /// settles there and then, answering anyway — harmless, because the core
   /// stops listening for this request the moment it clears the timer.
   timeNotifyAfter(operation: NotifyAfter): Promise<TimerId> {
@@ -103,8 +103,8 @@ export class NotesHandler implements EffectHandler {
     });
   }
 
-  /// `Clear` is a request: drop the timer and answer with the id it named.
-  timeClear(operation: Clear): Promise<TimerId> {
+  /// `ClearTimer` is a request: drop the timer and answer with the id it named.
+  timeClear(operation: ClearTimer): Promise<TimerId> {
     const timerId = operation.id.value;
     const timer = this.timers.get(timerId);
     if (timer !== undefined) {
