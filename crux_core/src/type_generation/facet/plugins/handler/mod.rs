@@ -27,7 +27,7 @@ use facet_generate::generation::{
     typescript::TypeScript,
 };
 
-use super::{Matched, bincode_import_path, matched, serializes_output};
+use super::{Matched, Requalify, bincode_import_path, matched, serializes_output};
 use crate::type_generation::facet::EffectMeta;
 
 /// Emits `EffectSink`, `EffectHandler` and `EffectDispatcher`.
@@ -45,8 +45,8 @@ impl EffectHandlerPlugin {
 
     /// The handler API uses fixed names, so it is emitted for the first
     /// registered effect only.
-    fn matched<'a>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
-        matched(&self.effects, ctx).filter(|m| m.primary)
+    fn matched<'a, L: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
+        matched::<L>(&self.effects, ctx).filter(|m| m.primary)
     }
 
     /// Whether the handler has an asynchronous method, which is what needs
@@ -63,14 +63,14 @@ impl EffectHandlerPlugin {
 
 impl EmitterPlugin<Swift> for EffectHandlerPlugin {
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx)
+        self.matched::<Swift>(ctx)
             .map_or(Ok(()), |m| swift::emit(w, &m, ctx.config))
     }
 }
 
 impl EmitterPlugin<Kotlin> for EffectHandlerPlugin {
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx)
+        self.matched::<Kotlin>(ctx)
             .map_or(Ok(()), |m| kotlin::emit(w, &m, ctx.config))
     }
 }
@@ -85,7 +85,7 @@ impl EmitterPlugin<TypeScript> for EffectHandlerPlugin {
     }
 
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx)
+        self.matched::<TypeScript>(ctx)
             .map_or(Ok(()), |m| typescript::emit(w, &m, ctx.config))
     }
 }
@@ -103,7 +103,7 @@ impl EmitterPlugin<CSharp> for EffectHandlerPlugin {
     }
 
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx)
+        self.matched::<CSharp>(ctx)
             .map_or(Ok(()), |m| csharp::emit(w, &m, ctx.config))
     }
 }
