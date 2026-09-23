@@ -38,8 +38,8 @@ and this project adheres to
 
   #[effect]
   enum Effect {
-      Get(operation::Get),
-      Set(operation::Set),
+      KvGet(operation::GetValue),
+      KvSet(operation::SetValue),
       Render(RenderOperation),
   }
 
@@ -61,25 +61,25 @@ and this project adheres to
 
   | Operation | Fields | Output | Kind |
   | --- | --- | --- | --- |
-  | `Get` | `key: String` | `ValueResult` | `Request` |
-  | `Set` | `key: String, value: Vec<u8>` | `ValueResult` | `Request` |
-  | `Delete` | `key: String` | `ValueResult` | `Request` |
-  | `Exists` | `key: String` | `BoolResult` | `Request` |
+  | `GetValue` | `key: String` | `ValueResult` | `Request` |
+  | `SetValue` | `key: String, value: Vec<u8>` | `ValueResult` | `Request` |
+  | `DeleteValue` | `key: String` | `ValueResult` | `Request` |
+  | `KeyExists` | `key: String` | `ExistsResult` | `Request` |
   | `ListKeys` | `prefix: String, cursor: u64` | `KeysResult` | `Request` |
 
   where the outputs are the usual `Ok`/`Err` pairs, since `Result` does not cross the
   FFI boundary:
 
   ```rust
-  pub enum ValueResult { Ok(Value), Err(KeyValueError) }
-  pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
-  pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
+  pub enum ValueResult  { Ok(Value), Err(KeyValueError) }
+  pub enum ExistsResult { Ok(bool),  Err(KeyValueError) }
+  pub enum KeysResult   { Ok(Keys),  Err(KeyValueError) }
 
   pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
   ```
 
   Each converts to and from the `Result` alias an app sees (`ValueResult` ↔
-  `DataResult`, `BoolResult` ↔ `StatusResult`, `KeysResult` ↔ `ListResult`), so a shell
+  `DataResult`, `ExistsResult` ↔ `StatusResult`, `KeysResult` ↔ `ListResult`), so a shell
   that already speaks one API can serve the other.
 
   The enum API is unchanged and still works — an app can use both side by side, and
@@ -94,8 +94,8 @@ and this project adheres to
   | Deprecated | Since | Use instead |
   | --- | --- | --- |
   | `KeyValue` | 0.15.0 | `store::KeyValue` |
-  | `KeyValueOperation` | 0.15.0 | `operation::{Get, Set, Delete, Exists, ListKeys}` |
-  | `KeyValueResult` | 0.15.0 | `operation::{ValueResult, BoolResult, KeysResult}` |
+  | `KeyValueOperation` | 0.15.0 | `operation::{GetValue, SetValue, DeleteValue, KeyExists, ListKeys}` |
+  | `KeyValueResult` | 0.15.0 | `operation::{ValueResult, ExistsResult, KeysResult}` |
   | `KeyValueResponse` | 0.15.0 | the output type of the operation you sent |
 
   `KeyValueError`, `Value`, `DataResult`, `StatusResult` and `ListResult` are **not**
@@ -106,6 +106,7 @@ and this project adheres to
   enum and in the shells that serve it. The
   [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html)
   walks through it, including the shell side.
+
 ## [0.14.0](https://github.com/redbadger/crux/compare/crux_kv-v0.13.0...crux_kv-v0.14.0) - 2026-08-06
 
 ### ⚙️ Miscellaneous Tasks
