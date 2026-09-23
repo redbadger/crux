@@ -1,9 +1,9 @@
 import type {
-  Clear,
+  ClearTimer,
   DeleteSecret,
   EffectHandler,
   FetchSecret,
-  Get,
+  GetValue,
   HttpRequest,
   HttpResult,
   Location,
@@ -11,7 +11,7 @@ import type {
   SecretDeleteResponse,
   SecretFetchResponse,
   SecretStoreResponse,
-  Set as SetValue,
+  SetValue,
   StoreSecret,
   TimerId,
   ValueResult,
@@ -56,7 +56,7 @@ export class WeatherHandler implements EffectHandler {
   }
   // ANCHOR_END: http
 
-  kvGet(operation: Get): Promise<ValueResult> {
+  kvGet(operation: GetValue): Promise<ValueResult> {
     return this.keyValueHandler.get(operation);
   }
 
@@ -68,7 +68,7 @@ export class WeatherHandler implements EffectHandler {
     return this.timeHandler.notifyAfter(operation);
   }
 
-  timeClear(operation: Clear): Promise<TimerId> {
+  timeClear(operation: ClearTimer): Promise<TimerId> {
     return this.timeHandler.clear(operation);
   }
 

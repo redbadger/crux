@@ -8,8 +8,9 @@
 //! developer-facing command builders live in the [`command`] submodule.
 //!
 //! The names carry the capability because the generated shell module is one
-//! flat namespace: a bare `Delete` here and `crux_kv`'s `Delete` would both
-//! generate as `Delete`, and the app registers both capabilities.
+//! flat namespace: a bare `Delete` here would clash with any other operation
+//! called `Delete`, and type generation rejects two shared types that generate
+//! the same name.
 
 pub mod command;
 

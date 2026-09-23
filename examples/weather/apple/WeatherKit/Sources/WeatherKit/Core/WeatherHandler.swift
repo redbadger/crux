@@ -52,12 +52,12 @@ nonisolated extension WeatherHandler: EffectHandler {
 
     /// `KvGet` is answered with a `ValueResult` — the value stored under the
     /// key, or the error that stopped us reading it.
-    public func kvGet(_ operation: App.Get) async -> ValueResult {
+    public func kvGet(_ operation: GetValue) async -> ValueResult {
         await keyValueHandler.get(operation)
     }
 
     /// `KvSet` is answered with the value it replaced.
-    public func kvSet(_ operation: App.Set) async -> ValueResult {
+    public func kvSet(_ operation: SetValue) async -> ValueResult {
         await keyValueHandler.set(operation)
     }
 
@@ -68,7 +68,7 @@ nonisolated extension WeatherHandler: EffectHandler {
     }
 
     /// `TimeClear` cancels the timer and answers with the id it named.
-    public func timeClear(_ operation: Clear) async -> TimerId {
+    public func timeClear(_ operation: ClearTimer) async -> TimerId {
         await timeHandler.clear(operation)
     }
 }

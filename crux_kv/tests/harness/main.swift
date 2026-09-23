@@ -35,7 +35,7 @@ func keys(_ result: KeysResult) -> [String] {
     return page.keys
 }
 
-func present(_ result: BoolResult) -> Bool {
+func present(_ result: ExistsResult) -> Bool {
     guard case .ok(let present) = result else { fatalError("expected .ok, got \(result)") }
     return present
 }
@@ -52,8 +52,8 @@ let defaults = UserDefaults(suiteName: suiteName)!
 let kv = UserDefaultsKeyValueHandler(suiteName: suiteName)
 
 // An empty store, before anything has been written to it.
-expect("get of a missing key is Value.none, not an error", bytes(await kv.get(Get(key: "alpha"))) == nil)
-expect("exists is false for a missing key", present(await kv.exists(Exists(key: "alpha"))), false)
+expect("get of a missing key is Value.none, not an error", bytes(await kv.get(GetValue(key: "alpha"))) == nil)
+expect("exists is false for a missing key", present(await kv.exists(KeyExists(key: "alpha"))), false)
 expect(
     "listKeys of an empty store answers with no keys",
     keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
@@ -61,7 +61,7 @@ expect(
 )
 expect(
     "delete of a missing key is Value.none, not an error",
-    bytes(await kv.delete(Delete(key: "alpha"))) == nil
+    bytes(await kv.delete(DeleteValue(key: "alpha"))) == nil
 )
 
 // Each key holds its own name, so a value that comes back under the wrong key
@@ -69,21 +69,21 @@ expect(
 for key in written {
     expect(
         "set of a new key answers with Value.none",
-        bytes(await kv.set(App.Set(key: key, value: [UInt8](key.utf8)))) == nil
+        bytes(await kv.set(SetValue(key: key, value: [UInt8](key.utf8)))) == nil
     )
 }
 
 for key in written {
-    expect("get returns the bytes set under \(key)", bytes(await kv.get(Get(key: key))), [UInt8](key.utf8))
-    expect("exists is true for \(key)", present(await kv.exists(Exists(key: key))), true)
+    expect("get returns the bytes set under \(key)", bytes(await kv.get(GetValue(key: key))), [UInt8](key.utf8))
+    expect("exists is true for \(key)", present(await kv.exists(KeyExists(key: key))), true)
 }
 
 expect(
     "set of an existing key answers with the value it replaced",
-    bytes(await kv.set(App.Set(key: "beta", value: [9, 9]))),
+    bytes(await kv.set(SetValue(key: "beta", value: [9, 9]))),
     [UInt8]("beta".utf8)
 )
-expect("get returns the replacement", bytes(await kv.get(Get(key: "beta"))), [9, 9])
+expect("get returns the replacement", bytes(await kv.get(GetValue(key: "beta"))), [9, 9])
 
 // The regression: everything the store lists is a key the app wrote. A
 // `UserDefaults` read goes through the whole search list, so listing what
@@ -116,17 +116,17 @@ if case .err(.cursorNotFound) = await kv.listKeys(ListKeys(prefix: "", cursor: U
 
 expect(
     "the awkward key survives the round trip",
-    bytes(await kv.get(Get(key: awkward))),
+    bytes(await kv.get(GetValue(key: awkward))),
     [UInt8](awkward.utf8)
 )
 
 expect(
     "delete answers with the value it removed",
-    bytes(await kv.delete(Delete(key: "delta"))),
+    bytes(await kv.delete(DeleteValue(key: "delta"))),
     [UInt8]("delta".utf8)
 )
-expect("exists is false once the key is deleted", present(await kv.exists(Exists(key: "delta"))), false)
-expect("get is Value.none once the key is deleted", bytes(await kv.get(Get(key: "delta"))) == nil)
+expect("exists is false once the key is deleted", present(await kv.exists(KeyExists(key: "delta"))), false)
+expect("get is Value.none once the key is deleted", bytes(await kv.get(GetValue(key: "delta"))) == nil)
 expect(
     "listKeys no longer answers with the deleted key",
     keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
@@ -136,8 +136,8 @@ expect(
 // A preference the app put in the same defaults is not a value this store
 // holds: `get` answers `Value.none` for it, and `exists` has to agree.
 defaults.set("a preference, not a stored value", forKey: "zeta")
-expect("get of a key whose value is not Data is Value.none", bytes(await kv.get(Get(key: "zeta"))) == nil)
-expect("exists agrees with get about a key whose value is not Data", present(await kv.exists(Exists(key: "zeta"))), false)
+expect("get of a key whose value is not Data is Value.none", bytes(await kv.get(GetValue(key: "zeta"))) == nil)
+expect("exists agrees with get about a key whose value is not Data", present(await kv.exists(KeyExists(key: "zeta"))), false)
 
 UserDefaults.standard.removePersistentDomain(forName: suiteName)
 
