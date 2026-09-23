@@ -35,7 +35,7 @@ use facet_generate::generation::{
     typescript::TypeScript,
 };
 
-use super::{Matched, bincode_import_path, matched, serializes_output};
+use super::{Matched, Requalify, bincode_import_path, matched, serializes_output};
 use crate::type_generation::facet::{AppMeta, BoltFfi, EffectMeta};
 
 /// The version of `kotlinx-coroutines-core` the generated Kotlin package asks
@@ -87,8 +87,18 @@ impl CorePlugin {
 
     /// `Core` uses fixed names and owns the view loop, so it is emitted for the
     /// first registered effect, and only if that effect has a render variant.
-    fn matched<'a>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
-        matched(&self.effects, ctx).filter(|m| m.primary && m.render_variant().is_some())
+    fn matched<'a, L: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
+        matched::<L>(&self.effects, ctx).filter(|m| m.primary && m.render_variant().is_some())
+    }
+
+    /// The app's event and view model in `L`'s spelling. [`AppMeta`] records
+    /// them as the registry names them, so this is the one place they are
+    /// respelled.
+    fn app<L: Requalify>(&self, config: &CodeGeneratorConfig) -> AppMeta {
+        AppMeta {
+            event: L::requalify(config, &self.app.event),
+            view_model: L::requalify(config, &self.app.view_model),
+        }
     }
 
     /// The same question as [`matched`](Self::matched), for the hooks that are
@@ -134,8 +144,14 @@ impl EmitterPlugin<Swift> for CorePlugin {
     }
 
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx).map_or(Ok(()), |m| {
-            swift::emit(w, &m, &self.app, ctx.config, self.ffi())
+        self.matched::<Swift>(ctx).map_or(Ok(()), |m| {
+            swift::emit(
+                w,
+                &m,
+                &self.app::<Swift>(ctx.config),
+                ctx.config,
+                self.ffi(),
+            )
         })
     }
 
@@ -217,8 +233,14 @@ impl EmitterPlugin<Kotlin> for CorePlugin {
     }
 
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx).map_or(Ok(()), |m| {
-            kotlin::emit(w, &m, &self.app, ctx.config, self.ffi())
+        self.matched::<Kotlin>(ctx).map_or(Ok(()), |m| {
+            kotlin::emit(
+                w,
+                &m,
+                &self.app::<Kotlin>(ctx.config),
+                ctx.config,
+                self.ffi(),
+            )
         })
     }
 
@@ -283,8 +305,14 @@ impl EmitterPlugin<TypeScript> for CorePlugin {
     /// TypeScript generates one file per module, so `FfiBridge` goes in beside
     /// `Core` rather than into a companion file.
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx).map_or(Ok(()), |m| {
-            typescript::emit(w, &m, &self.app, ctx.config, self.ffi())
+        self.matched::<TypeScript>(ctx).map_or(Ok(()), |m| {
+            typescript::emit(
+                w,
+                &m,
+                &self.app::<TypeScript>(ctx.config),
+                ctx.config,
+                self.ffi(),
+            )
         })
     }
 
@@ -307,8 +335,14 @@ impl EmitterPlugin<CSharp> for CorePlugin {
     }
 
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.matched(ctx).map_or(Ok(()), |m| {
-            csharp::emit(w, &m, &self.app, ctx.config, self.ffi())
+        self.matched::<CSharp>(ctx).map_or(Ok(()), |m| {
+            csharp::emit(
+                w,
+                &m,
+                &self.app::<CSharp>(ctx.config),
+                ctx.config,
+                self.ffi(),
+            )
         })
     }
 

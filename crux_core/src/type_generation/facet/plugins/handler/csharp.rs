@@ -240,7 +240,7 @@ fn emit_resolve(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w, "var serializer = new BincodeSerializer();")?;
-    if let Some(output) = variant.output {
+    if let Some(output) = &variant.output {
         write_serialize_value(w, value, output, config)?;
     }
     writeln!(w, "_resolve(id, serializer.GetBytes());")?;
@@ -280,7 +280,7 @@ fn emit_delegate_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
 }
 
 fn render_output(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> String {
-    variant.output.map_or_else(
+    variant.output.as_ref().map_or_else(
         || "object".to_string(),
         |format| render_type(format, config),
     )

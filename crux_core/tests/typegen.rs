@@ -143,14 +143,17 @@ mod facet_shared {
 
 #[cfg(feature = "facet_typegen")]
 mod facet_test {
-    use std::fs;
+    use std::{fs, process::Command};
 
     use crux_core::{
         OperationKind,
         type_generation::facet::{BoltFfi, Config, Format, PackageLocation, TypeRegistry},
     };
 
-    use super::facet_shared::{App, OtherApp};
+    use super::{
+        facet_shared::{App, OtherApp},
+        facet_shell_handler_test::dotnet_build,
+    };
 
     #[test]
     fn register_app_records_event_and_view_model() {
@@ -364,12 +367,12 @@ mod facet_test {
                 "val Effect.operationKind: OperationKind?",
                 "fun interface EffectSink<in T> {",
                 "interface EffectHandler {",
-                "suspend fun get(operation: com.example.shared.Get): GetResult",
+                "suspend fun get(operation: com.example.shared.Get): com.example.shared.GetResult",
                 // A sibling namespace has to be named from the root package: a
                 // bare `Kit.Presence` does not resolve from inside
                 // `com.example.shared`.
                 "suspend fun probe(operation: com.example.shared.Kit.Probe): com.example.shared.Kit.Presence",
-                "fun subscribe(operation: com.example.shared.Subscribe, sink: EffectSink<Message>)",
+                "fun subscribe(operation: com.example.shared.Subscribe, sink: EffectSink<com.example.shared.Message>)",
                 "fun legacy(operation: com.example.shared.Legacy, requestId: UInt, resolve: (ByteArray) -> Unit)",
                 "class EffectDispatcher(",
                 "suspend fun dispatch(request: Request) {",
@@ -377,8 +380,8 @@ mod facet_test {
                 "interface CoreBridge {",
                 "class Core(",
                 "private val scope: CoroutineScope,",
-                "val view: StateFlow<ViewModel> = _view.asStateFlow()",
-                "fun update(event: Event) {",
+                "val view: StateFlow<com.example.shared.ViewModel> = _view.asStateFlow()",
+                "fun update(event: com.example.shared.Event) {",
                 "fun process(bytes: ByteArray) {",
                 "fun process(requests: List<Request>) {",
             ],
@@ -402,8 +405,13 @@ mod facet_test {
                 "public Example.Shared.OperationKind? OperationKind => this switch",
                 "public interface IEffectSink<in T>",
                 "public interface IEffectHandler",
-                "Task<GetResult> Get(Example.Shared.Get operation);",
-                "void Subscribe(Example.Shared.Subscribe operation, IEffectSink<Message> sink);",
+                "Task<Example.Shared.GetResult> Get(Example.Shared.Get operation);",
+                "void Subscribe(Example.Shared.Subscribe operation, IEffectSink<Example.Shared.Message> sink);",
+                "Task<Example.Shared.Kit.Presence> Probe(Example.Shared.Kit.Probe operation);",
+                // A C# `enum` has no methods, so a unit-only output is written
+                // through its companion class, which the lookup finds only in
+                // the emitter's spelling.
+                "Example.Shared.Kit.PresenceBincode.Serialize(output, serializer);",
                 "void Legacy(Example.Shared.Legacy operation, uint requestId, Action<byte[]> resolve);",
                 "public sealed class EffectDispatcher",
                 "public void Dispatch(Example.Shared.Request request)",
@@ -412,7 +420,8 @@ mod facet_test {
                 "public sealed class Core : INotifyPropertyChanged",
                 "public event PropertyChangedEventHandler? PropertyChanged;",
                 "public Core(ICoreBridge bridge, IEffectHandler handler)",
-                "public void Update(Event @event)",
+                "public void Update(Example.Shared.Event @event)",
+                "Example.Shared.EventBincode.Serialize(@event, serializer);",
                 "public void Process(byte[] bytes)",
                 "public void Process(IReadOnlyList<Example.Shared.Request> requests)",
             ],
@@ -458,6 +467,43 @@ mod facet_test {
             dir.path().join("shared_types.d.ts").exists(),
             "tsc should have emitted declarations, so the generated module compiles"
         );
+    }
+
+    /// `typescript()` emits declarations whether or not `tsc` accepts the
+    /// module, so ask `tsc` itself. `Probe` resolves with `Kit.Presence`, a
+    /// unit-only enum in another namespace, which the dispatcher has to
+    /// serialize through its free function rather than a method it lacks.
+    #[test]
+    fn the_generated_typescript_type_checks() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("typescript type generation should succeed");
+
+        let output = Command::new("pnpm")
+            .current_dir(dir.path())
+            .args(["exec", "tsc", "--build", "--force"])
+            .output()
+            .expect("should run tsc");
+        assert!(
+            output.status.success(),
+            "tsc should type-check the generated module:\n{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    /// The same for C#, whose unit-only enums keep their bincode entry points
+    /// in a companion class — for `Kit.Presence`, and for the app's `Event`,
+    /// both named from the dotted `Example.Shared`.
+    #[test]
+    fn the_generated_csharp_compiles() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+
+        dotnet_build(dir.path());
     }
 
     /// Reads the Swift module a `CodeGenerator` writes, for the tests that
@@ -1706,7 +1752,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     /// cannot compile, so this is where a C# handler that does not build gets
     /// caught. Missing toolchains skip unless `CRUX_REQUIRE_SHELL_TOOLCHAINS`
     /// says otherwise: a Rust contributor should not need the .NET SDK.
-    fn dotnet_build(dir: &Path) {
+    pub fn dotnet_build(dir: &Path) {
         match Command::new("dotnet")
             .current_dir(dir)
             .args(["build", "--nologo"])

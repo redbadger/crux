@@ -21,15 +21,15 @@ class Core(
     handler: EffectHandler,
     private val scope: CoroutineScope,
 ) {
-    private val _view = MutableStateFlow(ViewModel.bincodeDeserialize(bridge.view()))
+    private val _view = MutableStateFlow(Shared.ViewModel.bincodeDeserialize(bridge.view()))
     /// The view model as of the last `Render`.
-    val view: StateFlow<ViewModel> = _view.asStateFlow()
+    val view: StateFlow<Shared.ViewModel> = _view.asStateFlow()
     private val dispatcher = EffectDispatcher(handler) { id, bytes ->
         scope.launch { process(bridge.resolve(id, bytes)) }
     }
 
     /// Send an event to the core and run the loop it starts.
-    fun update(event: Event) {
+    fun update(event: Shared.Event) {
         process(bridge.update(event.bincodeSerialize()))
     }
 
@@ -42,7 +42,7 @@ class Core(
     fun process(requests: List<Request>) {
         for (request in requests) {
             if (request.effect is Effect.Render) {
-                _view.value = ViewModel.bincodeDeserialize(bridge.view())
+                _view.value = Shared.ViewModel.bincodeDeserialize(bridge.view())
                 continue
             }
             scope.launch { dispatcher.dispatch(request) }
