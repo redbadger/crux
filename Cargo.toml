@@ -22,15 +22,15 @@ categories = ["gui", "wasm", "development-tools::ffi"]
 [workspace.dependencies]
 anyhow = "1.0"
 facet = "=0.46.5"
-# Pinned to redbadger/facet-generate#169 (on #168), which 0.22.0 will ship:
-# per-language `requalify` for plugins, and references named the way their
-# types are registered. Back to crates.io "0.22" once it is published.
-facet_generate = { git = "https://github.com/redbadger/facet-generate", rev = "fe211c4598dc97c6d70652f23c0a3147cad6fb0d" }
+# Pinned to facet-generate main plus redbadger/facet-generate#173 (plugins
+# declare the types their output names), which 0.22.0 will ship. Back to
+# crates.io "0.22" once it is published.
+facet_generate = { git = "https://github.com/redbadger/facet-generate", rev = "781c42ab1e21b7fe725e11310f1ec12aac14b988" }
 # Must be the same crate instance `facet_generate` itself depends on, so from the
 # same source. A second copy from another source is an unrelated `Attr` type: the
 # attribute a `#[facet(fg::namespace = …)]` writes is then invisible to the
 # `get_as::<fg::Attr>()` that reads it, and generation fails with `bad attribute format`.
-facet-generate-attrs = { git = "https://github.com/redbadger/facet-generate", rev = "fe211c4598dc97c6d70652f23c0a3147cad6fb0d" }
+facet-generate-attrs = { git = "https://github.com/redbadger/facet-generate", rev = "781c42ab1e21b7fe725e11310f1ec12aac14b988" }
 # facet_generate = { path = "../facet-generate/crates/facet_generate" }
 # facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
 serde = "1.0"

@@ -20,17 +20,19 @@ use facet_generate::{
         swift::Swift,
         typescript::TypeScript,
     },
-    reflection::format::{Format, FormatHolder as _},
+    reflection::format::{Format, FormatHolder as _, QualifiedTypeName},
 };
 
-use super::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, Requalify};
+use super::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, Requalify, output_types};
 use crate::{
     OperationKind,
     capability::Operation,
     // The `render` flag is a `TypeId` comparison with the real operation, so
     // the fixture has to use the real one too.
     render::RenderOperation,
-    type_generation::facet::{AppMeta, BoltFfi, EffectMeta, PackageLocation, TypeRegistry},
+    type_generation::facet::{
+        AppMeta, BoltFfi, EffectMeta, EffectVariantMeta, PackageLocation, TypeRegistry,
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -774,4 +776,45 @@ fn nothing_is_emitted_for_a_type_that_is_not_the_effect() {
     }
 
     assert!(buffer.is_empty(), "expected nothing, got {buffer:?}");
+}
+
+// ---------------------------------------------------------------------------
+// The types the plugins declare they name
+// ---------------------------------------------------------------------------
+
+fn kit_presence() -> QualifiedTypeName {
+    QualifiedTypeName::namespaced("kit".to_string(), "Presence".to_string())
+}
+
+/// Every type inside an output is named, once, and a notification's is not.
+#[test]
+fn output_types_are_every_type_inside_each_output() {
+    let message = QualifiedTypeName::root("Message".to_string());
+    let variant = |kind, output| EffectVariantMeta {
+        index: 0,
+        ident: String::new(),
+        kind: Some(kind),
+        output: Some(output),
+        render: false,
+    };
+    let effect = EffectMeta {
+        effect: QualifiedTypeName::root("Effect".to_string()),
+        variants: vec![
+            variant(
+                OperationKind::Request,
+                Format::Option(Box::new(Format::TypeName(kit_presence()))),
+            ),
+            variant(
+                OperationKind::Stream,
+                Format::Seq(Box::new(Format::TypeName(message.clone()))),
+            ),
+            variant(OperationKind::Request, Format::TypeName(kit_presence())),
+            variant(
+                OperationKind::Notify,
+                Format::TypeName(QualifiedTypeName::root("Ignored".to_string())),
+            ),
+        ],
+    };
+
+    assert_eq!(output_types(&effect), vec![kit_presence(), message]);
 }
