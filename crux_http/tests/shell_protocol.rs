@@ -218,8 +218,8 @@ fn the_kotlin_protocol_compiles() {
     build("kotlinc", &args, dir.path());
 }
 
-/// `typescript()` runs `tsc` but does not check its exit status, so this test
-/// runs `tsc` again and checks it.
+/// `typescript()` runs `tsc` and fails unless `tsc` accepts the module, so
+/// success means that the protocol compiles.
 #[test]
 fn the_typescript_protocol_compiles() {
     let dir = tempfile::tempdir().expect("should create a temp dir");
@@ -230,8 +230,6 @@ fn the_typescript_protocol_compiles() {
     let module = fs::read_to_string(dir.path().join("shared_types.ts"))
         .expect("should write a TypeScript module");
     assert!(module.contains(TYPESCRIPT), "unexpected module:\n{module}");
-
-    build("pnpm", &["exec", "tsc", "--build", "--force"], dir.path());
 }
 
 #[test]
