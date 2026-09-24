@@ -155,6 +155,7 @@ mod shell_handler;
 use std::{
     fs::{self, File},
     io::Write,
+    path::Path,
     process::Command,
     result::Result,
     sync::Arc,
@@ -191,6 +192,14 @@ pub enum TypeGenError {
         "`pnpm` is needed for TypeScript type generation, but it could not be found in PATH.\nPlease install it from https://pnpm.io/installation"
     )]
     PnpmNotFound(#[source] std::io::Error),
+    /// A command run on the generated package, such as `tsc`, exited
+    /// unsuccessfully. Its output is inherited, so its diagnostics are printed
+    /// above the error.
+    #[error("`{command}` failed ({status}) on the generated package; see its output above")]
+    CommandFailed {
+        command: String,
+        status: std::process::ExitStatus,
+    },
 }
 
 impl From<facet_generate::generation::Error> for TypeGenError {
@@ -572,6 +581,29 @@ fn module_file_stem(package_name: &str) -> String {
         .to_upper_camel_case()
 }
 
+/// Runs `pnpm` with `args` in `dir`, failing unless it exits successfully.
+///
+/// Output is inherited rather than captured, so `tsc`'s diagnostics reach the
+/// user.
+fn run_pnpm(dir: &Path, args: &[&str]) -> Result<(), TypeGenError> {
+    let status = Command::new("pnpm")
+        .current_dir(dir)
+        .args(args)
+        .status()
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => TypeGenError::PnpmNotFound(e),
+            _ => TypeGenError::Io(e),
+        })?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(TypeGenError::CommandFailed {
+            command: format!("pnpm {}", args.join(" ")),
+            status,
+        })
+    }
+}
+
 impl Default for TypeRegistry {
     fn default() -> Self {
         Self::new()
@@ -728,7 +760,9 @@ impl CodeGenerator {
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
     /// ```
     /// # Errors
-    /// Errors that can occur during type generation.
+    /// Errors that can occur during type generation, including
+    /// [`TypeGenError::CommandFailed`] if `pnpm install` fails or `tsc`
+    /// rejects the generated package.
     pub fn typescript(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating TypeScript types");
         self.check(None)?;
@@ -768,23 +802,10 @@ impl CodeGenerator {
         write!(output, "{ts_config_str}")?;
 
         info!("Installing dependencies");
-        Command::new("pnpm")
-            .current_dir(output_dir)
-            .arg("install")
-            .status()
-            .map_err(|e| match e.kind() {
-                std::io::ErrorKind::NotFound => TypeGenError::PnpmNotFound(e),
-                _ => TypeGenError::Io(e),
-            })?;
+        run_pnpm(output_dir, &["install"])?;
 
         info!("Building TS code and emitting declarations");
-        Command::new("pnpm")
-            .current_dir(output_dir)
-            .arg("exec")
-            .arg("tsc")
-            .arg("--build")
-            .status()
-            .map_err(TypeGenError::Io)?;
+        run_pnpm(output_dir, &["exec", "tsc", "--build"])?;
 
         Ok(())
     }
