@@ -890,6 +890,151 @@ mod facet_no_render {
     }
 }
 
+/// Types only the generated shell API names. `Probe` is at the root and
+/// resolves with `kit::Presence`, and the view model is in `ui`, so the
+/// app's module refers to neither namespace except through the handler API and
+/// `Core` — and has to import both all the same.
+#[cfg(feature = "facet_typegen")]
+mod facet_plugin_referenced_types {
+    use std::fs;
+
+    use crux_core::{
+        Command,
+        macros::{Operation, effect},
+        render::RenderOperation,
+        type_generation::facet::{Config, TypeRegistry},
+    };
+    use facet::Facet;
+    use serde::{Deserialize, Serialize};
+
+    use super::facet_shell_handler_test::swift_build;
+
+    #[derive(Facet)]
+    #[repr(C)]
+    pub enum Event {
+        None,
+    }
+
+    #[derive(Facet)]
+    #[facet(facet_generate_attrs::namespace = "ui")]
+    pub struct ViewModel {
+        pub count: u32,
+    }
+
+    #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+    #[repr(C)]
+    #[facet(facet_generate_attrs::namespace = "kit")]
+    pub enum Presence {
+        Present,
+        Absent,
+    }
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(request, output = Presence)]
+    pub struct Probe;
+
+    #[effect(facet_typegen)]
+    pub enum Effect {
+        Render(RenderOperation),
+        Probe(Probe),
+    }
+
+    #[derive(Default)]
+    pub struct App;
+
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = ();
+        type ViewModel = ViewModel;
+        type Effect = Effect;
+
+        fn update(&self, _event: Event, _model: &mut Self::Model) -> Command<Effect, Event> {
+            Command::done()
+        }
+
+        fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+            ViewModel { count: 0 }
+        }
+    }
+
+    fn generator() -> crux_core::type_generation::facet::CodeGenerator {
+        TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry")
+    }
+
+    fn occurrences(source: &str, fragment: &str) -> usize {
+        source.matches(fragment).count()
+    }
+
+    /// `typescript()` fails unless `tsc` accepts the package, so success is a
+    /// compile check.
+    #[test]
+    fn typescript_imports_namespaces_only_the_shell_api_names() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("tsc should type-check the generated package");
+
+        let source = fs::read_to_string(dir.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+
+        assert!(source.contains("probe(operation: Probe): Promise<Kit.Presence>;"));
+        assert_eq!(
+            occurrences(&source, "import * as Kit from"),
+            1,
+            "expected `Kit` imported once:\n{source}"
+        );
+        assert_eq!(
+            occurrences(&source, "import * as Ui from"),
+            1,
+            "expected `Ui` imported once:\n{source}"
+        );
+    }
+
+    /// Swift has to import the namespace's module and declare the target
+    /// dependency on it, or the package does not build.
+    #[test]
+    fn swift_imports_namespaces_only_the_shell_api_names() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        let package = dir.path().join("App");
+        let source = fs::read_to_string(package.join("Sources/App/App.swift"))
+            .expect("should write a Swift module");
+        let manifest =
+            fs::read_to_string(package.join("Package.swift")).expect("should write a manifest");
+
+        assert!(source.contains("func probe(_ operation: Probe) async -> Kit.Presence"));
+        for module in ["Kit", "Ui"] {
+            assert_eq!(
+                occurrences(&source, &format!("import {module}\n")),
+                1,
+                "expected `{module}` imported once:\n{source}"
+            );
+        }
+
+        let app_target = manifest
+            .split(".target(")
+            .skip(1)
+            .find(|target| target.contains(r#"name: "App","#))
+            .expect("should declare the app's target");
+        for module in ["Kit", "Ui"] {
+            assert!(
+                app_target.contains(&format!(r#""{module}""#)),
+                "expected the app's target to depend on `{module}`:\n{manifest}"
+            );
+        }
+
+        swift_build(&package);
+    }
+}
+
 /// The generated handler API claims a handful of names, so a shared type
 /// cannot also use them.
 #[cfg(feature = "facet_typegen")]
@@ -1775,6 +1920,27 @@ public sealed class InMemoryStoreHandler : IStoreHandler
                 );
             }
             Err(e) => panic!("could not run `dotnet build`: {e}"),
+        }
+    }
+
+    /// Builds a generated Swift package with `swift build`, or says why it
+    /// did not. Missing toolchains skip unless `CRUX_REQUIRE_SHELL_TOOLCHAINS`
+    /// says otherwise, as for [`dotnet_build`].
+    pub fn swift_build(dir: &Path) {
+        match Command::new("swift").current_dir(dir).arg("build").output() {
+            Ok(output) => assert!(
+                output.status.success(),
+                "`swift build` failed:\n{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                unavailable(
+                    "`swift` is not on PATH",
+                    "the generated Swift is not compiled",
+                );
+            }
+            Err(e) => panic!("could not run `swift build`: {e}"),
         }
     }
 

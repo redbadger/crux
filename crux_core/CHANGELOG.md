@@ -387,6 +387,16 @@ and this project adheres to
   error. If the generated `package.json` depends on a package that hasn't
   been built yet, such as a BoltFFI wasm package, build that first:
   `pnpm install` failing is now an error too.
+- **A type that only the generated shell API names is imported (Swift,
+  TypeScript).** The effect dispatcher and `EffectHandler` name each
+  operation's output, and `Core` names the app's event and view model. When
+  one of those lived in a namespace nothing else in the app module referred
+  to, the generated Swift had no `import` or target dependency for it, and the
+  TypeScript no `import * as`, so neither built
+  ([#614](https://github.com/redbadger/crux/issues/614)). The plugins now
+  declare those types to `facet_generate`, which adds the import, and in Swift
+  includes the dependency in its check for cycles between targets
+  ([redbadger/facet-generate#173](https://github.com/redbadger/facet-generate/pull/173)).
 
 ### ⚙️ Miscellaneous Tasks
 

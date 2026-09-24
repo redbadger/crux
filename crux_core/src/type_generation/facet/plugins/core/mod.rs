@@ -25,14 +25,17 @@ mod typescript;
 
 use std::{io, sync::Arc};
 
-use facet_generate::generation::{
-    CodeGeneratorConfig,
-    csharp::CSharp,
-    indent::{IndentWrite, IndentedWriter},
-    kotlin::Kotlin,
-    plugin::{CompanionFile, EmitContext, EmitterPlugin},
-    swift::Swift,
-    typescript::TypeScript,
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        csharp::CSharp,
+        indent::{IndentWrite, IndentedWriter},
+        kotlin::Kotlin,
+        plugin::{CompanionFile, EmitContext, EmitterPlugin},
+        swift::Swift,
+        typescript::TypeScript,
+    },
+    reflection::format::QualifiedTypeName,
 };
 
 use super::{Matched, Requalify, bincode_import_path, matched, serializes_output};
@@ -109,6 +112,24 @@ impl CorePlugin {
             .is_some_and(|effect| effect.variants.iter().any(|variant| variant.render))
     }
 
+    /// The app's event and view model, in registry spelling, for the module
+    /// `Core` is emitted into — the first effect's, since it is written after
+    /// that enum.
+    ///
+    /// Nothing else in the module need name them, so without this a namespace
+    /// of theirs would not be imported.
+    fn referenced(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        let emits_here = self.emits_core()
+            && self
+                .effects
+                .first()
+                .is_some_and(|effect| config.generates(&effect.effect));
+        if !emits_here {
+            return vec![];
+        }
+        vec![self.app.event.clone(), self.app.view_model.clone()]
+    }
+
     /// The bridge configuration, if there is a `Core` for a bridge to belong
     /// to.
     fn ffi(&self) -> Option<&BoltFfi> {
@@ -131,6 +152,10 @@ fn render(
 }
 
 impl EmitterPlugin<Swift> for CorePlugin {
+    fn referenced_types(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.referenced(config)
+    }
+
     /// `Core` is `@Observable`, which lives in the `Observation` framework and
     /// is not implicitly available.
     ///
@@ -207,6 +232,10 @@ impl EmitterPlugin<Swift> for CorePlugin {
 }
 
 impl EmitterPlugin<Kotlin> for CorePlugin {
+    fn referenced_types(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.referenced(config)
+    }
+
     fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
         if !self.emits_core() || !self.is_app_module(config) {
             return vec![];
@@ -278,6 +307,10 @@ impl EmitterPlugin<Kotlin> for CorePlugin {
 }
 
 impl EmitterPlugin<TypeScript> for CorePlugin {
+    fn referenced_types(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.referenced(config)
+    }
+
     fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
         if !self.emits_core() || !self.is_app_module(config) {
             return vec![];
@@ -325,6 +358,10 @@ impl EmitterPlugin<TypeScript> for CorePlugin {
 }
 
 impl EmitterPlugin<CSharp> for CorePlugin {
+    fn referenced_types(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.referenced(config)
+    }
+
     /// `Core` raises `PropertyChanged`, so it needs the interface, the delegate
     /// and the event args.
     fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
