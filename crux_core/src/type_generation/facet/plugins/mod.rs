@@ -35,7 +35,9 @@ use facet_generate::{
         swift::{self, Swift},
         typescript::{self, TypeScript},
     },
-    reflection::format::{ContainerFormat, Format, QualifiedTypeName, VariantFormat},
+    reflection::format::{
+        ContainerFormat, Format, FormatHolder as _, QualifiedTypeName, VariantFormat,
+    },
 };
 use heck::ToLowerCamelCase;
 
@@ -214,6 +216,29 @@ const fn output_of(meta: &EffectVariantMeta) -> Option<&Format> {
         (Some(format), Some(OperationKind::Request | OperationKind::Stream)) => Some(format),
         _ => None,
     }
+}
+
+/// Every type the generated handler API names as an output of `effect`, in
+/// registry spelling: the output of each request and stream, and every type
+/// inside one — an `Option<Presence>` names `Presence`.
+///
+/// Each is a registered type, since the outputs were reflected into the
+/// registry the effect was recorded in.
+pub fn output_types(effect: &EffectMeta) -> Vec<QualifiedTypeName> {
+    let mut names = Vec::new();
+    for format in effect.variants.iter().filter_map(output_of) {
+        // A recorded output has no unresolved variables, which is all that
+        // `visit` fails on.
+        let _ = format.visit(&mut |format| {
+            if let Format::TypeName(name) = format
+                && !names.contains(name)
+            {
+                names.push(name.clone());
+            }
+            Ok(())
+        });
+    }
+    names
 }
 
 /// The lower-camel-cased form the Kotlin, Swift and TypeScript emitters use
