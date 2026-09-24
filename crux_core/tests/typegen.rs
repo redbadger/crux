@@ -143,11 +143,13 @@ mod facet_shared {
 
 #[cfg(feature = "facet_typegen")]
 mod facet_test {
-    use std::{fs, process::Command};
+    use std::fs;
 
     use crux_core::{
         OperationKind,
-        type_generation::facet::{BoltFfi, Config, Format, PackageLocation, TypeRegistry},
+        type_generation::facet::{
+            BoltFfi, Config, Format, PackageLocation, TypeGenError, TypeRegistry,
+        },
     };
 
     use super::{
@@ -469,28 +471,42 @@ mod facet_test {
         );
     }
 
-    /// `typescript()` emits declarations whether or not `tsc` accepts the
-    /// module, so ask `tsc` itself. `Probe` resolves with `Kit.Presence`, a
-    /// unit-only enum in another namespace, which the dispatcher has to
-    /// serialize through its free function rather than a method it lacks.
+    /// `typescript()` fails unless `tsc` accepts the module, so success means
+    /// it type-checks. `Probe` resolves with `Kit.Presence`, a unit-only enum
+    /// in another namespace, which the dispatcher has to serialize through its
+    /// free function rather than a method it lacks.
     #[test]
     fn the_generated_typescript_type_checks() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
         generator()
             .typescript(&Config::builder("shared_types", dir.path()).build())
-            .expect("typescript type generation should succeed");
+            .expect("tsc should type-check the generated module");
+    }
 
-        let output = Command::new("pnpm")
-            .current_dir(dir.path())
-            .args(["exec", "tsc", "--build", "--force"])
-            .output()
-            .expect("should run tsc");
-        assert!(
-            output.status.success(),
-            "tsc should type-check the generated module:\n{}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
+    /// A package `tsc` rejects fails generation, rather than surfacing only in
+    /// the shell's build. The installer leaves other files in the output
+    /// directory alone, and the tsconfig includes every `.ts` file in it, so a
+    /// file that does not type-check is enough.
+    #[test]
+    fn typescript_fails_when_tsc_rejects_the_package() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        fs::write(
+            dir.path().join("broken.ts"),
+            "export const broken: number = \"not a number\";\n",
+        )
+        .expect("should write a file that does not type-check");
+
+        let error = generator()
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect_err("tsc should reject the package");
+
+        match error {
+            TypeGenError::CommandFailed { command, status } => {
+                assert_eq!(command, "pnpm exec tsc --build");
+                assert!(!status.success());
+            }
+            other => panic!("expected `CommandFailed`, got {other:?}"),
+        }
     }
 
     /// The same for C#, whose unit-only enums keep their bincode entry points
@@ -713,7 +729,7 @@ mod facet_test {
         generator()
             .boltffi(BoltFfi::new().typescript("shared", PackageLocation::Path("../pkg".into())))
             .typescript(&Config::builder("shared_types", &types).build())
-            .expect("typescript type generation should succeed");
+            .expect("tsc should type-check the generated module");
 
         let manifest =
             fs::read_to_string(types.join("package.json")).expect("should write a package.json");
