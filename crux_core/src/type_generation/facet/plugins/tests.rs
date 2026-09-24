@@ -25,6 +25,7 @@ use facet_generate::{
 
 use super::{
     CorePlugin, EffectHandlerPlugin, OperationKindPlugin, Requalify, ShellExtensionPlugin,
+    output_types,
 };
 use crate::{
     OperationKind,
@@ -33,7 +34,8 @@ use crate::{
     // the fixture has to use the real one too.
     render::RenderOperation,
     type_generation::facet::{
-        AppMeta, BoltFfi, EffectMeta, PackageLocation, TypeRegistry, shell_extension::SourceFile,
+        AppMeta, BoltFfi, EffectMeta, EffectVariantMeta, PackageLocation, TypeRegistry,
+        shell_extension::SourceFile,
     },
 };
 
@@ -956,4 +958,45 @@ fn a_namespaced_module_gets_no_shell_extensions() {
         Vec::<String>::new()
     );
     assert_eq!(footer(&config), "");
+}
+
+// ---------------------------------------------------------------------------
+// The types the plugins declare they name
+// ---------------------------------------------------------------------------
+
+fn kit_presence() -> QualifiedTypeName {
+    QualifiedTypeName::namespaced("kit".to_string(), "Presence".to_string())
+}
+
+/// Every type inside an output is named, once, and a notification's is not.
+#[test]
+fn output_types_are_every_type_inside_each_output() {
+    let message = QualifiedTypeName::root("Message".to_string());
+    let variant = |kind, output| EffectVariantMeta {
+        index: 0,
+        ident: String::new(),
+        kind: Some(kind),
+        output: Some(output),
+        render: false,
+    };
+    let effect = EffectMeta {
+        effect: QualifiedTypeName::root("Effect".to_string()),
+        variants: vec![
+            variant(
+                OperationKind::Request,
+                Format::Option(Box::new(Format::TypeName(kit_presence()))),
+            ),
+            variant(
+                OperationKind::Stream,
+                Format::Seq(Box::new(Format::TypeName(message.clone()))),
+            ),
+            variant(OperationKind::Request, Format::TypeName(kit_presence())),
+            variant(
+                OperationKind::Notify,
+                Format::TypeName(QualifiedTypeName::root("Ignored".to_string())),
+            ),
+        ],
+    };
+
+    assert_eq!(output_types(&effect), vec![kit_presence(), message]);
 }
