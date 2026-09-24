@@ -261,15 +261,15 @@ so nothing on either side of the boundary has to guess:
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
-    KvGet(kv::Get),
-    KvSet(kv::Set),
+    KvGet(kv::GetValue),
+    KvSet(kv::SetValue),
     TimeNotifyAfter(time::NotifyAfter),
-    TimeClear(time::Clear),
+    TimeClear(time::ClearTimer),
     IsLocationEnabled(IsLocationEnabled),
     GetLocation(GetLocation),
-    FetchSecret(Fetch),
-    StoreSecret(Store),
-    DeleteSecret(Delete),
+    FetchSecret(FetchSecret),
+    StoreSecret(StoreSecret),
+    DeleteSecret(DeleteSecret),
 }
 ```
 
@@ -277,8 +277,8 @@ pub enum Effect {
 |---------------------|------------------------|----------|------------------------------------------|-----------------------------------|
 | `Render`            | —                      | notify   | Trigger UI refresh with new ViewModel    | Calls `bridge.currentView()`      |
 | `Http`              | `HttpResult`           | request  | Weather + geocoding API calls            | `URLSession`                      |
-| `KvGet`             | `ValueResult`          | request  | Restore favorites                        | Core Data                         |
-| `KvSet`             | `ValueResult`          | request  | Persist favorites                        | Core Data                         |
+| `KvGet`             | `ValueResult`          | request  | Restore favorites                        | `UserDefaults`                    |
+| `KvSet`             | `ValueResult`          | request  | Persist favorites                        | `UserDefaults`                    |
 | `TimeNotifyAfter`   | `TimerId`              | request  | Debounce timers for search input         | `Task.sleep` on a stored `Task`   |
 | `TimeClear`         | `TimerId`              | request  | Cancel a debounce timer                  | `Task.cancel()`                   |
 | `IsLocationEnabled` | `bool`                 | request  | Check location permission                | `CLLocationManager`               |

@@ -118,15 +118,14 @@ The handler is `WeatherHandler`, one method per operation. HTTP looks like this:
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/handler.ts:http}}
 ```
 
-One method, returning a `Promise<HttpResult>` — the operation declares that it is answered exactly once with an `HttpResult`, so that's the signature, and the dispatcher awaits it and resolves. `fetchHttpHandler` is the `fetch` wrapper `crux_http` ships: because the codegen binary registers `crux_http::HTTP`, type generation appends it to the generated `shared_types/app` module, and it turns the shared `HttpRequest` into a `fetch` call and the `Response` back into the shared `HttpResult`, error mapping included. `crux_kv` and `crux_time` ship `createLocalStorageKeyValueHandler` and `TimeoutTimeHandler` the same way; `timeClear(operation: Clear): Promise<TimerId>` answers with the id once the timeout is cleared, like every other request. There is no `render` method at all: `Core` owns it, and the generated interface makes it optional. See [Shipped shell handlers](../../part-4/typegen.md#shipped-shell-handlers).
+One method, returning a `Promise<HttpResult>` — the operation declares that it is answered exactly once with an `HttpResult`, so that's the signature, and the dispatcher awaits it and resolves. `fetchHttpHandler` is the `fetch` wrapper `crux_http` ships: because the codegen binary registers `crux_http::HTTP`, type generation appends it to the generated `shared_types/app` module, and it turns the shared `HttpRequest` into a `fetch` call and the `Response` back into the shared `HttpResult`, error mapping included. `crux_kv` and `crux_time` ship `createLocalStorageKeyValueHandler` and `TimeoutTimeHandler` the same way; `timeClear(operation: ClearTimer): Promise<TimerId>` answers with the id once the timeout is cleared, like every other request. There is no `render` method at all: `Core` owns it, and the generated interface makes it optional. See [Shipped shell handlers](../../part-4/typegen.md#shipped-shell-handlers).
 
 The app's own capabilities — `location` and `secret` — follow the same shape: one method per operation, returning that operation's output, implemented in this shell because only this shell knows how.
 
-```admonish note title="Two TypeScript details"
-`crux_kv`'s `Set` operation generates a type called `Set`, which shadows the
-built-in — `handler.ts` imports it as `Set as SetValue`. And the generated union
-already uses `kind` as its discriminant, so the operation-kind accessor is a free
-function, `effectOperationKind(effect)`, rather than a property.
+```admonish note title="A TypeScript detail"
+The generated union already uses `kind` as its discriminant, so the
+operation-kind accessor is a free function, `effectOperationKind(effect)`,
+rather than a property.
 ```
 
 The notes example goes one step further and uses a **stream**. Its `Subscribe`

@@ -72,7 +72,7 @@ const main = async () => {
   // Long enough for the handler to have the timer in its table before it is
   // asked to take it out again.
   await pause(50);
-  const cleared = await time.clear(new shared.Clear(new shared.TimerId(4n)));
+  const cleared = await time.clear(new shared.ClearTimer(new shared.TimerId(4n)));
   expect("clear answers with the id it was given", cleared.value, 4n);
 
   const waited = Date.now();
@@ -86,7 +86,7 @@ const main = async () => {
 
   // Clearing a timer that is not there is not an error: the shell need not
   // race a timer that has already fired.
-  const unknown = await time.clear(new shared.Clear(new shared.TimerId(99n)));
+  const unknown = await time.clear(new shared.ClearTimer(new shared.TimerId(99n)));
   expect("clear of an unknown timer answers with the id it was given", unknown.value, 99n);
 };
 

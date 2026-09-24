@@ -1,11 +1,11 @@
 //! The shell handler `crux_time` ships.
 //!
 //! The rules a timer follows belong to this crate — that `NotifyAfter` is
-//! answered with the timer's own id when it fires, that `Clear` cancels it and
-//! answers with the same id, and that an answer arriving after a `Clear` is
-//! harmless because the core has stopped listening — so this crate writes them,
-//! once per language, and an app asks for them where it configures type
-//! generation:
+//! answered with the timer's own id when it fires, that `ClearTimer` cancels it
+//! and answers with the same id, and that an answer arriving after a
+//! `ClearTimer` is harmless because the core has stopped listening — so this
+//! crate writes them, once per language, and an app asks for them where it
+//! configures type generation:
 //!
 //! ```rust,ignore
 //! // shared/src/bin/codegen.rs
@@ -23,7 +23,7 @@ use crux_core::{
     type_generation::facet::{ShellHandler, ShellSource, TypeGenError, TypeRegistry},
 };
 
-use crate::operation::{Clear, NotifyAfter, NotifyAt, Now};
+use crate::operation::{ClearTimer, NotifyAfter, NotifyAt, Now};
 
 /// What `crux_time` ships for the shell.
 ///
@@ -52,12 +52,12 @@ pub static TIME: ShellHandler = ShellHandler::new("Time")
 ///
 /// A shipped source implements the whole capability, so every type it mentions
 /// has to be generated — including for the operations this app never sends. An
-/// app that only debounces with `NotifyAfter` and `Clear` still has `Now` and
-/// `NotifyAt` in its generated module, because the shipped `TimeHandler`
+/// app that only debounces with `NotifyAfter` and `ClearTimer` still has `Now`
+/// and `NotifyAt` in its generated module, because the shipped `TimeHandler`
 /// implements them.
 fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
     Now::register_types_facet(registry)?;
     NotifyAt::register_types_facet(registry)?;
     NotifyAfter::register_types_facet(registry)?;
-    Clear::register_types_facet(registry)
+    ClearTimer::register_types_facet(registry)
 }

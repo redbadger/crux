@@ -10,7 +10,7 @@ import Foundation
 ///     let time = TaskTimeHandler()
 ///
 ///     func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
-///     func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
+///     func timeClear(_ operation: ClearTimer) async -> TimerId { await time.clear(operation) }
 /// }
 /// ```
 ///
@@ -32,7 +32,7 @@ public protocol TimeHandler: Sendable {
     /// Answer with `operation.id` once `operation.duration` has elapsed.
     func notifyAfter(_ operation: NotifyAfter) async -> TimerId
     /// Cancel the timer `operation.id` names, and answer with it.
-    func clear(_ operation: Clear) async -> TimerId
+    func clear(_ operation: ClearTimer) async -> TimerId
 }
 
 /// A `TimeHandler` whose timers are sleeping `Task`s.
@@ -68,7 +68,7 @@ public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
         await sleep(id: operation.id, nanoseconds: operation.duration.nanos)
     }
 
-    public func clear(_ operation: Clear) async -> TimerId {
+    public func clear(_ operation: ClearTimer) async -> TimerId {
         // Cancelling wakes the sleeping task, so the call waiting on it returns
         // and answers too. Nothing acts on that answer.
         forget(id: operation.id.value)?.cancel()

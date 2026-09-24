@@ -65,7 +65,7 @@ let pending = Task {
 // Long enough for the handler to have the timer in its table before it is
 // asked to take it out again.
 try? await Task.sleep(nanoseconds: 50_000_000)
-let cleared = await time.clear(Clear(id: TimerId(value: 4)))
+let cleared = await time.clear(ClearTimer(id: TimerId(value: 4)))
 expect("clear answers with the id it was given", cleared.value, 4)
 
 let waited = Date()
@@ -75,7 +75,7 @@ expect("a cleared timer's notifyAfter settles rather than waiting out its durati
 
 // Clearing a timer that is not there is not an error: the shell need not race
 // a timer that has already fired.
-let unknown = await time.clear(Clear(id: TimerId(value: 99)))
+let unknown = await time.clear(ClearTimer(id: TimerId(value: 99)))
 expect("clear of an unknown timer answers with the id it was given", unknown.value, 99)
 
 if failures.isEmpty {

@@ -1,4 +1,4 @@
-import com.example.shared.Clear
+import com.example.shared.ClearTimer
 import com.example.shared.CoroutineTimeHandler
 import com.example.shared.Duration
 import com.example.shared.NotifyAfter
@@ -81,7 +81,7 @@ fun main() =
         // Long enough for the handler to have the timer in its table before it
         // is asked to take it out again.
         delay(50)
-        expect("clear answers with the id it was given", time.clear(Clear(TimerId(4uL))).value, 4uL)
+        expect("clear answers with the id it was given", time.clear(ClearTimer(TimerId(4uL))).value, 4uL)
 
         val waited = System.nanoTime()
         pending.await()
@@ -93,7 +93,7 @@ fun main() =
 
         // Clearing a timer that is not there is not an error: the shell need
         // not race a timer that has already fired.
-        expect("clear of an unknown timer answers with the id it was given", time.clear(Clear(TimerId(99uL))).value, 99uL)
+        expect("clear of an unknown timer answers with the id it was given", time.clear(ClearTimer(TimerId(99uL))).value, 99uL)
 
         if (failures.isEmpty()) {
             println("HARNESS OK")

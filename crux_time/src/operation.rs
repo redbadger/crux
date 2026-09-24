@@ -7,7 +7,7 @@
 //! [`TimeResponse`](crate::TimeResponse) and the capability has to check at
 //! runtime that the shell answered the question it was asked.
 //!
-//! [`Clear`] is a request like the rest: it asks the shell to release the
+//! [`ClearTimer`] is a request like the rest: it asks the shell to release the
 //! resources behind a timer, and is answered with the [`TimerId`] it named.
 //!
 //! ```
@@ -16,8 +16,8 @@
 //!
 //! #[effect]
 //! enum Effect {
-//!     NotifyAfter(operation::NotifyAfter),
-//!     Clear(operation::Clear),
+//!     TimeNotifyAfter(operation::NotifyAfter),
+//!     TimeClear(operation::ClearTimer),
 //! }
 //!
 //! # enum Event { Elapsed(TimerOutcome) }
@@ -60,6 +60,6 @@ pub struct NotifyAfter {
 /// has stopped listening for that answer, and ignores it.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[operation(request, output = TimerId)]
-pub struct Clear {
+pub struct ClearTimer {
     pub id: TimerId,
 }
