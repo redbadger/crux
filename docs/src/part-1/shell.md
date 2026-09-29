@@ -79,8 +79,8 @@ serde = { workspace = true, features = ["derive"] }
 
 # optional dependencies
 anyhow = { workspace = true, optional = true }
-clap = { version = "4.6.1", optional = true, features = ["derive"] }
-log = { version = "0.4.29", optional = true }
+clap = { version = "4.6.6", optional = true, features = ["derive"] }
+log = { version = "0.4.33", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
 
 [dev-dependencies]
@@ -171,7 +171,7 @@ pub enum Effect {
 ```
 
 We also need to annotate the other types that cross the FFI boundary with the
-`Facet` derive macro. We are using Facet v0.44 (with `crux_core` v0.17), and so
+`Facet` derive macro. We are using Facet v0.46, and so
 we also need to specify a layout for enums, e.g. `repr(C)` or `repr(u8)`.
 
 ```rust,noplayground
