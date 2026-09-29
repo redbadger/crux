@@ -47,8 +47,9 @@ can create with Cargo. For this example we'll call it
 cargo new web-leptos
 ```
 
-We'll also want to add this new project to our Cargo
-workspace, by editing the root `Cargo.toml` file.
+Cargo notices that it's inside our workspace and adds
+the new project to the `members` list in the root
+`Cargo.toml` for us, so it should now read:
 
 ```toml
 [workspace]
@@ -60,7 +61,16 @@ start fleshing out our project. Let's add some
 dependencies to `web-leptos/Cargo.toml`.
 
 ```toml
-{{#include ../../../../../examples/counter/web-leptos/Cargo.toml}}
+# /web-leptos/Cargo.toml
+[package]
+name = "web-leptos"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+shared = { path = "../shared" }
+leptos = { version = "0.8.20", features = ["csr"] }
 ```
 
 ```admonish tip
@@ -107,7 +117,7 @@ once — it only grows when we need to support additional
 effects.
 ```
 
-Edit `src/core.rs` to look like the following. This
+Create `src/core.rs` and make it look like the following. This
 code sends our (UI-generated) events to the core, and
 handles any effects that the core asks for. In this
 example, we aren't calling any HTTP APIs or handling
@@ -131,7 +141,7 @@ handle any other effects that your core might ask for.
 For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example
 of this, take a look at the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-leptos/src/core.rs)
+[counter-http example](https://github.com/redbadger/crux/tree/master/examples/counter-http/web-leptos/src/core.rs)
 in the Crux repository.
 ```
 

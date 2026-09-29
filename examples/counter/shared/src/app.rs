@@ -1,9 +1,11 @@
 // ANCHOR: app
+// ANCHOR: crux_imports
 use crux_core::{
     App, Command,
     macros::effect,
     render::{RenderOperation, render},
 };
+// ANCHOR_END: crux_imports
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 

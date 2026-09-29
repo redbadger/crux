@@ -57,11 +57,11 @@ which has a `shared` library that will work with the following example code.
 
 A simple app that increments, decrements and resets a counter.
 
-#### Wrap the core to support capabilities
+#### Wrap the core to handle effects
 
 First, let's add some boilerplate code to wrap our core and handle the
-capabilities that we are using. For this example, we only need to support the
-`Render` capability, which triggers a render of the UI.
+effects that it produces. For this example, we only need to support the
+`Render` effect, which triggers a render of the UI.
 
 ```admonish
 This code that wraps the core only needs to be written once — it only grows when
@@ -91,8 +91,9 @@ That `match` statement, above, is where you would handle any other effects that
 your core might ask for. For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example of this, take a look at
 the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-yew/src/core.rs)
-in the Crux repository.
+[counter-http example](https://github.com/redbadger/crux/tree/master/examples/counter-http/web-leptos/src/core.rs)
+in the Crux repository. It's a Leptos shell, but the effects are handled the
+same way.
 ```
 
 Edit `src/main.rs` to look like the following. The `update` function is
