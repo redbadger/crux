@@ -1,15 +1,20 @@
 # RFC: Shell handlers shipped with capabilities
 
 ```admonish
-This RFC is **proposed**. It builds on the
+This RFC has been **accepted** and implemented, it's kept for future reference
+as additional context for the design choices. It builds on the
 [per-operation types RFC](./per-operation-types.md) and the
-[generated `Core` RFC](./generated-core.md), and is not yet implemented. It is
-written against the compat release of per-operation types, but nothing in it
-depends on the shape of the `Operation` trait, which the
-[operation kind traits RFC](./operation-kind-traits.md) proposes to change in
-the breaking release: `Operation` stays as the supertrait, hidden and
-implemented only by the derive, and `operation::{Notify, Request, Stream}`
-gain the payload type under the word that fits each kind.
+[generated `Core` RFC](./generated-core.md). See
+[Shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers) in the
+type generation chapter and the
+[migration guide](../guide/migrate-per-operation-types.md#adopting-the-shipped-handlers)
+for the practical version. It is written against the compat release of
+per-operation types, but nothing in it depends on the shape of the `Operation`
+trait, which the [operation kind traits RFC](./operation-kind-traits.md)
+proposes to change in the breaking release: `Operation` stays as the
+supertrait, hidden and implemented only by the derive, and
+`operation::{Notify, Request, Stream}` gain the payload type under the word
+that fits each kind.
 ```
 
 This RFC proposes that a capability crate can ship the shell side of its
@@ -522,7 +527,7 @@ what it generates today.
 To adopt, register the handler in type generation, regenerate, replace the
 method bodies with delegations to an instance of the shipped implementation,
 and delete the file that held them. The notes and weather examples do this in
-the implementing pull request, so the book's Part II shows handlers whose
+the implementation, so the book's Part II shows handlers whose
 only substance is the app-defined operations.
 
 The [migration guide](../guide/migrate-per-operation-types.md) gains a section

@@ -1,11 +1,9 @@
 # RFC: A generated shell-side `Core`
 
 ```admonish
-This RFC is **proposed**. It builds on the
-[per-operation types RFC](./per-operation-types.md) and is implemented in the
-same pull request as this text, on top of that RFC's implementation stack, so
-that reviewers can read real code alongside the proposal. If accepted, it would
-ship in the same `crux_core` release as per-operation types. The
+This RFC has been **accepted** and implemented, it's kept for future reference
+as additional context for the design choices. It builds on the
+[per-operation types RFC](./per-operation-types.md). The
 [type generation chapter](../part-4/typegen.md#the-generated-core) describes the
 emitted API, and the shell chapters in Part II show the migrated examples.
 ```
