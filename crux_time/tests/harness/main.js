@@ -88,6 +88,65 @@ const main = async () => {
   // race a timer that has already fired.
   const unknown = await time.clear(new shared.Clear(new shared.TimerId(99n)));
   expect("clear of an unknown timer answers with the id it was given", unknown.value, 99n);
+
+  // A timer past `setTimeout`'s limit of 2^31 - 1 ms (about 24.8 days), which
+  // treats a longer delay as 0 and would fire it at once. The clock and the
+  // timers are stubbed so that no real time is spent: a stubbed timer only
+  // fires when the harness fires it.
+  const realNow = Date.now;
+  const realSetTimeout = globalThis.setTimeout;
+  const realClearTimeout = globalThis.clearTimeout;
+  const limit = 2 ** 31 - 1;
+  let offset = 0;
+  let scheduled = [];
+  Date.now = () => realNow() + offset;
+  globalThis.setTimeout = (callback, delay) => {
+    const timer = { callback, delay, cleared: false };
+    scheduled.push(timer);
+    return timer;
+  };
+  globalThis.clearTimeout = (timer) => {
+    timer.cleared = true;
+  };
+  // Let the clock reach the pending timer, then run it.
+  const fireNext = (what) => {
+    const timer = scheduled.find((t) => !t.cleared);
+    expect(what, timer !== undefined && timer.delay <= limit, true);
+    if (timer === undefined) return;
+    scheduled = scheduled.filter((t) => t !== timer);
+    offset += timer.delay;
+    timer.callback();
+  };
+  try {
+    const thirtyDays = 30n * 24n * 3600n * 1_000_000_000n;
+    let answered;
+    time
+      .notifyAfter(new shared.NotifyAfter(new shared.TimerId(5n), new shared.Duration(thirtyDays)))
+      .then((id) => (answered = id));
+    expect("a long timer waits in chunks no longer than setTimeout allows", scheduled.map((t) => t.delay <= limit), [true]);
+    fireNext("a 30-day timer schedules its first wait within setTimeout's limit");
+    await Promise.resolve();
+    expect("a long timer does not answer after its first chunk", answered, undefined);
+    expect("a long timer waits again for the rest", scheduled.map((t) => t.delay > 0 && t.delay <= limit), [true]);
+    fireNext("a long timer re-arms after its first chunk");
+    await Promise.resolve();
+    expect("a long timer answers with its id once the deadline arrives", answered?.value, 5n);
+
+    // Cleared part-way through, the timer clears the chunk that is pending.
+    let cancelled;
+    const far = time.notifyAfter(new shared.NotifyAfter(new shared.TimerId(6n), new shared.Duration(thirtyDays)));
+    far.then((id) => (cancelled = id));
+    fireNext("a second 30-day timer schedules its first wait within setTimeout's limit");
+    const chunk = scheduled.find((t) => !t.cleared);
+    await time.clear(new shared.Clear(new shared.TimerId(6n)));
+    expect("clear cancels the chunk that is pending", chunk?.cleared, true);
+    await far;
+    expect("a cleared long timer settles with its id", cancelled?.value, 6n);
+  } finally {
+    Date.now = realNow;
+    globalThis.setTimeout = realSetTimeout;
+    globalThis.clearTimeout = realClearTimeout;
+  }
 };
 
 // A hung answer would otherwise leave node with nothing to do and no reason to
