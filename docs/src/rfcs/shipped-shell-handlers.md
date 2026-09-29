@@ -1,9 +1,16 @@
 # RFC: Shell protocols shipped with capabilities
 
 ```admonish
-This RFC is **proposed**. It builds on the
+This RFC has been **accepted** and implemented, it's kept for future reference
+as additional context for the design choices. It builds on the
 [per-operation types RFC](./per-operation-types.md) and the
-[generated `Core` RFC](./generated-core.md). Nothing in it depends on the
+[generated `Core` RFC](./generated-core.md). Type generation emits the shell
+protocol of a capability for every app that uses an operation of that
+capability, with no registration. Each app implements the protocol in each of
+its shells. See [Shell protocols](../part-4/typegen.md#shell-protocols) in the
+type generation chapter, and
+[Implementing the protocols](../guide/migrate-per-operation-types.md#implementing-the-protocols)
+in the migration guide for the practical version. Nothing in it depends on the
 shape of the `Operation` trait, which the
 [operation kind traits RFC](./operation-kind-traits.md) proposes to change in
 the breaking release: `Operation` stays as the supertrait, hidden and
@@ -390,7 +397,7 @@ generated package, and it can use them when it is ready.
 To adopt a protocol, make the existing handler code conform to the protocol,
 and delegate to it from the `EffectHandler` methods. If the shell already has
 a type with the name of the protocol, rename that type. The notes and weather
-examples do this in the implementing pull requests.
+examples do this in each of their shells.
 
 ## Alternatives considered
 
