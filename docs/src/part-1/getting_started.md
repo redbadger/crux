@@ -19,10 +19,20 @@ when you use any rust tooling within the repo.
 
 You may not need all the targets if you're not planning to build a fully cross platform app.
 
-<!--- includes fail when indented see https://github.com/rust-lang/mdBook/pull/1718 --->
-
 ```toml
-{{#include ../../../rust-toolchain.toml}}
+# /rust-toolchain.toml
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "aarch64-linux-android",
+    "wasm32-unknown-unknown",
+    "x86_64-apple-ios",
+]
+profile = "minimal"
 ```
 
 For testing, we also recommend to install [`cargo-nextest`](https://nexte.st/), the test runner we'll be using
