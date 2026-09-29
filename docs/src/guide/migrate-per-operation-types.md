@@ -6,19 +6,29 @@ times the shell resolves it. `crux_kv` 0.15 and `crux_time` 0.19 ship
 per-operation APIs alongside their old enum ones, and type generation hands the
 declared operation kinds to shells as a typed handler API.
 
-Nothing is removed in this release. The enum APIs still work, they are
+None of the enum APIs is removed in this release. They still work, they are
 `#[deprecated]` with a replacement named in the warning, and you can migrate one
 call at a time. The next breaking release removes them — see
-[Coming in the breaking release](#coming-in-the-breaking-release) at the bottom,
-and the [RFC](../rfcs/per-operation-types.md) for the design and its reasoning.
+[What the next breaking release may change](#coming-in-the-breaking-release)
+at the bottom, and the [RFC](../rfcs/per-operation-types.md) for the design and
+its reasoning.
+
+This guide covers per-operation types only. For everything else in the move
+from 0.20, including the removal of the serde-based type generation, see
+[Upgrading from 0.20 to 0.21](./upgrade-0.21.md).
 
 ---
 
 ## Quick checklist
 
 If your app doesn't use `crux_kv` or `crux_time` and doesn't define its own
-capabilities, there is only the one change below; the generated handler API is
-additive, so your shells keep working too.
+capabilities, there is only the one change below in this guide: nothing else
+about per-operation types stops it compiling, and the generated handler API is
+additive, so your shells keep working too. The rest of the upgrade still
+applies. In particular, an app still on the `typegen` feature won't compile
+until it moves to `facet_typegen`; the
+[upgrade guide](./upgrade-0.21.md#2-fix-what-no-longer-compiles) lists that and
+the other breaking changes.
 
 The change that reaches every app: `EffectId`'s field is private, so a hand-written
 FFI bridge that wraps the id its shell passes back writes `EffectId::from(id)`
@@ -113,6 +123,15 @@ impl crux_core::operation::Request for Get {}
 
 Import the module, not the items — `operation::Request` reads unambiguously
 where a bare `Request` collides with `crux_core::Request<Op>`.
+
+```admonish note title="This pair may change"
+`const KIND` is this release's shape. The
+[one trait per operation kind RFC](https://github.com/redbadger/crux/pull/629), which is
+still a proposal, would replace it with `type Kind = operation::kind::Request`
+and have only the derive implement `Operation`. The derive is the safer choice
+if you want code that is likely to carry over. See
+[What the next breaking release may change](#coming-in-the-breaking-release).
+```
 
 ---
 
@@ -702,28 +721,41 @@ module or the item silences the warning.
 
 ---
 
-## Coming in the breaking release
+## What the next breaking release may change {#coming-in-the-breaking-release}
 
-Written against this release's derive and marker traits, your code does not
-change. What changes:
+Two of these changes are settled:
 
-- **The kind becomes an associated type.** `type Kind: operation::Kind` replaces
-  `const KIND`, with sealed unit types `operation::kind::{Notify, Request,
-  Stream}`, and the markers `operation::{Notify, Request, Stream}` become blanket
-  impls from it. The derive emits `type Kind = kind::Request;` instead of a const
-  plus a marker impl, so only hand-written `impl Operation` blocks need editing.
-- **`Command` bounds tighten** to the markers, so the wrong constructor is an
-  ordinary `E0277` you see in `cargo check` and in your editor — with a
-  `#[diagnostic::on_unimplemented]` message naming the right one — and the
-  post-monomorphisation `const` assertion goes.
-- **The deprecated items above are removed**, along with the `command` module
-  re-export shims and the legacy "no declared kind" handling in the bridge and in
-  type generation. Every operation will have to declare a kind.
-- **`KeyValue` and `Time` return to the crate roots.** With the enum-API types
-  gone, `crux_kv::KeyValue` and `crux_time::Time` become re-exports of
-  `store::KeyValue` and `clock::Time`. The module paths keep working, so nothing
-  written against this release changes.
-- **The remaining examples migrate** — `counter`, `counter-http`,
-  `counter-middleware` and `counter-routing`, and their shells.
+- **The deprecated items above are removed.** The `#[deprecated]` note on each
+  says "removed in the next breaking release".
+- **`KeyValue` and `Time` return to the crate roots.** `crux_kv::KeyValue` and
+  `crux_time::Time` are to become re-exports of `store::KeyValue` and
+  `clock::Time`, so code written against the module paths keeps working.
 
-This guide will be extended when that release lands.
+Beyond that, the [one trait per operation kind RFC](https://github.com/redbadger/crux/pull/629)
+proposes changing how an operation declares its kind. It is a proposal: none of
+it is implemented, and the details may change in review or not happen at all.
+In outline, it proposes that:
+
+- the kind becomes an associated type, `type Kind`, in place of `const KIND`,
+  while `type Output` stays as it is;
+- `operation::Request` and `operation::Stream` name their payload, as
+  `type Response` and `type Item`, and the derive's `output =` argument becomes
+  `response =` or `item =` to match;
+- only `#[derive(Operation)]` implements `Operation`, so a hand-written
+  `impl Operation` is no longer supported;
+- the `Command` constructors are bounded by the kind traits, so the wrong
+  constructor becomes an ordinary type error that `cargo check` reports;
+- every operation has to declare a kind.
+
+The RFC has the design, the alternatives and the reasoning.
+
+Whatever the RFC ends up as, a few habits will make the move easier:
+
+- declare operations with `#[derive(Operation)]` rather than by hand;
+- give every operation a kind;
+- write bounds against `operation::{Notify, Request, Stream}`, and read
+  `Op::Output`;
+- avoid reading `Op::KIND` unless you have to, as a middleware or router of
+  your own generic over `Operation` might.
+
+This guide will be updated once the next breaking release is settled.
