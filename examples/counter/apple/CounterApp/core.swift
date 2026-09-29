@@ -3,7 +3,7 @@ import Foundation
 import Shared
 
 @MainActor
-class Core: ObservableObject {
+class CoreWrapper: ObservableObject {
     @Published var view: ViewModel
 
     private var core: CoreFfi
