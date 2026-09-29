@@ -43,7 +43,7 @@ function cursorToSelection(cursor: TextCursor): Selection {
 
 const Home: NextPage = () => {
   const [view, setView] = useState<ViewModel>(
-    new ViewModel("", textCursorPosition(BigInt(0))),
+    new ViewModel("", textCursorPosition(BigInt(0)), null),
   );
 
   // TODO the state and channel handling should probably get
@@ -144,6 +144,11 @@ const Home: NextPage = () => {
       <div className="min-h-screen flex flex-col bg-slate-200">
         <Navbar title="A note" />
         <main className="grow flex flex-col">
+          {view.error ? (
+            <div role="alert" className="p-3 bg-red-100 text-red-800">
+              {view.error}
+            </div>
+          ) : null}
           <div className="grow basis-1 flex flex-col">
             <Textarea
               className="p-3 grow resize-none w-full focus:outline-none"
