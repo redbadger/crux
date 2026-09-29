@@ -31,12 +31,15 @@ one per operation the app can ask for. It is essentially telling us "I did the
 state update, and here are some side-effects for you to perform".
 
 Let's say that the effect is an HTTP request. We execute it, get a response, and
-what do we do then? Well, that's what the third core API, `resolve`, is for:
+what do we do then? Well, that's what the third core API, `resolve`, is for.
+All three are methods on the `CoreFfi` type the shared crate exports:
 
-```rust
-pub fn update(data: &[u8]) -> Vec<u8>
-pub fn resolve(id: u32, data: &[u8]) -> Vec<u8>
-pub fn view() -> Vec<u8>
+```rust,ignore
+impl CoreFfi {
+    pub fn update(&self, data: &[u8]) -> Vec<u8>
+    pub fn resolve(&self, id: u32, data: &[u8]) -> Vec<u8>
+    pub fn view(&self) -> Vec<u8>
+}
 ```
 
 Each effect request comes with an identifier. We use `resolve` to return the
@@ -83,13 +86,20 @@ arrives, hand everything else to the dispatcher, and when a request is
 resolved call the core's `resolve` and loop over the requests *that* returns.
 Type generation knows every type in that loop, so it emits it too, as a
 `Core` class, together with a `CoreBridge` protocol over bytes — `update`,
-`resolve` and `view` — that the shell satisfies with a few lines around the
-BoltFFI bindings.
+`resolve` and `view`. Tell the codegen where BoltFFI put its bindings, with
+`.boltffi(...)`, and it implements `CoreBridge` over them as well. You
+write a `CoreBridge` of your own for a fake in tests or previews, for a
+binding generator other than BoltFFI, or for an app with
+[middleware](../part-3/middleware.md#in-the-shell).
 
-With the generated `Core`, a shell writes two things: the bridge adapter and
-the `EffectHandler`. `Core` handles `Render` itself and hands the new view to
-a callback (Swift, TypeScript, C#) or publishes it on a `StateFlow` (Kotlin),
-so the handler never touches the view at all. See
+So with the generated `Core`, what a shell writes is the `EffectHandler`.
+Register the handlers `crux_http`, `crux_kv` and `crux_time` ship, with
+`.shell_handler(&crux_http::HTTP)` and friends, and most of it becomes
+one-line delegations. `Core` handles `Render` itself and publishes the new
+view in each language's own way — an `@Observable` `view` property in Swift,
+a `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a `View`
+property that raises `INotifyPropertyChanged` in C# — so the handler never
+touches the view at all. See
 [the generated Core](../part-4/typegen.md#the-generated-core) for the exact
 shape in each language, and the [RFC](../rfcs/generated-core.md) for why it
 is built the way it is.
