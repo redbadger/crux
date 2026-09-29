@@ -586,7 +586,7 @@ mod save_load_tests {
     #[test]
     fn opens_a_document() {
         let app = NoteEditor;
-        let mut note = Note::with_text("LOADED");
+        let note = Note::with_text("LOADED");
 
         let mut model = Model {
             note: Note::with_text("hello"),
