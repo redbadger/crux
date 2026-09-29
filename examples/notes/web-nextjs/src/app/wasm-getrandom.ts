@@ -1,5 +1,5 @@
 // WORKAROUND: automerge uses `features = ["wasm"]` in its Cargo.toml, which
-// enables the `getrandom/js` feature. That compiles a wasm-bindgen import
+// enables the `getrandom/wasm_js` feature. That compiles a wasm-bindgen import
 // (`__wbg_getRandomValues_<hash>`) into the WASM binary so that automerge can
 // call `crypto.getRandomValues` to generate random actor IDs.
 //
@@ -28,8 +28,9 @@
 //
 // The proper fix is either:
 //   a) Remove `features = ["wasm"]` from the `automerge` dependency in
-//      shared/Cargo.toml and configure `getrandom` with `features = ["custom"]`
-//      plus a boltffi-compatible random implementation, or
+//      shared/Cargo.toml and select getrandom's `custom` backend (a
+//      `getrandom_backend` cfg flag, not a feature, since getrandom 0.3) plus a
+//      boltffi-compatible random implementation, or
 //   b) Ask boltffi to natively provide `crypto.getRandomValues` for the
 //      `__wbindgen_placeholder__` namespace (feature request to boltffi).
 if (typeof WebAssembly !== "undefined" && typeof crypto !== "undefined") {
