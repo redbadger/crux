@@ -803,7 +803,7 @@ declare none, or lets an author write the declaration by hand:
   request id and a `resolve` callback to a shell for an operation whose kind
   is unknown.
 
-The [migration guide](../guide/migrate-per-operation-types.md#coming-in-the-breaking-release)
+The [migration guide](../guide/migrate-per-operation-types.md#what-the-next-breaking-release-may-change)
 carries the user-facing version of this list.
 
 ## Alternatives considered
