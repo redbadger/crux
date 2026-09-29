@@ -750,4 +750,4 @@ rejects a larger one.
   and TypeScript, and every shell then has to alias one of them at the
   import. The bundled capabilities avoid this with verb+noun names such as
   `SetValue`, and your own operations are worth naming the same way.
-- Facet type generation requires `facet_generate` 0.21 or later.
+- Facet type generation requires `facet_generate` 0.22 or later.

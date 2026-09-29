@@ -66,9 +66,9 @@ edition = "2024"
 rust-version = "1.90"
 
 [workspace.dependencies]
-anyhow = "1.0.102"
-crux_core = "0.20"
-serde = "1.0.228"
+anyhow = "1.0.104"
+crux_core = "0.21"
+serde = "1.0.229"
 ```
 
 ### The shared library
