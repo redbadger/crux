@@ -57,7 +57,7 @@ export class NotesHandler implements EffectHandler {
   private readonly time = new TimeoutTimeHandler();
 
   constructor(
-    private readonly channel: RefObject<BroadcastChannel>,
+    private readonly channel: RefObject<BroadcastChannel | null>,
     private readonly subscription: RefObject<EffectSink<Message> | null>,
   ) {}
 
@@ -66,7 +66,7 @@ export class NotesHandler implements EffectHandler {
       kind: "change",
       data: operation.value,
     };
-    this.channel.current.postMessage(message);
+    this.channel.current?.postMessage(message);
   }
 
   subscribe(_operation: Subscribe, sink: EffectSink<Message>): void {
@@ -100,7 +100,7 @@ export class NotesHandler implements EffectHandler {
  */
 export function createCore(
   onView: (view: ViewModel) => void,
-  channel: RefObject<BroadcastChannel>,
+  channel: RefObject<BroadcastChannel | null>,
   subscription: RefObject<EffectSink<Message> | null>,
 ): Promise<Core> {
   return Core.create(new NotesHandler(channel, subscription), onView);
