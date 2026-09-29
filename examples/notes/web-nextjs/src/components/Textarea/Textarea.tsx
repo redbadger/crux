@@ -24,6 +24,7 @@ interface TextareaProps {
   onSelect: (selection: SelectEvent) => void;
   onChange: (change: ChangeEvent) => void;
   className: string;
+  disabled?: boolean;
 }
 
 // We need to monitor these for performance. If this becomes a problem
@@ -45,6 +46,7 @@ const Textarea: FC<TextareaProps> = ({
   onSelect,
   onChange,
   className,
+  disabled,
 }) => {
   const taRef = useRef(null);
 
@@ -122,6 +124,8 @@ const Textarea: FC<TextareaProps> = ({
       onSelect={localOnSelect}
       onChange={() => {}}
       value={value}
+      disabled={disabled}
+      autoComplete="off"
     />
   );
 };
