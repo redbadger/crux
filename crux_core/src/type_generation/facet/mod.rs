@@ -939,14 +939,16 @@ impl CodeGenerator {
     /// last segment of the package or namespace. A package called `Crux.Http`
     /// would therefore have the `Http` handler overwrite `Crux/Http/Http.cs` —
     /// the types themselves — so it is rejected while both files still exist.
+    /// Names are compared ignoring case, because `Http.swift` overwrites
+    /// `http.swift` on APFS and NTFS.
     ///
     /// This is the one check that needs the [`Config`], so it is made here and
     /// not in [`validate_shell_handlers`].
     fn check_shell_handler_files(&self, module_file: &str) -> Result<(), TypeGenError> {
         for handler in &self.shell_handlers {
-            if handler.name == module_file {
+            if handler.name.eq_ignore_ascii_case(module_file) {
                 return Err(TypeGenError::Generation(format!(
-                    "the `{name}` shell handler is written beside the generated module, which names its own file `{name}` too — the package or namespace ends in `{name}`. Generate into a package of another name, or use a capability whose handler is named differently.",
+                    "the `{name}` shell handler is written beside the generated module, which names its own file `{module_file}` — the same, ignoring case, and one file overwrites the other on a case-insensitive file system. The package or namespace ends in `{module_file}`. Generate into a package of another name, or use a capability whose handler is named differently.",
                     name = handler.name
                 )));
             }

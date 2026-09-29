@@ -1578,6 +1578,27 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         );
     }
 
+    /// The check ignores case: on a case-insensitive file system `Store.swift`
+    /// overwrites `store.swift`.
+    #[test]
+    fn a_handler_cannot_be_named_after_the_module_in_another_case() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let generator = generator(&[&STORE]);
+
+        let error = generator
+            .swift(&Config::builder("store", dir.path()).build())
+            .expect_err("should reject the package that would be overwritten");
+        assert!(
+            message_of(error)
+                .contains("the `Store` shell handler is written beside the generated module"),
+        );
+
+        let error = generator
+            .csharp(&Config::builder("Crux.STORE", dir.path()).build())
+            .expect_err("should reject the namespace that would be overwritten");
+        assert!(message_of(error).contains("`Store` shell handler"));
+    }
+
     /// The companion file sits beside the module's own source file, and the
     /// module names that after the last segment of its package — so a package
     /// ending in the handler's name would have the handler overwrite the
