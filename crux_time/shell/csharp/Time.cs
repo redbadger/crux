@@ -58,6 +58,9 @@ public sealed class TaskTimeHandler : ITimeHandler
 {
     private static readonly DateTime Epoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
+    /// <summary>The longest single delay <c>Task.Delay</c> accepts.</summary>
+    private static readonly TimeSpan MaxDelay = TimeSpan.FromMilliseconds(uint.MaxValue - 1);
+
     /// <summary>The timers that have not fired or been cleared, by id.</summary>
     private readonly ConcurrentDictionary<ulong, CancellationTokenSource> _timers = new();
 
@@ -99,9 +102,13 @@ public sealed class TaskTimeHandler : ITimeHandler
         _timers[id.Value] = cancellation;
         try
         {
-            if (delay > TimeSpan.Zero)
+            // `Task.Delay` throws for a delay above `uint.MaxValue - 1` ms
+            // (about 49.7 days), so wait in chunks no longer than that.
+            var deadline = DateTime.UtcNow + delay;
+            while (deadline - DateTime.UtcNow is var remaining && remaining > TimeSpan.Zero)
             {
-                await Task.Delay(delay, cancellation.Token).ConfigureAwait(false);
+                await Task.Delay(remaining < MaxDelay ? remaining : MaxDelay, cancellation.Token)
+                    .ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
