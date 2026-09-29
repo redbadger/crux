@@ -22,7 +22,7 @@ Here's the app entry point:
 {{#include ../../../../examples/weather/apple/WeatherApp/WeatherApp.swift:start}}
 ```
 
-Build the generated `Core` from a `WeatherHandler`, keep it in `@State`, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in chapter 3.
+Build the generated `Core` from a `WeatherHandler`, keep it in `@State`, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites — everything we described in [App lifecycle](../app_lifecycle.md).
 
 `Core` comes from the generated `App` module, hence the `import App`. `struct WeatherApp: App` still resolves to SwiftUI's protocol — Swift looks for a protocol in that position, not a module — so the two names don't clash.
 
@@ -34,6 +34,8 @@ Build the generated `Core` from a `WeatherHandler`, keep it in `@State`, wire up
 // Swift
 public struct FfiBridge: CoreBridge, @unchecked Sendable {
     private let ffi = Shared.CoreFfi()
+
+    public init() {}
 
     public func update(_ event: [UInt8]) -> [UInt8] {
         [UInt8](ffi.update(data: Data(event)))
