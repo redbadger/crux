@@ -35,6 +35,7 @@ pub struct ViewModel {
     pub confirmed: bool,
 }
 
+// ANCHOR: event
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum Event {
@@ -58,7 +59,9 @@ pub enum Event {
     #[facet(skip)]
     UpdateBy(isize),
 }
+// ANCHOR_END: event
 
+// ANCHOR: effect
 #[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
@@ -67,6 +70,7 @@ pub enum Effect {
     ServerSentEvents(SseRequest),
     Random(RandomNumberRequest),
 }
+// ANCHOR_END: effect
 
 #[derive(Default)]
 pub struct Counter;

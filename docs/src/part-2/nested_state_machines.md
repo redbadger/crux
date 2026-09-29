@@ -48,7 +48,7 @@ Starting the state machine kicks off the first effect — asking the shell wheth
 {{#include ../../../examples/weather/shared/src/model/active/home/local.rs:start}}
 ```
 
-This is the `Started` pattern we first saw in chapter 3, now at a lower level. The `update` function walks through each event and returns an `Outcome`:
+This is the `Started` pattern we first saw in [App lifecycle](./app_lifecycle.md), now at a lower level. The `update` function walks through each event and returns an `Outcome`:
 
 ```rust
 {{#include ../../../examples/weather/shared/src/model/active/home/local.rs:update}}
@@ -96,7 +96,7 @@ A `LocalWeatherTransition::Unauthorized` doesn't escape `HomeScreen` as-is. It's
 {{#include ../../../examples/weather/shared/src/model/active/home/mod.rs:transition}}
 ```
 
-`HomeTransition::ApiKeyRejected(Favorites)` carries the current favourites list along, because whatever comes next still needs them. The active-model update does the same lift: it maps `HomeTransition::ApiKeyRejected` to `ActiveTransition::Unauthorized`, still carrying the favourites. The top-level `update_active` then sees `Complete(Unauthorized)` — exactly the handler we wrote in chapter 3 — and swaps `Model::Active` for `Model::Onboard`.
+`HomeTransition::ApiKeyRejected(Favorites)` carries the current favourites list along, because whatever comes next still needs them. The active-model update does the same lift: it maps `HomeTransition::ApiKeyRejected` to `ActiveTransition::Unauthorized`, still carrying the favourites. The top-level `update_active` then sees `Complete(Unauthorized)` — exactly the handler we wrote in [App lifecycle](./app_lifecycle.md) — and swaps `Model::Active` for `Model::Onboard`.
 
 That's the full round trip: a 401 from the weather API, three levels below the top of the model tree, propagates up through three transition types until it becomes a lifecycle change. Each level decides what to do with its child's transition — either pass it along (lifted into its own transition type) or handle it locally.
 
