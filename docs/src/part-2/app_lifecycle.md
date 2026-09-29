@@ -44,7 +44,7 @@ But the core doesn't run itself — the shell has to send that `Event::Start` to
 {{#include ../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/CoreModule.kt:start}}
 ```
 
-In both cases the shell constructs the core, wires up its dependencies, and then immediately sends `Event::Start` — nothing else happens until the shell makes that first call. That's the "core is driven" point from chapter 2 in practice: the core is just a library until the shell pokes it.
+In both cases the shell constructs the core, wires up its dependencies, and then immediately sends `Event::Start` — nothing else happens until the shell makes that first call. That's the "core is driven" point from [The Elm Architecture](./elm_architecture.md) in practice: the core is just a library until the shell pokes it.
 
 ## The transition pattern
 
@@ -62,7 +62,7 @@ Three moves:
 2. **Delegate to the stage-specific update**, which returns an `Outcome<State, Transition, Event>`. The `Outcome` pairs a `Status` — either `Continue(State)` to stay in this phase or `Complete(Transition)` to exit — with a `Command` that represents the effects of the update.
 3. **Put a model back.** For `Continue`, wrap the updated state back into the current phase. For `Complete`, construct the next phase's model and swap to it.
 
-This `mem::take` → delegate → reassign shape takes advantage of Rust's ownership model. The stage-specific update takes `self` by value, so the model moves in, transforms, and comes back through `Outcome` — no cloning, with the type system enforcing that we reconstruct a model to put back. The `Outcome` itself is the protocol that tells the top level which phase comes next. We'll apply it to initialising in the next section, and in chapter 4 we'll see it used at every level inside `Active` too.
+This `mem::take` → delegate → reassign shape takes advantage of Rust's ownership model. The stage-specific update takes `self` by value, so the model moves in, transforms, and comes back through `Outcome` — no cloning, with the type system enforcing that we reconstruct a model to put back. The `Outcome` itself is the protocol that tells the top level which phase comes next. We'll apply it to initialising in the next section, and in [Nested state machines](./nested_state_machines.md) we'll see it used at every level inside `Active` too.
 
 ## Initialising: two fetches in parallel
 
