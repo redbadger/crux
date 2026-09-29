@@ -20,10 +20,10 @@
 ///
 /// `get` answers with what is stored under the key, `valueNone()` when nothing
 /// is. `set` and `delete` answer with the value they replaced or removed, which
-/// is also `valueNone()` when there was none. Nothing here is an error unless
-/// the store itself failed; a missing key is an answer. A value that is not a
-/// stored byte array — written by something else — is `keyValueErrorOther`,
-/// and `set` and `delete` leave it where it is.
+/// is also `valueNone()` when there was none. A missing key is an answer, not
+/// an error. The errors are a store that failed, and a value that is not a
+/// stored byte array — written by something else — which is
+/// `keyValueErrorOther`; `set` and `delete` leave that value where it is.
 export interface KeyValueHandler {
   /// Read the bytes stored under `operation.key`.
   get(operation: Get): Promise<ValueResult>;
