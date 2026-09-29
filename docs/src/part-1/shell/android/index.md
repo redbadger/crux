@@ -69,7 +69,7 @@ Your repo's directory structure might now look something like this
 │  │     └── main
 │  │        ├── AndroidManifest.xml
 │  │        └── java/com/crux/examples/counter
-│  │           ├── Core.kt
+│  │           ├── CoreWrapper.kt
 │  │           └── MainActivity.kt
 │  ├── build.gradle.kts
 │  ├── gradle.properties
@@ -227,25 +227,27 @@ Android/generated
 ```admonish tip
 `codegen` will generate a `build.gradle.kts` that we won't be using in this setup.
 Any error reported by the IDE in this file can be ignored, and if the file prevents
-buiding it can safely be deleted.
+buiding it can safely be deleted. The one thing it does tell you is that the
+generated Kotlin code needs `kotlinx-coroutines-core`, which the library's
+`build.gradle.kts` above already adds.
 ```
 
 ## Create some UI and run in the Simulator
 
-### Wrap the core to support capabilities
+### Wrap the core to handle effects
 
 First, let's add some boilerplate code to wrap our core and handle the
-capabilities that we are using. For this example, we only need to support the
-`Render` capability, which triggers a render of the UI.
+effects that it produces. For this example, we only need to support the
+`Render` effect, which triggers a render of the UI.
 
-Let's create a file "**File, New, Kotlin Class/File, File**" called `Core`.
+Let's create a file "**File, New, Kotlin Class/File, File**" called `CoreWrapper`.
 
 ```admonish
 This code that wraps the core only needs to be written once — it only grows when
-we need to support additional capabilities.
+we need to support additional effects.
 ```
 
-Edit `Android/app/src/main/java/com/crux/examples/counter/Core.kt` to look like
+Edit `Android/app/src/main/java/com/crux/examples/counter/CoreWrapper.kt` to look like
 the following. This code sends our (UI-generated) events to the core, and
 handles any effects that the core asks for. In this simple example, we aren't
 calling any HTTP APIs or handling any side effects other than rendering the UI,
@@ -253,7 +255,16 @@ so we just handle this render effect by updating the published view model from
 the core.
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/Core.kt}}
+{{#include ../../../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/CoreWrapper.kt}}
+```
+
+```admonish note title="Why write this by hand?"
+The codegen also generates a ready-made `Core` class, in `Counter.kt`, which
+runs this loop for you. We write the loop by hand in this chapter on purpose,
+because it shows how the shell and the core talk to each other. Ours is called
+`CoreWrapper` because the generated `Core` is in the same Kotlin package, and
+two classes called `Core` would clash. We pick up the generated `Core` in
+[Part II](../../../part-2/shell.md#who-drives-the-loop).
 ```
 
 ```admonish tip

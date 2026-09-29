@@ -71,12 +71,12 @@ the counter example:
 
 ```rust,no_run,noplayground
 // Rust
-{{#include ../../../examples/counter/shared/src/app.rs:10:16}}
+{{#include ../../../examples/counter/shared/src/app.rs:12:18}}
 ```
 
 ```rust,no_run,noplayground
 // Rust
-{{#include ../../../examples/counter/shared/src/app.rs:29:32}}
+{{#include ../../../examples/counter/shared/src/app.rs:31:34}}
 ```
 
 Note the `#[repr(C)]` on the enum — this is required by Facet for
@@ -90,7 +90,7 @@ that the codegen binary needs:
 
 ```rust,no_run,noplayground
 // Rust
-{{#include ../../../examples/counter/shared/src/app.rs:18:22}}
+{{#include ../../../examples/counter/shared/src/app.rs:20:24}}
 ```
 
 The macro discovers the operation types carried by each variant (e.g.
