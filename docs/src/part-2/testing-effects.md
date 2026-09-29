@@ -38,7 +38,7 @@ The test itself picks up from `FetchingWeather`, resolves the HTTP effect, and a
 {{#include ../../../examples/weather/shared/src/model/active/home/local.rs:full_test}}
 ```
 
-It's a test of a whole interaction with multiple kinds of effects — location services and HTTP — and it runs in a couple of milliseconds, entirely deterministic. The code being tested is `LocalWeather::update` from chapter 4; managed effects let us verify the whole transaction without executing any of it.
+It's a test of a whole interaction with multiple kinds of effects — location services and HTTP — and it runs in a couple of milliseconds, entirely deterministic. The code being tested is `LocalWeather::update` in [Nested state machines](./nested_state_machines.md); managed effects let us verify the whole transaction without executing any of it.
 
 The full suite of 57 tests of the Weather app runs in around 20 milliseconds on a Mac Mini M4 Pro. In practice, it's rare for a test suite of a Crux app to take longer than compiling it (even incrementally). Apps with thousands of tests usually run them in seconds, though compilation takes longer.
 
@@ -65,7 +65,7 @@ First, we build a fresh `LocalWeather::default()`. Its starting state is `Checki
 
 We then call `update` with `LocationEnabled(true)`, as if the shell had just reported that location services are available. `update` returns an `Outcome`, which we destructure with `.expect_continue().into_parts()`. We know this event doesn't complete the state machine, so we assert on `Continue` and get back the updated state plus any command.
 
-We assert the new state is `FetchingLocation`. Then we call `.expect_only_location_with(|op| ...)` on the command. That one chained call says "the only effect on this command is a `Location` effect, and here's a closure to inspect its operation." Inside the closure we check the operation is `GetLocation`.
+We assert the new state is `FetchingLocation`. Then we call `.expect_only_get_location_with(|op| ...)` on the command. That one chained call says "the only effect on this command is a `GetLocation` effect, and here's a closure to inspect its operation." Inside the closure we check the operation is the `GetLocation` we expect.
 
 That's the whole test. `update` is a pure function, so there's nothing to set up beyond the initial state and nothing to tear down.
 
