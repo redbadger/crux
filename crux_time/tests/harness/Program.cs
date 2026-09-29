@@ -98,6 +98,20 @@ Expect(
 var unknown = await time.Clear(new Clear { Id = new TimerId { Value = 99 } });
 Expect("Clear of an unknown timer answers with the id it was given", unknown.Value, 99UL);
 
+// A timer past `Task.Delay`'s limit of `uint.MaxValue - 1` ms (about 49.7
+// days), which throws. It must stay pending rather than fault, and clearing it
+// must still answer. No real time is spent: the timer is cleared at once.
+var sixtyDays = 60UL * 24 * 3600 * 1_000_000_000;
+var far = time.NotifyAfter(
+    new NotifyAfter { Id = new TimerId { Value = 5 }, Duration = new Duration { Nanos = sixtyDays } }
+);
+await Task.Delay(50);
+Expect("a timer beyond Task.Delay's limit stays pending", far.IsCompleted, false);
+var farCleared = await time.Clear(new Clear { Id = new TimerId { Value = 5 } });
+Expect("Clear of a timer beyond Task.Delay's limit answers with its id", farCleared.Value, 5UL);
+var farAnswer = await far;
+Expect("a cleared timer beyond Task.Delay's limit settles with its id", farAnswer.Value, 5UL);
+
 if (failures.Count == 0)
 {
     Console.WriteLine("HARNESS OK");
