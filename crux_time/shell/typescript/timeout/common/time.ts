@@ -33,6 +33,9 @@ export interface TimeHandler {
   clear(operation: Clear): Promise<TimerId>;
 }
 
+/// The longest delay `setTimeout` honours, in milliseconds.
+const MAX_TIMEOUT = 2 ** 31 - 1;
+
 /// A `TimeHandler` whose timers are `setTimeout`s.
 ///
 /// The timer table is state, so the app constructs one handler where it
@@ -78,14 +81,27 @@ export class TimeoutTimeHandler implements TimeHandler {
 
   private sleep(id: TimerId, millis: number): Promise<TimerId> {
     return new Promise((resolve) => {
-      const handle = setTimeout(
-        () => {
-          this.timers.delete(id.value);
-          resolve(id);
-        },
-        millis > 0 ? millis : 0,
-      );
-      this.timers.set(id.value, { handle, resolve });
+      const deadline = Date.now() + millis;
+      const timer = {
+        handle: undefined as unknown as ReturnType<typeof setTimeout>,
+        resolve,
+      };
+      // `setTimeout` treats a delay above 2^31 - 1 ms (about 24.8 days) as 0,
+      // so wait in chunks no longer than that until the deadline. `clear`
+      // clears whichever chunk is pending.
+      const wait = () => {
+        const remaining = Math.max(deadline - Date.now(), 0);
+        timer.handle = setTimeout(() => {
+          if (deadline - Date.now() > 0) {
+            wait();
+          } else {
+            this.timers.delete(id.value);
+            resolve(id);
+          }
+        }, Math.min(remaining, MAX_TIMEOUT));
+      };
+      this.timers.set(id.value, timer);
+      wait();
     });
   }
 }
