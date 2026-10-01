@@ -215,7 +215,6 @@ Each shell's `Justfile` has a `typegen` recipe. For example, the Apple
 shell runs:
 
 ```sh
-# Shell
 RUST_LOG=info cargo run \
     --package shared \
     --bin codegen \
