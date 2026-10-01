@@ -23,7 +23,10 @@ codegen = [
     "dep:pretty_env_logger",
     "facet_typegen",
 ]
-facet_typegen = ["crux_core/facet_typegen"]
+facet_typegen = [
+    "crux_core/facet_typegen",
+    "crux_http/facet_typegen",
+]
 
 [dependencies]
 async-sse = "5.1.0"
