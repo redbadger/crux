@@ -3,7 +3,7 @@
 import type { NextPage } from "next";
 import { useEffect, useRef, useState } from "react";
 
-import * as sharedWasm from "shared";
+import type { Core } from "shared_types/app";
 import {
   ViewModel,
   eventStartWatch,
@@ -12,34 +12,25 @@ import {
   eventRandom,
 } from "shared_types/app";
 
-import { Core } from "./core";
-
-const wasmInitialized = (
-  sharedWasm as unknown as { initialized: Promise<void> }
-).initialized;
+import { createCore } from "./core";
 
 const Home: NextPage = () => {
   const [view, setView] = useState(new ViewModel("", true));
-  const core: React.RefObject<Core | null> = useRef(null);
-
+  const core = useRef<Core | null>(null);
   const initialized = useRef(false);
-  useEffect(
-    () => {
-      if (!initialized.current) {
-        initialized.current = true;
 
-        wasmInitialized.then(() => {
-          if (core.current === null) {
-            core.current = new Core(setView);
-          }
-          // Initial events
-          core.current?.update(eventStartWatch());
-        });
-      }
-    },
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
 
-    /*once*/ [],
-  );
+    void createCore(setView).then((created) => {
+      core.current = created;
+      // `onView` is only called on a render, so show the initial view now.
+      setView(created.view);
+      // Initial events
+      created.update(eventStartWatch());
+    });
+  }, []);
 
   return (
     <main>
