@@ -22,12 +22,15 @@ categories = ["gui", "wasm", "development-tools::ffi"]
 [workspace.dependencies]
 anyhow = "1.0"
 facet = "=0.46.5"
-facet_generate = "0.21"
-# Must be the same crate instance `facet_generate` itself depends on (it requires
-# `^0.18` from crates.io). A second copy from another source is an unrelated `Attr`
-# type: the attribute a `#[facet(fg::namespace = …)]` writes is then invisible to the
+# Pinned to redbadger/facet-generate#169 (on #168), which 0.22.0 will ship:
+# per-language `requalify` for plugins, and references named the way their
+# types are registered. Back to crates.io "0.22" once it is published.
+facet_generate = { git = "https://github.com/redbadger/facet-generate", rev = "fe211c4598dc97c6d70652f23c0a3147cad6fb0d" }
+# Must be the same crate instance `facet_generate` itself depends on, so from the
+# same source. A second copy from another source is an unrelated `Attr` type: the
+# attribute a `#[facet(fg::namespace = …)]` writes is then invisible to the
 # `get_as::<fg::Attr>()` that reads it, and generation fails with `bad attribute format`.
-facet-generate-attrs = "0.18"
+facet-generate-attrs = { git = "https://github.com/redbadger/facet-generate", rev = "fe211c4598dc97c6d70652f23c0a3147cad6fb0d" }
 # facet_generate = { path = "../facet-generate/crates/facet_generate" }
 # facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
 serde = "1.0"

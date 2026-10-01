@@ -23,10 +23,10 @@ private fun effectOutputBytes(body: (Serializer) -> Unit): ByteArray {
 interface EffectHandler {
     /// `Core` handles `Render` itself, so this does nothing; implement it
     /// only if you drive `EffectDispatcher` yourself.
-    fun render(operation: RenderOperation) {}
-    suspend fun http(operation: HttpRequest): HttpResult
-    fun subscribe(operation: Subscribe, sink: EffectSink<Message>)
-    fun legacy(operation: LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
+    fun render(operation: Shared.RenderOperation) {}
+    suspend fun http(operation: Shared.HttpRequest): Shared.HttpResult
+    fun subscribe(operation: Shared.Subscribe, sink: EffectSink<Shared.Message>)
+    fun legacy(operation: Shared.LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
 }
 
 /// Routes each request to an `EffectHandler` and resolves it for you:

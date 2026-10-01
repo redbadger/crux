@@ -27,8 +27,15 @@ mod shell_handler;
 mod tests;
 
 use facet_generate::{
-    generation::{CodeGeneratorConfig, PackageLocation, plugin::EmitContext},
-    reflection::format::{ContainerFormat, Format, VariantFormat},
+    generation::{
+        CodeGeneratorConfig, PackageLocation,
+        csharp::{self, CSharp},
+        kotlin::{self, Kotlin},
+        plugin::EmitContext,
+        swift::{self, Swift},
+        typescript::{self, TypeScript},
+    },
+    reflection::format::{ContainerFormat, Format, QualifiedTypeName, VariantFormat},
 };
 use heck::ToLowerCamelCase;
 
@@ -52,19 +59,86 @@ pub const SWIFT_AVAILABILITY: &str = "@available(macOS 10.15, iOS 13.0, tvOS 13.
 pub const SWIFT_OBSERVABLE_AVAILABILITY: &str =
     "@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)";
 
+/// How a language's emitter spells a reference to a type.
+///
+/// The formats an [`EmitContext`] carries are already in the emitter's
+/// spelling, but a name Crux recorded itself — the app's event and view model,
+/// an operation's output — is in registry spelling, and has to be respelled
+/// exactly once before it is rendered or looked up in
+/// [`CodeGeneratorConfig::is_enum`]. A second pass is not harmless: for C#,
+/// Kotlin and TypeScript it qualifies an already-qualified name again.
+pub trait Requalify {
+    /// The language's `requalify`, e.g. [`csharp::requalify`].
+    fn requalify(config: &CodeGeneratorConfig, name: &QualifiedTypeName) -> QualifiedTypeName;
+
+    /// `format` with every type name in it respelled, by the language's
+    /// `requalify_format`, e.g. [`csharp::requalify_format`].
+    fn requalify_format(config: &CodeGeneratorConfig, format: &Format) -> Format;
+}
+
+impl Requalify for Swift {
+    fn requalify(config: &CodeGeneratorConfig, name: &QualifiedTypeName) -> QualifiedTypeName {
+        swift::requalify(config, name)
+    }
+
+    fn requalify_format(config: &CodeGeneratorConfig, format: &Format) -> Format {
+        let mut format = format.clone();
+        swift::requalify_format(config, &mut format);
+        format
+    }
+}
+
+impl Requalify for Kotlin {
+    fn requalify(config: &CodeGeneratorConfig, name: &QualifiedTypeName) -> QualifiedTypeName {
+        kotlin::requalify(config, name)
+    }
+
+    fn requalify_format(config: &CodeGeneratorConfig, format: &Format) -> Format {
+        let mut format = format.clone();
+        kotlin::requalify_format(config, &mut format);
+        format
+    }
+}
+
+impl Requalify for TypeScript {
+    fn requalify(config: &CodeGeneratorConfig, name: &QualifiedTypeName) -> QualifiedTypeName {
+        typescript::requalify(config, name)
+    }
+
+    fn requalify_format(config: &CodeGeneratorConfig, format: &Format) -> Format {
+        let mut format = format.clone();
+        typescript::requalify_format(config, &mut format);
+        format
+    }
+}
+
+impl Requalify for CSharp {
+    fn requalify(config: &CodeGeneratorConfig, name: &QualifiedTypeName) -> QualifiedTypeName {
+        csharp::requalify(config, name)
+    }
+
+    fn requalify_format(config: &CodeGeneratorConfig, format: &Format) -> Format {
+        let mut format = format.clone();
+        csharp::requalify_format(config, &mut format);
+        format
+    }
+}
+
 /// One variant of an effect enum, as the plugins see it: the registry's view
 /// of the variant (its emitted name and payload type) paired with what the
 /// operation declared.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Variant<'a> {
     /// The variant name the emitters use, after any rename.
     pub name: &'a str,
     /// The kind the operation declares, or `None` for a legacy operation whose
     /// kind is decided by the call site.
     pub kind: Option<OperationKind>,
-    /// The type the request resolves with. `None` for a notification.
-    pub output: Option<&'a Format>,
-    /// The operation type the variant carries.
+    /// The type the request resolves with, in the emitter's spelling. `None`
+    /// for a notification.
+    pub output: Option<Format>,
+    /// The operation type the variant carries, from the registry the emitter
+    /// has already respelled.
     pub operation: &'a Format,
     /// Whether the operation is `crux_core::render::RenderOperation`, which the
     /// generated `Core` handles itself.
@@ -88,7 +162,14 @@ pub struct Matched<'a> {
 ///
 /// Every variant has to line up — the generated `switch` is exhaustive, so a
 /// half-understood effect is worse than none at all.
-pub fn matched<'a>(effects: &'a [EffectMeta], ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
+///
+/// The container's name is still in registry spelling, as the effect metadata
+/// is, so that is what they are compared in. Each output, recorded during
+/// reflection, is respelled for `L` here, once.
+pub fn matched<'a, L: Requalify>(
+    effects: &'a [EffectMeta],
+    ctx: &EmitContext<'a>,
+) -> Option<Matched<'a>> {
     let index = effects
         .iter()
         .position(|e| &e.effect == ctx.container.name)?;
@@ -110,7 +191,7 @@ pub fn matched<'a>(effects: &'a [EffectMeta], ctx: &EmitContext<'a>) -> Option<M
         variants.push(Variant {
             name: named.name.as_str(),
             kind: meta.kind,
-            output: output_of(meta),
+            output: output_of(meta).map(|format| L::requalify_format(ctx.config, format)),
             operation: operation.as_ref(),
             render: meta.render,
         });

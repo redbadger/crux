@@ -13,6 +13,8 @@ use facet_generate::{
 
 use super::{super::Matched, AppMeta, BoltFfi, render};
 
+/// `app` names the event and view model in the emitter's spelling, as the
+/// formats in `m` are.
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
