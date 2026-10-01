@@ -1,7 +1,7 @@
 # Setting up
 
 This section is the fast path. It builds the counter app the way we recommend
-writing a Crux app today: a shared core in Rust, and shells that use the
+writing a Crux app: a shared core in Rust, and shells that use the
 `Core` class Crux generates for them, so all a shell writes is its UI and an
 `EffectHandler` for the app's effects.
 
