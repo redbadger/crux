@@ -66,12 +66,15 @@ pub struct Model {
     note: Note,
     cursor: TextCursor,
     timer: Option<TimerHandle>,
+    error: Option<String>,
 }
 
 #[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct ViewModel {
     pub text: String,
     pub cursor: TextCursor,
+    /// The last failed load or save, until something succeeds.
+    pub error: Option<String>,
 }
 
 impl From<&Model> for ViewModel {
@@ -79,6 +82,7 @@ impl From<&Model> for ViewModel {
         Self {
             text: model.note.text(),
             cursor: model.cursor.clone(),
+            error: model.error.clone(),
         }
     }
 }
@@ -212,12 +216,17 @@ impl App for NoteEditor {
                 KeyValue::set("note".to_string(), model.note.save()).then_send(Event::Written)
             }
             Event::EditTimerElapsed(TimerOutcome::Cleared) => Command::done(),
-            Event::Written(_) => {
-                // FIXME assuming successful write
-                Command::done()
+            Event::Written(result) => {
+                model.error = result
+                    .err()
+                    .map(|e| format!("Could not save the note: {e}"));
+
+                render::render()
             }
             Event::Open => KeyValue::get("note".to_string()).then_send(Event::Load),
             Event::Load(Ok(value)) => {
+                model.error = None;
+
                 let mut commands = Vec::new();
                 if value.is_none() {
                     model.note = Note::new();
@@ -234,9 +243,19 @@ impl App for NoteEditor {
                 commands.push(render::render());
                 Command::all(commands)
             }
-            Event::Load(Err(_)) => {
-                // FIXME handle error
-                Command::done()
+            Event::Load(Err(e)) => {
+                // Keep the tab usable: edit a fresh note and stay subscribed to
+                // peers. Don't save it — the stored note may be unreadable, and
+                // overwriting it would lose it. Edits still save after the edit
+                // timer, and the shell may refuse that too; the error stays
+                // visible either way.
+                model.note = Note::new();
+                model.error = Some(format!("Could not load the note: {e}"));
+
+                Command::all(vec![
+                    PubSub::subscribe().then_send(Event::ReceiveChanges),
+                    render::render(),
+                ])
             }
         }
     }
@@ -332,6 +351,7 @@ mod editing_tests {
         let expected = ViewModel {
             text: "hello".to_string(),
             cursor: TextCursor::Position(2),
+            error: None,
         };
 
         assert_eq!(actual, expected);
@@ -566,7 +586,7 @@ mod save_load_tests {
     #[test]
     fn opens_a_document() {
         let app = NoteEditor;
-        let mut note = Note::with_text("LOADED");
+        let note = Note::with_text("LOADED");
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -994,5 +1014,48 @@ mod sync_tests {
 
         assert_eq!(alice_view.text, "Hello dear world");
         assert_eq!(alice_view.text, bob_view.text);
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+
+    fn other(message: &str) -> KeyValueError {
+        KeyValueError::Other {
+            message: message.to_string(),
+        }
+    }
+
+    #[test]
+    fn a_failed_load_subscribes_renders_and_shows_the_error() {
+        let app = NoteEditor;
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::Load(Err(other("unreadable"))), &mut model);
+        let effects: Vec<Effect> = cmd.effects().collect();
+
+        assert!(effects.iter().any(|e| matches!(e, Effect::Subscribe(_))));
+        assert!(effects.iter().any(|e| matches!(e, Effect::Render(_))));
+        // nothing is saved: the stored note may be the unreadable one
+        assert!(!effects.iter().any(|e| matches!(e, Effect::KvSet(_))));
+
+        let error = app.view(&model).error.expect("an error");
+        assert!(error.contains("unreadable"), "{error}");
+    }
+
+    #[test]
+    fn a_failed_write_shows_the_error_and_a_later_one_clears_it() {
+        let app = NoteEditor;
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::Written(Err(other("refused"))), &mut model);
+        cmd.expect_one_effect().expect_render();
+        let error = app.view(&model).error.expect("an error");
+        assert!(error.contains("refused"), "{error}");
+
+        let mut cmd = app.update(Event::Written(Ok(None)), &mut model);
+        cmd.expect_one_effect().expect_render();
+        assert_eq!(app.view(&model).error, None);
     }
 }
