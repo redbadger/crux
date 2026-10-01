@@ -39,7 +39,7 @@ class MiddlewareBridge(shell: CruxShell) : CoreBridge, AutoCloseable {
 /// sent.
 ///
 /// @param scope where each batch is processed. `Core` is not thread-safe, so
-///   the batch is posted to the main thread with `Dispatchers.Main` — not
+///   the batch is posted to the main thread with `Dispatchers.Main`, not
 ///   `Main.immediate`, which would run it inline when the callback arrives on
 ///   the main thread, inside the `CoreFfi` call that triggered it. The main
 ///   looper runs posts in order, so the batches reach the core in the order

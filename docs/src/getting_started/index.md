@@ -31,7 +31,7 @@ when you use any rust tooling within the repo.
 You may not need all the targets if you're not planning to build a fully cross platform app.
 
 ```toml
-# TOML — /rust-toolchain.toml
+# TOML: /rust-toolchain.toml
 [toolchain]
 channel = "stable"
 components = ["rustfmt", "clippy"]
@@ -62,7 +62,7 @@ cargo install boltffi_cli --version '=0.30.1' --locked
 cargo install just
 ```
 
-Each shell also needs its own platform's tools — Xcode, Android Studio, Node.js
+Each shell also needs its own platform's tools: Xcode, Android Studio, Node.js
 with `pnpm`, or .NET. In the example, running `just doctor` in a shell's
 directory checks you have what that shell needs.
 
@@ -80,7 +80,7 @@ root, to add the new library to our workspace.
 It should look something like this:
 
 ```toml
-# TOML — /Cargo.toml
+# TOML: /Cargo.toml
 [workspace]
 resolver = "3"
 members = ["shared"]
@@ -110,7 +110,7 @@ The library's manifest, at `/shared/Cargo.toml`, should look something like the
 following,
 
 ```toml
-# TOML — /shared/Cargo.toml
+# TOML: /shared/Cargo.toml
 [package]
 name = "shared"
 version = "0.1.0"
@@ -143,7 +143,7 @@ for your app code.
 For now, the `lib.rs` file looks as follows:
 
 ```rust,noplayground
-// Rust — src/lib.rs
+// Rust: src/lib.rs
 mod app;
 
 pub use app::*;
@@ -153,7 +153,7 @@ and `app.rs` can be empty, but let's put our app's main type in it,
 call it `Counter`:
 
 ```rust,noplayground
-// Rust — src/app.rs
+// Rust: src/app.rs
 
 #[derive(Default)]
 pub struct Counter;

@@ -3,12 +3,12 @@
 The counter's only effect is `Render`. Most apps need more: HTTP, storage,
 timers, or something of their own. The
 [`counter-http`](https://github.com/redbadger/crux/tree/master/examples/counter-http)
-example is the counter with two more effects — it keeps the count on a server,
+example is the counter with two more effects: it keeps the count on a server,
 over HTTP, and hears about changes from other clients through Server-Sent
 Events:
 
 ```rust,noplayground
-// Rust — shared/src/app.rs
+// Rust: shared/src/app.rs
 {{#include ../../../examples/counter-http/shared/src/app.rs:effect}}
 ```
 
@@ -18,7 +18,7 @@ Events are this app's own: a stream operation declared in `shared/src/sse.rs`,
 which the shell answers with a `Chunk` per batch of bytes it reads, then `Done`:
 
 ```rust,noplayground
-// Rust — shared/src/sse.rs
+// Rust: shared/src/sse.rs
 {{#include ../../../examples/counter-http/shared/src/sse.rs:operation}}
 ```
 
@@ -32,7 +32,7 @@ A capability that ships a shell handler is registered in the codegen, next to
 the app:
 
 ```rust,noplayground
-// Rust — shared/src/bin/codegen.rs
+// Rust: shared/src/bin/codegen.rs
 {{#include ../../../examples/counter-http/shared/src/bin/codegen.rs:shell_handler}}
 ```
 
@@ -40,7 +40,7 @@ the app:
 is on, so the app's `facet_typegen` feature turns it on too:
 
 ```toml
-# TOML — shared/Cargo.toml
+# TOML: shared/Cargo.toml
 {{#include ../../../examples/counter-http/shared/Cargo.toml:facet_typegen}}
 ```
 
@@ -59,7 +59,7 @@ shell implements the stream itself, sending each event it reads into the
 `EffectSink` it's given:
 
 ```swift
-// Swift — apple/CounterApp/CounterHandler.swift
+// Swift: apple/CounterApp/CounterHandler.swift
 {{#include ../../../examples/counter-http/apple/CounterApp/CounterHandler.swift}}
 ```
 

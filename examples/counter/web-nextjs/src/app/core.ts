@@ -5,8 +5,8 @@ import { Core } from "shared_types/app";
 ///
 /// `CounterHandler` implements the generated `EffectHandler`, which has one
 /// method per operation the app declares. The counter's only effect is
-/// `Render`, and the generated `Core` handles that itself — reading the new
-/// view model and passing it to the `onView` callback — so there is nothing
+/// `Render`, and the generated `Core` handles that itself (reading the new
+/// view model and passing it to the `onView` callback), so there is nothing
 /// left for the handler to do.
 export class CounterHandler implements EffectHandler {}
 

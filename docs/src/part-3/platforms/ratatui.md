@@ -1,4 +1,4 @@
-# Terminal — Rust and Ratatui
+# Terminal: Rust and Ratatui
 
 These are the steps to set up and run a Crux app as a terminal UI (TUI)
 application using [Ratatui](https://ratatui.rs/). This is a great way to
@@ -11,7 +11,7 @@ This walk-through assumes you have already added the `shared` library to your re
 
 ```admonish info
 Because both the core and the shell are written in Rust and run in the same
-process, there is no FFI boundary — the shell calls the core directly with
+process, there is no FFI boundary: the shell calls the core directly with
 no serialization overhead.
 ```
 
@@ -53,21 +53,21 @@ parts.
 The TUI shell follows the same pattern as any Crux shell, but with a
 terminal render loop instead of a UI framework:
 
-1. **Event loop** — Ratatui runs a loop that draws the UI and then waits for
+1. **Event loop**: Ratatui runs a loop that draws the UI and then waits for
    keyboard input. Each keypress is mapped to an app `Event` (e.g. pressing
    `+` sends `Event::Increment`).
 
-2. **Dispatching events** — The `dispatch` method sends events to the core via
+2. **Dispatching events**: The `dispatch` method sends events to the core via
    `core.process_event()` and processes the resulting effects. For this simple
-   example, the only effect is `Render`, which is a no-op in the TUI — the
+   example, the only effect is `Render`, which is a no-op in the TUI, because the
    shell re-renders on every loop iteration anyway.
 
-3. **Rendering the view** — On each frame, the shell calls `core.view()` to
+3. **Rendering the view**: On each frame, the shell calls `core.view()` to
    get the current `ViewModel` and renders it using Ratatui widgets. The
    counter value is displayed in a bordered box with a row of selectable
    buttons below it.
 
-4. **No serialization** — Because both the core and the shell are Rust running
+4. **No serialization**: Because both the core and the shell are Rust running
    in the same process, we call `Core::new()`, `core.process_event()`, and
    `core.view()` directly with native Rust types.
 

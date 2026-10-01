@@ -2,14 +2,14 @@
 
 With the crate in place, the core needs three things: the app itself, a small
 FFI surface for the shells to call, and a codegen binary that generates the
-shell-side types — and the `Core` class that drives them.
+shell-side types (and the `Core` class that drives them).
 
 ## The app
 
 Here's the whole counter, in `shared/src/app.rs`:
 
 ```rust,noplayground
-// Rust — shared/src/app.rs
+// Rust: shared/src/app.rs
 {{#include ../../../examples/counter/shared/src/app.rs:app}}
 ```
 
@@ -26,7 +26,7 @@ The library needs a few more dependencies, and a `codegen` binary behind a
 feature flag:
 
 ```toml
-# TOML — shared/Cargo.toml
+# TOML: shared/Cargo.toml
 {{#include ../../../examples/counter/shared/Cargo.toml:manifest}}
 ```
 
@@ -42,14 +42,14 @@ The shells reach the core through a `CoreFfi` type, which BoltFFI exports from
 change it:
 
 ```rust,noplayground
-// Rust — shared/src/ffi.rs
+// Rust: shared/src/ffi.rs
 {{#include ../../../examples/counter/shared/src/ffi.rs}}
 ```
 
 `lib.rs` exposes it:
 
 ```rust,noplayground
-// Rust — shared/src/lib.rs
+// Rust: shared/src/lib.rs
 {{#include ../../../examples/counter/shared/src/lib.rs}}
 ```
 
@@ -59,7 +59,7 @@ bindings. The example's is a good starting point, and
 does:
 
 ```toml
-# TOML — shared/boltffi.toml
+# TOML: shared/boltffi.toml
 {{#include ../../../examples/counter/shared/boltffi.toml}}
 ```
 
@@ -71,13 +71,13 @@ method per operation, and a `Core` class that runs the loop between the shell
 and the core.
 
 ```rust,noplayground
-// Rust — shared/src/bin/codegen.rs
+// Rust: shared/src/bin/codegen.rs
 {{#include ../../../examples/counter/shared/src/bin/codegen.rs}}
 ```
 
 The line that matters is `.boltffi(...)`. It repeats what `boltffi.toml` and
-`ffi.rs` already decided — the Swift module, the Kotlin package, the npm
-package and the C# namespace the bindings live in — so that type generation
+`ffi.rs` already decided (the Swift module, the Kotlin package, the npm
+package and the C# namespace the bindings live in), so that type generation
 can bridge the generated `Core` to `CoreFfi` for you. Without it, `Core` needs
 a `CoreBridge` you write yourself. Name only the languages you build shells
 for.

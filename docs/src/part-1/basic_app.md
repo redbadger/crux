@@ -5,8 +5,8 @@ step at a time. The core is the same as in [Getting started](../getting_started/
 but this time we write the shell's side of the conversation by hand: sending
 events, reading the effects that come back, resolving them, and fetching the
 view model. For the Swift, Kotlin and TypeScript shells, that is not how we
-recommend writing one — the generated `Core` does all of it for you, as
-Getting started shows — but doing it once makes it clear what the shell and
+recommend writing one (the generated `Core` does all of it for you, as
+Getting started shows), but doing it once makes it clear what the shell and
 the core say to each other, and what the generated code is doing on your
 behalf. A Rust shell, like the Leptos one in this part, has no generated `Core`
 and always talks to the core directly, so for Leptos this _is_ the way to do
@@ -46,8 +46,8 @@ impl App for Counter {
 ```
 
 If you're following along, the compiler is now screaming at you that you're
-missing the trait's four associated types — `Event`, `Model`, `ViewModel`,
-and `Effect` — and its two methods, `update` and `view`.
+missing the trait's four associated types (`Event`, `Model`, `ViewModel`,
+and `Effect`) and its two methods, `update` and `view`.
 
 Let's add the types first and talk about them one by one, then we'll come back
 to the methods.

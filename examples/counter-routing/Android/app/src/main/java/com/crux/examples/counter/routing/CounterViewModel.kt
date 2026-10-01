@@ -3,8 +3,9 @@ package com.crux.examples.counter.routing
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 
-/// Holds the generated `Core`, so the count — and the Server-Sent Events
-/// connection — survives a configuration change.
+/// An Android `ViewModel` (not the app's `ViewModel`, which `Core.view`
+/// publishes) that holds the generated `Core`, so the count and the
+/// Server-Sent Events connection survive a configuration change.
 ///
 /// `viewModelScope` runs on `Dispatchers.Main.immediate` with a
 /// `SupervisorJob`, which is what `Core` needs, and is cancelled when

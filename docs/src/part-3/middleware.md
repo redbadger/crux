@@ -34,19 +34,19 @@ All that said, the feature is used in production with success today and should w
 Middleware sits between the Core and the Shell in the effect processing pipeline. When
 the app requests effects, they pass through the middleware stack on their way to the shell.
 A middleware layer can intercept specific effect variants, handle them (performing the
-side-effect in Rust), and resolve the request — all without the shell ever seeing that effect.
+side-effect in Rust), and resolve the request, all without the shell ever seeing that effect.
 Effects the middleware doesn't handle pass through to the shell as normal.
 
 We'll walk through the
 [counter-middleware](https://github.com/redbadger/crux/tree/master/examples/counter-middleware)
 example to see how this works in practice. This example is a counter app that has a "random"
-button — when pressed, the counter changes by a random amount. The random number generation
+button: when pressed, the counter changes by a random amount. The random number generation
 is handled by a middleware, rather than by the shell.
 
 ## Defining the operation
 
 First, we need an `Operation` type that describes the request and its output. This is the
-same as defining a capability's protocol — a request type and a response type:
+same as defining a capability's protocol: a request type and a response type:
 
 ```rust,no_run,noplayground
 {{#include ../../../examples/counter-middleware/shared/src/capabilities/mod.rs:operation}}
@@ -56,7 +56,7 @@ The `RandomNumberRequest` carries the range (min, max), and `RandomNumber` carri
 The `Operation` impl connects them so that Crux knows a `RandomNumberRequest` produces a
 `RandomNumber`.
 
-This one is written by hand and declares no operation kind, which is still fine — an
+This one is written by hand and declares no operation kind, which is still fine. An
 operation with no declared kind takes whichever `Command` constructor the call site
 uses. If you'd rather pin it down, `#[derive(Operation)]` with
 `#[operation(request, output = RandomNumber)]` does the same job and additionally
@@ -78,7 +78,7 @@ would for any shell-handled effect:
                 .then_send(Event::UpdateBy),
 ```
 
-The app doesn't know or care that this effect will be intercepted by middleware — it just
+The app doesn't know or care that this effect will be intercepted by middleware; it just
 requests the effect and handles the response.
 
 ## Implementing `EffectMiddleware`
@@ -98,12 +98,12 @@ A few things to note:
 - The `type Op` associated type tells Crux which operation this middleware handles
   (`RandomNumberRequest` in this case).
 - `try_process_effect` receives the operation and an `EffectResolver`. You must call
-  `resolver.resolve(output)` with the result when the work is done — once for a
+  `resolver.resolve(output)` with the result when the work is done: once for a
   request, once per item for a stream, never for a notification. `EffectResolver`
   is generic over the output rather than the operation, so if you need to know
   which you're holding, ask it: `resolver.kind()` returns the
   `OperationKind`.
-- The processing happens on a background thread. This is important — the middleware
+- The processing happens on a background thread. This is important: the middleware
   must not block the caller of `process_event`. On native targets this typically means
   spawning a thread; on WASM it means an async task (e.g. `spawn_local`).
 - The background thread pattern shown here (a persistent worker with a channel) is a
@@ -123,17 +123,17 @@ this middleware is `thread::spawn` based.
 
 The native branch reads bottom-to-top as a pipeline:
 
-1. **`Core::<Counter>::new()`** — creates the core, which produces the app's full `Effect`
+1. **`Core::<Counter>::new()`**: creates the core, which produces the app's full `Effect`
    enum (including the `Random` variant).
-2. **`.handle_effects_using(RngMiddleware::new())`** — wraps the core with the RNG middleware.
+2. **`.handle_effects_using(RngMiddleware::new())`**: wraps the core with the RNG middleware.
    `Random` effects are intercepted and resolved here; everything else passes through.
-3. **`.map_effect::<Effect>()`** — remaps to the FFI-facing `Effect` enum used
+3. **`.map_effect::<Effect>()`**: remaps to the FFI-facing `Effect` enum used
    by typegen and the bridge. In this example the FFI `Effect` mirrors the app's,
    so this is a 1:1 remap. This is also where you can _narrow_ the effect type:
    drop variants that middleware fully consumes from the FFI enum and panic on
    them in `From`, so the shell never sees them. The counter example doesn't
    narrow `Random` because the WebAssembly shells handle it themselves.
-4. **`.bridge::<BincodeFfiFormat>(...)`** — creates the FFI bridge as usual.
+4. **`.bridge::<BincodeFfiFormat>(...)`**: creates the FFI bridge as usual.
 
 On WebAssembly there is no middleware: the bridge wraps `Core` directly, so
 `Random` effects flow straight through to the shell, which fulfills them itself.
@@ -155,7 +155,7 @@ two enums have the same variants, so every arm remaps 1:1:
 ```
 
 If a middleware fully consumes a variant on every target you build, you can
-remove that variant from this enum and `panic!` on it in `From` — the shell then
+remove that variant from this enum and `panic!` on it in `From`, and the shell then
 receives a narrower set of effects. The counter example keeps `Random` here
 because on WebAssembly the middleware doesn't run, so the shell handles it.
 
@@ -167,8 +167,8 @@ on its targets the middleware means the method is never called.
 ## In the shell
 
 On native targets the middleware resolves `Random` on its own thread, after
-`update` has returned. Whatever the app asks for next — here, a `Render` and
-the HTTP calls that update the server's count — can't come back as the return
+`update` has returned. Whatever the app asks for next (here, a `Render` and
+the HTTP calls that update the server's count) can't come back as the return
 value of `update` or `resolve`, so the bridge hands those requests to the
 callback you gave `.bridge(...)`. In this example that callback
 calls `CruxShell::process_effects`, a trait the shell implements and passes to
@@ -188,9 +188,9 @@ configure `.boltffi(...)`. Instead each shell writes the three-method
 {{#include ../../../examples/counter-middleware/apple/CounterApp/MiddlewareBridge.swift:bridge}}
 ```
 
-The callback hands its bytes to the generated `Core`'s `process(bytes:)` —
-`process(bytes)` in Kotlin, `processBytes` in TypeScript and `Process(byte[])`
-in C#. Construction runs the other way: the bridge needs the `CoreFfi`, the
+The callback hands its bytes to the generated `Core`'s `process(bytes:)`
+(`process(bytes)` in Kotlin, `processBytes` in TypeScript and `Process(byte[])`
+in C#). Construction runs the other way: the bridge needs the `CoreFfi`, the
 `CoreFfi` needs the callback, and the callback needs the `Core`, which is built
 from the bridge. The Swift shell breaks that cycle by not giving the callback
 the `Core` at all. The callback puts the bytes on an `AsyncStream`:
@@ -217,7 +217,7 @@ WebAssembly there's no middleware, so its callback is never called.
 
 ## Testing
 
-The app can be tested exactly the same way as any other Crux app — the middleware is not
+The app can be tested exactly the same way as any other Crux app, because the middleware is not
 involved in unit tests. You test the app's `update` function directly, treating `Random`
 as a normal effect:
 
@@ -232,11 +232,11 @@ and the middleware is a separate concern that's composed at the FFI boundary.
 
 To add a middleware to your app:
 
-1. **Define an `Operation`** — a request type and output type, just like a capability protocol,
+1. **Define an `Operation`**: a request type and output type, just like a capability protocol,
    ideally with `#[derive(Operation)]` so its kind is declared too.
-2. **Implement `EffectMiddleware`** — handle the operation and resolve the result, typically
+2. **Implement `EffectMiddleware`**: handle the operation and resolve the result, typically
    on a background thread.
-3. **Wire it up** — use `.handle_effects_using()` in your FFI setup to intercept the effects,
+3. **Wire it up**: use `.handle_effects_using()` in your FFI setup to intercept the effects,
    and optionally `.map_effect()` to narrow the effect type for the shell.
 
 For the full API reference, see the

@@ -20,8 +20,8 @@ import * as sse from "./sse";
 ///
 /// `CounterHandler` implements the generated `EffectHandler`: one method per
 /// operation the app declares. The generated `EffectDispatcher` does the
-/// resolving for `http` and `serverSentEvents`, so nothing here decides when —
-/// or how often — to call `resolve` for them.
+/// resolving for `http` and `serverSentEvents`, so nothing here decides when
+/// (or how often) to call `resolve` for them.
 ///
 /// There is no `render` method: the generated `Core` intercepts `Render`
 /// before the dispatcher sees it and calls the `onView` callback instead.
@@ -41,7 +41,7 @@ export class CounterHandler implements EffectHandler {
   ///
   /// Server-Sent Events are this app's own capability (see
   /// `shared/src/capabilities/sse.rs`), so no crate ships a handler for them
-  /// and the shell implements the operation here — with `sse.ts`, which
+  /// and the shell implements the operation here with `sse.ts`, which
   /// yields a `Chunk` per read from the response body and a final `Done`.
   serverSentEvents(operation: SseRequest, sink: EffectSink<SseResponse>): void {
     void (async () => {
@@ -108,7 +108,7 @@ const wasmInitialized = (
 /// `EffectHandler`, a `CoreBridge` and a callback for the view model.
 ///
 /// The bridge needs the `CoreFfi`, the `CoreFfi` needs the callback, and the
-/// callback needs the `Core` — which is built from the bridge. The callback
+/// callback needs the `Core`, which is built from the bridge. The callback
 /// closes over `core` and reads it when it is called, which is only ever
 /// after the `Core` exists, so the cycle is broken by assigning `core` once
 /// it has been constructed.

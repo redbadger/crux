@@ -12,11 +12,11 @@ wait for them to run (and probably fail on a race condition sometimes). So most 
 
 Managed effects smooth over that big hump. You pay for it a little bit in how the
 code is written, but you reap the reward in testing it. This is because the core
-that uses managed effects is pure and therefore completely deterministic —
+that uses managed effects is pure and therefore completely deterministic:
 all the side effects are pushed to the shell.
 
 It's straightforward to write an exhaustive set of unit tests that give you
-complete confidence in the correctness of your application code — you can test
+complete confidence in the correctness of your application code. You can test
 the behavior of your application independently of platform-specific UI and API
 calls.
 
@@ -26,7 +26,7 @@ integration tests.
 Not only are the unit tests easy to write, but they run extremely quickly, and
 can be run in parallel.
 
-For example, here's a test that drives `LocalWeather` through a full weather fetch — checking location permission, resolving the location, then handling the weather response. A setup helper advances the state machine through the first two events by resolving each effect with a canned response:
+For example, here's a test that drives `LocalWeather` through a full weather fetch: checking location permission, resolving the location, then handling the weather response. A setup helper advances the state machine through the first two events by resolving each effect with a canned response:
 
 ```rust
 {{#include ../../../examples/weather/shared/src/model/active/home/local.rs:drive_helper}}
@@ -38,7 +38,7 @@ The test itself picks up from `FetchingWeather`, resolves the HTTP effect, and a
 {{#include ../../../examples/weather/shared/src/model/active/home/local.rs:full_test}}
 ```
 
-It's a test of a whole interaction with multiple kinds of effects — location services and HTTP — and it runs in a couple of milliseconds, entirely deterministic. The code being tested is `LocalWeather::update` in [Nested state machines](./nested_state_machines.md); managed effects let us verify the whole transaction without executing any of it.
+It's a test of a whole interaction with multiple kinds of effects (location services and HTTP) and it runs in a couple of milliseconds, entirely deterministic. The code being tested is `LocalWeather::update` in [Nested state machines](./nested_state_machines.md); managed effects let us verify the whole transaction without executing any of it.
 
 The full suite of 57 tests of the Weather app runs in around 20 milliseconds on a Mac Mini M4 Pro. In practice, it's rare for a test suite of a Crux app to take longer than compiling it (even incrementally). Apps with thousands of tests usually run them in seconds, though compilation takes longer.
 
