@@ -28,7 +28,5 @@ public sealed partial class MainWindow : Window
         AppWindow.Move(new PointInt32(
             displayArea.WorkArea.X + ((displayArea.WorkArea.Width - width) / 2),
             displayArea.WorkArea.Y + ((displayArea.WorkArea.Height - height) / 2)));
-
-        Closed += (_, _) => ViewModel.Dispose();
     }
 }

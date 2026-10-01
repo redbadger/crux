@@ -25,9 +25,9 @@ The `shared` directory is a crate that implements the shared crux core. It conta
 - Tauri — `tauri/`
 - TUI (ratatui) — `tui/`
 
-The Swift, Kotlin and TypeScript shells use the `Core` that type generation
-emits: the codegen binary is told where `boltffi pack` puts the FFI bindings
-(with `.boltffi(..)`), so each shell constructs `Core` from an
+The Swift, Kotlin, TypeScript and C# shells use the `Core` that type
+generation emits: the codegen binary is told where `boltffi pack` puts the FFI
+bindings (with `.boltffi(..)`), so each shell constructs `Core` from an
 `EffectHandler` and never touches the FFI itself. Counter's only effect is
 `Render`, which the generated `Core` handles, so the handlers are empty.
 
