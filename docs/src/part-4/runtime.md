@@ -21,7 +21,7 @@ Second, each effect may require multiple round-trips between the core and
 shell to conclude and we don't want to require a call to `update` per
 round trip, so we need some ability to "suspend" execution while waiting
 for an effect to be fulfilled. The ability to suspend effects introduces a
-new challenge — effects which are suspended need, once resolved, to
+new challenge: effects which are suspended need, once resolved, to
 continue execution in the same async task.
 
 Given this concurrency and execution suspension, an async interface seems
@@ -33,7 +33,7 @@ request returned from the current core "transaction" (one call to
 
 Which of the three constructors a given operation may be sent with is
 decided by the operation type itself: an operation declares a
-`OperationKind` — notify, request or stream — and the other two constructors
+`OperationKind` (notify, request or stream), and the other two constructors
 stop compiling for it. That declaration is also what the runtime records
 on the `RequestHandle` it builds, and what type generation hands to shells.
 An operation that declares nothing keeps the older behaviour, where the
@@ -208,7 +208,7 @@ also wakes the parent waker (used when the command is running as a
 stream inside another command).
 
 While there are a lot of moving pieces involved, the basic mechanics
-are relatively straightforward — tasks are submitted either by
+are relatively straightforward: tasks are submitted either by
 `Command::new`, `ctx.spawn`, or awoken by arriving responses to the
 requests they submitted. The queue of tasks is processed whenever
 `run_until_settled` is called. This happens in the `Core` API
@@ -239,7 +239,7 @@ single type, which can be `match`ed on to process the operations.
 Finally, the effect is wrapped in a _request_ which carries the
 effect, and an associated _resolve_ callback to which the output
 will eventually be given. We discussed this callback in the previous
-section — its job is to send the result through an internal channel,
+section; its job is to send the result through an internal channel,
 waking up the paused future. The request is the value passed to the
 shell, and used as both the description of the effect intent, and
 the "token" used to resolve it.
@@ -250,7 +250,7 @@ calls `request_from_shell`, the context creates a `Request`
 containing the operation and a resolve callback, wraps it in the
 app's `Effect` type (via the `From` trait), and sends it through the
 effects channel. The callback the `Request` carries is what fixes how
-many times the request can be resolved — never, once, or repeatedly —
+many times the request can be resolved (never, once, or repeatedly),
 and the `RequestHandle` remembers it as an `OperationKind`, readable with
 `handle.kind()`. Notifications are never registered at all: the bridge
 gives every one of them the same id, so resolving one reports
@@ -259,8 +259,8 @@ these effects and surfaces them to the `Core`.
 
 The id the shell sees is opaque: the shell hands it back untouched. The
 bridge checks it on the way in, and when it rejects one, the error names
-the effect involved rather than just quoting a number — see
-[request ids](./typegen.md#request-ids).
+the effect involved rather than just quoting a number (see
+[request ids](./typegen.md#request-ids)).
 
 Looking at the core itself:
 
@@ -268,7 +268,7 @@ Looking at the core itself:
 {{#include ../../../crux_core/src/core/mod.rs:core}}
 ```
 
-The `Core` holds a `root_command` — a single long-lived `Command`
+The `Core` holds a `root_command`, a single long-lived `Command`
 onto which all commands returned from `update` are spawned. This
 root command acts as the top-level executor, collecting all effects
 and events across all active commands.
@@ -332,7 +332,7 @@ Here's how the resolve callback is set up in `request_from_shell`:
 ```
 
 The callback sends the output through an `mpsc` channel. On the
-receiving end, the `ShellRequest` future is waiting — when the value
+receiving end, the `ShellRequest` future is waiting, and when the value
 arrives, the channel wakes the future's waker, which schedules the
 task on the executor to continue.
 

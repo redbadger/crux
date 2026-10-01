@@ -2,7 +2,7 @@
 
 Type generation gives each shell three things to build on:
 
-- the app's types — `Event`, `Effect`, `ViewModel` and the rest,
+- the app's types (`Event`, `Effect`, `ViewModel` and the rest),
 - an `EffectHandler` interface, with one method per operation the app can ask
   for, and
 - a `Core` class that runs the loop: it sends events to the Rust core, hands
@@ -42,7 +42,7 @@ The code that differs is what follows.
 The handler conforms to the generated `EffectHandler` protocol:
 
 ```swift
-// Swift — apple/CounterApp/CounterHandler.swift
+// Swift: apple/CounterApp/CounterHandler.swift
 {{#include ../../../examples/counter/apple/CounterApp/CounterHandler.swift}}
 ```
 
@@ -50,7 +50,7 @@ The app builds a `Core` from it, keeps it in `@State`, and puts it in the
 environment:
 
 ```swift
-// Swift — apple/CounterApp/CounterApp.swift
+// Swift: apple/CounterApp/CounterApp.swift
 {{#include ../../../examples/counter/apple/CounterApp/CounterApp.swift}}
 ```
 
@@ -58,7 +58,7 @@ environment:
 model changes. The buttons send events with `core.update`:
 
 ```swift
-// Swift — apple/CounterApp/ContentView.swift
+// Swift: apple/CounterApp/ContentView.swift
 {{#include ../../../examples/counter/apple/CounterApp/ContentView.swift:content_view}}
 ```
 
@@ -67,7 +67,7 @@ model changes. The buttons send events with `core.update`:
 The handler implements the generated `EffectHandler` interface:
 
 ```kotlin
-// Kotlin — Android/app/src/main/java/com/crux/examples/counter/CounterHandler.kt
+// Kotlin: Android/app/src/main/java/com/crux/examples/counter/CounterHandler.kt
 {{#include ../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/CounterHandler.kt}}
 ```
 
@@ -75,7 +75,7 @@ The handler implements the generated `EffectHandler` interface:
 `ViewModel` provides one that lives as long as the screen does:
 
 ```kotlin
-// Kotlin — Android/app/src/main/java/com/crux/examples/counter/CounterViewModel.kt
+// Kotlin: Android/app/src/main/java/com/crux/examples/counter/CounterViewModel.kt
 {{#include ../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/CounterViewModel.kt}}
 ```
 
@@ -83,7 +83,7 @@ The handler implements the generated `EffectHandler` interface:
 Compose collects:
 
 ```kotlin
-// Kotlin — Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt
+// Kotlin: Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt
 {{#include ../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt:activity}}
 ```
 
@@ -94,14 +94,14 @@ The handler implements the generated `EffectHandler` interface, and
 model. It's an `async` factory, because the wasm module loads asynchronously:
 
 ```typescript
-// TypeScript — web-nextjs/src/app/core.ts
+// TypeScript: web-nextjs/src/app/core.ts
 {{#include ../../../examples/counter/web-nextjs/src/app/core.ts}}
 ```
 
 The page creates the core once, passing React's `setView` as the callback:
 
 ```typescript
-// TypeScript — web-nextjs/src/app/page.tsx
+// TypeScript: web-nextjs/src/app/page.tsx
 {{#include ../../../examples/counter/web-nextjs/src/app/page.tsx:create_core}}
 ```
 
@@ -110,14 +110,14 @@ The page creates the core once, passing React's `setView` as the callback:
 The handler implements the generated `IEffectHandler` interface:
 
 ```csharp
-// C# — windows/CounterApp/CounterHandler.cs
+// C#: windows/CounterApp/CounterHandler.cs
 {{#include ../../../examples/counter/windows/CounterApp/CounterHandler.cs}}
 ```
 
 The app builds the `Core` from it when it launches:
 
 ```csharp
-// C# — windows/CounterApp/App.xaml.cs
+// C#: windows/CounterApp/App.xaml.cs
 {{#include ../../../examples/counter/windows/CounterApp/App.xaml.cs:on_launched}}
 ```
 

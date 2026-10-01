@@ -1,4 +1,4 @@
-# Android — Kotlin and Jetpack Compose
+# Android: Kotlin and Jetpack Compose
 
 When we use Crux to build Android apps, the Core API bindings and native
 library assets are generated with [BoltFFI](https://www.boltffi.dev/).
@@ -243,7 +243,7 @@ effects that it produces. For this example, we only need to support the
 Let's create a file "**File, New, Kotlin Class/File, File**" called `CoreWrapper`.
 
 ```admonish
-This code that wraps the core only needs to be written once — it only grows when
+This code that wraps the core only needs to be written once. It only grows when
 we need to support additional effects.
 ```
 

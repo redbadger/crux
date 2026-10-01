@@ -31,10 +31,10 @@ This example has two FFI bridges that wire up the core differently:
 
 ## Shells
 
-- SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `Android/`
-- Leptos — `web-leptos/`
-- NextJS — `web-nextjs/`
+- SwiftUI (iOS/macOS): `apple/`
+- Android/Kotlin: `Android/`
+- Leptos: `web-leptos/`
+- NextJS: `web-nextjs/`
 
 The Swift, Kotlin and TypeScript shells use the `Core` that type generation
 emits, with an `EffectHandler` per shell. The codegen binary asks for the
@@ -52,11 +52,11 @@ with no arguments. So each shell writes a three-method `CoreBridge` over its
 own `CoreFfi` (`MiddlewareBridge`), builds the generated `Core` from it, and
 forwards the callback's bytes to the `Core`'s `process`:
 
-- **Swift** — the callback puts the bytes on an `AsyncStream`, and one task on
+- **Swift**: the callback puts the bytes on an `AsyncStream`, and one task on
   the main actor feeds them to `Core.process(bytes:)` (see `makeCore()`).
-- **Kotlin** — the callback is given the `Core` once it has been constructed,
+- **Kotlin**: the callback is given the `Core` once it has been constructed,
   and posts each batch to the main thread with `Dispatchers.Main`.
-- **TypeScript** — the callback closes over the `Core`. On wasm there is no
+- **TypeScript**: the callback closes over the `Core`. On wasm there is no
   middleware, so it is never called, and the handler answers `random` itself.
 
 The native shells' handlers still have a `random` method, because type

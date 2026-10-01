@@ -1,4 +1,4 @@
-# Web — TypeScript and React (Next.js)
+# Web: TypeScript and React (Next.js)
 
 These are the steps to set up and run a simple
 TypeScript Web app that calls into a shared core.
@@ -78,7 +78,7 @@ brew install binaryen # provides wasm-opt
 
 The crate is `boltffi_cli`; it installs the `boltffi` binary used below.
 
-Binaryen must be version 123 or newer — BoltFFI passes `--enable-bulk-memory-opt`
+Binaryen must be version 123 or newer: BoltFFI passes `--enable-bulk-memory-opt`
 to `wasm-opt`, which older releases don't understand. Check with
 `wasm-opt --version`; distribution packages are often well behind, so prefer a
 [release from GitHub](https://github.com/WebAssembly/binaryen/releases) if your
@@ -181,7 +181,7 @@ which triggers a render of the UI.
 
 ```admonish
 This code that wraps the core only needs to be written
-once — it only grows when we need to support additional
+once. It only grows when we need to support additional
 effects.
 ```
 
@@ -215,7 +215,7 @@ handle any other effects that your core might ask for.
 For example, if your core needs to make an HTTP
 request, you would handle that here. With the generated
 `Core`, each effect gets a method on an `EffectHandler`
-instead — see
+instead. See
 [Adding a capability](../../../getting_started/capabilities.md)
 for this counter with HTTP and Server-Sent Events added.
 ```
