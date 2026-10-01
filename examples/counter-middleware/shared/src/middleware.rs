@@ -24,10 +24,9 @@ impl RngMiddleware {
                 StdRng::seed_from_u64(sys_rng.try_next_u64().expect("could not seed RNG"));
 
             while let Ok((RandomNumberRequest(from, to), mut resolver)) = jobs_rx.recv() {
-                #[allow(clippy::cast_sign_loss)]
-                let top = (to - from) as usize;
-                #[allow(clippy::cast_possible_wrap)]
-                let out = rng.random_range(0..top) as isize + from;
+                // rand samples no `isize`, so draw an `i64` from the same range.
+                #[allow(clippy::cast_possible_truncation)]
+                let out = rng.random_range(from as i64..=to as i64) as isize;
 
                 resolver.resolve(RandomNumber(out));
             }

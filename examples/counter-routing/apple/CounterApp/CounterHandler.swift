@@ -58,15 +58,7 @@ struct CounterHandler: EffectHandler {
     /// never reaches this shell. The protocol still asks for the method,
     /// because type generation describes the app's `Effect`, which has the
     /// variant, not what the router leaves of it.
-    ///
-    /// `RandomNumberRequest` declares no operation kind, which is why this
-    /// method has the older shape, with a request id and a `resolve` taking
-    /// raw bytes.
-    func random(
-        _ operation: RandomNumberRequest,
-        requestId: UInt32,
-        resolve: @escaping @Sendable ([UInt8]) -> Void
-    ) {
+    func random(_ operation: RandomNumberRequest) async -> RandomNumber {
         fatalError("Random is handled by the router and should not reach the shell")
     }
 }
