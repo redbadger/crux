@@ -18,9 +18,22 @@ The `shared` directory adds two capabilities on top of the basic counter:
 ## Shells
 
 - SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `android/`
+- Android/Kotlin — `Android/`
 - Leptos — `web-leptos/`
 - NextJS — `web-nextjs/`
+
+The Swift, Kotlin and TypeScript shells use the `Core` that type generation
+emits: the codegen binary is told where `boltffi pack` puts the FFI bindings
+(with `.boltffi(..)`), so each shell constructs `Core` from an
+`EffectHandler` and never touches the FFI itself. Each shell sends HTTP
+requests with a client of its own (`SessionHttpHandler` in Swift,
+`KtorHttpHandler` in Kotlin and `FetchHttpHandler` in TypeScript). The shell's
+`http` method is one line that delegates to that client.
+
+Server-Sent Events are this app's own capability, so each shell implements
+the `serverSentEvents` stream method itself,
+sending every chunk it reads into the `EffectSink` it is given, and then
+`Done`. That is the pattern for any custom capability.
 
 ## Running
 

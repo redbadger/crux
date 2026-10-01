@@ -2341,7 +2341,9 @@ snapshots:
     dependencies:
       color-convert: 2.0.1
 
-  app@file:generated/types: {}
+  app@file:generated/types:
+    dependencies:
+      shared: file:generated/pkg
 
   argparse@2.0.1: {}
 
