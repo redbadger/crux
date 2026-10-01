@@ -1,4 +1,4 @@
-# Web — Rust and Yew
+# Web: Rust and Yew
 
 These are the steps to set up and run a simple Rust Web app that calls into a
 shared core.
@@ -64,7 +64,7 @@ effects that it produces. For this example, we only need to support the
 `Render` effect, which triggers a render of the UI.
 
 ```admonish
-This code that wraps the core only needs to be written once — it only grows when
+This code that wraps the core only needs to be written once; it only grows when
 we need to support additional capabilities.
 ```
 

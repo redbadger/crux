@@ -5,8 +5,8 @@ This is the end state of the tutorial in Part I ("Basics") of the
 included from here, so the tutorial and this code stay in step.
 
 The shells are deliberately hand-written: each one has a `CoreWrapper` that
-drives the BoltFFI `CoreFfi` by hand — serializing events, handling the
-effects that come back and reading the view model — so you can see exactly how a shell and the core
+drives the BoltFFI `CoreFfi` by hand (serializing events, handling the
+effects that come back and reading the view model), so you can see exactly how a shell and the core
 talk to each other. That makes it a good way to learn, but it is not the
 recommended way to write a shell.
 
@@ -25,9 +25,9 @@ The `shared` directory is a crate that implements the shared crux core. It conta
 
 ## Shells
 
-- SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `Android/`
-- NextJS — `web-nextjs/`
+- SwiftUI (iOS/macOS): `apple/`
+- Android/Kotlin: `Android/`
+- NextJS: `web-nextjs/`
 
 ## Running
 

@@ -21,20 +21,20 @@ This demonstrates:
 
 ### Two cores
 
-- **BoltFFI native shells** — The `EffectRouter` handles `Random` entirely in
+- **BoltFFI native shells**: The `EffectRouter` handles `Random` entirely in
   Rust. Every other effect reaches the shell through the `CruxShell` callback,
   including those produced inside `update` and `resolve`, which therefore
   return no requests of their own.
-- **Web compatibility shell** — The `RngHandler` needs a thread, so on wasm the
+- **Web compatibility shell**: The `RngHandler` needs a thread, so on wasm the
   core is bridged directly, `Random` effects pass through to the shell, and
   the shell answers them in JavaScript.
 
 ## Shells
 
-- SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `Android/`
-- Leptos — `web-leptos/`
-- NextJS — `web-nextjs/`
+- SwiftUI (iOS/macOS): `apple/`
+- Android/Kotlin: `Android/`
+- Leptos: `web-leptos/`
+- NextJS: `web-nextjs/`
 
 The Swift, Kotlin and TypeScript shells use the `Core` that type generation
 emits, with an `EffectHandler` per shell. The codegen binary asks for the
