@@ -48,12 +48,20 @@ For this walk-through, we'll use the
 reason other than we like it the most!
 
 Let's create a simple Next.js app for TypeScript,
-using `pnpx` (from `pnpm`). You can probably accept
-the defaults.
+using `pnpx` (from `pnpm`). Run this from the root of
+the repo, next to `shared`, and call the app
+`web-nextjs`, because that's the directory
+`shared/boltffi.toml` writes the Wasm package into.
 
 ```sh
-pnpx create-next-app@latest
+pnpx create-next-app@latest web-nextjs --app --src-dir --yes
+cd web-nextjs
 ```
+
+The `--app` and `--src-dir` flags pick the App Router
+and put the code in a `src/` directory, which is where
+the files below go. `--yes` accepts the defaults for
+everything else.
 
 ## Compile our Rust shared library
 
@@ -78,16 +86,32 @@ package manager ships something older.
 
 Now that we have `boltffi` installed, we can build
 our `shared` library to WebAssembly for the browser.
+BoltFFI runs from the `shared` directory, and writes
+the package to `web-nextjs/generated/pkg`:
 
 ```sh
 cd ../shared
 boltffi pack wasm
+cd ../web-nextjs
+```
+
+The generated `package.json` doesn't list the
+`shared_node.*` files among the files it publishes,
+but its Node.js entry point needs them, and Next.js
+uses that entry point when it renders on the server.
+Add them with this (the example's `Justfile` does the
+same after every `boltffi pack wasm`):
+
+```sh
+node -e "const fs = require('node:fs'); const path = 'generated/pkg/package.json'; const pkg = JSON.parse(fs.readFileSync(path, 'utf8')); const files = new Set(pkg.files ?? []); for (const file of ['shared_node.js', 'shared_node.d.ts', 'shared_node.js.map']) files.add(file); pkg.files = [...files]; fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');"
 ```
 
 ## Generate the Shared Types
 
 To generate the shared types for TypeScript, we use the
-codegen CLI we [prepared earlier](../../shell.md):
+codegen CLI we [prepared earlier](../../shell.md). Run
+it from the `web-nextjs` directory, so the types land
+in `web-nextjs/generated/types`:
 
 ```sh
 cargo run --package shared --bin codegen \
@@ -96,8 +120,9 @@ cargo run --package shared --bin codegen \
        --output-dir generated/types
 ```
 
-Both the Wasm package and the generated types are
-referenced as local dependencies in `package.json`:
+Now add both the Wasm package and the generated types
+to the `dependencies` in `package.json`, as local
+dependencies:
 
 ```json
 {
@@ -112,6 +137,32 @@ Install the dependencies:
 
 ```sh
 pnpm install
+```
+
+The generated types package (it's called `app`) is
+published as TypeScript source, so Next.js needs to
+compile it. Tell it to in `next.config.ts`:
+
+```typescript
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  transpilePackages: ["app"],
+};
+
+export default nextConfig;
+```
+
+The Wasm package also contains TypeScript sources
+alongside its compiled JavaScript, and they don't pass
+Next.js's type check. We only use the compiled files,
+so add `generated/pkg` to the `exclude` list in
+`tsconfig.json`:
+
+```json
+{
+  "exclude": ["node_modules", "generated/pkg/**/*.ts"]
+}
 ```
 
 ## Create some UI
@@ -134,7 +185,7 @@ once — it only grows when we need to support additional
 effects.
 ```
 
-Edit `src/app/core.ts` to look like the following.
+Create `src/app/core.ts` and make it look like the following.
 This code sends our (UI-generated) events to the core,
 and handles any effects that the core asks for. In this
 example, we aren't calling any HTTP APIs or handling
@@ -151,13 +202,22 @@ instance, and so we can't just pass the data directly.
 {{#include ../../../../../examples/counter/web-nextjs/src/app/core.ts}}
 ```
 
+```admonish note title="Why write this by hand?"
+The codegen also generates a ready-made `Core` class in `shared_types/app`,
+which runs this loop for you. We write the loop by hand in this chapter on
+purpose, because it shows how the shell and the core talk to each other. That's
+also why ours is called `CoreWrapper`, so it doesn't get mixed up with the
+generated `Core`. We pick up the generated `Core` in
+[Part II](../../../part-2/shell.md#who-drives-the-loop).
+```
+
 ```admonish tip
-That `switch` statement, above, is where you would
+That `matchEffect` call, above, is where you would
 handle any other effects that your core might ask for.
 For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example
 of this, take a look at the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-nextjs/src/app/core.ts)
+[counter-http example](https://github.com/redbadger/crux/tree/master/examples/counter-http/web-nextjs/src/app/core.ts)
 in the Crux repository.
 ```
 

@@ -48,6 +48,14 @@ CoreFfi
 When we build our app, we also want to build the Rust core as a static
 library so that it can be linked into the binary that we're going to ship.
 
+Everything for the Apple shell lives in a directory called `apple` at the root
+of the repo, next to `shared`. That's where `shared/boltffi.toml` puts the
+Swift package, so create it now:
+
+```bash
+mkdir apple
+```
+
 Other than Xcode and the Apple developer tools, we will use BoltFFI to generate
 a Swift package for our shared library, which we can add in Xcode. Install the
 matching CLI with
@@ -56,10 +64,20 @@ matching CLI with
 cargo install boltffi_cli --version '=0.30.1' --locked
 ```
 
-To run the various steps, we'll also use the [Just]() task runner.
+BoltFFI builds the core for each Apple platform, so add the Rust targets it
+needs:
+
+```bash
+rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-darwin x86_64-apple-ios
+```
+
+To run the various steps, we'll also use the [Just](https://just.systems/) task
+runner, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) to create the
+Xcode project.
 
 ```bash
 cargo install just
+brew install xcodegen
 ```
 
 Let's write the Justfile and we can look at what happens. Here are
@@ -123,7 +141,63 @@ Here's the project file:
 Nothing too special, other than linking a couple packages and using them
 as dependencies.
 
-With that, you can run
+XcodeGen needs the app's sources in `apple/CounterApp` before it can create
+the project, so let's write those next.
+
+## Building the UI
+
+To add some UI, we need to do three things: wrap the core with a simple Swift
+interface, build a basic View to give us something to put on screen, and use that
+view as our main app view.
+
+### Wrap the core
+
+The `CoreFfi` class in the `Shared` package takes and returns byte buffers, so
+let's give ourselves a nicer interface for it:
+
+```swift
+// apple/CounterApp/core.swift
+{{#include ../../../../../examples/counter/apple/CounterApp/core.swift}}
+```
+
+This is mostly just serialization code. But the `processEffect` method is interesting.
+That is where effect execution goes. At the moment the switch statement has a single
+lonely case updating the view model whenever the `.render` variant is requested,
+but you can add more in here later, as you expand your `Effect` type.
+
+```admonish note title="Why write this by hand?"
+The codegen also generates a ready-made `Core` class in the `App` package,
+which runs this loop for you. We write the loop by hand in this chapter on
+purpose, because it shows how the shell and the core talk to each other. That's
+also why ours is called `CoreWrapper`, so it doesn't get mixed up with the
+generated `Core`. We pick up the generated `Core` in
+[Part II](../../../part-2/shell.md#who-drives-the-loop).
+```
+
+### Build a basic view
+
+Create `apple/CounterApp/ContentView.swift` and make it look like this:
+
+```swift
+{{#include ../../../../../examples/counter/apple/CounterApp/ContentView.swift}}
+```
+
+And finally, create `apple/CounterApp/CounterApp.swift` to use the `ContentView`:
+
+```swift
+{{#include ../../../../../examples/counter/apple/CounterApp/CounterApp.swift}}
+```
+
+The one interesting part of this is the `@ObservedObject var core: CoreWrapper`. Since
+`CoreWrapper` is an `ObservableObject`, we can subscribe to it to refresh our view. And
+we've marked the `view` property as `@Published`, so whenever we set it, the View will draw.
+
+The view then simply shows the `core.view.count` in a `Text` and whenever we press a button, we directly
+call `core.update()` with the appropriate action.
+
+## Build and run
+
+With the sources in place, you can run
 
 ```bash
 just dev
@@ -136,53 +210,7 @@ to generate Swift code, and that was then packaged as a Swift package. You can
 look at the `generated` directory, and you'll see two Swift packages - `Shared` and `App`,
 just like we asked in `project.yml`. The `Shared` package has our app as a static lib and all the
 generated FFI code for our FFI bindings, and the `App` package has the key types we will need.
-
-No need to spend much time in here, but this is all the low-level glue code sorted out.
-Now we need to actually build some UI and we can run our app.
-
-## Building the UI
-
-To add some UI, we need to do three things: wrap the core with a simple Swift
-interface, build a basic View to give us something to put on screen, and use that
-view as our main app view.
-
-### Wrap the core
-
-The generated code still works with byte buffers, so lets give ourselves a nicer
-interface for it:
-
-```swift
-// apple/CounterApp/core.swift
-{{#include ../../../../../examples/counter/apple/CounterApp/core.swift}}
-```
-
-This is mostly just serialization code. But the `processEffect` method is interesting.
-That is where effect execution goes. At the moment the switch statement has a single
-lonely case updating the view model whenever the `.render` variant is requested,
-but you can add more in here later, as you expand your `Effect` type.
-
-### Build a basic view
-
-Xcode should've generated a ContentView file for you in `apple/CounterApp/ContentView.swift`.
-Change it to look like this:
-
-```swift
-{{#include ../../../../../examples/counter/apple/CounterApp/ContentView.swift}}
-```
-
-And finally, make sure `apple/CounterApp/CounterApp.swift` looks like this to use
-the `ContentView`:
-
-```swift
-{{#include ../../../../../examples/counter/apple/CounterApp/CounterApp.swift}}
-```
-
-The one interesting part of this is the `@ObservedObject var core: Core`. Since the `Core` is
-an `ObservableObject`, we can subscribe to it to refresh our view. And we've marked the `view`
-property as `@Published`, so whenever we set it, the View will draw.
-
-The view then simply shows the `core.view.count` in a `Text` and whenever we press a button, we directly
-call `core.update()` with the appropriate action.
+Finally, XcodeGen created `CounterApp.xcodeproj`, which you can open in Xcode.
 
 ```admonish success
 You should then be able to run the app in the simulator, on an iPhone, or as a macOS app, and it should look like this:

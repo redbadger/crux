@@ -228,11 +228,11 @@ they are wrapped in each other.
 The basic inner piece of the effect request is an _operation_. This
 is the intent which the command is submitting to the shell. Each
 operation has an associated _output_ value, with which the operation
-request can be resolved. There are multiple capabilities in each
-app, and in order for the shell to easily tell which capability's
-effect it needs to handle, we wrap the operation in an _effect_. The
-`Effect` type is a generated enum based on the app's set of
-capabilities, with one variant per capability. It allows us to
+request can be resolved. There are multiple operations in each
+app, and in order for the shell to easily tell which one it needs to
+handle, we wrap the operation in an _effect_. The `Effect` type is a
+generated enum based on the operations the app uses, with one variant
+per operation. It allows us to
 multiplex (or type erase) the different typed operations into a
 single type, which can be `match`ed on to process the operations.
 
@@ -252,9 +252,15 @@ app's `Effect` type (via the `From` trait), and sends it through the
 effects channel. The callback the `Request` carries is what fixes how
 many times the request can be resolved — never, once, or repeatedly —
 and the `RequestHandle` remembers it as an `OperationKind`, readable with
-`handle.kind()`. Notifications are never registered at all, so
-resolving one reports `NotFound`. The `Command` collects these effects and surfaces
-them to the `Core`.
+`handle.kind()`. Notifications are never registered at all: the bridge
+gives every one of them the same id, so resolving one reports
+`ResolveError::Never` rather than an unknown id. The `Command` collects
+these effects and surfaces them to the `Core`.
+
+The id the shell sees is opaque: the shell hands it back untouched. The
+bridge checks it on the way in, and when it rejects one, the error names
+the effect involved rather than just quoting a number — see
+[request ids](./typegen.md#request-ids).
 
 Looking at the core itself:
 

@@ -6,7 +6,7 @@ In practice, apps need a fairly limited number of capabilities — typically aro
 
 ## Using a capability
 
-Capabilities don't return a `Command` directly — they return a command *builder*, which lets you chain behaviour before committing to a specific event. We saw the abstract shape in chapter 5: `Http::get(...).expect_json().build().then_send(Event::ReceivedResponse)`.
+Capabilities don't return a `Command` directly — they return a command *builder*, which lets you chain behaviour before committing to a specific event. We saw the abstract shape in [Managed Effects](./effects.md): `Http::get(...).expect_json().build().then_send(Event::ReceivedResponse)`.
 
 The weather app's current-weather fetch shows the same pattern in production code:
 
@@ -60,7 +60,7 @@ pub struct Publish(pub Vec<u8>);
 /// Answered exactly once.
 #[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug)]
 #[operation(request, output = ValueResult)]
-pub struct Get { pub key: String }
+pub struct GetValue { pub key: String }
 
 /// Answered a sequence of times.
 #[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug)]
@@ -176,11 +176,12 @@ OperationKind::Request; send it with notify_shell or stream_from_shell instead
 ```
 
 ```admonish note title="Where that error appears"
-In this release the check is a `const` assertion evaluated after
-monomorphisation, so it fires on `cargo build`, `cargo test` or
-`cargo clippy --all-targets` — but *not* on `cargo check` or in your editor.
-The next breaking release moves the kind to an associated type, at which point
-it becomes an ordinary trait-bound error you see as you type.
+The check is a `const` assertion evaluated after monomorphisation, so it fires
+on `cargo build`, `cargo test` or `cargo clippy --all-targets` — but *not* on
+`cargo check` or in your editor. The
+[operation-kind traits RFC](../rfcs/operation-kind-traits.md) proposes making
+the kind an associated type of `Operation`, which would turn this into an
+ordinary trait-bound error you see as you type.
 ```
 
 The kinds pay off hardest on the shell side. Because each variant's kind is static, [type generation](../part-4/typegen.md) can emit a handler interface where `publish` returns nothing, `subscribe` is handed a sink to send `Message`s into, and a request method returns its output — the shell can't resolve the wrong number of times, because there is no `resolve` for it to call.
@@ -237,11 +238,11 @@ A few constraints keep a shipped file safe to drop into any app:
 
 - **Standard library only.** Foundation, the JDK and `kotlinx-coroutines-core`, the browser or Node globals, the BCL — nothing the generated module does not already require. The Kotlin source is JVM, not Android: the generated package is a `kotlin("jvm")` library, so `android.*` would not compile there. A capability that truly needs a library adds it with `ShellSource::stdlib(..).dependencies(&[..])`, and every app that registers the handler then pays for it, so the bar is high.
 - **Say where the lowest common denominator ends.** Writing to the standard library means a platform with something better — `DataStore` or Room on Android, Cronet for HTTP, a database anywhere — beats what you shipped. That is fine: the shell conforms its own type to your protocol and provides that instead. What is not fine is leaving an app to discover it. `crux_kv`'s file store documents that it caches nothing and spans no more than one key; its `UserDefaults` implementation documents that documents and caches belong in a file.
-- **The same source on every platform that runs the language.** Swift's standard library differs between Apple platforms and corelibs-foundation: `URLSession` and its companions live in `FoundationNetworking` there, so a source that uses them needs `#if canImport(FoundationNetworking)`. The `tests/shell_source.rs` below builds Swift on Linux in CI, which is how you find out.
+- **The same source on every platform that runs the language.** Swift's standard library differs between Apple platforms and corelibs-foundation: `URLSession` and its companions live in `FoundationNetworking` there, so a source that uses them needs `#if canImport(FoundationNetworking)`. CI builds the bundled capabilities' Swift on Linux, which is how you find out.
 - **Locks, not actors, in Swift.** The generated operation and output types are not `Sendable`, so an actor cannot return one across its isolation boundary. A shipped implementation that holds state guards it with a lock and declares itself `@unchecked Sendable`, as `TaskTimeHandler` does above.
 - **Configuration through the initialiser.** A shared instance for the plain path (`URLSessionHttpHandler.shared`), an initialiser for the configured one (`URLSessionHttpHandler(session:)`), no globals to mutate.
 - **Quiet.** No logging through an app-specific logger. Stay silent or expose a hook on the protocol.
-- **Compiled somewhere on every change.** `cargo test` cannot compile Swift. The bundled capabilities are compiled by the weather and notes example shells and by a `tests/shell_source.rs` in each crate, which generates a package for a small app and runs `dotnet build` or `tsc` when the toolchain is present. Give your own capability the same.
+- **Compiled somewhere on every change.** `cargo test` cannot compile Swift. The bundled capabilities are compiled by the weather and notes example shells and by a `tests/shell_source.rs` in each crate, which generates a package for a small app and builds it with `swift build`, `kotlinc`, `tsc` and `dotnet build`. Locally a missing toolchain is a printed skip; CI sets `CRUX_REQUIRE_SHELL_TOOLCHAINS`, which turns it into a failure. Give your own capability the same.
 
 Put the files under `shell/<language>/` beside `src/`, and make sure `Cargo.toml` packages them if it lists what to `include`.
 

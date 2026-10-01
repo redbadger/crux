@@ -1,12 +1,15 @@
 // ANCHOR: app
+// ANCHOR: crux_imports
 use crux_core::{
     App, Command,
     macros::effect,
     render::{RenderOperation, render},
 };
+// ANCHOR_END: crux_imports
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
+// ANCHOR: event
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
 pub enum Event {
@@ -14,22 +17,27 @@ pub enum Event {
     Decrement,
     Reset,
 }
+// ANCHOR_END: event
 
+// ANCHOR: effect
 #[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
     Render(RenderOperation),
 }
+// ANCHOR_END: effect
 
 #[derive(Default)]
 pub struct Model {
     count: isize,
 }
 
+// ANCHOR: view_model
 #[derive(Facet, Serialize, Deserialize, Clone, Default)]
 pub struct ViewModel {
     pub count: String,
 }
+// ANCHOR_END: view_model
 
 #[derive(Default)]
 pub struct Counter;

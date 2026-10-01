@@ -71,12 +71,12 @@ the counter example:
 
 ```rust,no_run,noplayground
 // Rust
-{{#include ../../../examples/counter/shared/src/app.rs:10:16}}
+{{#include ../../../examples/counter/shared/src/app.rs:event}}
 ```
 
 ```rust,no_run,noplayground
 // Rust
-{{#include ../../../examples/counter/shared/src/app.rs:29:32}}
+{{#include ../../../examples/counter/shared/src/app.rs:view_model}}
 ```
 
 Note the `#[repr(C)]` on the enum — this is required by Facet for
@@ -90,7 +90,7 @@ that the codegen binary needs:
 
 ```rust,no_run,noplayground
 // Rust
-{{#include ../../../examples/counter/shared/src/app.rs:18:22}}
+{{#include ../../../examples/counter/shared/src/app.rs:effect}}
 ```
 
 The macro discovers the operation types carried by each variant (e.g.
@@ -108,7 +108,7 @@ output with `#[facet(skip)]`:
 
 ```rust,no_run,noplayground
 // Rust
-{{#include ../../../examples/counter-middleware/shared/src/app.rs:38:60}}
+{{#include ../../../examples/counter-middleware/shared/src/app.rs:event}}
 ```
 
 In this example, `Set`, `Update`, and `UpdateBy` are internal events
@@ -299,6 +299,11 @@ public protocol EffectHandler: Sendable {
 }
 
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+extension EffectHandler {
+    public func render(_ operation: RenderOperation) {}
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
 public struct EffectDispatcher: Sendable {
     public init(handler: any EffectHandler,
                 resolve: @escaping @Sendable (UInt32, [UInt8]) -> Void)
@@ -317,7 +322,7 @@ val Effect.operationKind: OperationKind?
 fun interface EffectSink<in T> { fun send(item: T) }
 
 interface EffectHandler {
-    fun render(operation: RenderOperation)
+    fun render(operation: RenderOperation) {}
     suspend fun http(operation: HttpRequest): HttpResult
     fun subscribe(operation: Subscribe, sink: EffectSink<Message>)
     fun legacy(operation: LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
@@ -342,7 +347,7 @@ export function effectOperationKind(effect: Effect): OperationKind | undefined;
 export interface EffectSink<T> { send(item: T): void }
 
 export interface EffectHandler {
-    render(operation: RenderOperation): void;
+    render?(operation: RenderOperation): void;
     http(operation: HttpRequest): Promise<HttpResult>;
     subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
     legacy(operation: LegacyOperation, requestId: uint32,
@@ -373,7 +378,7 @@ public interface IEffectSink<in T> { void Send(T item); }
 
 public interface IEffectHandler
 {
-    void Render(RenderOperation operation);
+    void Render(RenderOperation operation) { }
     Task<HttpResult> Http(HttpRequest operation);
     void Subscribe(Subscribe operation, IEffectSink<Message> sink);
     void Legacy(LegacyOperation operation, uint requestId, Action<byte[]> resolve);
@@ -745,4 +750,4 @@ rejects a larger one.
   and TypeScript, and every shell then has to alias one of them at the
   import. The bundled capabilities avoid this with verb+noun names such as
   `SetValue`, and your own operations are worth naming the same way.
-- Facet type generation requires `facet_generate` 0.21 or later.
+- Facet type generation requires `facet_generate` 0.22 or later.

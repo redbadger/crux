@@ -1,6 +1,6 @@
 # Android
 
-The Android shell talks to the Rust core the same way the iOS shell does — serialise events, hand them across the FFI, deserialise effect requests, handle each effect, resolve with the response, repeat. The Kotlin and Compose idioms differ from Swift and SwiftUI, but the shape is the same.
+The Android shell talks to the Rust core the same way the iOS shell does: the generated `Core` serialises events, hands them across the FFI and resolves each effect request with what the shell's handler returns, and the shell supplies the handler and the views. The Kotlin and Compose idioms differ from Swift and SwiftUI, but the shape is the same.
 
 ## Booting the Core with Hilt
 
@@ -18,7 +18,7 @@ The explicit providers are the three handlers `crux_http`, `crux_kv` and `crux_t
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/CoreModule.kt:start}}
 ```
 
-`Core` takes the two things a shell supplies: an `EffectHandler` and a `CoroutineScope` on the main dispatcher. The `.also` sends the same `Event.Start` we saw in chapter 3 the moment the core exists — it fetches the API key and favourites before anything is drawn.
+`Core` takes the two things a shell supplies: an `EffectHandler` and a `CoroutineScope` on the main dispatcher. The `.also` sends the same `Event.Start` we saw in [App lifecycle](../app_lifecycle.md) the moment the core exists — it fetches the API key and favourites before anything is drawn.
 
 The handler is `WeatherHandler`, which takes five injected dependencies — one per capability that needs a real-world implementation: `HttpHandler` (shipped by `crux_http`, over `HttpURLConnection`), `LocationHandler` (Fused Location Provider + permission flow), `KeyValueHandler` (shipped by `crux_kv`, file-backed), `SecretStore` (AndroidKeyStore-backed), and `TimeHandler` (shipped by `crux_time`, coroutine timers).
 
@@ -26,7 +26,7 @@ One thing to flag upfront: the word "ViewModel" shows up in two senses on Androi
 
 ## The FFI bridge
 
-Underneath the two-argument constructor, `Core` talks to Rust through a `CoreBridge` interface with three byte-level methods, and the generated package implements it over BoltFFI's `CoreFfi` in `FfiBridge.kt`:
+Underneath `Core(handler, scope)`, `Core` talks to Rust through a `CoreBridge` interface with three byte-level methods, and the generated package implements it over BoltFFI's `CoreFfi` in `FfiBridge.kt`:
 
 ```kotlin
 // Kotlin
