@@ -2,6 +2,7 @@ import App
 import Foundation
 import Shared
 
+// ANCHOR: bridge
 /// The generated `CoreBridge`, written by hand over this app's `CoreFfi`.
 ///
 /// The codegen binary doesn't ask for the generated `FfiBridge`, because that
@@ -36,7 +37,9 @@ struct RoutingBridge: CoreBridge, @unchecked Sendable {
         [UInt8](ffi.view())
     }
 }
+// ANCHOR_END: bridge
 
+// ANCHOR: callback
 /// The `CruxShell` callback `CoreFfi` is constructed with.
 ///
 /// The `EffectRouter` calls `processEffects` with the serialized requests for
@@ -58,7 +61,9 @@ final class RoutedEffects: CruxShell, Sendable {
         continuation.yield([UInt8](bytes))
     }
 }
+// ANCHOR_END: callback
 
+// ANCHOR: make_core
 /// Build the generated `Core` over the routing bridge.
 ///
 /// Construction runs one way (callback, then bridge, then `Core`), and the
@@ -82,3 +87,4 @@ func makeCore() -> Core {
 
     return core
 }
+// ANCHOR_END: make_core
