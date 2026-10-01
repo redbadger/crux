@@ -27,6 +27,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
+    // ANCHOR: shell_extension
     let mut registry = TypeRegistry::new();
     registry.register_app::<Counter>()?;
     // HTTP is `crux_http`'s business, so the shells hold an instance of the
@@ -37,6 +38,7 @@ fn main() -> Result<()> {
         .shell_extension(&crux_http::shell::swift::URL_SESSION)?
         .shell_extension(&crux_http::shell::kotlin::URL_CONNECTION)?
         .shell_extension(&crux_http::shell::typescript::FETCH)?;
+    // ANCHOR_END: shell_extension
 
     let typegen_app = registry
         .build()?
