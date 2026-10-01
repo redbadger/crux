@@ -1,4 +1,4 @@
-# Web — TypeScript and React Router
+# Web: TypeScript and React Router
 
 These are the steps to set up and run a simple TypeScript Web app that calls
 into a shared core.
@@ -38,7 +38,7 @@ brew install binaryen # provides wasm-opt
 
 The crate is `boltffi_cli`; it installs the `boltffi` binary used below.
 
-Binaryen must be version 123 or newer — BoltFFI passes `--enable-bulk-memory-opt`
+Binaryen must be version 123 or newer, because BoltFFI passes `--enable-bulk-memory-opt`
 to `wasm-opt`, which older releases don't understand. Check with
 `wasm-opt --version`; distribution packages are often well behind, so prefer a
 [release from GitHub](https://github.com/WebAssembly/binaryen/releases) if your
@@ -153,8 +153,8 @@ there is no hand-written wrapper.
 
 Edit `app/core.ts` to look like the following. The generated `EffectHandler`
 interface has one method per operation the app declares. The counter's only
-effect is `Render`, which the generated `Core` handles itself — it reads the
-new view model and passes it to the `onView` callback — so `CounterHandler`
+effect is `Render`, which the generated `Core` handles itself (it reads the
+new view model and passes it to the `onView` callback), so `CounterHandler`
 is empty.
 
 `Core.create` is an `async` factory rather than a constructor, because it

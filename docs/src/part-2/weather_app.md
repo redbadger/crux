@@ -12,7 +12,7 @@ So we're going to build a Weather app. It needs to call an API,
 store data and secrets locally, and use location APIs to show local weather. That's plenty of effects
 for us to play with and see how Crux supports this.
 
-Here's the same app — one shared core — running on iOS, Android, macOS, and the web:
+Here's the same app (one shared core) running on iOS, Android, macOS, and the web:
 
 <div style="display: flex; gap: 1rem; justify-content: center; align-items: flex-end; flex-wrap: wrap;">
   <figure style="text-align: center; margin: 0;">
@@ -33,16 +33,16 @@ Here's the same app — one shared core — running on iOS, Android, macOS, and 
 <div style="display: flex; gap: 1rem; justify-content: center; align-items: flex-end; flex-wrap: wrap; margin-top: 1rem;">
   <figure style="text-align: center; margin: 0;">
     <img src="images/weather-leptos.webp" alt="Weather app with Leptos" style="width: 360px;" />
-    <figcaption><small>Web — Leptos (Rust)</small></figcaption>
+    <figcaption><small>Web: Leptos (Rust)</small></figcaption>
   </figure>
   <figure style="text-align: center; margin: 0;">
     <img src="images/weather-nextjs.webp" alt="Weather app with Next.js" style="width: 360px;" />
-    <figcaption><small>Web — Next.js (TypeScript)</small></figcaption>
+    <figcaption><small>Web: Next.js (TypeScript)</small></figcaption>
   </figure>
 </div>
 
 The app is a small weather client: local weather on the home screen,
-search for other locations, and a favourites list — all backed by a real API.
+search for other locations, and a favourites list, all backed by a real API.
 
 You can look at the [full example code](https://github.com/redbadger/crux/tree/master/examples/weather)
 in the Crux GitHub repo, but we'll walk through the key parts. As before, we're going to start with the core

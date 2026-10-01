@@ -43,8 +43,8 @@ struct RoutingBridge: CoreBridge, @unchecked Sendable {
 /// every effect it routes to the shell. Most arrive synchronously, on the
 /// thread that called `update` or `resolve` and before that call returns; the
 /// rest come from the `RngHandler`'s thread, after it has answered a `Random`.
-/// The callback doesn't hold the `Core` — it can't, because the `Core` is
-/// built from the bridge, which is built from this — so it puts the bytes on
+/// The callback doesn't hold the `Core` (it can't, because the `Core` is
+/// built from the bridge, which is built from this), so it puts the bytes on
 /// a stream, in the order they arrive, for `makeCore` to forward.
 final class RoutedEffects: CruxShell, Sendable {
     let stream: AsyncStream<[UInt8]>
@@ -61,7 +61,7 @@ final class RoutedEffects: CruxShell, Sendable {
 
 /// Build the generated `Core` over the routing bridge.
 ///
-/// Construction runs one way — callback, then bridge, then `Core` — and the
+/// Construction runs one way (callback, then bridge, then `Core`), and the
 /// stream carries the callback's bytes back the other way. One task on the
 /// main actor reads it and passes each batch to `Core.process(bytes:)`, which
 /// has to run there because `Core` is `@MainActor`. A single reader keeps the

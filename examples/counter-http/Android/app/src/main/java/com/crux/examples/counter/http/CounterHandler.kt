@@ -13,7 +13,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * The shell's side of the effect protocol: the generated `EffectHandler` has
- * one method per operation the app declares. Nothing here calls `resolve` —
+ * one method per operation the app declares. Nothing here calls `resolve`:
  * the generated `EffectDispatcher` does that, exactly as often as the
  * operation's kind says.
  *
@@ -45,8 +45,8 @@ class CounterHandler(
      * `shared/src/sse.rs`), so the shell implements the operation here. That is the pattern for any
      * custom capability.
      *
-     * The method is not `suspend` — a stream outlives the call that opens
-     * it — so the connection runs in a coroutine of its own on `scope`.
+     * The method is not `suspend` (a stream outlives the call that opens
+     * it), so the connection runs in a coroutine of its own on `scope`.
      */
     override fun serverSentEvents(
         operation: SseRequest,
