@@ -52,11 +52,7 @@ dependencies {
     // added dependencies
     implementation(libs.lifecycle.viewmodel.compose)
 
-    implementation(platform(libs.koin.bom))
-    implementation(libs.koin.core)
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
-
+    // for the Server-Sent Events stream; HTTP uses the shipped handler
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.logging)

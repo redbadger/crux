@@ -140,8 +140,8 @@ On WebAssembly there is no middleware: the bridge wraps `Core` directly, so
 
 ### The FFI effect type
 
-The FFI module declares its own `Effect` enum. This is the enum typegen turns
-into shell types, and the bridge serializes it:
+The FFI module declares its own `Effect` enum, which is the one the bridge
+serializes:
 
 ```rust,no_run,noplayground
 {{#include ../../../examples/counter-middleware/shared/src/ffi.rs:ffi_effect}}
@@ -156,8 +156,13 @@ two enums have the same variants, so every arm remaps 1:1:
 
 If a middleware fully consumes a variant on every target you build, you can
 remove that variant from this enum and `panic!` on it in `From` — the shell then
-sees a narrower set of effects. The counter example keeps `Random` here because
-the WebAssembly shells trigger it themselves and need it in the typegen.
+receives a narrower set of effects. The counter example keeps `Random` here
+because on WebAssembly the middleware doesn't run, so the shell handles it.
+
+Type generation doesn't see this enum: the codegen binary registers the app,
+so the shell's types, and the generated `EffectHandler`, follow the app's
+`Effect`. A native shell still implements a `random` method, then, even though
+on its targets the middleware means the method is never called.
 
 ## In the shell
 
@@ -170,17 +175,45 @@ calls `CruxShell::process_effects`, a trait the shell implements and passes to
 `CoreFfi::new`. The bytes are the same serialized requests that `update` and
 `resolve` return, and the shell handles them the same way.
 
-The counter-middleware shells drive that loop by hand, as in Part I. With the
-generated `Core`, pass the bytes to its `process(bytes:)` (Swift),
-`process(bytes)` (Kotlin), `processBytes` (TypeScript) or `Process(byte[])` (C#).
-The callback arrives on the middleware's thread, and the Swift `Core` is
-`@MainActor`, so hop to the main actor before calling it.
+The counter-middleware shells use the generated `Core`
+([Who drives the loop](../part-2/shell.md#who-drives-the-loop)), with an
+`EffectHandler` that delegates `http` to the handler `crux_http` ships and
+implements `serverSentEvents` by hand. Setting the `Core` up differs in one
+way. `CoreFfi::new` takes the shell's callback, but the generated `FfiBridge`
+constructs `CoreFfi` with no arguments, so an app with middleware doesn't
+configure `.boltffi(...)`. Instead each shell writes the three-method
+`CoreBridge` over its own `CoreFfi`. Here it is in Swift:
 
-Setting the `Core` up changes in one way. `CoreFfi::new` takes the shell's
-callback, but the generated `FfiBridge` constructs `CoreFfi` with no arguments,
-so an app with middleware doesn't configure `.boltffi(...)`. Instead it writes
-the three-method `CoreBridge` over its own `CoreFfi` and uses the `Core`
-constructor that takes a bridge, such as `Core(bridge:handler:)` in Swift.
+```swift
+{{#include ../../../examples/counter-middleware/apple/CounterApp/MiddlewareBridge.swift:bridge}}
+```
+
+The callback hands its bytes to the generated `Core`'s `process(bytes:)` —
+`process(bytes)` in Kotlin, `processBytes` in TypeScript and `Process(byte[])`
+in C#. Construction runs the other way: the bridge needs the `CoreFfi`, the
+`CoreFfi` needs the callback, and the callback needs the `Core`, which is built
+from the bridge. The Swift shell breaks that cycle by not giving the callback
+the `Core` at all. The callback puts the bytes on an `AsyncStream`:
+
+```swift
+{{#include ../../../examples/counter-middleware/apple/CounterApp/MiddlewareBridge.swift:callback}}
+```
+
+Once the `Core` exists, a task reads from the stream and passes each batch on.
+The callback arrives on the middleware's thread, and the Swift `Core` is
+`@MainActor`, so that task runs on the main actor. Because one task reads the
+whole stream, the batches arrive in the order the middleware sent them:
+
+```swift
+{{#include ../../../examples/counter-middleware/apple/CounterApp/MiddlewareBridge.swift:make_core}}
+```
+
+The app then builds the `Core` from `makeCore()` in place of
+`Core(handler:)`, and the rest of the shell is the same as any other. The
+Kotlin shell sets the `Core` on its callback once it has been constructed, and
+posts each batch to the main thread with `Dispatchers.Main`. The TypeScript
+shell closes over a variable it assigns once the `Core` is built. In
+WebAssembly there's no middleware, so its callback is never called.
 
 ## Testing
 
