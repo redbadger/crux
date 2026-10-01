@@ -145,6 +145,11 @@ check-examples:
     @echo '{{ style("command") }}check-examples:{{ NORMAL }}'
     just examples/check
 
+# Build the book and check its code includes — mirrors the `docs` job of the `build` CI workflow
+docs:
+    @echo '{{ style("command") }}docs:{{ NORMAL }}'
+    just docs/ci
+
 # Clean build artefacts in the root workspace and all examples
 clean:
     @echo '{{ style("command") }}clean:{{ NORMAL }}'
