@@ -30,8 +30,8 @@ check: check-versions
 # bump leaves the toolchain silently mismatched rather than failing loudly.
 # lib.just is the single source of truth; this recipe holds everything to it.
 #
-# facet is the worst of the three to get wrong. It is pinned in ten places (the
-# workspace manifest, all six example shared crates, the book, and two lines of
+# facet is the worst of the three to get wrong. It is pinned in eleven places (the
+# workspace manifest, all seven example shared crates, the book, and two lines of
 # renovate.json), and a partial bump does not surface as a version conflict —
 # cargo happily resolves two facet_core versions, and you get
 # `RenderOperation: Facet<'_> is not satisfied` from whichever crate ended up on
@@ -96,8 +96,8 @@ check-versions:
     $(grep -F -A3 -H '"matchPackageNames": ["facet"],' renovate.json | grep -E 'allowedVersions' || true)
     FACET_PINS
 
-    if [ "$facet_checked" -lt 10 ]; then
-        echo "  {{ style("error") }}✗ only found $facet_checked facet pins, expected at least 10 — has a pin site moved or been renamed?{{ NORMAL }}"
+    if [ "$facet_checked" -lt 11 ]; then
+        echo "  {{ style("error") }}✗ only found $facet_checked facet pins, expected at least 11 — has a pin site moved or been renamed?{{ NORMAL }}"
         status=1
     fi
 
@@ -118,8 +118,8 @@ check-versions:
     $(grep -HoE '^ *coroutines_version=[0-9]+\.[0-9]+\.[0-9]+' .github/workflows/build.yaml || true)
     COROUTINES_PINS
 
-    if [ "$coroutines_checked" -lt 7 ]; then
-        echo "  {{ style("error") }}✗ only found $coroutines_checked kotlinx-coroutines pins, expected at least 7 — has a pin site moved or been renamed?{{ NORMAL }}"
+    if [ "$coroutines_checked" -lt 8 ]; then
+        echo "  {{ style("error") }}✗ only found $coroutines_checked kotlinx-coroutines pins, expected at least 8 — has a pin site moved or been renamed?{{ NORMAL }}"
         status=1
     fi
 

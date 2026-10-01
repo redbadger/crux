@@ -107,7 +107,7 @@ Edit the **app**'s `build.gradle.kts` (`/Android/app/build.gradle.kts`) to look 
 this:
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/app/build.gradle.kts}}
+{{#include ../../../../../examples/counter-tutorial/Android/app/build.gradle.kts}}
 ```
 
 ````admonish
@@ -117,7 +117,7 @@ will need to ensure this is kept up to date.
 Our catalog (`Android/gradle/libs.versions.toml`) will end up looking like this:
 
 ```toml
-{{#include ../../../../../examples/counter/Android/gradle/libs.versions.toml}}
+{{#include ../../../../../examples/counter-tutorial/Android/gradle/libs.versions.toml}}
 ```
 ````
 
@@ -147,14 +147,14 @@ Edit the **project**'s `build.gradle.kts` (`/Android/build.gradle.kts`) to look 
 this:
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/build.gradle.kts}}
+{{#include ../../../../../examples/counter-tutorial/Android/build.gradle.kts}}
 ```
 
 Edit the **library**'s `build.gradle.kts` (`/Android/shared/build.gradle.kts`) to look
 like this:
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/shared/build.gradle.kts}}
+{{#include ../../../../../examples/counter-tutorial/Android/shared/build.gradle.kts}}
 ```
 
 ```admonish warning title="Sharp edge"
@@ -255,7 +255,7 @@ so we just handle this render effect by updating the published view model from
 the core.
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/CoreWrapper.kt}}
+{{#include ../../../../../examples/counter-tutorial/Android/app/src/main/java/com/crux/examples/counter/CoreWrapper.kt}}
 ```
 
 ```admonish note title="Why write this by hand?"
@@ -277,7 +277,7 @@ Edit `/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt` to
 look like the following:
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt}}
+{{#include ../../../../../examples/counter-tutorial/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt}}
 ```
 
 ```admonish success

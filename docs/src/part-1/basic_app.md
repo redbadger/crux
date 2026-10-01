@@ -7,7 +7,7 @@ counter app. A simple counter we can increment, decrement and reset.
 ## Code of the app
 
 ```admonish example
-You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)
+You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/counter-tutorial/shared/src/app.rs)
 ```
 
 In the last chapter, we started with the main type
@@ -148,13 +148,13 @@ implementation also needs `Command` and `render` from `crux_core`, so replace
 the separate `crux_core` imports we've added so far with this one:
 
 ```rust,noplayground
-{{#include ../../../examples/counter/shared/src/app.rs:crux_imports}}
+{{#include ../../../examples/counter-tutorial/shared/src/app.rs:crux_imports}}
 ```
 
-Here is where we end up (straight from the actual [example code](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)):
+Here is where we end up (straight from the actual [example code](https://github.com/redbadger/crux/blob/master/examples/counter-tutorial/shared/src/app.rs)):
 
 ```rust,noplayground
-{{#include ../../../examples/counter/shared/src/app.rs:impl_app}}
+{{#include ../../../examples/counter-tutorial/shared/src/app.rs:impl_app}}
 ```
 
 The `update` function is the heart of the app, it manages the state transitions

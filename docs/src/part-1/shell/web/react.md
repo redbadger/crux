@@ -199,7 +199,7 @@ is because the core is running in a separate WebAssembly
 instance, and so we can't just pass the data directly.
 
 ```typescript
-{{#include ../../../../../examples/counter/web-nextjs/src/app/core.ts}}
+{{#include ../../../../../examples/counter-tutorial/web-nextjs/src/app/core.ts}}
 ```
 
 ```admonish note title="Why write this by hand?"
@@ -230,7 +230,7 @@ to the update function so that we can update the state
 in response to a render effect from the core.
 
 ```typescript
-{{#include ../../../../../examples/counter/web-nextjs/src/app/page.tsx}}
+{{#include ../../../../../examples/counter-tutorial/web-nextjs/src/app/page.tsx}}
 ```
 
 Now all we need is some CSS. First add the `Bulma`
@@ -241,7 +241,7 @@ pnpm add bulma
 ```
 
 ```typescript
-{{#include ../../../../../examples/counter/web-nextjs/src/app/layout.tsx}}
+{{#include ../../../../../examples/counter-tutorial/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app
