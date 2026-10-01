@@ -20,8 +20,9 @@ Let's briefly talk about what we want from this interface. Ideally, in our shell
 Crux provides code generation support for all of the above. It also generates,
 from each effect variant's declared operation kind, an `EffectHandler` interface,
 a dispatcher that calls `resolve` for you the right number of times, and a
-`Core` that runs the whole loop — we stick to calling `resolve` by hand in this
-part, and pick the generated `Core` up in [Part II](../part-2/shell.md).
+`Core` that runs the whole loop. We stick to calling `resolve` by hand in this
+part, to see how the loop works. [Getting started](../getting_started/shell.md)
+uses the generated `Core`, as does Part II.
 
 ```admonish note
 It isn't in any way actual black magic. What happens is Crux exposes FFI calls taking and returning
@@ -242,3 +243,12 @@ Now we can proceed to the actual shell for your platform of choice:
 - [Android with Kotlin and Jetpack Compose](./shell/android/index.md)
 - [Web with TypeScript, React and Next.js](./shell/web/react.md)
 - [Rust in WebAssembly with Leptos](./shell/web/leptos.md)
+
+```admonish tip title="Once you've seen how it works"
+The hand-written loops in the Swift, Kotlin and TypeScript chapters are there
+to show what crosses the boundary. In your own apps, let the generated `Core`
+run the loop: [Getting started](../getting_started/shell.md) shows the same
+counter written that way, and [Part II](../part-2/weather_app.md) builds a real
+app with it. The Leptos shell is Rust, so it keeps talking to the core
+directly, as it does here.
+```
