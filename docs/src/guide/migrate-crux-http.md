@@ -110,8 +110,9 @@ The `examples/counter-http/shared/src/sse.rs` file shows exactly this pattern
 for Server-Sent Events, but the same skeleton works for any chunked HTTP body:
 
 ```rust
-// 1. Define the protocol
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+// 1. Define the protocol — a stream operation, answered once per item
+#[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[operation(stream, output = StreamingHttpResponse)]
 pub struct StreamingHttpRequest { pub url: String }
 
 #[derive(Facet, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -119,10 +120,6 @@ pub struct StreamingHttpRequest { pub url: String }
 pub enum StreamingHttpResponse {
     Chunk(Vec<u8>),
     Done,
-}
-
-impl Operation for StreamingHttpRequest {
-    type Output = StreamingHttpResponse;
 }
 
 // 2. Build a StreamBuilder capability method
@@ -145,9 +142,11 @@ where
 }
 ```
 
-The shell sends `Chunk(bytes)` for each network chunk and `Done` at EOF. The
-core processes the resulting `Stream<Item = Vec<u8>>` with normal async stream
-combinators. This pattern is clean, avoids any I/O in the core, and no `AsyncRead` is required.
+The shell sends `Chunk(bytes)` for each network chunk and `Done` at EOF.
+Declaring the operation a stream means the generated `EffectHandler` hands the
+shell an `EffectSink` to send those items into. The core processes the
+resulting `Stream<Item = Vec<u8>>` with normal async stream combinators. This
+pattern is clean, avoids any I/O in the core, and no `AsyncRead` is required.
 
 ---
 
