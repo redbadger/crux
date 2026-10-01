@@ -1,13 +1,24 @@
-# Getting started
+# Setting up
 
-We generally recommend building Crux apps from inside out, starting with the Core.
+This section is the fast path. It builds the counter app the way we recommend
+writing a Crux app today: a shared core in Rust, and shells that use the
+`Core` class Crux generates for them, so all a shell writes is its UI and an
+`EffectHandler` for the app's effects.
 
-This part will first take you through setting up the tools and building the Core,
-and writing tests to make sure everything works as expected. Finally, once we're
-confident we have a working core, we'll set up the necessary bindings for the shell
-and build the UI for your chosen platform.
+The finished code is in
+[`examples/counter`](https://github.com/redbadger/crux/tree/master/examples/counter),
+and the chapters that follow walk through the parts of it that matter. They
+explain just enough to get you going, and link to the rest of the book where
+the details live:
 
-But first, we need to make sure we have all the necessary tools
+- [Part I](../part-1/basic_app.md) builds the same counter with a
+  hand-written shell, to show how the shell and the core talk to each other.
+- [Part II](../part-2/weather_app.md) builds a real app, with HTTP, storage,
+  timers and location, and goes into managed effects and capabilities in
+  depth.
+
+We generally recommend building Crux apps from the inside out, starting with
+the Core. But first, we need to make sure we have all the necessary tools.
 
 ## Install the tools
 
@@ -20,7 +31,7 @@ when you use any rust tooling within the repo.
 You may not need all the targets if you're not planning to build a fully cross platform app.
 
 ```toml
-# /rust-toolchain.toml
+# TOML — /rust-toolchain.toml
 [toolchain]
 channel = "stable"
 components = ["rustfmt", "clippy"]
@@ -42,6 +53,19 @@ in the examples.
 cargo install cargo-nextest --locked
 ```
 
+The shells link the core through [BoltFFI](https://www.boltffi.dev/), and the
+examples run their build steps with the [Just](https://just.systems/) task
+runner, so install those too:
+
+```sh
+cargo install boltffi_cli --version '=0.30.1' --locked
+cargo install just
+```
+
+Each shell also needs its own platform's tools — Xcode, Android Studio, Node.js
+with `pnpm`, or .NET. In the example, running `just doctor` in a shell's
+directory checks you have what that shell needs.
+
 ## Create the core crate
 
 We need a crate to hold our application's core, but since one of our shell options later will
@@ -56,7 +80,7 @@ root, to add the new library to our workspace.
 It should look something like this:
 
 ```toml
-# /Cargo.toml
+# TOML — /Cargo.toml
 [workspace]
 resolver = "3"
 members = ["shared"]
@@ -86,7 +110,7 @@ The library's manifest, at `/shared/Cargo.toml`, should look something like the
 following,
 
 ```toml
-# /shared/Cargo.toml
+# TOML — /shared/Cargo.toml
 [package]
 name = "shared"
 version = "0.1.0"
@@ -113,13 +137,13 @@ shells:
 
 The only missing part now is your `src/lib.rs` file. This will eventually
 contain a fair bit of configuration for the shell interface, so we tend to
-recommend reserving it to this job and creating a a `src/app.rs` module
+recommend reserving it to this job and creating a `src/app.rs` module
 for your app code.
 
 For now, the `lib.rs` file looks as follows:
 
 ```rust,noplayground
-// src/lib.rs
+// Rust — src/lib.rs
 mod app;
 
 pub use app::*;
@@ -129,7 +153,7 @@ and `app.rs` can be empty, but let's put our app's main type in it,
 call it `Counter`:
 
 ```rust,noplayground
-// src/app.rs
+// Rust — src/app.rs
 
 #[derive(Default)]
 pub struct Counter;
@@ -141,4 +165,4 @@ Running
 cargo build
 ```
 
-should build your Core. Let's make it [do something now](./basic_app.md).
+should build your Core. Let's make it [do something now](./core.md).

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crux_core::{Request, command::StreamBuilder, macros::Operation};
 
+// ANCHOR: operation
 /// Open a Server-Sent Events stream on `url`. The shell answers with a
 /// sequence of [`SseResponse`]s: a `Chunk` per batch of bytes it reads, then
 /// one `Done` when the server closes the connection.
@@ -23,6 +24,7 @@ pub enum SseResponse {
     Chunk(Vec<u8>),
     Done,
 }
+// ANCHOR_END: operation
 
 impl SseResponse {
     #[must_use]

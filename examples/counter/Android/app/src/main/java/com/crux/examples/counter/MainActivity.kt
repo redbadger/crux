@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.crux.examples.counter.ui.theme.CounterTheme
 
+// ANCHOR: activity
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,6 +44,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+// ANCHOR_END: activity
 
 @Composable
 fun View(view: ViewModel, update: (Event) -> Unit) {
