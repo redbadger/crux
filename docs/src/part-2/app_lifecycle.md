@@ -86,7 +86,7 @@ When a response comes back, it flows through `update`:
 {{#include ../../../examples/weather/shared/src/model/initializing.rs:update}}
 ```
 
-Each branch stores the result, then calls `resolve()` to see whether we have enough to move on:
+Each branch stores its result, and then `update` calls `resolve()` to see whether we have enough to move on:
 
 ```rust
 {{#include ../../../examples/weather/shared/src/model/initializing.rs:resolve}}

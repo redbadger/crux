@@ -542,7 +542,10 @@ fn an_unnamed_language_gets_no_bridge() {
 
     assert!(EmitterPlugin::<Kotlin>::companion_files(&plugin, &config).is_empty());
     assert!(EmitterPlugin::<CSharp>::companion_files(&plugin, &config).is_empty());
-    assert!(EmitterPlugin::<TypeScript>::manifest_dependencies(&plugin).is_empty());
+    assert_eq!(
+        EmitterPlugin::<TypeScript>::manifest_dependencies(&plugin),
+        Vec::<String>::new()
+    );
     assert!(!EmitterPlugin::<Swift>::companion_files(&plugin, &config).is_empty());
 }
 
@@ -651,8 +654,14 @@ fn observation_is_imported_only_when_a_core_is_emitted() {
     let mut without_render = effects;
     without_render[0].variants.retain(|variant| !variant.render);
     let plugin = CorePlugin::new(&without_render.into(), app, None);
-    assert!(EmitterPlugin::<Swift>::imports(&plugin, &config).is_empty());
-    assert!(EmitterPlugin::<CSharp>::imports(&plugin, &config).is_empty());
+    assert_eq!(
+        EmitterPlugin::<Swift>::imports(&plugin, &config),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        EmitterPlugin::<CSharp>::imports(&plugin, &config),
+        Vec::<String>::new()
+    );
 }
 
 /// `Core` is the only thing in the generated Kotlin that needs coroutines, so
@@ -680,8 +689,14 @@ fn kotlin_asks_for_coroutines_only_when_it_emits_a_core() {
     let mut without_render = effects;
     without_render[0].variants.retain(|variant| !variant.render);
     let plugin = CorePlugin::new(&without_render.into(), app, None);
-    assert!(EmitterPlugin::<Kotlin>::imports(&plugin, &config).is_empty());
-    assert!(EmitterPlugin::<Kotlin>::manifest_dependencies(&plugin).is_empty());
+    assert_eq!(
+        EmitterPlugin::<Kotlin>::imports(&plugin, &config),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        EmitterPlugin::<Kotlin>::manifest_dependencies(&plugin),
+        Vec::<String>::new()
+    );
 }
 
 /// The decoder has to agree with the ids `EffectId` actually issues, so both

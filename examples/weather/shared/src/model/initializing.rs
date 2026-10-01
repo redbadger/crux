@@ -108,7 +108,6 @@ impl InitializingModel {
                     }
                 };
                 self.api_key = InitializingValue::Fetched(api_key);
-                self.resolve()
             }
             InitializingEvent::FavoritesLoaded(result) => {
                 let favorites = result
@@ -120,9 +119,10 @@ impl InitializingModel {
 
                 tracing::debug!("loaded {} favorites", favorites.len());
                 self.favorites = InitializingValue::Fetched(favorites);
-                self.resolve()
             }
         }
+
+        self.resolve()
     }
     // ANCHOR_END: update
 
