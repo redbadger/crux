@@ -138,21 +138,31 @@ The key steps are:
    view model, and the operation types they reference).
 2. **`.build()?`** — produces a `CodeGenerator` with the full type
    graph.
-3. **`Config::builder(name, &output_dir)`** — configures the output.
+3. **`.boltffi(BoltFfi::new()...)`** — tells type generation where
+   `boltffi pack` puts the FFI bindings for each shell: the `Shared`
+   Swift module, the Kotlin package the types are generated into, and
+   the `shared` npm package at `../pkg`. For each language named here,
+   the generated package gains an `FfiBridge` over `CoreFfi` and `Core`
+   gains a constructor that takes only an `EffectHandler`, so the shell
+   writes no adapter of its own — see
+   [Bridging to BoltFFI](#bridging-to-boltffi). C# is not named, so its
+   output is unchanged and the Windows shell still wraps `CoreFfi`
+   itself.
+4. **`Config::builder(name, &output_dir)`** — configures the output.
    The `name` parameter is the package/module name (e.g. `"App"` for
    Swift, `"com.crux.examples.counter"` for Kotlin, `"app"` for
-   TypeScript, `"CounterApp.Shared"` for C#).
-4. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
+   TypeScript, `"CounterApp.Shared"` for C#). For Swift, the
+   `.platform(..)` calls give the generated package the deployment
+   floor that the BoltFFI package it now depends on requires.
+5. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
    **`.typescript(&config)?`** / **`.csharp(&config)?`** — generates
    the code, including the target-language serialization runtime for
    `bincode`.
 
 BoltFFI binding generation is run separately by the shell build recipes with
-`boltffi pack ...`. The codegen binary is intentionally focused on Crux app
-types; the one thing it can be told about BoltFFI is where its output
-lives, with `.boltffi(BoltFfi::new()...)` on the `CodeGenerator`, so that
-the generated `Core` can be constructed over it without a hand-written
-adapter — see [Bridging to BoltFFI](#bridging-to-boltffi).
+`boltffi pack ...`. The codegen binary does not run BoltFFI or read its
+output; `.boltffi(..)` only repeats the names BoltFFI was configured with
+in `boltffi.toml`.
 
 ### Cargo.toml setup
 
