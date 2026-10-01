@@ -52,15 +52,13 @@ same as defining a capability's protocol: a request type and a response type:
 {{#include ../../../examples/counter-middleware/shared/src/capabilities/mod.rs:operation}}
 ```
 
-The `RandomNumberRequest` carries the range (min, max), and `RandomNumber` carries the result.
-The `Operation` impl connects them so that Crux knows a `RandomNumberRequest` produces a
-`RandomNumber`.
-
-This one is written by hand and declares no operation kind, which is still fine. An
-operation with no declared kind takes whichever `Command` constructor the call site
-uses. If you'd rather pin it down, `#[derive(Operation)]` with
-`#[operation(request, output = RandomNumber)]` does the same job and additionally
-declares that the request is answered exactly once. See
+The `RandomNumberRequest` carries the range (min and max, both included), and `RandomNumber` carries the result.
+`#[derive(Operation)]` writes the `Operation` implementation, and
+`#[operation(request, output = RandomNumber)]` tells it two things: a
+`RandomNumberRequest` produces a `RandomNumber`, and it is a request, answered
+exactly once. The kind is what lets the app send it with
+`Command::request_from_shell` (and only that), and what gives the generated shell
+handler a typed `random` method that returns a `RandomNumber`. See
 [Building capabilities](../part-2/capabilities.md).
 
 The app uses this operation as one variant of its `Effect` enum:
