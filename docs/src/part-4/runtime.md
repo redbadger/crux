@@ -36,8 +36,8 @@ decided by the operation type itself: an operation declares a
 `OperationKind` (notify, request or stream), and the other two constructors
 stop compiling for it. That declaration is also what the runtime records
 on the `RequestHandle` it builds, and what type generation hands to shells.
-An operation that declares nothing keeps the older behaviour, where the
-kind is whatever the call site chose.
+An operation that declares no kind can be sent with any of the three
+constructors, and its kind is whatever the call site chose.
 
 ```admonish note
 In this chapter, we will focus on the runtime and the core interface and ignore
