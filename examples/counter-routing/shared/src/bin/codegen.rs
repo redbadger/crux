@@ -27,6 +27,12 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
+    // No `.boltffi(..)` here. `CoreFfi::new` takes the shell's `CruxShell`
+    // callback, which on native targets is how the `EffectRouter` delivers
+    // every effect it routes to the shell, and the generated `FfiBridge`
+    // constructs `CoreFfi` with no arguments. So each shell writes the
+    // three-method `CoreBridge` over its own `CoreFfi` and builds `Core` from
+    // that.
     let typegen_app = TypeRegistry::new().register_app::<Counter>()?.build()?;
 
     let name = match args.language {
