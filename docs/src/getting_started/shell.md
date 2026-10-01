@@ -27,7 +27,7 @@ scratch, Part I's shell chapters walk through it for
 [iOS/macOS](../part-1/shell/apple/index.md),
 [Android](../part-1/shell/android/index.md) and
 [React](../part-1/shell/web/react.md). Their project setup applies here too,
-with two differences, because the generated package now depends on the
+with two differences, because here the generated package depends on the
 BoltFFI one:
 
 - In `apple/project.yml`, the app target needs only the generated `App`
