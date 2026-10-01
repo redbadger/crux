@@ -1,0 +1,71 @@
+mod lib '../../lib.just'
+
+default: dev
+
+common := "shared web-nextjs android"
+shells := if os() == "macos" { common + " apple" } else { common }
+
+# checks required tools across all shells
+[script('bash')]
+doctor:
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"':{{ NORMAL }}'
+        just "$shell/doctor"
+        echo ''
+    done
+
+# local development workflow
+[script('bash')]
+dev:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/dev:{{ NORMAL }}'
+        just "$shell/dev"
+    done
+
+# fix formatting in all shells
+[script('bash')]
+fix:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/fix:{{ NORMAL }}'
+        just "$shell/fix"
+    done
+
+# check formatting and lint in all shells
+[script('bash')]
+check:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/check:{{ NORMAL }}'
+        just "$shell/check"
+    done
+
+# clean build artefacts in all shells
+[script('bash')]
+clean:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/clean:{{ NORMAL }}'
+        just "$shell/clean"
+    done
+    cargo clean
+    rm -rf target
+
+# CI workflow
+[script('bash')]
+ci:
+    set -euo pipefail
+    for shell in {{ shells }}; do
+        echo '{{ style("command") }}'"$shell"'/ci:{{ NORMAL }}'
+        just "$shell/ci"
+    done
+
+# update pnpm dependencies in all pnpm shells
+[script('bash')]
+update-pnpm-deps:
+    set -euo pipefail
+    for shell in web-nextjs; do
+        echo '{{ style("command") }}'"$shell"'/update-pnpm-deps:{{ NORMAL }}'
+        just "$shell/update-pnpm-deps"
+    done
