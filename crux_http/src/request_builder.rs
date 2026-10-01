@@ -396,7 +396,6 @@ where
     ///
     /// Not all code working with futures (such as the `join` macro) works with `IntoFuture` (yet?), so this
     /// method is provided as a more discoverable `.into_future` alias, and may be deprecated later.
-    #[must_use]
     pub fn send_async(self) -> BoxFuture<'static, Result<RawResponse>> {
         <Self as std::future::IntoFuture>::into_future(self)
     }

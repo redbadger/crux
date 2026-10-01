@@ -20,7 +20,7 @@ facet_typegen = ["crux_core/facet_typegen"]
 http-types = ["dep:http-types"]
 
 [dependencies]
-async-trait = "0.1"
+async-trait = "0.1.92"
 crux_core = { version = "0.21.0", path = "../crux_core" }
 derive_builder = "0.20"
 encoding_rs = { version = "0.8", optional = true }

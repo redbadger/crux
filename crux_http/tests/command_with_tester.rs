@@ -314,7 +314,7 @@ mod tests {
 
         // Nothing happens yet
         assert!(update.effects.is_empty());
-        assert!(update.events.is_empty());
+        assert_eq!(update.events, []);
 
         let actual = app
             .resolve(
