@@ -1,5 +1,16 @@
 # Middleware
 
+```admonish tip title="Consider the effect router instead"
+For new code, we recommend the effect router over middleware. An
+[`EffectRouter`](https://docs.rs/crux_core/latest/crux_core/effects/index.html)
+wraps the core and routes each effect the app emits to a handler: the shell,
+as usual, or Rust code running alongside the core. The routing applies to the
+follow-up effects of a resolved request too. The
+[counter-routing example](https://github.com/redbadger/crux/tree/master/examples/counter-routing)
+is the same app as the one in this chapter, built with the router, and the
+[Effect Router RFC](../rfcs/effect-router.md) explains the design.
+```
+
 Middleware is a somewhat advanced feature for split effect handling, i.e.
 handling some effects in the shell, and some still in the core, but outside
 the app's state loop.

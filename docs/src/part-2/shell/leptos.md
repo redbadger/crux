@@ -140,7 +140,7 @@ Each capability lives in its own file. Here's HTTP:
 
 `core.resolve(...)` returns a **fresh batch of effects**, so `resolve_effect` loops back through `process_effect`. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
 
-The other capabilities (`kv`, `location`, `secret`, `time`) follow the same shape: take the request, do the work, resolve, recurse. Each returns the one output its operation declares (`kv::get` a `ValueResult`, `location::get_location` an `Option<Location>`, `secret::fetch` a `SecretFetchResponse`), so there's no wide response enum to construct and no wrong variant to construct it with.
+The other capabilities (`kv`, `location`, `secret`, `time`) follow the same shape: take the request, do the work, resolve, recurse. Each returns the one output its operation declares (`kv::get` a `ValueResult`, `location::get_location` an `Option<Location>`, `secret::fetch` a `SecretFetchResponse`).
 
 ## Shared components
 
