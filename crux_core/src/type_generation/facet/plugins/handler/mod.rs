@@ -17,17 +17,20 @@ mod typescript;
 
 use std::{io, sync::Arc};
 
-use facet_generate::generation::{
-    CodeGeneratorConfig,
-    csharp::CSharp,
-    indent::IndentWrite,
-    kotlin::Kotlin,
-    plugin::{EmitContext, EmitterPlugin},
-    swift::Swift,
-    typescript::TypeScript,
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        csharp::CSharp,
+        indent::IndentWrite,
+        kotlin::Kotlin,
+        plugin::{EmitContext, EmitterPlugin},
+        swift::Swift,
+        typescript::TypeScript,
+    },
+    reflection::format::QualifiedTypeName,
 };
 
-use super::{Matched, Requalify, bincode_import_path, matched, serializes_output};
+use super::{Matched, Requalify, bincode_import_path, matched, output_types, serializes_output};
 use crate::type_generation::facet::EffectMeta;
 
 /// Emits `EffectSink`, `EffectHandler` and `EffectDispatcher`.
@@ -41,6 +44,21 @@ impl EffectHandlerPlugin {
         Self {
             effects: Arc::clone(effects),
         }
+    }
+
+    /// The outputs the handler API names, for the module it is emitted into —
+    /// the first effect's, since it is written after that enum.
+    ///
+    /// The effect enum names the operations itself, so the generator already
+    /// imports their namespaces; an output is named only by the handler API,
+    /// so without this a namespace nothing else in the module refers to would
+    /// not be imported.
+    fn referenced(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.effects
+            .first()
+            .filter(|effect| config.generates(&effect.effect))
+            .map(output_types)
+            .unwrap_or_default()
     }
 
     /// The handler API uses fixed names, so it is emitted for the first
@@ -62,6 +80,10 @@ impl EffectHandlerPlugin {
 }
 
 impl EmitterPlugin<Swift> for EffectHandlerPlugin {
+    fn referenced_types(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.referenced(config)
+    }
+
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
         self.matched::<Swift>(ctx)
             .map_or(Ok(()), |m| swift::emit(w, &m, ctx.config))
@@ -69,6 +91,10 @@ impl EmitterPlugin<Swift> for EffectHandlerPlugin {
 }
 
 impl EmitterPlugin<Kotlin> for EffectHandlerPlugin {
+    fn referenced_types(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.referenced(config)
+    }
+
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
         self.matched::<Kotlin>(ctx)
             .map_or(Ok(()), |m| kotlin::emit(w, &m, ctx.config))
@@ -76,6 +102,10 @@ impl EmitterPlugin<Kotlin> for EffectHandlerPlugin {
 }
 
 impl EmitterPlugin<TypeScript> for EffectHandlerPlugin {
+    fn referenced_types(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.referenced(config)
+    }
+
     fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
         if !serializes_output(&self.effects) {
             return vec![];
@@ -91,6 +121,10 @@ impl EmitterPlugin<TypeScript> for EffectHandlerPlugin {
 }
 
 impl EmitterPlugin<CSharp> for EffectHandlerPlugin {
+    fn referenced_types(&self, config: &CodeGeneratorConfig) -> Vec<QualifiedTypeName> {
+        self.referenced(config)
+    }
+
     fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
         if self.effects.is_empty() {
             return vec![];
