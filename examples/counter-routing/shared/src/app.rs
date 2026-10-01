@@ -59,6 +59,7 @@ pub enum Event {
     UpdateBy(isize),
 }
 
+// ANCHOR: effect
 #[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
@@ -67,6 +68,7 @@ pub enum Effect {
     ServerSentEvents(SseRequest),
     Random(RandomNumberRequest),
 }
+// ANCHOR_END: effect
 
 #[derive(Default)]
 pub struct Counter;
@@ -506,6 +508,7 @@ mod tests {
         );
     }
 
+    // ANCHOR: random_test
     #[test]
     fn random_change() {
         let app = Counter;
@@ -523,6 +526,7 @@ mod tests {
 
         let event = cmd.events().next().unwrap();
         assert_eq!(event, Event::UpdateBy(-2));
+        // ANCHOR_END: random_test
 
         let mut cmd = app.update(event, &mut model);
 
