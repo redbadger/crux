@@ -27,6 +27,11 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
+    // No `.boltffi(..)` here. `CoreFfi::new` takes the shell's `CruxShell`
+    // callback, which the middleware uses to deliver effects after `update`
+    // or `resolve` has returned, and the generated `FfiBridge` constructs
+    // `CoreFfi` with no arguments. So each shell writes the three-method
+    // `CoreBridge` over its own `CoreFfi` and builds `Core` from that.
     let typegen_app = TypeRegistry::new().register_app::<Counter>()?.build()?;
 
     let name = match args.language {
