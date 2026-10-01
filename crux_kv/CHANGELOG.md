@@ -25,7 +25,7 @@ and this project adheres to
   `listKeys`. An app registers it in its codegen binary
   (`registry.shell_handler(&crux_kv::KEY_VALUE)?`), which also generates every
   operation of the capability, and delegates one line per operation. Note that
-  this puts `Get`, `Set`, `Delete`, `Exists` and `ListKeys` into the app's
+  this puts `GetValue`, `SetValue`, `DeleteValue`, `KeyExists` and `ListKeys` into the app's
   generated namespace: an app-defined operation with one of those names must
   be renamed. See
   [Shipped shell handlers](https://redbadger.github.io/crux/part-4/typegen.html#shipped-shell-handlers).
@@ -51,8 +51,8 @@ and this project adheres to
 
   #[effect]
   enum Effect {
-      Get(operation::Get),
-      Set(operation::Set),
+      KvGet(operation::GetValue),
+      KvSet(operation::SetValue),
       Render(RenderOperation),
   }
 
@@ -74,25 +74,25 @@ and this project adheres to
 
   | Operation | Fields | Output | Kind |
   | --- | --- | --- | --- |
-  | `Get` | `key: String` | `ValueResult` | `Request` |
-  | `Set` | `key: String, value: Vec<u8>` | `ValueResult` | `Request` |
-  | `Delete` | `key: String` | `ValueResult` | `Request` |
-  | `Exists` | `key: String` | `BoolResult` | `Request` |
+  | `GetValue` | `key: String` | `ValueResult` | `Request` |
+  | `SetValue` | `key: String, value: Vec<u8>` | `ValueResult` | `Request` |
+  | `DeleteValue` | `key: String` | `ValueResult` | `Request` |
+  | `KeyExists` | `key: String` | `ExistsResult` | `Request` |
   | `ListKeys` | `prefix: String, cursor: u64` | `KeysResult` | `Request` |
 
   where the outputs are the usual `Ok`/`Err` pairs, since `Result` does not cross the
   FFI boundary:
 
   ```rust
-  pub enum ValueResult { Ok(Value), Err(KeyValueError) }
-  pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
-  pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
+  pub enum ValueResult  { Ok(Value), Err(KeyValueError) }
+  pub enum ExistsResult { Ok(bool),  Err(KeyValueError) }
+  pub enum KeysResult   { Ok(Keys),  Err(KeyValueError) }
 
   pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
   ```
 
   Each converts to and from the `Result` alias an app sees (`ValueResult` ↔
-  `DataResult`, `BoolResult` ↔ `StatusResult`, `KeysResult` ↔ `ListResult`), so a shell
+  `DataResult`, `ExistsResult` ↔ `StatusResult`, `KeysResult` ↔ `ListResult`), so a shell
   that already speaks one API can serve the other.
 
   The enum API is unchanged and still works — an app can use both side by side, and
@@ -107,8 +107,8 @@ and this project adheres to
   | Deprecated | Since | Use instead |
   | --- | --- | --- |
   | `KeyValue` | 0.15.0 | `store::KeyValue` |
-  | `KeyValueOperation` | 0.15.0 | `operation::{Get, Set, Delete, Exists, ListKeys}` |
-  | `KeyValueResult` | 0.15.0 | `operation::{ValueResult, BoolResult, KeysResult}` |
+  | `KeyValueOperation` | 0.15.0 | `operation::{GetValue, SetValue, DeleteValue, KeyExists, ListKeys}` |
+  | `KeyValueResult` | 0.15.0 | `operation::{ValueResult, ExistsResult, KeysResult}` |
   | `KeyValueResponse` | 0.15.0 | the output type of the operation you sent |
 
   `KeyValueError`, `Value`, `DataResult`, `StatusResult` and `ListResult` are **not**

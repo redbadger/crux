@@ -9,8 +9,8 @@ import Foundation
 /// struct MyHandler: EffectHandler {
 ///     let kv = UserDefaultsKeyValueHandler()
 ///
-///     func kvGet(_ operation: Get) async -> ValueResult { await kv.get(operation) }
-///     func kvSet(_ operation: Set) async -> ValueResult { await kv.set(operation) }
+///     func kvGet(_ operation: GetValue) async -> ValueResult { await kv.get(operation) }
+///     func kvSet(_ operation: SetValue) async -> ValueResult { await kv.set(operation) }
 /// }
 /// ```
 ///
@@ -25,13 +25,13 @@ import Foundation
 /// the store itself failed; a missing key is an answer.
 public protocol KeyValueHandler: Sendable {
     /// Read the bytes stored under `operation.key`.
-    func get(_ operation: Get) async -> ValueResult
+    func get(_ operation: GetValue) async -> ValueResult
     /// Write `operation.value`, answering with the value it replaced.
-    func set(_ operation: Set) async -> ValueResult
+    func set(_ operation: SetValue) async -> ValueResult
     /// Remove `operation.key`, answering with the value it removed.
-    func delete(_ operation: Delete) async -> ValueResult
+    func delete(_ operation: DeleteValue) async -> ValueResult
     /// Whether `operation.key` is in the store.
-    func exists(_ operation: Exists) async -> BoolResult
+    func exists(_ operation: KeyExists) async -> ExistsResult
     /// The keys starting with `operation.prefix`, from `operation.cursor`.
     func listKeys(_ operation: ListKeys) async -> KeysResult
 }
@@ -83,17 +83,17 @@ public final class UserDefaultsKeyValueHandler: KeyValueHandler, @unchecked Send
         self.init(defaults: UserDefaults(suiteName: suiteName) ?? .standard, domain: suiteName)
     }
 
-    public func get(_ operation: Get) async -> ValueResult {
+    public func get(_ operation: GetValue) async -> ValueResult {
         .ok(Self.value(defaults.data(forKey: operation.key)))
     }
 
-    public func set(_ operation: Set) async -> ValueResult {
+    public func set(_ operation: SetValue) async -> ValueResult {
         let previous = defaults.data(forKey: operation.key)
         defaults.set(Data(operation.value), forKey: operation.key)
         return .ok(Self.value(previous))
     }
 
-    public func delete(_ operation: Delete) async -> ValueResult {
+    public func delete(_ operation: DeleteValue) async -> ValueResult {
         let previous = defaults.data(forKey: operation.key)
         defaults.removeObject(forKey: operation.key)
         return .ok(Self.value(previous))
@@ -102,7 +102,7 @@ public final class UserDefaultsKeyValueHandler: KeyValueHandler, @unchecked Send
     /// `data(forKey:)`, not `object(forKey:)`, so that this agrees with `get`:
     /// a key whose value is not `Data` — one of the system's, say — is not a
     /// key this store holds, and `get` already answers `.none` for it.
-    public func exists(_ operation: Exists) async -> BoolResult {
+    public func exists(_ operation: KeyExists) async -> ExistsResult {
         .ok(defaults.data(forKey: operation.key) != nil)
     }
 

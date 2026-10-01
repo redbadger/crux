@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 ///     private val time = CoroutineTimeHandler()
 ///
 ///     override suspend fun timeNotifyAfter(operation: NotifyAfter): TimerId = time.notifyAfter(operation)
-///     override suspend fun timeClear(operation: Clear): TimerId = time.clear(operation)
+///     override suspend fun timeClear(operation: ClearTimer): TimerId = time.clear(operation)
 /// }
 /// ```
 ///
@@ -42,7 +42,7 @@ interface TimeHandler {
     suspend fun notifyAfter(operation: NotifyAfter): TimerId
 
     /// Cancel the timer `operation.id` names, and answer with it.
-    suspend fun clear(operation: Clear): TimerId
+    suspend fun clear(operation: ClearTimer): TimerId
 }
 
 /// A [TimeHandler] whose timers are coroutines that `delay`.
@@ -80,7 +80,7 @@ class CoroutineTimeHandler(
     override suspend fun notifyAfter(operation: NotifyAfter): TimerId =
         sleep(operation.id, (operation.duration.nanos / 1_000_000uL).toLong())
 
-    override suspend fun clear(operation: Clear): TimerId {
+    override suspend fun clear(operation: ClearTimer): TimerId {
         // Cancelling completes the timer's job, which settles the call waiting
         // on it, so that it answers too. Nothing acts on that answer.
         timers.remove(operation.id.value)?.cancel()

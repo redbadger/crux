@@ -7,14 +7,14 @@
 import "./wasm-getrandom";
 
 import type {
-  Clear,
+  ClearTimer,
   EffectHandler,
   EffectSink,
-  Get,
+  GetValue,
   Message,
   NotifyAfter,
   Publish,
-  Set as SetValue,
+  SetValue,
   Subscribe,
   TimerId,
   ValueResult,
@@ -71,7 +71,7 @@ export class NotesHandler implements EffectHandler {
     this.subscription.current = sink;
   }
 
-  kvGet(operation: Get): Promise<ValueResult> {
+  kvGet(operation: GetValue): Promise<ValueResult> {
     return this.kv.get(operation);
   }
 
@@ -83,7 +83,7 @@ export class NotesHandler implements EffectHandler {
     return this.time.notifyAfter(operation);
   }
 
-  timeClear(operation: Clear): Promise<TimerId> {
+  timeClear(operation: ClearTimer): Promise<TimerId> {
     return this.time.clear(operation);
   }
 }

@@ -31,7 +31,7 @@ fn main() -> Result<()> {
     // shell, so the shells hold an instance of what these emit and delegate to
     // it rather than writing the protocols' rules out three times. Registering
     // a handler also registers the types its sources name, so the operations
-    // this app never sends — `Delete`, `Now` and the rest — are generated
+    // this app never sends — `DeleteValue`, `Now` and the rest — are generated
     // too: the shipped source implements the whole capability.
     registry
         .shell_handler(&crux_http::HTTP)?
