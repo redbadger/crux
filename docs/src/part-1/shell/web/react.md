@@ -215,10 +215,16 @@ generated `Core`. We pick up the generated `Core` in
 That `matchEffect` call, above, is where you would
 handle any other effects that your core might ask for.
 For example, if your core needs to make an HTTP
-request, you would handle that here. To see an example
-of this, take a look at the
+request, you would handle that here. The
 [counter-http example](https://github.com/redbadger/crux/tree/master/examples/counter-http/web-nextjs/src/app/core.ts)
-in the Crux repository.
+in the Crux repository is this app with HTTP and
+Server-Sent Events added. It uses the generated `Core`
+instead of a loop like this one, so its shell is an
+`EffectHandler` with one method per effect: HTTP
+delegates to the handler `crux_http` ships, and the
+Server-Sent Events are written by hand. We get to the
+generated `Core` in
+[Part II](../../../part-2/shell.md#who-drives-the-loop).
 ```
 
 #### Create a component to render the UI
