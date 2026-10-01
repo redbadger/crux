@@ -1,4 +1,4 @@
-package com.crux.examples.counter.http.core
+package com.crux.examples.counter.http
 
 import com.crux.examples.counter.SseRequest
 import com.crux.examples.counter.SseResponse
@@ -13,6 +13,10 @@ import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.readLine
 
+/// Reads a Server-Sent Events stream and hands each line to `callback` as an
+/// `SseResponse.Chunk`, then one `SseResponse.Done` when the server closes
+/// the connection. `CounterHandler` calls it for the `ServerSentEvents`
+/// operation.
 class SseClient {
     private val httpClient = HttpClient(OkHttp) {
         install(Logging) {
