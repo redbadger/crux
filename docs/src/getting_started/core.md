@@ -83,7 +83,7 @@ a `CoreBridge` you write yourself. Name only the languages you build shells
 for.
 
 On Swift, the `platform(...)` calls give the generated package the same
-deployment target as the BoltFFI package it now depends on.
+deployment target as the BoltFFI package it depends on.
 [Bridging to BoltFFI](../part-4/typegen.md#bridging-to-boltffi) covers the
 options, and what changes in each platform's build.
 

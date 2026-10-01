@@ -60,7 +60,7 @@ in the bytes: how many times does *this* effect get resolved?
   lives.
 
 Because each operation declares its kind in Rust, [type generation](../part-4/typegen.md)
-can tell the shell. Every generated `Effect` gains an `operationKind` accessor
+can tell the shell. Every generated `Effect` has an `operationKind` accessor
 (`effectOperationKind(effect)` in TypeScript), and, more usefully, an
 `EffectHandler` protocol/interface with one method per variant, whose signature
 *is* the answer:
@@ -73,14 +73,14 @@ can tell the shell. Every generated `Effect` gains an `operationKind` accessor
   the request again.
 
 A shell that implements the handler and lets `EffectDispatcher` do the
-resolving cannot resolve the wrong number of times or with the wrong type,
-because there is no `resolve` call left for it to get wrong. If you drive the
+resolving never calls `resolve` itself, so each request is resolved the number
+of times its kind says, with its operation's output type. If you drive the
 dispatcher yourself, its `resolve` argument is your own callback around the
 core's `resolve` FFI.
 
 ## Who drives the loop
 
-You don't have to. Once the dispatcher does the resolving, what remains of the
+The generated `Core` does. With the dispatcher doing the resolving, the
 shell's core loop is the same in every app: serialize the `Event`, call the
 core's `update`, deserialize the requests, re-read the view when a `Render`
 arrives, hand everything else to the dispatcher, and when a request is
@@ -95,7 +95,7 @@ binding generator other than BoltFFI, or for an app with
 
 So with the generated `Core`, what a shell writes is the `EffectHandler`.
 Register the handlers `crux_http`, `crux_kv` and `crux_time` ship, with
-`.shell_handler(&crux_http::HTTP)` and friends, and most of it becomes
+`.shell_handler(&crux_http::HTTP)` and friends, and most of it is
 one-line delegations. `Core` handles `Render` itself and publishes the new
 view in each language's own way (an `@Observable` `view` property in Swift,
 a `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a `View`
@@ -114,7 +114,7 @@ Three of the shells that follow hand the loop to the generated `Core`. The
 Leptos shell doesn't:
 core and shell are both Rust there, so it matches on the `Effect` enum
 directly, which is just as precise and needs no generated code. Matching by
-hand is still supported everywhere, because the generated handler API is additive.
+hand works in every language, alongside the generated handler API.
 
 Let's look at how this works in practice.
 

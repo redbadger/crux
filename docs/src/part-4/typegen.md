@@ -151,7 +151,7 @@ The key steps are:
    Swift, `"com.crux.examples.counter"` for Kotlin, `"app"` for
    TypeScript, `"CounterApp.Shared"` for C#). For Swift, the
    `.platform(..)` calls give the generated package the deployment
-   floor that the BoltFFI package it now depends on requires.
+   floor that the BoltFFI package it depends on requires.
 5. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
    **`.typescript(&config)?`** / **`.csharp(&config)?`**: generates
    the code, including the target-language serialization runtime for
@@ -269,15 +269,14 @@ Next to the generated `Effect`, you get:
 - an `EffectHandler` protocol or interface with one method per variant:
   a notification's method returns nothing, a request's method returns
   the operation's `Output`, a stream's method takes an
-  `EffectSink<Output>`, and a legacy variant's method is handed
-  `(operation, requestId, resolve)` exactly as before;
+  `EffectSink<Output>`, and the method for an operation that declares no
+  kind is handed `(operation, requestId, resolve)` to resolve itself;
 - an `EffectDispatcher(handler, resolve)` that calls the right method
   and resolves the request never, once, or once per sink item,
   serializing each output with the generated bincode serializers.
 
 The `resolve` you hand the dispatcher is your own
-`(requestId, bytes) -> ()` callback around the core's `resolve` FFI,
-the same one you would have called by hand.
+`(requestId, bytes) -> ()` callback around the core's `resolve` FFI.
 
 Here is what that looks like for an effect with one variant of each
 kind, plus a `Legacy` operation that declares nothing.
@@ -502,8 +501,8 @@ Things worth knowing:
   callback in the middleware examples) can hand those bytes straight to
   `Core`. It tolerates an empty byte array.
 - **Concurrency.** The Swift `Core` is `@MainActor`; the dispatcher's
-  resolve hops back to the main actor before touching the bridge, as the
-  hand-written shells did. The Kotlin `Core` dispatches each request, and
+  resolve hops back to the main actor before touching the bridge. The
+  Kotlin `Core` dispatches each request, and
   processes each resolution, in its own coroutine on the scope you pass.
   In C#, `PropertyChanged` may be raised on a thread-pool thread after
   an asynchronous request completes, so marshal to your UI thread in the
@@ -569,16 +568,16 @@ var core = new Core(new CounterHandler());
 
 TypeScript's is an `async` factory because the wasm module loads
 asynchronously: `Core.create` awaits the package's `initialized` promise
-before touching `CoreFfi`, which is the one thing every hand-written web
-shell had to remember. `CoreBridge` and the two-argument constructors are
-still emitted, so a preview or a test can hand `Core` a fake, and a shell
+before touching `CoreFfi`, so the shell never calls into a module that
+has not finished loading. `CoreBridge` and the two-argument constructors are
+also emitted, so a preview or a test can hand `Core` a fake, and a shell
 whose FFI has a different shape (the middleware examples, whose
 `CoreFfi::new` takes a callback) still writes its own adapter.
 
 Three consequences for the build:
 
 - **Swift.** `FfiBridge.swift` imports the BoltFFI module, so the generated
-  package now depends on the BoltFFI package: `Package.swift` gains
+  package depends on the BoltFFI package: `Package.swift` gains
   `.package(path: "../Shared")` and the target depends on its product. SPM
   requires a dependent package's deployment target to be at least its
   dependency's, and BoltFFI's package declares one, so give the generated
@@ -592,15 +591,14 @@ Three consequences for the build:
       .build()
   ```
 
-  Your app target no longer needs to link the BoltFFI package itself; it
+  Your app target does not need to link the BoltFFI package itself; it
   reaches it through the generated one.
 - **TypeScript.** The generated `package.json` depends on the BoltFFI
   package (`"shared": "file:../pkg"`), and type generation runs
   `pnpm install` in the generated package, so run `boltffi pack wasm`
-  *before* typegen. The Android recipes already pack first; the web
-  recipes in the examples were reordered to match.
+  *before* typegen, as the Android and web recipes in the examples do.
 - **C#.** `FfiBridge.cs` is compiled into the generated project, so that
-  project now needs the assembly `CoreFfi` lives in (the NuGet package
+  project needs the assembly `CoreFfi` lives in (the NuGet package
   `boltffi pack csharp` builds), even when both share a namespace. The
   generated `.csproj` is rewritten on every run, so add the reference
   from a `Directory.Build.props` above it; the counter's Windows shell
@@ -611,7 +609,7 @@ Three consequences for the build:
   ```
 
   Run `boltffi pack csharp` before the generated project is restored, as
-  the Windows recipes already do.
+  the Windows recipes do.
 
 Kotlin needs nothing else when the bindings share the generated package,
 which is how the examples are configured.
@@ -652,8 +650,7 @@ the Swift target, `Http.kt` in the Kotlin package, `Http.cs` in the C#
 namespace) with the module's header prepended and the source otherwise
 verbatim. TypeScript modules are a single file, so there the source is
 appended after the types, as `Core` is. A language the capability does
-not ship gets nothing, and you implement those methods as you would have
-anyway.
+not ship gets nothing, and you implement those methods yourself.
 
 The file declares a protocol named after the handler (`HttpHandler`,
 `IHttpHandler` in C#) with one method per operation, taking the
@@ -727,9 +724,8 @@ rejects a larger one.
 
 ### Notes and escape hatches
 
-- The emission is **additive**. A shell that matches on `Effect` and
-  calls `resolve` by hand keeps working unchanged, which is what Crux's
-  Rust shells do. The [Leptos shell](../part-2/shell/leptos.md) matches
+- The handler API is **optional**. A shell can instead match on `Effect`
+  and call `resolve` by hand, which is what Crux's Rust shells do. The [Leptos shell](../part-2/shell/leptos.md) matches
   the enum directly, because in Rust the match is already as precise as
   a handler interface.
 - The Swift protocol and dispatcher carry

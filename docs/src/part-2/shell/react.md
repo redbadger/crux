@@ -81,7 +81,7 @@ The shell writes two small things and the generated `Core` owns the loop between
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:core_base}}
 ```
 
-`Core` serialises an event with `BincodeSerializer`, calls the bridge's `update`, deserialises the returned bytes into `Request` objects, handles `Render` itself (re-read the view, call `onView`), and hands everything else to the generated `EffectDispatcher`. There is no `switch` over the effect union anywhere: the dispatcher calls the method for the variant it received and resolves the request with what that method returns. When it does, `Core` calls the bridge's `resolve` and loops through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the loop has to keep going until the command's task actually finishes, and now nothing in the shell has to remember to. Its public surface:
+`Core` serialises an event with `BincodeSerializer`, calls the bridge's `update`, deserialises the returned bytes into `Request` objects, handles `Render` itself (re-read the view, call `onView`), and hands everything else to the generated `EffectDispatcher`. There is no `switch` over the effect union anywhere: the dispatcher calls the method for the variant it received and resolves the request with what that method returns. When it does, `Core` calls the bridge's `resolve` and loops through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so processing has to continue until the command's task finishes, and the generated `Core` keeps it going, so the shell doesn't have to. Its public surface:
 
 ```typescript
 // TypeScript
@@ -142,10 +142,7 @@ subscribe(_operation: Subscribe, sink: EffectSink<Message>): void {
 ```
 
 Its `NotesHandler` parks the sink and the page calls `sink.send(new Message(bytes))`
-whenever a message arrives; each `send` resolves the original request again. Before the
-handler API, that shell had to keep the request id in a ref and remember to
-resolve it repeatedly and never terminate it. The sink is the same thing with
-the bookkeeping generated.
+whenever a message arrives; each `send` resolves the original request again.
 
 ## Shared components
 
