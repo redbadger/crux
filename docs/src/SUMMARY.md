@@ -38,6 +38,7 @@
 
 # Part III - Advanced topics
 
+1. [Effect router](./part-3/effect-router.md)
 1. [Middleware](./part-3/middleware.md)
 1. [Other platforms](./part-3/platforms.md)
    1. [TypeScript and React Router](./part-3/platforms/react-router.md)

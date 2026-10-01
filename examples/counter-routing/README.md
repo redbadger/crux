@@ -2,8 +2,8 @@
 
 Builds on [`counter-http`](../counter-http/) by adding a "I'm feeling lucky"
 button that adjusts the counter by a random amount between -5 and 5. The random
-number generation is handled by
-[routing](../../docs/src/rfcs/effect-router.md) — Rust code that routes the random
+number generation is handled by an
+[effect router](../../docs/src/part-3/effect-router.md), which routes the random
 effects to a core-side implementation.
 
 ## Architecture
@@ -52,8 +52,9 @@ forwards the callback's bytes to the `Core`'s `process`. The callback can
 arrive while `update` is still running, so the Swift and Kotlin shells always
 defer to the main thread: Swift through an `AsyncStream` read by one task on
 the main actor, and Kotlin by posting with `Dispatchers.Main` rather than
-`Main.immediate`. The middleware example's
-[README](../counter-middleware/README.md) has the details.
+`Main.immediate`. The
+[Effect router chapter](../../docs/src/part-3/effect-router.md#in-the-shell)
+has the details.
 
 ## Running
 
