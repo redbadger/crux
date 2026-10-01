@@ -58,17 +58,8 @@ class CounterHandler(
     /// never reaches this shell. The interface still asks for the method,
     /// because type generation describes the app's `Effect`, which has the
     /// variant, not what the router leaves of it.
-    ///
-    /// `RandomNumberRequest` declares no operation kind, which is why this
-    /// method has the older shape, with a request id and a `resolve` taking
-    /// raw bytes.
-    override fun random(
-        operation: RandomNumberRequest,
-        requestId: UInt,
-        resolve: (ByteArray) -> Unit,
-    ) {
+    override suspend fun random(operation: RandomNumberRequest): RandomNumber =
         error("Random is handled by the router and should not reach the shell")
-    }
 
     companion object {
         private const val TAG = "CounterHandler"

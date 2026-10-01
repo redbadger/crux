@@ -12,7 +12,6 @@ import type {
   ViewModel,
 } from "shared_types/app";
 import { Core, RandomNumber, fetchHttpHandler } from "shared_types/app";
-import { BincodeSerializer } from "shared_types/bincode";
 
 import * as sse from "./sse";
 
@@ -55,22 +54,12 @@ export class CounterHandler implements EffectHandler {
   /// `RngHandler`, so those shells never see it. That can't run in wasm (it
   /// needs a thread), so in this shell `Random` comes through like any other
   /// effect and is answered here.
-  ///
-  /// `RandomNumberRequest` declares no operation kind, so the generated
-  /// handler hands this method the request id and a `resolve` that takes raw
-  /// bytes, and the shell serializes the `RandomNumber` itself.
-  random(
-    operation: RandomNumberRequest,
-    _requestId: number,
-    resolve: (bytes: Uint8Array) => void,
-  ): void {
+  random(operation: RandomNumberRequest): Promise<RandomNumber> {
     const min = Number(operation.field0);
     const max = Number(operation.field1);
-    const result = Math.floor(Math.random() * (max - min)) + min;
+    const result = Math.floor(Math.random() * (max - min + 1)) + min;
 
-    const serializer = new BincodeSerializer();
-    new RandomNumber(BigInt(result)).serialize(serializer);
-    resolve(serializer.getBytes());
+    return Promise.resolve(new RandomNumber(BigInt(result)));
   }
 }
 
