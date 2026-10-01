@@ -32,14 +32,13 @@ impl RngHandler {
             while let Ok(mut request) = jobs_rx.recv() {
                 let RandomNumberRequest(from, to) = request.operation;
 
-                #[allow(clippy::cast_sign_loss)]
-                let top = (to - from) as usize;
-                #[allow(clippy::cast_possible_wrap)]
-                let out = rng.random_range(0..top) as isize + from;
+                // rand samples no `isize`, so draw an `i64` from the same range.
+                #[allow(clippy::cast_possible_truncation)]
+                let out = rng.random_range(from as i64..=to as i64) as isize;
 
                 if let Some(sink) = sink.upgrade() {
                     sink.resolve_request(&mut request, RandomNumber(out))
-                        .expect("background file store resolve should succeed");
+                        .expect("resolving a random number should succeed");
                 }
             }
         });

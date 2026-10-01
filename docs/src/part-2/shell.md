@@ -2,20 +2,21 @@
 
 We've looked at how the Weather app's core fits together, how it's structured into nested state machines, and how managed effects make it testable end-to-end. Time to build the UI around it.
 
-(In practice, you wouldn't write the whole core before touching the UI — you'd go feature by feature. But the shape is the same: a tested core first, then a shell that drives it and handles its effects.)
+(In practice, you wouldn't write the whole core before touching the UI. You'd go feature by feature. But the shape is the same: a tested core first, then a shell that drives it and handles its effects.)
 
 The shell will have two responsibilities:
 
-1. Laying out the UI components, like we've already seen in Part I
+1. Laying out the UI components, like we've already seen for the counter
 2. Supporting the app's capabilities. This will be new to us
 
-Like in Part I, you can choose which Shell language you'd like to see this in, but first let's talk about
+As with the counter, you can choose which Shell language you'd like to see this in, but first let's talk about
 what they all have in common.
 
 ## Message interface between core and shell
 
-In Part I, we learned to use the `update` and `view` APIs of the core. We also learned that
-in their raw form, they take serialized values as byte buffers.
+Whether you drove the counter's core by hand in Part I or let the generated `Core` do it, the
+core's API is the same: `update`, `view` and `resolve`, which in their raw form take serialized
+values as byte buffers.
 
 We skimmed over the return value of `update` very quickly. In that case it only ever
 returned a request for a `RenderOperation` - a signal that a new view model is available.
@@ -26,7 +27,7 @@ In the Weather's case, more options are possible. Recall the effect type:
 {{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-Those are the eleven possible variants we'll see in the return from `update` —
+Those are the eleven possible variants we'll see in the return from `update`,
 one per operation the app can ask for. It is essentially telling us "I did the
 state update, and here are some side-effects for you to perform".
 
@@ -51,7 +52,7 @@ be paired correctly.
 `resolve` raises a question the shell has to get right, and the answer is not
 in the bytes: how many times does *this* effect get resolved?
 
-- Some effects are **notifications**. `Render` is the obvious one — the core is
+- Some effects are **notifications**. `Render` is the obvious one: the core is
   telling the shell something and is not waiting for an answer. Resolving one
   is an error, because the core kept no record of the request.
 - Most are **requests**, resolved exactly once, with the operation's output.
@@ -59,8 +60,8 @@ in the bytes: how many times does *this* effect get resolved?
   lives.
 
 Because each operation declares its kind in Rust, [type generation](../part-4/typegen.md)
-can tell the shell. Every generated `Effect` gains an `operationKind` accessor
-(`effectOperationKind(effect)` in TypeScript), and — more usefully — an
+can tell the shell. Every generated `Effect` has an `operationKind` accessor
+(`effectOperationKind(effect)` in TypeScript), and, more usefully, an
 `EffectHandler` protocol/interface with one method per variant, whose signature
 *is* the answer:
 
@@ -72,21 +73,21 @@ can tell the shell. Every generated `Effect` gains an `operationKind` accessor
   the request again.
 
 A shell that implements the handler and lets `EffectDispatcher` do the
-resolving cannot resolve the wrong number of times or with the wrong type,
-because there is no `resolve` call left for it to get wrong. If you drive the
+resolving never calls `resolve` itself, so each request is resolved the number
+of times its kind says, with its operation's output type. If you drive the
 dispatcher yourself, its `resolve` argument is your own callback around the
 core's `resolve` FFI.
 
 ## Who drives the loop
 
-You don't have to. Once the dispatcher does the resolving, what remains of the
+The generated `Core` does. With the dispatcher doing the resolving, the
 shell's core loop is the same in every app: serialize the `Event`, call the
 core's `update`, deserialize the requests, re-read the view when a `Render`
 arrives, hand everything else to the dispatcher, and when a request is
 resolved call the core's `resolve` and loop over the requests *that* returns.
 Type generation knows every type in that loop, so it emits it too, as a
-`Core` class, together with a `CoreBridge` protocol over bytes — `update`,
-`resolve` and `view`. Tell the codegen where BoltFFI put its bindings, with
+`Core` class, together with a `CoreBridge` protocol over bytes (`update`,
+`resolve` and `view`). Tell the codegen where BoltFFI put its bindings, with
 `.boltffi(...)`, and it implements `CoreBridge` over them as well. You
 write a `CoreBridge` of your own for a fake in tests or previews, for a
 binding generator other than BoltFFI, or for an app with
@@ -94,11 +95,11 @@ binding generator other than BoltFFI, or for an app with
 
 So with the generated `Core`, what a shell writes is the `EffectHandler`.
 Register the handlers `crux_http`, `crux_kv` and `crux_time` ship, with
-`.shell_handler(&crux_http::HTTP)` and friends, and most of it becomes
+`.shell_handler(&crux_http::HTTP)` and friends, and most of it is
 one-line delegations. `Core` handles `Render` itself and publishes the new
-view in each language's own way — an `@Observable` `view` property in Swift,
+view in each language's own way (an `@Observable` `view` property in Swift,
 a `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a `View`
-property that raises `INotifyPropertyChanged` in C# — so the handler never
+property that raises `INotifyPropertyChanged` in C#), so the handler never
 touches the view at all. See
 [the generated Core](../part-4/typegen.md#the-generated-core) for the exact
 shape in each language, and the [RFC](../rfcs/generated-core.md) for why it
@@ -113,7 +114,7 @@ Three of the shells that follow hand the loop to the generated `Core`. The
 Leptos shell doesn't:
 core and shell are both Rust there, so it matches on the `Effect` enum
 directly, which is just as precise and needs no generated code. Matching by
-hand is still supported everywhere — the generated handler API is additive.
+hand works in every language, alongside the generated handler API.
 
 Let's look at how this works in practice.
 

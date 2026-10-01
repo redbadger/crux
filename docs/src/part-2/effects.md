@@ -64,7 +64,7 @@ Here is the Weather app's `Effect` type:
 
 Eleven variants, one per operation the app can ask for: rendering the UI, an HTTP request, reading and writing the key-value store, starting and clearing a timer, two location questions, and three secret operations. To add a new kind of effect, you extend this enum.
 
-Note that the enum names *operations*, not capabilities. `crux_kv` offers five operations and this app uses two, so the shell is only ever asked to serve `KvGet` and `KvSet`. Each variant carries an operation type that declares its own output and how many times the shell resolves it — which is what lets the shell code be generated, and checked, per variant.
+Note that the enum names *operations*, not capabilities. `crux_kv` offers five operations and this app uses two, so the shell is only ever asked to serve `KvGet` and `KvSet`. Each variant carries an operation type that declares its own output and how many times the shell resolves it, which is what lets the shell code be generated, and checked, per variant.
 
 ## What is a Command
 
@@ -81,7 +81,7 @@ Crux expects a Command to be returned by the `update` function. A basic Command 
 
 Let's look closer at Effects. Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
 
-Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output and, optionally, to an *operation kind* — how many times the request expects to be resolved: never (a notification), exactly once (a request), or any number of times (a stream). In practice you declare both with `#[derive(Operation)]`, which we'll come to in [Building Capabilities](./capabilities.md). These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
+Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output and, optionally, to an *operation kind*, which says how many times the request expects to be resolved: never (a notification), exactly once (a request), or any number of times (a stream). In practice you declare both with `#[derive(Operation)]`, which we'll come to in [Building Capabilities](./capabilities.md). These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
 
 The `Effect` type is typically defined with the help of the `#[effect]` macro. Here is the Weather app's effect again:
 
@@ -89,7 +89,7 @@ The `Effect` type is typically defined with the help of the `#[effect]` macro. H
 {{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-The eleven operations it carries come from six different _Capabilities_ — `Render`, `crux_http`, `crux_kv`, `crux_time`, and the app's own Location and Secret — so let's talk about those.
+The eleven operations it carries come from six different _Capabilities_ (`Render`, `crux_http`, `crux_kv`, `crux_time`, and the app's own Location and Secret), so let's talk about those.
 
 ## Capabilities
 
@@ -137,7 +137,7 @@ We've seen an example of this already, but here it is again:
 {{#include ../../../examples/weather/shared/src/model/initializing.rs:start}}
 ```
 
-The two capability calls each produce a command, and we want to run them concurrently. `Command::all` combines them into a single `Command`, which `start()` returns as part of its `Started` bundle.
+Fetching the API key and loading the favourites each produce a command, and we want both to run concurrently. `Command::all` combines them into a single `Command`. `start()` then hands that command to `Started::new` together with the initial state (`Self::default()`), so the initializing state begins with both requests already in flight. [Nested state machines](./nested_state_machines.md) introduced `Started`.
 
 ```admonish note
 Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in [Building Capabilities](./capabilities.md).
@@ -153,7 +153,7 @@ Command builders come in three flavours:
 - [StreamBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.StreamBuilder.html) - builds a request expecting a (possibly infinite) sequence of responses from the shell (think WebSockets)
 - [NotificationBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.NotificationBuilder.html) - builds a shell notification, which does not expect a response. The best example is notifying the shell that a new view model is available
 
-Those three flavours are exactly the three kinds an operation can declare. Where it declares one — as `#[derive(Operation)]` always does, and as `Render`, `crux_http`, `crux_kv` and `crux_time` all do — which builder you get is decided by the operation rather than by the call site: `Command::request_from_shell` only accepts an operation declared `request`, and so on for the other two. Passing the wrong one is a compile error, reported by `cargo build` and `cargo test` but not by `cargo check`. An operation that declares no kind is accepted by all three.
+Those three flavours are exactly the three kinds an operation can declare. Where it declares one (as `#[derive(Operation)]` always does, and as `Render`, `crux_http`, `crux_kv` and `crux_time` all do), which builder you get is decided by the operation rather than by the call site: `Command::request_from_shell` only accepts an operation declared `request`, and so on for the other two. Passing the wrong one is a compile error, reported by `cargo build` and `cargo test` but not by `cargo check`. An operation that declares no kind is accepted by all three.
 
 All builders share a common API. Request and stream builder can be converted into commands with a `.then_send`.
 
@@ -176,7 +176,7 @@ For more details of this, we recommend the [Command API docs](https://docs.rs/cr
 Combining all these tools provides a fair bit of flexibility to create fairly complex orchestrations of effects. Sometimes, you might want to go more complex than that, however. In such cases, Crux attempting to create more APIs trying to achieve every conceivable orchestration with closures would have diminishing returns. In such cases, you probably just want to write `async` code instead.
 
 ```admonish warning
-Notice that nowhere in the above examples have we mentioned working with the model during the execution of the command. This is very much by design: Once started, commands do not have model access, because they execute asynchronously, possibly in parallel, and access to model would introduce data races, which are very difficult to debug.
+Notice that nowhere in the above examples have we mentioned working with the model during the execution of the command. This is very much by design. Once started, commands have no access to the model, because they execute asynchronously, possibly in parallel, and access to the model would introduce data races, which are very difficult to debug.
 
 In order to update state, you should pass the result of the effect orchestration back to your app using an Event (as a kind of callback). It's relatively typical for apps to have a number of "internal" events, which handle results of effects. Sometimes these are also useful in tests, if you want to start a particular journey "from the middle".
 ```
@@ -196,7 +196,7 @@ Command::new(|ctx| async move {
 });
 ```
 
-(`One` and `Two` here are two operation types, each with its own output — see [Building Capabilities](./capabilities.md). The type of `output` differs between the two `.await`s, and the compiler knows which is which.)
+(`One` and `Two` here are two operation types, each with its own output. See [Building Capabilities](./capabilities.md). The type of `output` differs between the two `.await`s, and the compiler knows which is which.)
 
 `Command::new` takes a closure, which receives the CommandContext and returns a future, which will become the Command's main task (it is not expected to return anything, its `Output` is `()`. The provided context can be used to start shell requests, streams, and send events back to the app.
 
@@ -235,40 +235,7 @@ if let Some(handle) = model.search_handle.take() {
 
 There is more to the `async` effect API than we can or should cover here. Most of what you'd expect in async rust is supported – join handles, aborting tasks (and even Commands), spawning tasks and communicating between them, etc. Again, we recommend the [Command API docs](https://docs.rs/crux_core/latest/crux_core/command/index.html) for the full coverage.
 
-## Migrating from previous versions of Crux
-
-```admonish info title="You can probably skip this"
-If you're new to Crux, it's unlikely you need to read this section. The original API for side-effects
-was very different from Commands and this section is kept to help migrate from that API
+```admonish note title="Coming from an earlier version?"
+If your app still uses the old `Capabilities` API (a `caps` parameter on
+`update`), see [Migrating from Capabilities to Command](../guide/migrate-capabilities-to-command.md).
 ```
-
-The change to `Command` is a breaking one for all Crux apps. The previous API used `Capabilities` to perform side-effects via callbacks. The new API removes `Capabilities` and `caps` from the `App` trait entirely, replacing them with a `Command` return value from `update`.
-
-There are three parts to the migration:
-
-1. Remove the `Capabilities` associated type and the `caps` parameter from `update`
-2. Declare the `Effect` associated type on your App
-3. Return `Command` from `update`
-
-Here's what the end state looks like:
-
-```rust
-impl crux_core::App for App {
-    type Event = Event;
-    type Model = Model;
-    type ViewModel = ViewModel;
-    type Effect = Effect;
-
-    fn update(
-        &self,
-        event: Event,
-        model: &mut Model,
-    ) -> crux_core::Command<Effect, Event> {
-        crux_core::Command::done() // return a Command
-    }
-}
-```
-
-To begin with, you can return `Command::done()` (a no-op) from `update` and
-incrementally migrate your effect handling to use Commands and capability APIs
-that return command builders.

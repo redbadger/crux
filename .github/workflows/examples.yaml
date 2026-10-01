@@ -5,14 +5,14 @@
 # cover every example x shell combination for that platform.
 #
 # Matrix shape:
-#   shared     — 6 entries (all 5 examples x shared + counter/tui)
-#   web-trunk  — 6 entries (all 5 examples x web-leptos + counter/web-yew)
+#   shared     — 8 entries (all 7 examples x shared + counter/tui)
+#   web-trunk  — 6 entries (5 examples x web-leptos + counter/web-yew)
 #   web-dioxus — 1 entry   (counter only)
-#   web-js     — 6 entries (all 5 examples x web-nextjs + counter/web-react-router)
+#   web-js     — 8 entries (all 7 examples x web-nextjs + counter/web-react-router)
 #   tauri      — 1 entry   (counter only)
 #   windows    — 1 entry   (counter only)
-#   apple      — 5 entries (all 5 examples, shell is always "apple")
-#   android    — 5 entries (all 5 examples, shell is always "Android")
+#   apple      — 6 entries (all but notes, shell is always "apple")
+#   android    — 6 entries (all but notes, shell is always "Android")
 #
 # Each matrix entry runs: just <shell>/ci  (working dir: examples/<example>)
 name: examples
@@ -46,6 +46,7 @@ jobs:
         include:
           - { example: counter, shell: shared }
           - { example: counter, shell: tui }
+          - { example: counter-tutorial, shell: shared }
           - { example: counter-http, shell: shared }
           - { example: counter-middleware, shell: shared }
           - { example: counter-routing, shell: shared }
@@ -75,7 +76,7 @@ jobs:
         run: just ${{ matrix.shell }}/ci
 
   # WASM shells built with trunk (Leptos, Yew). Needs: Rust, wasm32 target, trunk.
-  # All examples have web-leptos; only counter has web-yew.
+  # All examples but notes and counter-tutorial have web-leptos; only counter has web-yew.
   web-trunk:
     runs-on: ubuntu-latest
 
@@ -154,6 +155,7 @@ jobs:
         include:
           - { example: counter, shell: web-nextjs }
           - { example: counter, shell: web-react-router }
+          - { example: counter-tutorial, shell: web-nextjs }
           - { example: counter-http, shell: web-nextjs }
           - { example: counter-middleware, shell: web-nextjs }
           - { example: counter-routing, shell: web-nextjs }
@@ -297,6 +299,7 @@ jobs:
       matrix:
         example:
           - counter
+          - counter-tutorial
           - counter-http
           - counter-middleware
           - counter-routing
@@ -349,6 +352,7 @@ jobs:
       matrix:
         example:
           - counter
+          - counter-tutorial
           - counter-http
           - counter-middleware
           - counter-routing

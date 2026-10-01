@@ -1,4 +1,4 @@
-# Web — TypeScript and React (Next.js)
+# Web: TypeScript and React (Next.js)
 
 These are the steps to set up and run a simple
 TypeScript Web app that calls into a shared core.
@@ -78,7 +78,7 @@ brew install binaryen # provides wasm-opt
 
 The crate is `boltffi_cli`; it installs the `boltffi` binary used below.
 
-Binaryen must be version 123 or newer — BoltFFI passes `--enable-bulk-memory-opt`
+Binaryen must be version 123 or newer: BoltFFI passes `--enable-bulk-memory-opt`
 to `wasm-opt`, which older releases don't understand. Check with
 `wasm-opt --version`; distribution packages are often well behind, so prefer a
 [release from GitHub](https://github.com/WebAssembly/binaryen/releases) if your
@@ -181,7 +181,7 @@ which triggers a render of the UI.
 
 ```admonish
 This code that wraps the core only needs to be written
-once — it only grows when we need to support additional
+once. It only grows when we need to support additional
 effects.
 ```
 
@@ -199,26 +199,25 @@ is because the core is running in a separate WebAssembly
 instance, and so we can't just pass the data directly.
 
 ```typescript
-{{#include ../../../../../examples/counter/web-nextjs/src/app/core.ts}}
+{{#include ../../../../../examples/counter-tutorial/web-nextjs/src/app/core.ts}}
 ```
 
-```admonish note title="Why write this by hand?"
-The codegen also generates a ready-made `Core` class in `shared_types/app`,
-which runs this loop for you. We write the loop by hand in this chapter on
-purpose, because it shows how the shell and the core talk to each other. That's
-also why ours is called `CoreWrapper`, so it doesn't get mixed up with the
-generated `Core`. We pick up the generated `Core` in
-[Part II](../../../part-2/shell.md#who-drives-the-loop).
+```admonish note title="Why CoreWrapper?"
+This loop is what the `Core` class generated in `shared_types/app` runs for
+you. Ours is called `CoreWrapper` so it doesn't get mixed up with that one. To
+see the counter use the generated `Core` instead, see
+[Getting started](../../../getting_started/shell.md#web-typescript).
 ```
 
 ```admonish tip
 That `matchEffect` call, above, is where you would
 handle any other effects that your core might ask for.
 For example, if your core needs to make an HTTP
-request, you would handle that here. To see an example
-of this, take a look at the
-[counter-http example](https://github.com/redbadger/crux/tree/master/examples/counter-http/web-nextjs/src/app/core.ts)
-in the Crux repository.
+request, you would handle that here. With the generated
+`Core`, each effect gets a method on an `EffectHandler`
+instead. See
+[Adding a capability](../../../getting_started/capabilities.md)
+for this counter with HTTP and Server-Sent Events added.
 ```
 
 #### Create a component to render the UI
@@ -230,7 +229,7 @@ to the update function so that we can update the state
 in response to a render effect from the core.
 
 ```typescript
-{{#include ../../../../../examples/counter/web-nextjs/src/app/page.tsx}}
+{{#include ../../../../../examples/counter-tutorial/web-nextjs/src/app/page.tsx}}
 ```
 
 Now all we need is some CSS. First add the `Bulma`
@@ -241,7 +240,7 @@ pnpm add bulma
 ```
 
 ```typescript
-{{#include ../../../../../examples/counter/web-nextjs/src/app/layout.tsx}}
+{{#include ../../../../../examples/counter-tutorial/web-nextjs/src/app/layout.tsx}}
 ```
 
 ## Build and serve our app

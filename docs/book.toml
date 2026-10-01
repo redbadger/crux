@@ -30,5 +30,6 @@ additional-js = ["mermaid.min.js", "mermaid-init.js"]
 "getting_started/web_yew.html" = "./Web/yew.html"
 "getting_started/ios.html" = "./iOS/manual.html"
 "getting_started/ios_with_xcodegen.html" = "./iOS/with_xcodegen.html"
+"part-1/getting_started.html" = "../getting_started/index.html"
 
 [output.linkcheck]

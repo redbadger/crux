@@ -82,7 +82,7 @@ brew install xcodegen
 
 Let's write the Justfile and we can look at what happens. Here are
 the key tasks (the
-[full Justfile](https://github.com/redbadger/crux/blob/master/examples/counter/apple/Justfile)
+[full Justfile](https://github.com/redbadger/crux/blob/master/examples/counter-tutorial/apple/Justfile)
 also includes linting, CI and cleanup targets):
 
 ```makefile
@@ -135,7 +135,7 @@ Here's the project file:
 
 ```yaml
 # /apple/project.yml
-{{#include ../../../../../examples/counter/apple/project.yml}}
+{{#include ../../../../../examples/counter-tutorial/apple/project.yml}}
 ```
 
 Nothing too special, other than linking a couple packages and using them
@@ -157,7 +157,7 @@ let's give ourselves a nicer interface for it:
 
 ```swift
 // apple/CounterApp/core.swift
-{{#include ../../../../../examples/counter/apple/CounterApp/core.swift}}
+{{#include ../../../../../examples/counter-tutorial/apple/CounterApp/core.swift}}
 ```
 
 This is mostly just serialization code. But the `processEffect` method is interesting.
@@ -165,13 +165,11 @@ That is where effect execution goes. At the moment the switch statement has a si
 lonely case updating the view model whenever the `.render` variant is requested,
 but you can add more in here later, as you expand your `Effect` type.
 
-```admonish note title="Why write this by hand?"
-The codegen also generates a ready-made `Core` class in the `App` package,
-which runs this loop for you. We write the loop by hand in this chapter on
-purpose, because it shows how the shell and the core talk to each other. That's
-also why ours is called `CoreWrapper`, so it doesn't get mixed up with the
-generated `Core`. We pick up the generated `Core` in
-[Part II](../../../part-2/shell.md#who-drives-the-loop).
+```admonish note title="Why CoreWrapper?"
+This loop is what the `Core` class generated in the `App` package runs for you.
+Ours is called `CoreWrapper` so it doesn't get mixed up with that one. To see
+the counter use the generated `Core` instead, see
+[Getting started](../../../getting_started/shell.md#iosmacos).
 ```
 
 ### Build a basic view
@@ -179,13 +177,13 @@ generated `Core`. We pick up the generated `Core` in
 Create `apple/CounterApp/ContentView.swift` and make it look like this:
 
 ```swift
-{{#include ../../../../../examples/counter/apple/CounterApp/ContentView.swift}}
+{{#include ../../../../../examples/counter-tutorial/apple/CounterApp/ContentView.swift}}
 ```
 
 And finally, create `apple/CounterApp/CounterApp.swift` to use the `ContentView`:
 
 ```swift
-{{#include ../../../../../examples/counter/apple/CounterApp/CounterApp.swift}}
+{{#include ../../../../../examples/counter-tutorial/apple/CounterApp/CounterApp.swift}}
 ```
 
 The one interesting part of this is the `@ObservedObject var core: CoreWrapper`. Since

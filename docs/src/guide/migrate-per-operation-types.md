@@ -8,7 +8,7 @@ declared operation kinds to shells as a typed handler API.
 
 None of the enum APIs is removed in this release. They still work, they are
 `#[deprecated]` with a replacement named in the warning, and you can migrate one
-call at a time. The next breaking release removes them — see
+call at a time. The next breaking release removes them. See
 [What the next breaking release may change](#what-the-next-breaking-release-may-change)
 at the bottom, and the [RFC](../rfcs/per-operation-types.md) for the design and
 its reasoning.
@@ -32,19 +32,19 @@ the other breaking changes.
 
 Otherwise, in this order:
 
-1. **Your own capabilities** — one struct per operation with
+1. **Your own capabilities**: one struct per operation with
    `#[derive(Operation)]`, and one output type per operation instead of a shared
    response enum.
-2. **`crux_kv` and `crux_time`** — import `KeyValue` from `crux_kv::store` and
+2. **`crux_kv` and `crux_time`**: import `KeyValue` from `crux_kv::store` and
    `Time` from `crux_time::clock` instead of from the crate roots, and list the
    operations you use in your `Effect` enum.
-3. **Your `Effect` enum** — one variant per operation, which renames the
+3. **Your `Effect` enum**: one variant per operation, which renames the
    generated `is_` / `into_` / `expect_*` test helpers.
-4. **Regenerate your shells** and adopt the handler API — implement
+4. **Regenerate your shells** and adopt the handler API: implement
    `EffectHandler` and let the generated `Core` drive the loop. If that can't
    work for you, implementing just the handler, or widening the match you
    already have, are both still supported.
-5. **Check the [traps](#traps-worth-knowing-about)** — Swift actor isolation
+5. **Check the [traps](#traps-worth-knowing-about)**: Swift actor isolation
    and what a late timer does.
 
 ---
@@ -61,26 +61,26 @@ use crux_core::macros::Operation;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-/// notify — the shell is told and never answers. `Output` is `()`, and
+/// notify: the shell is told and never answers. `Output` is `()`, and
 /// declaring an `output` is an error.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(notify)]
 pub struct Publish(pub Vec<u8>);
 
-/// request — answered exactly once, with the declared output.
+/// request: answered exactly once, with the declared output.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(request, output = ValueResult)]
 pub struct Get {
     pub key: String,
 }
 
-/// stream — answered any number of times, each with the declared output.
+/// stream: answered any number of times, each with the declared output.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(stream, output = Message)]
 pub struct Subscribe;
 ```
 
-Structs only, of any shape — named, tuple or unit. Generics and `where` clauses
+Structs only, of any shape: named, tuple or unit. Generics and `where` clauses
 pass through. `output` accepts an unquoted generic type, so
 `output = Option<Location>` works.
 
@@ -95,12 +95,12 @@ OperationKind::Request; send it with notify_shell or stream_from_shell instead
 ```admonish note title="Where that error appears"
 In this release the check is a `const` assertion evaluated after
 monomorphisation, so it fires on `cargo build`, `cargo test` or
-`cargo clippy --all-targets` — but not on `cargo check` or in your editor. The
+`cargo clippy --all-targets`, but not on `cargo check` or in your editor. The
 breaking release turns it into an ordinary trait-bound error.
 ```
 
-An operation that declares nothing — a hand-written `impl Operation` with no
-`KIND` — keeps working exactly as before, with any constructor. You do not have
+An operation that declares nothing (a hand-written `impl Operation` with no
+`KIND`) keeps working exactly as before, with any constructor. You do not have
 to migrate your own capabilities to take `crux_core` 0.21.
 
 ### By hand
@@ -117,7 +117,7 @@ impl Operation for Get {
 impl crux_core::operation::Request for Get {}
 ```
 
-Import the module, not the items — `operation::Request` reads unambiguously
+Import the module, not the items: `operation::Request` reads unambiguously
 where a bare `Request` collides with `crux_core::Request<Op>`.
 
 ```admonish note title="This pair may change"
@@ -139,7 +139,7 @@ six-variant response, so every call site had to rule out the four variants that
 could not apply to it:
 
 ```rust,ignore
-// Rust — Before
+// Rust: Before
 pub enum SecretRequest {
     Fetch(String),
     Store(String, String),
@@ -177,7 +177,7 @@ After, each operation is its own type and the narrow response types it already
 had become its output:
 
 ```rust,ignore
-// Rust — After
+// Rust: After
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(request, output = SecretFetchResponse)]
 pub struct Fetch(pub String);
@@ -200,7 +200,7 @@ where
 ```
 
 The wide `SecretResponse` is deleted, every `unreachable!()` with it, and the
-`.map` narrowing goes — the output *is* the narrow type. On the shell side the
+`.map` narrowing goes, because the output *is* the narrow type. On the shell side the
 `switch`/`when` over the operation enum goes the same way: each generated handler
 method takes one operation and returns one output.
 
@@ -211,7 +211,7 @@ Three things to watch:
   to carry `Store` and `Delete`.
 - **Outputs must be types type generation can emit**, which rules out
   `std::result::Result`. Where an operation can fail, use a concrete two-variant
-  enum in the style of `crux_http`'s `HttpResult` — `Ok(T) | Err(E)` — and keep a
+  enum in the style of `crux_http`'s `HttpResult` (`Ok(T) | Err(E)`), and keep a
   `From` impl if your builders hand a `Result` alias back to app code.
 - **A notification has no output.** If a variant was only ever notified, its type
   becomes `#[operation(notify)]` with no `output` at all.
@@ -226,7 +226,7 @@ with the same signatures and the same `DataResult` / `StatusResult` /
 changes is the `Effect` enum.
 
 ```rust,ignore
-// Rust — Before
+// Rust: Before
 use crux_kv::{KeyValue, KeyValueOperation, error::KeyValueError};
 
 #[effect(facet_typegen)]
@@ -239,7 +239,7 @@ KeyValue::get("note").then_send(Event::Load)
 ```
 
 ```rust,ignore
-// Rust — After
+// Rust: After
 use crux_kv::{error::KeyValueError, operation as kv, store::KeyValue};
 
 #[effect(facet_typegen)]
@@ -294,15 +294,15 @@ while you migrate, import one of them under an alias:
 
 ## `crux_time`
 
-`crux_time::clock::Time` mirrors `crux_time::Time`'s three methods — `now`,
-`notify_at`, `notify_after` — with the same signatures, and shares `TimerHandle`,
+`crux_time::clock::Time` mirrors `crux_time::Time`'s three methods (`now`,
+`notify_at`, `notify_after`) with the same signatures, and shares `TimerHandle`,
 `CompletedTimerHandle`, `TimerOutcome`, `TimerId`, `Instant` and `Duration` with
 it. As with `crux_kv`, the name is the same and the module is the difference:
 the root type is deprecated, and the breaking release re-exports `clock::Time`
 in its place.
 
 ```rust,ignore
-// Rust — Before
+// Rust: Before
 use crux_time::{TimeRequest, command::{Time, TimerHandle, TimerOutcome}};
 
 #[effect(facet_typegen)]
@@ -314,7 +314,7 @@ let (notify_after, handle) = Time::notify_after(duration);
 ```
 
 ```rust,ignore
-// Rust — After
+// Rust: After
 use crux_time::{TimerHandle, TimerOutcome, clock::Time, operation as time};
 
 #[effect(facet_typegen)]
@@ -328,7 +328,7 @@ let (notify_after, handle) = Time::notify_after(duration);
 
 | Operation | Fields | Output | Kind |
 | --- | --- | --- | --- |
-| `operation::Now` | — | `Instant` | request |
+| `operation::Now` | none | `Instant` | request |
 | `operation::NotifyAt` | `id: TimerId, instant: Instant` | `TimerId` | request |
 | `operation::NotifyAfter` | `id: TimerId, duration: Duration` | `TimerId` | request |
 | `operation::ClearTimer` | `id: TimerId` | `TimerId` | request |
@@ -341,7 +341,7 @@ it started. Clearing works as it always has: `TimerHandle::clear` sends an
 `TimerOutcome::Cleared` once the shell has answered it.
 
 Note that if you list `TimeClear` in your `Effect` but not `TimeNotifyAfter`,
-nothing will compile — `Time::notify_after` needs both, since clearing is part
+nothing will compile: `Time::notify_after` needs both, since clearing is part
 of the handle it returns.
 
 ---
@@ -358,7 +358,7 @@ The convention the examples follow:
   `IsLocationEnabled`, `GetLocation`, `FetchSecret`, `StoreSecret`,
   `DeleteSecret`.
 - **List only the operations the app uses.** Bounds are per operation, so an app
-  that never lists keys is never asked to serve `ListKeys` — and neither is its
+  that never lists keys is never asked to serve `ListKeys`, and neither is its
   shell.
 
 Renaming variants renames the test helpers `#[effect]` generates from them, which
@@ -383,7 +383,7 @@ variant name.
 
 Run your `typegen` recipe. Alongside the generated `Effect`, you now get a
 `OperationKind` accessor, an `EffectHandler` protocol/interface with one method per
-variant, and an `EffectDispatcher` that resolves each request for you — never for
+variant, and an `EffectDispatcher` that resolves each request for you: never for
 a notification, once for a request, once per sink item for a stream. See
 [Type generation](../part-4/typegen.md#operation-kinds-and-the-effect-handler-api)
 for the exact shapes in each language.
@@ -391,21 +391,21 @@ for the exact shapes in each language.
 **Adopt it.** One method per operation, with the operation and output types
 already correct and the resolving done for you, is what makes the per-operation
 design worth having on the shell side, and it is what both examples and the rest
-of this guide do. If it can't work for your shell — you own the concurrency, or
-your deployment target is below the `Core`'s — matching on `Effect` and calling
+of this guide do. If it can't work for your shell (you own the concurrency, or
+your deployment target is below the `Core`'s), matching on `Effect` and calling
 `resolve` by hand keeps working, and is the right choice for Rust shells; see
 [keeping a flat match](#keeping-a-flat-match).
 
 ### Letting the generated Core own the loop
 
 You also get a `Core` class and a `CoreBridge` protocol (`ICoreBridge` in C#).
-`Core` is the loop you used to write around the dispatcher — serialize the event,
+`Core` is the loop you used to write around the dispatcher (serialize the event,
 call the FFI, deserialize the requests, re-read the view on `Render`, dispatch the
-rest, resolve and repeat — and it handles `Render` itself, so your handler no
+rest, resolve and repeat), and it handles `Render` itself, so your handler no
 longer implements `render` at all. See
 [the generated Core](../part-4/typegen.md#the-generated-core) for the shapes.
 
-With it, a shell writes one thing — **an effect handler**: the `EffectHandler`
+With it, a shell writes one thing, **an effect handler**: the `EffectHandler`
 methods that used to live on your hand-written core object, and whatever state
 they need, on a plain class of their own. Delete `render`.
 
@@ -447,7 +447,7 @@ the dispatcher replace the nested `switch`. From the notes example:
 
 ```typescript
 // TypeScript
-// Before — nested match helpers, hand-built responses, and an id in a ref
+// Before: nested match helpers, hand-built responses, and an id in a ref
 private processEffect(id: number, effect: Effect) {
   matchEffect(effect, {
     Render: () => this.setState(this.view()),
@@ -470,7 +470,7 @@ private processEffect(id: number, effect: Effect) {
 
 ```typescript
 // TypeScript
-// After — a handler with one method per operation, and the generated Core
+// After: a handler with one method per operation, and the generated Core
 // owning the loop and the bridge to the wasm module
 export class NotesHandler implements EffectHandler {
   constructor(/* the refs the handlers need */) {}
@@ -510,7 +510,7 @@ around that untyped promise goes too. Construct the core in an effect, not in a
 
 ```swift
 // Swift
-// Before — a switch, and a resolve call per capability
+// Before: a switch, and a resolve call per capability
 func processEffect(_ request: Request) {
     switch request.effect {
     case .render:
@@ -526,7 +526,7 @@ func processEffect(_ request: Request) {
 
 ```swift
 // Swift
-// After — a handler with one method per operation, and the generated Core
+// After: a handler with one method per operation, and the generated Core
 // owning the loop and the bridge to CoreFfi
 @MainActor public final class WeatherHandler {
     let keyValueStore: KeyValueStore
@@ -552,14 +552,14 @@ core.update(.start)
 Each per-capability `switch` over an operation enum collapses into one method per
 operation, every `resolve(requestId:serialize:)` call disappears, and so do the
 loop, the resolve-and-recurse callback, `render` and the `LiveBridge` around
-`CoreFfi` — the generated `Core` intercepts `Render` and replaces its `view`,
+`CoreFfi`. The generated `Core` intercepts `Render` and replaces its `view`,
 and the generated `FfiBridge` does the `Data` conversions. `Core` is
 `@Observable`, so put it in the SwiftUI environment and read `core.view`
 directly; any `@Observable` holder you kept for the view model can go. Note that
 `Core` requires iOS 17 / macOS 14, higher than the rest of the generated module.
 Because the generated package now depends on BoltFFI's `Shared` package, your
 app target can stop linking `Shared` directly, and the generated package needs
-a `platforms:` floor at least as high as `Shared` declares — set it on the
+a `platforms:` floor at least as high as `Shared` declares, so set it on the
 `Config` in `codegen.rs`.
 
 ### Kotlin
@@ -592,7 +592,7 @@ which works without an import because BoltFFI's Kotlin and the generated types
 share a package in this example; if yours do not, name BoltFFI's with
 `BoltFfi::kotlin_package(..)`.
 Because `Core` uses `StateFlow` and `launch`, the Gradle module that compiles the
-generated sources needs `kotlinx-coroutines-core` on its classpath — the
+generated sources needs `kotlinx-coroutines-core` on its classpath. The
 generated `build.gradle.kts` declares it, but if you pull the sources in with
 `srcDirs`, add it yourself.
 
@@ -609,7 +609,7 @@ request.
 
 ### Keeping a flat match
 
-Rust shells should not use the generated handler API — there is nothing to
+Rust shells should not use the generated handler API, because there is nothing to
 generate. A `match` over the `Effect` enum is already exactly as precise,
 because each variant carries its operation type and the compiler knows what
 output that request resolves with. The weather Leptos shell just grew from six
@@ -632,7 +632,7 @@ fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
 ```
 
 A non-Rust shell that wants full control over its own concurrency can do the
-same — the emission is additive, and ignoring it costs nothing — but that is the
+same (the emission is additive, and ignoring it costs nothing), but that is the
 fallback, not the recommendation: everything the handler API gives you, a
 hand-written match has to keep right by hand, every time an operation is added.
 
@@ -663,15 +663,15 @@ mechanism; this is the migration.
 
    Each capability crate needs its `facet_typegen` feature on for the
    codegen binary, which it usually already has. Registering a handler also
-   registers every operation and output its source names — the shipped file
+   registers every operation and output its source names, because the shipped file
    implements the whole capability, so `KeyExists`, `Now` and the rest are
    generated even if your `Effect` never carries them.
 
 2. **Regenerate.** The Swift package gains `Http.swift`, `KeyValue.swift` and
    `Time.swift`; the Kotlin package and C# namespace gain the same three
    files; the TypeScript module gains the same declarations at its end. Each
-   declares a protocol — `HttpHandler`, `KeyValueHandler`, `TimeHandler`
-   (`I`-prefixed in C#) — with one method per operation, and an
+   declares a protocol (`HttpHandler`, `KeyValueHandler`, `TimeHandler`;
+   `I`-prefixed in C#) with one method per operation, and an
    implementation of it.
 
 3. **Delete your implementations and delegate.** Hold an instance and forward
@@ -728,9 +728,9 @@ mechanism; this is the migration.
    app. The weather and notes examples do exactly this; their diffs are the
    worked version of this section.
 
-**Configuring.** Construct the shipped implementation with what it needs — a
+**Configuring.** Construct the shipped implementation with what it needs (a
 pinned `URLSession`, a directory, a `localStorage` prefix, an
-`HttpURLConnection` configurator — or conform your own type to the protocol
+`HttpURLConnection` configurator) or conform your own type to the protocol
 and hold that instead. To take one operation back, write its method body
 yourself and keep delegating the others.
 
@@ -740,7 +740,7 @@ the delegating line. That is deliberate: it is the moment to read what the new
 operation does.
 
 **Names.** Registering a capability puts all of its operation types into your
-generated module's root namespace — `crux_kv` brings `GetValue`, `SetValue`,
+generated module's root namespace: `crux_kv` brings `GetValue`, `SetValue`,
 `DeleteValue`, `KeyExists` and `ListKeys`. An operation of your own with one of
 those names collides, and registration fails with an error that names both Rust
 types (the registry used to keep one of the two without a word,
@@ -797,7 +797,7 @@ anyway, so this is usually an improvement. Only `Sendable` values cross back.
 
 The bridge has the same shape of problem from the other side: `CoreBridge` is
 `Sendable`, but BoltFFI's `CoreFfi` is a class Swift can't prove safe. The
-generated `FfiBridge` declares itself `@unchecked Sendable` — sound, because
+generated `FfiBridge` declares itself `@unchecked Sendable`, which is sound because
 the Rust `Bridge` behind the handle guards its state with mutexes. If you write
 a `CoreBridge` of your own, for a preview or another binding generator, do the
 same, and declare it `nonisolated` if your target defaults to `MainActor`
@@ -819,7 +819,7 @@ named. All of it is removed in the next breaking release.
 | `crux_time::Time` | `crux_time` 0.19.0 | `crux_time::clock::Time` |
 | `crux_time::TimeRequest` | `crux_time` 0.19.0 | `crux_time::operation::{Now, NotifyAt, NotifyAfter, ClearTimer}` |
 | `crux_time::TimeResponse` | `crux_time` 0.19.0 | `Instant` for `Now`, `TimerId` for the rest |
-| `crux_time::TimerFuture` | `crux_time` 0.19.0 | nothing — an implementation detail of `Time` |
+| `crux_time::TimerFuture` | `crux_time` 0.19.0 | nothing (an implementation detail of `Time`) |
 
 Not deprecated, and shared by both APIs: `crux_kv::{KeyValueError, Value,
 DataResult, StatusResult, ListResult}` and `crux_time::{TimerHandle,

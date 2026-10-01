@@ -36,6 +36,7 @@ use crux_core::middleware::{BincodeFfiFormat, Bridge, Layer as _};
 // EffectFFI trait impl required by Serialized::serialize. The Export impl that
 // the macro also generates is harmless: register_app::<Counter>() walks from
 // app::Effect, never from ffi::Effect, so nothing here lands in typegen output.
+// ANCHOR: ffi_effect
 #[cfg(not(target_family = "wasm"))]
 #[effect(facet_typegen)]
 pub enum Effect {
@@ -56,7 +57,9 @@ impl From<crate::Effect> for Effect {
         }
     }
 }
+// ANCHOR_END: ffi_effect
 
+// ANCHOR: crux_shell
 /// For the Shell to provide.
 ///
 /// `boltffi`'s binding generator parses the source and does not evaluate
@@ -71,6 +74,7 @@ pub trait CruxShell: Send + Sync {
     /// The bytes are a serialized vector of requests.
     fn process_effects(&self, bytes: Vec<u8>);
 }
+// ANCHOR_END: crux_shell
 
 // ── Non-wasm: EffectRouter + RngHandler ──────────────────────────────────────
 //
@@ -78,6 +82,7 @@ pub trait CruxShell: Send + Sync {
 // delivered to the shell asynchronously via `process_effects`, so `update` and
 // `resolve` have no synchronous effects to return.
 
+// ANCHOR: routes
 #[cfg(not(target_family = "wasm"))]
 #[derive(Clone)]
 struct EffectRoutes {
@@ -94,6 +99,7 @@ impl Routes<Counter> for EffectRoutes {
         }
     }
 }
+// ANCHOR_END: routes
 
 /// The main interface used by the shell.
 ///
@@ -110,6 +116,7 @@ pub struct CoreFfi {
 #[boltffi::export]
 #[allow(clippy::missing_panics_doc, clippy::needless_pass_by_value)]
 impl CoreFfi {
+    // ANCHOR: ffi_new
     pub fn new(shell: Arc<dyn CruxShell>) -> Self {
         #[cfg(not(target_family = "wasm"))]
         {
@@ -148,7 +155,9 @@ impl CoreFfi {
             Self { inner }
         }
     }
+    // ANCHOR_END: ffi_new
 
+    // ANCHOR: ffi_update
     #[must_use]
     pub fn update(&self, data: &[u8]) -> Vec<u8> {
         #[cfg(not(target_family = "wasm"))]
@@ -171,6 +180,7 @@ impl CoreFfi {
             }
         }
     }
+    // ANCHOR_END: ffi_update
 
     #[must_use]
     pub fn resolve(&self, effect_id: u32, data: &[u8]) -> Vec<u8> {

@@ -122,3 +122,28 @@ jobs:
       - name: Check crux_http for wasm32-unknown-unknown
         shell: bash
         run: cargo check -p crux_http --target wasm32-unknown-unknown
+
+  # Builds the book (running linkcheck) and checks that every code include
+  # names a real file and anchor, which mdBook itself only warns about. The
+  # tool versions are held to the ones `pages.yaml` deploys with.
+  docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: taiki-e/install-action@just
+
+      - name: Setup mdBook
+        uses: jontze/action-mdbook@v4
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          mdbook-version: "0.4.52"
+          use-linkcheck: true
+          use-admonish: true
+          use-mermaid: true
+          mermaid-version: "~0.14.0"
+
+      - name: Build the book and check its includes
+        shell: bash
+        run: just docs

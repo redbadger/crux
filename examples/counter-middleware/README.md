@@ -31,10 +31,36 @@ This example has two FFI bridges that wire up the core differently:
 
 ## Shells
 
-- SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `android/`
-- Leptos — `web-leptos/`
-- NextJS — `web-nextjs/`
+- SwiftUI (iOS/macOS): `apple/`
+- Android/Kotlin: `Android/`
+- Leptos: `web-leptos/`
+- NextJS: `web-nextjs/`
+
+The Swift, Kotlin and TypeScript shells use the `Core` that type generation
+emits, with an `EffectHandler` per shell. The codegen binary asks for the
+handler `crux_http` ships (with `.shell_handler(&crux_http::HTTP)`), so each
+shell's `http` method is one line that delegates to it. Server-Sent Events are
+this app's own capability, so each shell implements the `serverSentEvents`
+stream method itself, sending every chunk it reads into the `EffectSink` it is
+given, and then `Done`.
+
+Unlike [`counter-http`](../counter-http/), the codegen binary doesn't
+configure `.boltffi(..)`: `CoreFfi::new` takes the shell's `CruxShell`
+callback, which the middleware uses to deliver effects after `update` or
+`resolve` has returned, and the generated `FfiBridge` constructs `CoreFfi`
+with no arguments. So each shell writes a three-method `CoreBridge` over its
+own `CoreFfi` (`MiddlewareBridge`), builds the generated `Core` from it, and
+forwards the callback's bytes to the `Core`'s `process`:
+
+- **Swift**: the callback puts the bytes on an `AsyncStream`, and one task on
+  the main actor feeds them to `Core.process(bytes:)` (see `makeCore()`).
+- **Kotlin**: the callback is given the `Core` once it has been constructed,
+  and posts each batch to the main thread with `Dispatchers.Main`.
+- **TypeScript**: the callback closes over the `Core`. On wasm there is no
+  middleware, so it is never called, and the handler answers `random` itself.
+
+The native shells' handlers still have a `random` method, because type
+generation follows the app's `Effect`, but it is never called.
 
 ## Running
 

@@ -9,8 +9,8 @@ _can_ declare them, maintaining the
 declarations by hand as your app evolves is tedious and error-prone.
 
 Crux sidesteps this problem by keeping the FFI surface as small as
-possible. The entire core-shell interface is just three methods —
-`update`, `resolve`, and `view` — and all data crosses the boundary as
+possible. The entire core-shell interface is just three methods
+(`update`, `resolve`, and `view`), and all data crosses the boundary as
 serialized byte arrays (using [`bincode`](https://docs.rs/bincode)). The
 shell doesn't need to know the Rust types at the FFI level at all.
 
@@ -45,7 +45,7 @@ types and their `bincode` serialization implementations automatically.
 
 Type generation uses the [Facet](https://docs.rs/facet) crate for
 zero-cost reflection. Types that derive the `Facet` trait can be
-introspected at build time to discover their shape — fields, variants,
+introspected at build time to discover their shape: fields, variants,
 generic parameters. The
 [facet-generate](https://github.com/redbadger/facet-generate) crate
 uses that reflection data to generate equivalent types (and their
@@ -53,12 +53,12 @@ serialization code) in Swift, Kotlin, TypeScript, and C#.
 
 The process has three parts:
 
-1. **Annotate your types** — derive `Facet` on types that cross the
+1. **Annotate your types**: derive `Facet` on types that cross the
    FFI boundary, and use `#[effect(facet_typegen)]` on your `Effect`
    enum.
-2. **Add a codegen binary to your shared crate** — a short `main`
+2. **Add a codegen binary to your shared crate**: a short `main`
    that registers your app and generates the foreign code.
-3. **Run it** — typically via a `just typegen` recipe as part of your
+3. **Run it**: typically via a `just typegen` recipe as part of your
    build workflow.
 
 ## Annotating your types
@@ -79,7 +79,7 @@ the counter example:
 {{#include ../../../examples/counter/shared/src/app.rs:view_model}}
 ```
 
-Note the `#[repr(C)]` on the enum — this is required by Facet for
+Note the `#[repr(C)]` on the enum; this is required by Facet for
 enums that cross the FFI boundary.
 
 ### The Effect type
@@ -96,7 +96,7 @@ that the codegen binary needs:
 The macro discovers the operation types carried by each variant (e.g.
 `RenderOperation`) and registers them for type generation
 automatically. It also records, per variant, the operation kind the
-operation declares and the `Format` of its `Output` — that's the data
+operation declares and the `Format` of its `Output`, which is the data
 behind the [operation kinds and handler API](#operation-kinds-and-the-effect-handler-api)
 below.
 
@@ -111,8 +111,8 @@ output with `#[facet(skip)]`:
 {{#include ../../../examples/counter-middleware/shared/src/app.rs:event}}
 ```
 
-In this example, `Set`, `Update`, and `UpdateBy` are internal events
-— the shell never creates them, so they're skipped.
+In this example, `Set`, `Update`, and `UpdateBy` are internal events:
+the shell never creates them, so they're skipped.
 
 However, `Facet` must still be derivable on the _entire_ type,
 including skipped variants. If a skipped variant contains a field
@@ -133,26 +133,34 @@ generation. Here's the one from the counter example:
 
 The key steps are:
 
-1. **`TypeRegistry::new().register_app::<Counter>()?`** — discovers
+1. **`TypeRegistry::new().register_app::<Counter>()?`**: discovers
    all types reachable from your `App` implementation (events, effects,
    view model, and the operation types they reference).
-2. **`.build()?`** — produces a `CodeGenerator` with the full type
+2. **`.build()?`**: produces a `CodeGenerator` with the full type
    graph.
-3. **`Config::builder(name, &output_dir)`** — configures the output.
+3. **`.boltffi(BoltFfi::new()...)`**: tells type generation where
+   `boltffi pack` puts the FFI bindings for each shell: the `Shared`
+   Swift module, the Kotlin package the types are generated into, the
+   `shared` npm package at `../pkg`, and the C# namespace the types are
+   generated into. For each language named here, the generated package
+   gains an `FfiBridge` over `CoreFfi` and `Core` gains a constructor
+   that takes only an `EffectHandler`, so the shell writes no adapter of
+   its own (see [Bridging to BoltFFI](#bridging-to-boltffi)).
+4. **`Config::builder(name, &output_dir)`**: configures the output.
    The `name` parameter is the package/module name (e.g. `"App"` for
    Swift, `"com.crux.examples.counter"` for Kotlin, `"app"` for
-   TypeScript, `"CounterApp.Shared"` for C#).
-4. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
-   **`.typescript(&config)?`** / **`.csharp(&config)?`** — generates
+   TypeScript, `"CounterApp.Shared"` for C#). For Swift, the
+   `.platform(..)` calls give the generated package the deployment
+   floor that the BoltFFI package it depends on requires.
+5. **`.swift(&config)?`** / **`.kotlin(&config)?`** /
+   **`.typescript(&config)?`** / **`.csharp(&config)?`**: generates
    the code, including the target-language serialization runtime for
    `bincode`.
 
 BoltFFI binding generation is run separately by the shell build recipes with
-`boltffi pack ...`. The codegen binary is intentionally focused on Crux app
-types; the one thing it can be told about BoltFFI is where its output
-lives, with `.boltffi(BoltFfi::new()...)` on the `CodeGenerator`, so that
-the generated `Core` can be constructed over it without a hand-written
-adapter — see [Bridging to BoltFFI](#bridging-to-boltffi).
+`boltffi pack ...`. The codegen binary does not run BoltFFI or read its
+output; `.boltffi(..)` only repeats the names BoltFFI was configured with
+in `boltffi.toml`.
 
 ### Cargo.toml setup
 
@@ -172,7 +180,7 @@ Enable `facet_typegen` in `crux_core`:
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen}}
 ```
 
-And add `facet` as a dependency — all types that cross the FFI
+And add `facet` as a dependency, because all types that cross the FFI
 boundary derive `Facet`:
 
 ```toml
@@ -201,13 +209,12 @@ examples/counter/
 ```
 
 The package names are set in `codegen.rs` via the `Config::builder`
-call — see the codegen binary above.
+call (see the codegen binary above).
 
 Each shell's `Justfile` has a `typegen` recipe. For example, the Apple
 shell runs:
 
 ```sh
-# Shell
 RUST_LOG=info cargo run \
     --package shared \
     --bin codegen \
@@ -218,7 +225,7 @@ RUST_LOG=info cargo run \
 ```
 
 The `--output-dir` is relative to the shell directory where the recipe
-runs — so the generated code lands right where the shell project can
+runs, so the generated code lands right where the shell project can
 reference it. The TypeScript shells use `generated/types` to keep the
 types separate from the wasm package (which lives in `generated/pkg`).
 
@@ -232,16 +239,16 @@ refers to BoltFFI's.
 
 For each target language, the codegen produces:
 
-- **Type definitions** — enums, structs, and their serialization code,
+- **Type definitions**: enums, structs, and their serialization code,
   matching the shape of your Rust types. For example, `Event`,
   `Effect`, `ViewModel`, and any operation types.
-- **Serialization runtime** — Serde and `bincode` implementations in the
+- **Serialization runtime**: Serde and `bincode` implementations in the
   target language, so the shell can serialize events and deserialize
   effects and view models.
-- **Helper extensions** — like `Requests.swift`, which provides
+- **Helper extensions**: like `Requests.swift`, which provides
   convenience methods for working with effect requests.
 - **An operation-kind accessor, a typed effect handler API and a `Core`
-  that drives the loop** — see the next sections.
+  that drives the loop**: see the next sections.
 
 For Swift, Kotlin, TypeScript, and C#, this typegen output sits beside the
 BoltFFI-generated binding package for the byte-oriented core API.
@@ -251,9 +258,9 @@ BoltFFI-generated binding package for the byte-oriented core API.
 A shell holding a `Request { id, effect }` has to know two things that
 are not in the bytes: what type to answer with, and *how many times*.
 Both are static properties of the operation each `Effect` variant
-carries — an operation declares a
-[operation kind](../part-2/capabilities.md#one-output-per-operation), notify,
-request or stream, and one `Output` — so type generation emits them.
+carries. An operation declares a
+[operation kind](../part-2/capabilities.md#one-output-per-operation) (notify,
+request or stream) and one `Output`, so type generation emits them.
 
 Next to the generated `Effect`, you get:
 
@@ -262,15 +269,14 @@ Next to the generated `Effect`, you get:
 - an `EffectHandler` protocol or interface with one method per variant:
   a notification's method returns nothing, a request's method returns
   the operation's `Output`, a stream's method takes an
-  `EffectSink<Output>`, and a legacy variant's method is handed
-  `(operation, requestId, resolve)` exactly as before;
+  `EffectSink<Output>`, and the method for an operation that declares no
+  kind is handed `(operation, requestId, resolve)` to resolve itself;
 - an `EffectDispatcher(handler, resolve)` that calls the right method
   and resolves the request never, once, or once per sink item,
   serializing each output with the generated bincode serializers.
 
 The `resolve` you hand the dispatcher is your own
-`(requestId, bytes) -> ()` callback around the core's `resolve` FFI —
-the same one you would have called by hand.
+`(requestId, bytes) -> ()` callback around the core's `resolve` FFI.
 
 Here is what that looks like for an effect with one variant of each
 kind, plus a `Legacy` operation that declares nothing.
@@ -334,8 +340,8 @@ class EffectDispatcher(handler: EffectHandler, resolve: (UInt, ByteArray) -> Uni
 ```
 
 `dispatch` is `suspend`, because a request's handler method may be. Give
-each request its own coroutine if one of them can take a while — a timer,
-for instance — so the rest are not held up behind it.
+each request its own coroutine if one of them can take a while (a timer,
+for instance), so the rest are not held up behind it.
 
 **TypeScript**
 
@@ -406,8 +412,8 @@ Kotlin, TypeScript) or `ICoreBridge` interface (C#) with three
 byte-level methods. If BoltFFI generates your bindings, tell the codegen
 where they are and type generation implements the protocol for you (see
 [Bridging to BoltFFI](#bridging-to-boltffi) below), so a shell constructs
-`Core` from nothing but its `EffectHandler`. Otherwise — another binding
-generator, a test double, a preview — you implement it yourself around
+`Core` from nothing but its `EffectHandler`. Otherwise (another binding
+generator, a test double, a preview), you implement it yourself around
 whatever produces the bytes, and hand it to `Core` with your
 `EffectHandler`:
 
@@ -491,12 +497,12 @@ Things worth knowing:
   where diff-based view updates will be applied when they arrive, without
   changing how you use `Core`.
 - **`process(bytes)` is for middleware.** A Rust side that pushes
-  effects to the shell asynchronously — the `CruxShell.process_effects`
-  callback in the middleware examples — can hand those bytes straight to
+  effects to the shell asynchronously (the `CruxShell.process_effects`
+  callback in the middleware examples) can hand those bytes straight to
   `Core`. It tolerates an empty byte array.
 - **Concurrency.** The Swift `Core` is `@MainActor`; the dispatcher's
-  resolve hops back to the main actor before touching the bridge, as the
-  hand-written shells did. The Kotlin `Core` dispatches each request, and
+  resolve hops back to the main actor before touching the bridge. The
+  Kotlin `Core` dispatches each request, and
   processes each resolution, in its own coroutine on the scope you pass.
   In C#, `PropertyChanged` may be raised on a thread-pool thread after
   an asynchronous request completes, so marshal to your UI thread in the
@@ -510,7 +516,7 @@ Things worth knowing:
 
 ### Bridging to BoltFFI
 
-Type generation does not read BoltFFI's output — the two generators are
+Type generation does not read BoltFFI's output: the two generators are
 independent, and the package, module and class names BoltFFI uses are
 decisions you made in `boltffi.toml` and `ffi.rs`. Repeat them in the
 codegen and type generation emits the bridge for you:
@@ -535,10 +541,10 @@ class if yours is not `CoreFfi`; `swift_package(..)`, `kotlin_package(..)`,
 `typescript_package(..)` and `csharp_namespace(..)` cover bindings that
 live somewhere other than the defaults.
 
-For a named language the generated module gains an `FfiBridge` —
-`CoreBridge` implemented over `CoreFfi`, bytes in and bytes out, with the
+For a named language the generated module gains an `FfiBridge`
+(`CoreBridge` implemented over `CoreFfi`, bytes in and bytes out, with the
 Swift `Data` conversion and the `@unchecked Sendable` declaration where
-they belong — and `Core` gains a constructor that takes only the handler:
+they belong), and `Core` gains a constructor that takes only the handler:
 
 ```swift
 // Swift
@@ -562,16 +568,16 @@ var core = new Core(new CounterHandler());
 
 TypeScript's is an `async` factory because the wasm module loads
 asynchronously: `Core.create` awaits the package's `initialized` promise
-before touching `CoreFfi`, which is the one thing every hand-written web
-shell had to remember. `CoreBridge` and the two-argument constructors are
-still emitted, so a preview or a test can hand `Core` a fake, and a shell
-whose FFI has a different shape — the middleware examples, whose
-`CoreFfi::new` takes a callback — still writes its own adapter.
+before touching `CoreFfi`, so the shell never calls into a module that
+has not finished loading. `CoreBridge` and the two-argument constructors are
+also emitted, so a preview or a test can hand `Core` a fake, and a shell
+whose FFI has a different shape (the middleware examples, whose
+`CoreFfi::new` takes a callback) still writes its own adapter.
 
-Two consequences for the build:
+Three consequences for the build:
 
 - **Swift.** `FfiBridge.swift` imports the BoltFFI module, so the generated
-  package now depends on the BoltFFI package: `Package.swift` gains
+  package depends on the BoltFFI package: `Package.swift` gains
   `.package(path: "../Shared")` and the target depends on its product. SPM
   requires a dependent package's deployment target to be at least its
   dependency's, and BoltFFI's package declares one, so give the generated
@@ -585,19 +591,31 @@ Two consequences for the build:
       .build()
   ```
 
-  Your app target no longer needs to link the BoltFFI package itself; it
+  Your app target does not need to link the BoltFFI package itself; it
   reaches it through the generated one.
 - **TypeScript.** The generated `package.json` depends on the BoltFFI
   package (`"shared": "file:../pkg"`), and type generation runs
   `pnpm install` in the generated package, so run `boltffi pack wasm`
-  *before* typegen. The Android recipes already pack first; the web
-  recipes in the examples were reordered to match.
+  *before* typegen, as the Android and web recipes in the examples do.
+- **C#.** `FfiBridge.cs` is compiled into the generated project, so that
+  project needs the assembly `CoreFfi` lives in (the NuGet package
+  `boltffi pack csharp` builds), even when both share a namespace. The
+  generated `.csproj` is rewritten on every run, so add the reference
+  from a `Directory.Build.props` above it; the counter's Windows shell
+  does it like this:
 
-Kotlin and C# need nothing else when the bindings share the generated
-package or namespace, which is how the examples are configured.
+  ```xml
+{{#include ../../../examples/counter/windows/Directory.Build.props:ffi_reference}}
+  ```
 
-Setting `boltffi(..)` when there is no `Core` to bridge — no registered
-app, no `Render` variant, or `without_core()` — is reported as an error
+  Run `boltffi pack csharp` before the generated project is restored, as
+  the Windows recipes do.
+
+Kotlin needs nothing else when the bindings share the generated package,
+which is how the examples are configured.
+
+Setting `boltffi(..)` when there is no `Core` to bridge (no registered
+app, no `Render` variant, or `without_core()`) is reported as an error
 rather than silently ignored.
 
 ### Shipped shell handlers
@@ -606,7 +624,7 @@ A capability crate can carry the shell side of its own protocol: a Swift,
 Kotlin, TypeScript and C# implementation of its operations, embedded in
 the crate as source and versioned with it. Type generation copies that
 source into your generated package when you ask for it, and does nothing
-else — the generated `EffectHandler`, `EffectDispatcher` and `Core` are
+else; the generated `EffectHandler`, `EffectDispatcher` and `Core` are
 exactly as described above.
 
 You ask in the codegen binary, per capability, on the registry before you
@@ -624,19 +642,18 @@ let typegen = TypeRegistry::new()
 
 Each `ShellHandler` is a `static` the capability exports behind its
 `facet_typegen` feature. Registering one also registers every operation and
-output its sources name, including operations your `Effect` never carries —
-the shipped file implements the whole capability, so all of its types have
+output its sources name, including operations your `Effect` never carries,
+because the shipped file implements the whole capability, so all of its types have
 to exist. For every one you register, and every language
-it has source for, the generated module gains one file — `Http.swift` in
+it has source for, the generated module gains one file (`Http.swift` in
 the Swift target, `Http.kt` in the Kotlin package, `Http.cs` in the C#
-namespace — with the module's header prepended and the source otherwise
+namespace) with the module's header prepended and the source otherwise
 verbatim. TypeScript modules are a single file, so there the source is
 appended after the types, as `Core` is. A language the capability does
-not ship gets nothing, and you implement those methods as you would have
-anyway.
+not ship gets nothing, and you implement those methods yourself.
 
-The file declares a protocol named after the handler — `HttpHandler`,
-`IHttpHandler` in C# — with one method per operation, taking the
+The file declares a protocol named after the handler (`HttpHandler`,
+`IHttpHandler` in C#) with one method per operation, taking the
 operation and returning what the generated `EffectHandler` method for it
 returns, and at least one implementation. Your handler holds an instance
 and delegates:
@@ -655,14 +672,14 @@ struct WeatherHandler: EffectHandler {
 ```
 
 Those lines are the whole of what you write for the capability. The
-protocol rules — how a `URLError` maps onto `HttpResult`, what a cleared
-timer answers, whether a session cookie survives between requests — live
+protocol rules (how a `URLError` maps onto `HttpResult`, what a cleared
+timer answers, whether a session cookie survives between requests) live
 in the shipped file, written once by the capability author. That last one
 is worth knowing about: all three of the HTTP handlers that own a client
 keep cookies by default, because `URLSession` and `HttpClient` do and the
 Kotlin one would otherwise be the odd platform out, losing a session the
 same core keeps everywhere else. `UrlConnectionHttpHandler` carries an
-`InMemoryCookieJar` you can replace or switch off — and read its note
+`InMemoryCookieJar` you can replace or switch off, and read its note
 before reaching for `java.net.CookieManager`, which cannot do this job. Because the delegation is yours, so is the choice: construct the
 shipped implementation with a pinned `URLSession` or a storage directory,
 write your own conformer of the protocol behind a hardened HTTP stack,
@@ -676,7 +693,7 @@ declares any, reach your `Package.swift`, `build.gradle.kts` or
 `package.json`. The bundled capabilities depend on nothing beyond the
 platform standard library. `<Name>Handler` joins the reserved names, and
 registering two handlers with the same name is an error. So is one of your
-own types sharing a name with a capability's — registering `crux_kv` brings
+own types sharing a name with a capability's: registering `crux_kv` brings
 its `DeleteValue` with it, and an app with a `DeleteValue` of its own is told
 so at registration, with both Rust types named, and renames one of them with
 `#[facet(rename = "...")]`.
@@ -702,14 +719,13 @@ Request 1 expects `Http` (variant 0), but response id 0x01000001 carries `Render
 
 So the mapping from id to effect that a crash report needs still exists,
 in Rust, next to the layout it depends on. An effect enum is limited to
-256 variants, because the variant index is eight bits — `#[effect]`
+256 variants, because the variant index is eight bits, so `#[effect]`
 rejects a larger one.
 
 ### Notes and escape hatches
 
-- The emission is **additive**. A shell that matches on `Effect` and
-  calls `resolve` by hand keeps working unchanged, which is what Crux's
-  Rust shells do — the [Leptos shell](../part-2/shell/leptos.md) matches
+- The handler API is **optional**. A shell can instead match on `Effect`
+  and call `resolve` by hand, which is what Crux's Rust shells do. The [Leptos shell](../part-2/shell/leptos.md) matches
   the enum directly, because in Rust the match is already as precise as
   a handler interface.
 - The Swift protocol and dispatcher carry
@@ -719,8 +735,8 @@ rejects a larger one.
   own platforms conforms without repeating the annotation. Note also
   that the generated operation and output types are not `Sendable`, so
   a `@MainActor` type conforming to the `Sendable` `EffectHandler`
-  needs a `nonisolated` extension — see the
-  [iOS chapter](../part-2/shell/ios.md). The generated `Core` is
+  needs a `nonisolated` extension (see the
+  [iOS chapter](../part-2/shell/ios.md)). The generated `Core` is
   `@Observable`, so it alone carries
   `@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)` and the
   generated file imports `Observation`; a shell with an older deployment
@@ -746,7 +762,7 @@ rejects a larger one.
   `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
   `StateFlow` and coroutine launches need.
 - A shared type named after a standard library type shadows it in the
-  generated module — an operation called `Set` hides `Set` in Swift, Kotlin
+  generated module: an operation called `Set` hides `Set` in Swift, Kotlin
   and TypeScript, and every shell then has to alias one of them at the
   import. The bundled capabilities avoid this with verb+noun names such as
   `SetValue`, and your own operations are worth naming the same way.
