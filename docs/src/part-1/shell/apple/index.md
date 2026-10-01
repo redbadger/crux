@@ -82,7 +82,7 @@ brew install xcodegen
 
 Let's write the Justfile and we can look at what happens. Here are
 the key tasks (the
-[full Justfile](https://github.com/redbadger/crux/blob/master/examples/counter/apple/Justfile)
+[full Justfile](https://github.com/redbadger/crux/blob/master/examples/counter-tutorial/apple/Justfile)
 also includes linting, CI and cleanup targets):
 
 ```makefile
@@ -135,7 +135,7 @@ Here's the project file:
 
 ```yaml
 # /apple/project.yml
-{{#include ../../../../../examples/counter/apple/project.yml}}
+{{#include ../../../../../examples/counter-tutorial/apple/project.yml}}
 ```
 
 Nothing too special, other than linking a couple packages and using them
@@ -157,7 +157,7 @@ let's give ourselves a nicer interface for it:
 
 ```swift
 // apple/CounterApp/core.swift
-{{#include ../../../../../examples/counter/apple/CounterApp/core.swift}}
+{{#include ../../../../../examples/counter-tutorial/apple/CounterApp/core.swift}}
 ```
 
 This is mostly just serialization code. But the `processEffect` method is interesting.
@@ -179,13 +179,13 @@ generated `Core`. We pick up the generated `Core` in
 Create `apple/CounterApp/ContentView.swift` and make it look like this:
 
 ```swift
-{{#include ../../../../../examples/counter/apple/CounterApp/ContentView.swift}}
+{{#include ../../../../../examples/counter-tutorial/apple/CounterApp/ContentView.swift}}
 ```
 
 And finally, create `apple/CounterApp/CounterApp.swift` to use the `ContentView`:
 
 ```swift
-{{#include ../../../../../examples/counter/apple/CounterApp/CounterApp.swift}}
+{{#include ../../../../../examples/counter-tutorial/apple/CounterApp/CounterApp.swift}}
 ```
 
 The one interesting part of this is the `@ObservedObject var core: CoreWrapper`. Since
