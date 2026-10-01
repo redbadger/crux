@@ -55,7 +55,6 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.security.crypto)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -65,7 +64,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.play.services.location)
 
-    implementation(libs.okhttp)
 
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)

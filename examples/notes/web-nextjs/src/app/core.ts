@@ -22,9 +22,8 @@ import type {
 } from "shared_types/app";
 import {
   Core,
-  valueBytes,
-  valueNone,
-  valueResultOk,
+  createLocalStorageKeyValueHandler,
+  TimeoutTimeHandler,
 } from "shared_types/app";
 import { RefObject } from "react";
 
@@ -40,13 +39,18 @@ export type SyncMessage = {
 /// is answered with. The generated `EffectDispatcher` does the resolving —
 /// nothing here calls `resolve` by hand, and there is no `render` method
 /// because the generated `Core` handles `Render` itself.
+///
+/// The store and the timers are `crux_kv`'s and `crux_time`'s own business, so
+/// this shell uses the handlers those crates ship — generated into
+/// `shared_types/app` because the codegen binary asks for them — and writes only
+/// the line that delegates. Publishing and subscribing are this app's, and are
+/// written out below.
 export class NotesHandler implements EffectHandler {
-  /// Live timeouts, so a `Clear` can cancel the one it names — each paired
-  /// with the `resolve` of the `NotifyAfter` promise it belongs to.
-  private readonly timers = new Map<
-    bigint,
-    { handle: number; resolve: (id: TimerId) => void }
-  >();
+  /// No prefix, so the documents this app has already saved under their own
+  /// keys are still where it left them.
+  private readonly kv = createLocalStorageKeyValueHandler();
+  /// The timer table is state, so there is one handler, for the page's life.
+  private readonly time = new TimeoutTimeHandler();
 
   constructor(
     private readonly channel: RefObject<BroadcastChannel>,
@@ -68,54 +72,19 @@ export class NotesHandler implements EffectHandler {
   }
 
   kvGet(operation: Get): Promise<ValueResult> {
-    const data = window.localStorage.getItem(operation.key);
-    const bytes: number[] = data == null ? [] : JSON.parse(data);
-
-    console.log(`Loaded document (${bytes.length} bytes)`);
-    return Promise.resolve(
-      valueResultOk(bytes.length === 0 ? valueNone() : valueBytes(bytes)),
-    );
+    return this.kv.get(operation);
   }
 
   kvSet(operation: SetValue): Promise<ValueResult> {
-    console.log(`Saving document (${operation.value.length} bytes)`);
-    window.localStorage.setItem(
-      operation.key,
-      JSON.stringify(Array.from(operation.value)),
-    );
-    return Promise.resolve(valueResultOk(valueNone()));
+    return this.kv.set(operation);
   }
 
-  /// `NotifyAfter` is answered exactly once, with the id of the timer that
-  /// fired. If `Clear` arrives first the timeout is cancelled and the promise
-  /// settles there and then, answering anyway — harmless, because the core
-  /// stops listening for this request the moment it clears the timer.
   timeNotifyAfter(operation: NotifyAfter): Promise<TimerId> {
-    const milliseconds = Number(operation.duration.nanos) / 1e6;
-    const timerId = operation.id.value;
-
-    return new Promise((resolve) => {
-      const handle = window.setTimeout(() => {
-        this.timers.delete(timerId);
-        resolve(operation.id);
-      }, milliseconds);
-      this.timers.set(timerId, { handle, resolve });
-    });
+    return this.time.notifyAfter(operation);
   }
 
-  /// `Clear` is a request: drop the timer and answer with the id it named.
   timeClear(operation: Clear): Promise<TimerId> {
-    const timerId = operation.id.value;
-    const timer = this.timers.get(timerId);
-    if (timer !== undefined) {
-      window.clearTimeout(timer.handle);
-      this.timers.delete(timerId);
-      // Settle the `timeNotifyAfter` promise rather than leaving it pending.
-      // Nothing acts on it — the core is no longer listening for that request.
-      timer.resolve(operation.id);
-    }
-
-    return Promise.resolve(operation.id);
+    return this.time.clear(operation);
   }
 }
 
