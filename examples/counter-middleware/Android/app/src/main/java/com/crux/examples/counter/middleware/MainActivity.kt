@@ -21,22 +21,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.crux.examples.counter.middleware.core.Core
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.crux.examples.counter.middleware.ui.theme.CounterMiddlewareTheme
-import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
-    private val core by inject<Core>()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        core.update(Event.STARTWATCH)
-
         setContent {
             CounterMiddlewareTheme {
-                val state by core.viewModel.collectAsState()
+                // The generated `Core` over the hand-written `MiddlewareBridge`:
+                // the shell writes the handler and the bridge, and never
+                // drives the loop itself.
+                val core = viewModel<CounterViewModel>().core
+                val state by core.view.collectAsState()
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
