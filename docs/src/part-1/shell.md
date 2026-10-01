@@ -100,7 +100,7 @@ And since we've declared the `codegen` target, we need to add the code for it.
 
 ```rust,noplayground
 // shared/src/bin/codegen.rs
-{{#include ../../../examples/counter/shared/src/bin/codegen.rs}}
+{{#include ../../../examples/counter-tutorial/shared/src/bin/codegen.rs}}
 ```
 
 This is essentially boilerplate for a CLI we can use to run type generation.
@@ -138,7 +138,7 @@ can copy as a starting point:
 
 ```toml,ignore
 # shared/boltffi.toml
-{{#include ../../../examples/counter/shared/boltffi.toml}}
+{{#include ../../../examples/counter-tutorial/shared/boltffi.toml}}
 ```
 
 BoltFFI reads this file when the shell recipes package Apple, Android, and wasm
@@ -199,7 +199,7 @@ Now we need to add the Rust side of the bindings into our code. Update your `lib
 
 ```rust,noplayground
 // shared/src/lib.rs
-{{#include ../../../examples/counter/shared/src/lib.rs}}
+{{#include ../../../examples/counter-tutorial/shared/src/lib.rs}}
 ```
 
 This code exposes the `ffi.rs` module, where BoltFFI sees the byte-oriented
@@ -207,7 +207,7 @@ This code exposes the `ffi.rs` module, where BoltFFI sees the byte-oriented
 
 ```rust,noplayground
 // shared/src/ffi.rs
-{{#include ../../../examples/counter/shared/src/ffi.rs}}
+{{#include ../../../examples/counter-tutorial/shared/src/ffi.rs}}
 ```
 
 Broad strokes: `CoreFfi` holds a `Bridge` wrapping `Counter` and exposes the

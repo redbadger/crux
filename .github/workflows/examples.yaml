@@ -5,14 +5,14 @@
 # cover every example x shell combination for that platform.
 #
 # Matrix shape (the full lists are in the `changes` job):
-#   shared     7 entries (all 6 examples x shared + counter/tui)
+#   shared     8 entries (all 7 examples x shared + counter/tui)
 #   web-trunk  6 entries (5 examples x web-leptos + counter/web-yew)
 #   web-dioxus 1 entry   (counter only)
-#   web-js     7 entries (all 6 examples x web-nextjs + counter/web-react-router)
+#   web-js     8 entries (all 7 examples x web-nextjs + counter/web-react-router)
 #   tauri      1 entry   (counter only)
 #   windows    1 entry   (counter only)
-#   apple      5 entries (5 examples, shell is always "apple")
-#   android    5 entries (5 examples, shell is always "Android")
+#   apple      6 entries (6 examples, shell is always "apple")
+#   android    6 entries (6 examples, shell is always "Android")
 #
 # On a push to master, every entry runs. On a pull request, the `changes` job
 # keeps only the entries that the PR can affect:
@@ -76,6 +76,7 @@ jobs:
               "shared": [
                 { "example": "counter", "shell": "shared" },
                 { "example": "counter", "shell": "tui" },
+                { "example": "counter-tutorial", "shell": "shared" },
                 { "example": "counter-http", "shell": "shared" },
                 { "example": "counter-middleware", "shell": "shared" },
                 { "example": "counter-routing", "shell": "shared" },
@@ -96,6 +97,7 @@ jobs:
               "web-js": [
                 { "example": "counter", "shell": "web-nextjs" },
                 { "example": "counter", "shell": "web-react-router" },
+                { "example": "counter-tutorial", "shell": "web-nextjs" },
                 { "example": "counter-http", "shell": "web-nextjs" },
                 { "example": "counter-middleware", "shell": "web-nextjs" },
                 { "example": "counter-routing", "shell": "web-nextjs" },
@@ -110,6 +112,7 @@ jobs:
               ],
               "apple": [
                 { "example": "counter", "shell": "apple" },
+                { "example": "counter-tutorial", "shell": "apple" },
                 { "example": "counter-http", "shell": "apple" },
                 { "example": "counter-middleware", "shell": "apple" },
                 { "example": "counter-routing", "shell": "apple" },
@@ -117,6 +120,7 @@ jobs:
               ],
               "android": [
                 { "example": "counter", "shell": "Android" },
+                { "example": "counter-tutorial", "shell": "Android" },
                 { "example": "counter-http", "shell": "Android" },
                 { "example": "counter-middleware", "shell": "Android" },
                 { "example": "counter-routing", "shell": "Android" },
