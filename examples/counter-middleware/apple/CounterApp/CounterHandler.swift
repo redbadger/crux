@@ -3,7 +3,7 @@ import Foundation
 
 /// `CounterHandler` is the shell's side of the effect protocol: it implements
 /// the generated `EffectHandler`, which has one method per operation the app
-/// declares. For `http` and `serverSentEvents` nothing here calls `resolve` —
+/// declares. For `http` and `serverSentEvents` nothing here calls `resolve`:
 /// the generated `EffectDispatcher` does that, exactly as often as the
 /// operation's kind says.
 ///
@@ -27,7 +27,7 @@ struct CounterHandler: EffectHandler {
     /// `shared/src/capabilities/sse.rs`), so no crate ships a handler for them
     /// and the shell implements the operation here.
     ///
-    /// Each complete event — the bytes up to a blank line — goes back as a
+    /// Each complete event (the bytes up to a blank line) goes back as a
     /// `chunk`, for the core to decode. When the server closes the connection
     /// the stream ends with `done`, and nothing is sent after it.
     func serverSentEvents(_ operation: SseRequest, into sink: EffectSink<SseResponse>) {
