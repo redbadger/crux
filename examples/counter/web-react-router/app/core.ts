@@ -1,95 +1,19 @@
-import type { Dispatch, SetStateAction } from "react";
-import { CoreFfi } from "shared";
-import * as sharedWasm from "shared";
-import type { Effect, Event } from "shared_types/app";
-import {
-  serializeEvent,
-  matchEffect,
-  Request,
-  ViewModel,
-} from "shared_types/app";
-import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
+import type { EffectHandler, ViewModel } from "shared_types/app";
+import { Core } from "shared_types/app";
 
-const wasmInitialized = (
-  sharedWasm as unknown as { initialized: Promise<void> }
-).initialized;
+/// The shell's side of the effect protocol.
+///
+/// `CounterHandler` implements the generated `EffectHandler`, which has one
+/// method per operation the app declares. The counter's only effect is
+/// `Render`, and the generated `Core` handles that itself — reading the new
+/// view model and passing it to the `onView` callback — so there is nothing
+/// left for the handler to do.
+export class CounterHandler implements EffectHandler {}
 
-export class Core {
-  core: CoreFfi | null = null;
-  initializing: Promise<void> | null = null;
-  setState: Dispatch<SetStateAction<ViewModel>>;
-
-  constructor(setState: Dispatch<SetStateAction<ViewModel>>) {
-    // Don't initialize CoreFfi here - wait for WASM to be loaded
-    this.setState = setState;
-  }
-
-  initialize(shouldLoad: boolean): Promise<void> {
-    if (this.core) {
-      return Promise.resolve();
-    }
-
-    if (!this.initializing) {
-      const load = shouldLoad ? wasmInitialized : Promise.resolve();
-
-      this.initializing = load
-        .then(() => {
-          this.core = CoreFfi.new();
-          this.setState(this.view());
-        })
-        .catch((error) => {
-          this.initializing = null;
-          console.error("Failed to initialize wasm core:", error);
-        });
-    }
-
-    return this.initializing;
-  }
-
-  view(): ViewModel {
-    if (!this.core) {
-      throw new Error("Core not initialized. Call initialize() first.");
-    }
-    return deserializeView(this.core.view());
-  }
-
-  update(event: Event) {
-    if (!this.core) {
-      throw new Error("Core not initialized. Call initialize() first.");
-    }
-    const serializer = new BincodeSerializer();
-    serializeEvent(event, serializer);
-
-    const effects = this.core.update(serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
-    for (const { effect } of requests) {
-      this.processEffect(effect);
-    }
-  }
-
-  private processEffect(effect: Effect) {
-    matchEffect(effect, {
-      Render: () => this.setState(this.view()),
-    });
-  }
-}
-
-function deserializeRequests(bytes: Uint8Array | number[]): Request[] {
-  const deserializer = new BincodeDeserializer(asBytes(bytes));
-  const len = deserializer.deserializeLen();
-  const requests: Request[] = [];
-  for (let i = 0; i < len; i++) {
-    const request = Request.deserialize(deserializer);
-    requests.push(request);
-  }
-  return requests;
-}
-
-function deserializeView(bytes: Uint8Array | number[]): ViewModel {
-  return ViewModel.deserialize(new BincodeDeserializer(asBytes(bytes)));
-}
-
-function asBytes(bytes: Uint8Array | number[]): Uint8Array {
-  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+/// Everything the shell has to write to run a Crux core: an `EffectHandler`
+/// for the app's operations and a callback for the view model. `Core.create`
+/// waits for the wasm module, builds the generated `FfiBridge` over it, and
+/// owns the loop between them.
+export function createCore(onView: (view: ViewModel) => void): Promise<Core> {
+  return Core.create(new CounterHandler(), onView);
 }
