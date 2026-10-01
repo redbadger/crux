@@ -1,107 +1,130 @@
-import type { Dispatch, SetStateAction } from "react";
-
+import * as sharedWasm from "shared";
 import { CoreFfi } from "shared";
-import type { Effect, Event } from "shared_types/app";
-import {
-  RandomNumber,
-  Request,
+import type {
+  CoreBridge,
+  EffectHandler,
+  EffectSink,
+  HttpRequest,
+  HttpResult,
+  RandomNumberRequest,
+  SseRequest,
+  SseResponse,
   ViewModel,
-  matchEffect,
-  serializeEvent,
-  serializeHttpResult,
-  serializeSseResponse,
 } from "shared_types/app";
-import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
-import type { Serializer } from "shared_types/serde";
-import * as http from "./http";
+import { Core, RandomNumber, fetchHttpHandler } from "shared_types/app";
+import { BincodeSerializer } from "shared_types/bincode";
+
 import * as sse from "./sse";
 
-export class Core {
-  core: CoreFfi;
-  callback: Dispatch<SetStateAction<ViewModel>>;
+/// The shell's side of the effect protocol.
+///
+/// `CounterHandler` implements the generated `EffectHandler`: one method per
+/// operation the app declares. The generated `EffectDispatcher` does the
+/// resolving for `http` and `serverSentEvents`, so nothing here decides when —
+/// or how often — to call `resolve` for them.
+///
+/// There is no `render` method: the generated `Core` intercepts `Render`
+/// before the dispatcher sees it and calls the `onView` callback instead.
+export class CounterHandler implements EffectHandler {
+  /// The handler `crux_http` ships, generated into `shared_types/app` because
+  /// the codegen binary asks for it. The rules for mapping a `fetch` response
+  /// belong to that crate, so the only thing this shell writes for HTTP is the
+  /// line that delegates.
+  private readonly httpHandler = fetchHttpHandler;
 
-  constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
-    this.callback = callback;
-    this.core = CoreFfi.new({
-      processEffects: (bytes: Uint8Array) => {
-        this.processEffects(bytes);
-      },
-    });
+  http(operation: HttpRequest): Promise<HttpResult> {
+    return this.httpHandler.request(operation);
   }
 
-  processEffects(bytes: Uint8Array) {
-    const requests = deserializeRequests(bytes);
-    for (const { id, effect } of requests) {
-      this.resolve(id, effect);
-    }
+  /// `ServerSentEvents` is a stream: every item sent into `sink` is one
+  /// resolution of the request that opened it.
+  ///
+  /// Server-Sent Events are this app's own capability (see
+  /// `shared/src/capabilities/sse.rs`), so no crate ships a handler for them
+  /// and the shell implements the operation here — with `sse.ts`, which
+  /// yields a `Chunk` per read from the response body and a final `Done`.
+  serverSentEvents(operation: SseRequest, sink: EffectSink<SseResponse>): void {
+    void (async () => {
+      for await (const response of sse.request(operation)) {
+        sink.send(response);
+      }
+    })();
   }
 
-  update(event: Event) {
+  /// On native targets the Rust `RngMiddleware` answers `Random`, so those
+  /// shells never see it. It can't run in wasm (it needs a thread), so in this
+  /// shell `Random` comes through like any other effect and is answered here.
+  ///
+  /// `RandomNumberRequest` declares no operation kind, so the generated
+  /// handler hands this method the request id and a `resolve` that takes raw
+  /// bytes, and the shell serializes the `RandomNumber` itself.
+  random(
+    operation: RandomNumberRequest,
+    _requestId: number,
+    resolve: (bytes: Uint8Array) => void,
+  ): void {
+    const min = Number(operation.field0);
+    const max = Number(operation.field1);
+    const result = Math.floor(Math.random() * (max - min)) + min;
+
     const serializer = new BincodeSerializer();
-    serializeEvent(event, serializer);
-
-    const effects = this.core.update(serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.resolve(id, effect);
-    }
-  }
-
-  resolve(id: number, effect: Effect) {
-    matchEffect(effect, {
-      Render: (): void => {
-        this.callback(deserializeView(this.core.view()));
-      },
-      Http: (e): void => {
-        void http
-          .request(e.value)
-          .then((r) => this.respond(id, (s) => serializeHttpResult(r, s)));
-      },
-      ServerSentEvents: (e): void => {
-        void (async () => {
-          for await (const r of sse.request(e.value)) {
-            this.respond(id, (s) => serializeSseResponse(r, s));
-          }
-        })();
-      },
-      Random: (e): void => {
-        const min = Number(e.value.field0);
-        const max = Number(e.value.field1);
-        const result = Math.floor(Math.random() * (max - min)) + min;
-        this.respond(id, (s) => new RandomNumber(BigInt(result)).serialize(s));
-      },
-    });
-  }
-
-  respond(id: number, serialize: (s: Serializer) => void) {
-    const serializer = new BincodeSerializer();
-    serialize(serializer);
-
-    const effects = this.core.resolve(id, serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.resolve(id, effect);
-    }
+    new RandomNumber(BigInt(result)).serialize(serializer);
+    resolve(serializer.getBytes());
   }
 }
 
-function deserializeRequests(bytes: Uint8Array | number[]) {
-  const deserializer = new BincodeDeserializer(asBytes(bytes));
-  const len = deserializer.deserializeLen();
-  const requests: Request[] = [];
-  for (let i = 0; i < len; i++) {
-    const request = Request.deserialize(deserializer);
-    requests.push(request);
+/// The generated `CoreBridge`, written by hand over this app's `CoreFfi`.
+///
+/// The codegen binary doesn't ask for the generated `FfiBridge`, because that
+/// constructs `CoreFfi` with no arguments, and this app's `CoreFfi::new` takes
+/// the `CruxShell` callback a middleware uses to deliver effects after
+/// `update` or `resolve` has returned. So the bridge takes that callback and
+/// hands it to `CoreFfi.new`; the three methods are bytes in, bytes out.
+export class MiddlewareBridge implements CoreBridge {
+  private readonly ffi: CoreFfi;
+
+  constructor(processEffects: (bytes: Uint8Array) => void) {
+    this.ffi = CoreFfi.new({ processEffects });
   }
-  return requests;
+
+  update(event: Uint8Array): Uint8Array {
+    return this.ffi.update(event);
+  }
+
+  resolve(id: number, output: Uint8Array): Uint8Array {
+    return this.ffi.resolve(id, output);
+  }
+
+  view(): Uint8Array {
+    return this.ffi.view();
+  }
 }
 
-function deserializeView(bytes: Uint8Array | number[]) {
-  return ViewModel.deserialize(new BincodeDeserializer(asBytes(bytes)));
-}
+const wasmInitialized = (
+  sharedWasm as unknown as { initialized: Promise<void> }
+).initialized;
 
-function asBytes(bytes: Uint8Array | number[]): Uint8Array {
-  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+/// Everything the shell has to write to run a Crux core with middleware: an
+/// `EffectHandler`, a `CoreBridge` and a callback for the view model.
+///
+/// The bridge needs the `CoreFfi`, the `CoreFfi` needs the callback, and the
+/// callback needs the `Core` — which is built from the bridge. The callback
+/// closes over `core` and reads it when it is called, which is only ever
+/// after the `Core` exists, so the cycle is broken by assigning `core` once
+/// it has been constructed.
+///
+/// In wasm the middleware is compiled out (see `shared/src/ffi.rs`), so every
+/// effect comes back from `update` or `resolve` and the callback is never
+/// called. It's wired anyway, so that the shell is the same shape as the
+/// native ones.
+export async function createCore(
+  onView: (view: ViewModel) => void,
+): Promise<Core> {
+  // `CoreFfi.new` reaches into the wasm module, so wait for it to load.
+  await wasmInitialized;
+
+  let core: Core | null = null;
+  const bridge = new MiddlewareBridge((bytes) => core?.processBytes(bytes));
+  core = new Core(bridge, new CounterHandler(), onView);
+  return core;
 }
