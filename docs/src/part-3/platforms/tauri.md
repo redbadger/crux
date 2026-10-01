@@ -1,8 +1,8 @@
-# Desktop/Mobile — Tauri
+# Desktop/Mobile: Tauri
 
 These are the steps to set up and run a Crux app as a desktop (and mobile)
 application using [Tauri](https://tauri.app/). Tauri uses a native webview
-to render the UI, with a Rust backend — making it a natural fit for Crux.
+to render the UI, with a Rust backend, making it a natural fit for Crux.
 
 ```admonish
 This walk-through assumes you have already added the `shared` library to your repo, as described in [Shared core and types](../../part-1/shell.md).
@@ -11,7 +11,7 @@ This walk-through assumes you have already added the `shared` library to your re
 ```admonish info
 Tauri apps have a Rust backend (where the Crux core lives) and a web frontend
 (React, in this example). Because the core runs directly in the Rust backend
-process, there is no need for WebAssembly or FFI — the shell calls the core
+process, there is no need for WebAssembly or FFI: the shell calls the core
 directly and communicates with the frontend via Tauri's event system.
 ```
 
@@ -24,7 +24,7 @@ cargo install tauri-cli
 ```
 
 Create a new Tauri app. Tauri's `init` command will scaffold the project
-structure for you — choose React as the frontend framework.
+structure for you. Choose React as the frontend framework.
 
 ```sh
 cargo tauri init
@@ -34,8 +34,8 @@ cargo tauri init
 
 A Tauri project has two parts:
 
-- **`src-tauri/`** — the Rust backend, where the Crux core lives
-- **`src/`** — the web frontend (React + TypeScript in this example)
+- **`src-tauri/`**: the Rust backend, where the Crux core lives
+- **`src/`**: the web frontend (React + TypeScript in this example)
 
 ### Backend dependencies
 
@@ -74,7 +74,7 @@ A few things to note:
 - The `Render` effect is handled by calling `app.emit("render", view)`, which
   sends the serialized `ViewModel` to the frontend as a Tauri event.
 - Because the core is running directly in Rust, there is no serialization
-  boundary between the shell and the core — we call `core.process_event()`
+  boundary between the shell and the core, so we call `core.process_event()`
   directly.
 
 ## The React frontend
@@ -90,9 +90,9 @@ The frontend is straightforward:
 
 - On mount, we call `listen("render", ...)` to receive view model updates from
   the backend, and invoke `reset` to trigger an initial render.
-- Button clicks call `invoke("increment")`, `invoke("decrement")`, etc. — these
+- Button clicks call `invoke("increment")`, `invoke("decrement")`, etc.; these
   are the Tauri commands defined in our Rust backend.
-- There is no serialization code in the frontend — Tauri handles the
+- There is no serialization code in the frontend, because Tauri handles the
   serialization of the `ViewModel` struct automatically.
 
 ## Build and run

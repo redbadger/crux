@@ -18,7 +18,7 @@ import * as sse from "./sse";
  *
  * `CounterHandler` implements the generated `EffectHandler`: one method per
  * operation the app declares. The generated `EffectDispatcher` does the
- * resolving, so nothing here decides when — or how often — to call `resolve`.
+ * resolving, so nothing here decides when (or how often) to call `resolve`.
  *
  * There is no `render` method: the generated `Core` intercepts `Render`
  * before the dispatcher sees it and calls the `onView` callback instead.
@@ -41,7 +41,7 @@ export class CounterHandler implements EffectHandler {
    *
    * Server-Sent Events are this app's own capability (see
    * `shared/src/sse.rs`), so no crate defines a shell protocol for them and
-   * the shell implements the operation here — with `sse.ts`, which yields a
+   * the shell implements the operation here with `sse.ts`, which yields a
    * `Chunk` per read from the response body and a final `Done`. That is the
    * pattern for any custom capability.
    */
