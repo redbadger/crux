@@ -1,5 +1,20 @@
 # A very basic app
 
+This part of the book explains how Crux works, by building a counter app one
+step at a time. The core is the same as in [Getting started](../getting_started/index.md),
+but this time we write the shell's side of the conversation by hand: sending
+events, reading the effects that come back, resolving them, and fetching the
+view model. For the Swift, Kotlin and TypeScript shells, that is not how we
+recommend writing one — the generated `Core` does all of it for you, as
+Getting started shows — but doing it once makes it clear what the shell and
+the core say to each other, and what the generated code is doing on your
+behalf. A Rust shell, like the Leptos one in this part, has no generated `Core`
+and always talks to the core directly, so for Leptos this _is_ the way to do
+it.
+
+We start from the workspace and the empty `shared` crate from
+[Setting up](../getting_started/index.md#create-the-core-crate).
+
 The basic app we'll build as an example to demonstrate the interaction between
 the Shell and the Core and the state management will be the well known and loved
 counter app. A simple counter we can increment, decrement and reset.
@@ -10,7 +25,7 @@ counter app. A simple counter we can increment, decrement and reset.
 You can find the full code for this part of the guide [here](https://github.com/redbadger/crux/blob/master/examples/counter-tutorial/shared/src/app.rs)
 ```
 
-In the last chapter, we started with the main type
+When we set up the crate, we started with the main type
 
 ```rust,noplayground
 #[derive(Default)]
