@@ -38,7 +38,7 @@ impl RngHandler {
 
                 if let Some(sink) = sink.upgrade() {
                     sink.resolve_request(&mut request, RandomNumber(out))
-                        .expect("background file store resolve should succeed");
+                        .expect("resolving a random number should succeed");
                 }
             }
         });
