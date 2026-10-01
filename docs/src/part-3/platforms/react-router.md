@@ -4,7 +4,7 @@ These are the steps to set up and run a simple TypeScript Web app that calls
 into a shared core.
 
 ```admonish
-This walk-through assumes you have already set up the `shared` library and codegen as described in [Shared core and types](../../part-1/shell.md).
+This walk-through assumes you have already set up the `shared` library and codegen as described in [Getting started](../../getting_started/core.md).
 ```
 
 ```admonish info

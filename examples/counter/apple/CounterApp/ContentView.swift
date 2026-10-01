@@ -1,6 +1,7 @@
 import App
 import SwiftUI
 
+// ANCHOR: content_view
 struct ContentView: View {
     @Environment(Core.self) var core
 
@@ -24,6 +25,7 @@ struct ContentView: View {
         }
     }
 }
+// ANCHOR_END: content_view
 
 struct ActionButton: View {
     var label: String

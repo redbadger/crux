@@ -19,12 +19,14 @@ public partial class App : Application
         UnhandledException += OnUnhandledException;
     }
 
+    // ANCHOR: on_launched
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         var viewModel = new CounterViewModel(new Core(new CounterHandler()));
         window = new MainWindow(viewModel);
         window.Activate();
     }
+    // ANCHOR_END: on_launched
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {

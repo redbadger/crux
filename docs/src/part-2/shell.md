@@ -6,16 +6,17 @@ We've looked at how the Weather app's core fits together, how it's structured in
 
 The shell will have two responsibilities:
 
-1. Laying out the UI components, like we've already seen in Part I
+1. Laying out the UI components, like we've already seen for the counter
 2. Supporting the app's capabilities. This will be new to us
 
-Like in Part I, you can choose which Shell language you'd like to see this in, but first let's talk about
+As with the counter, you can choose which Shell language you'd like to see this in, but first let's talk about
 what they all have in common.
 
 ## Message interface between core and shell
 
-In Part I, we learned to use the `update` and `view` APIs of the core. We also learned that
-in their raw form, they take serialized values as byte buffers.
+Whether you drove the counter's core by hand in Part I or let the generated `Core` do it, the
+core's API is the same: `update`, `view` and `resolve`, which in their raw form take serialized
+values as byte buffers.
 
 We skimmed over the return value of `update` very quickly. In that case it only ever
 returned a request for a `RenderOperation` - a signal that a new view model is available.

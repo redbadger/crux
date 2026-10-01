@@ -258,13 +258,12 @@ the core.
 {{#include ../../../../../examples/counter-tutorial/Android/app/src/main/java/com/crux/examples/counter/CoreWrapper.kt}}
 ```
 
-```admonish note title="Why write this by hand?"
-The codegen also generates a ready-made `Core` class, in `Counter.kt`, which
-runs this loop for you. We write the loop by hand in this chapter on purpose,
-because it shows how the shell and the core talk to each other. Ours is called
-`CoreWrapper` because the generated `Core` is in the same Kotlin package, and
-two classes called `Core` would clash. We pick up the generated `Core` in
-[Part II](../../../part-2/shell.md#who-drives-the-loop).
+```admonish note title="Why CoreWrapper?"
+This loop is what the `Core` class generated in `Counter.kt` runs for you.
+Ours is called `CoreWrapper` because the generated `Core` is in the same Kotlin
+package, and two classes called `Core` would clash. To see the counter use the
+generated `Core` instead, see
+[Getting started](../../../getting_started/shell.md#android).
 ```
 
 ```admonish tip
