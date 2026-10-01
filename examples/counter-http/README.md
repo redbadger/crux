@@ -17,10 +17,10 @@ The `shared` directory adds two capabilities on top of the basic counter:
 
 ## Shells
 
-- SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `Android/`
-- Leptos — `web-leptos/`
-- NextJS — `web-nextjs/`
+- SwiftUI (iOS/macOS): `apple/`
+- Android/Kotlin: `Android/`
+- Leptos: `web-leptos/`
+- NextJS: `web-nextjs/`
 
 The Swift, Kotlin and TypeScript shells use the `Core` that type generation
 emits: the codegen binary is told where `boltffi pack` puts the FFI bindings
