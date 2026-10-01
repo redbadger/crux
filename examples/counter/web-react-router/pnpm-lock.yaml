@@ -1893,7 +1893,9 @@ snapshots:
       mime-types: 2.1.35
       negotiator: 0.6.3
 
-  app@file:generated/types: {}
+  app@file:generated/types:
+    dependencies:
+      shared: file:generated/pkg
 
   arg@5.0.2: {}
 
