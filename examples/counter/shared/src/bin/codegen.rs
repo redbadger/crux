@@ -37,7 +37,8 @@ fn main() -> Result<()> {
             BoltFfi::new()
                 .swift("Shared")
                 .kotlin()
-                .typescript("shared", PackageLocation::Path("../pkg".to_string())),
+                .typescript("shared", PackageLocation::Path("../pkg".to_string()))
+                .csharp(),
         );
 
     let name = match args.language {

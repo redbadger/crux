@@ -140,14 +140,12 @@ The key steps are:
    graph.
 3. **`.boltffi(BoltFfi::new()...)`** — tells type generation where
    `boltffi pack` puts the FFI bindings for each shell: the `Shared`
-   Swift module, the Kotlin package the types are generated into, and
-   the `shared` npm package at `../pkg`. For each language named here,
-   the generated package gains an `FfiBridge` over `CoreFfi` and `Core`
-   gains a constructor that takes only an `EffectHandler`, so the shell
-   writes no adapter of its own — see
-   [Bridging to BoltFFI](#bridging-to-boltffi). C# is not named, so its
-   output is unchanged and the Windows shell still wraps `CoreFfi`
-   itself.
+   Swift module, the Kotlin package the types are generated into, the
+   `shared` npm package at `../pkg`, and the C# namespace the types are
+   generated into. For each language named here, the generated package
+   gains an `FfiBridge` over `CoreFfi` and `Core` gains a constructor
+   that takes only an `EffectHandler`, so the shell writes no adapter of
+   its own — see [Bridging to BoltFFI](#bridging-to-boltffi).
 4. **`Config::builder(name, &output_dir)`** — configures the output.
    The `name` parameter is the package/module name (e.g. `"App"` for
    Swift, `"com.crux.examples.counter"` for Kotlin, `"app"` for
@@ -578,7 +576,7 @@ still emitted, so a preview or a test can hand `Core` a fake, and a shell
 whose FFI has a different shape — the middleware examples, whose
 `CoreFfi::new` takes a callback — still writes its own adapter.
 
-Two consequences for the build:
+Three consequences for the build:
 
 - **Swift.** `FfiBridge.swift` imports the BoltFFI module, so the generated
   package now depends on the BoltFFI package: `Package.swift` gains
@@ -602,9 +600,22 @@ Two consequences for the build:
   `pnpm install` in the generated package, so run `boltffi pack wasm`
   *before* typegen. The Android recipes already pack first; the web
   recipes in the examples were reordered to match.
+- **C#.** `FfiBridge.cs` is compiled into the generated project, so that
+  project now needs the assembly `CoreFfi` lives in — the NuGet package
+  `boltffi pack csharp` builds — even when both share a namespace. The
+  generated `.csproj` is rewritten on every run, so add the reference
+  from a `Directory.Build.props` above it; the counter's Windows shell
+  does it like this:
 
-Kotlin and C# need nothing else when the bindings share the generated
-package or namespace, which is how the examples are configured.
+  ```xml
+{{#include ../../../examples/counter/windows/Directory.Build.props:ffi_reference}}
+  ```
+
+  Run `boltffi pack csharp` before the generated project is restored, as
+  the Windows recipes already do.
+
+Kotlin needs nothing else when the bindings share the generated package,
+which is how the examples are configured.
 
 Setting `boltffi(..)` when there is no `Core` to bridge — no registered
 app, no `Render` variant, or `without_core()` — is reported as an error

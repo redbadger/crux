@@ -1,3 +1,4 @@
+using CounterApp.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 
@@ -20,7 +21,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        var viewModel = new CounterViewModel(new Core(), loggerFactory.CreateLogger<CounterViewModel>());
+        var viewModel = new CounterViewModel(new Core(new CounterHandler()));
         window = new MainWindow(viewModel);
         window.Activate();
     }
