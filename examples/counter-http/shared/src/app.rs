@@ -51,6 +51,7 @@ pub enum Event {
     Update(#[facet(opaque)] Count),
 }
 
+// ANCHOR: effect
 #[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
@@ -58,6 +59,7 @@ pub enum Effect {
     Http(HttpRequest),
     ServerSentEvents(SseRequest),
 }
+// ANCHOR_END: effect
 
 #[derive(Default)]
 pub struct Counter;

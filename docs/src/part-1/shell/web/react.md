@@ -202,29 +202,22 @@ instance, and so we can't just pass the data directly.
 {{#include ../../../../../examples/counter-tutorial/web-nextjs/src/app/core.ts}}
 ```
 
-```admonish note title="Why write this by hand?"
-The codegen also generates a ready-made `Core` class in `shared_types/app`,
-which runs this loop for you. We write the loop by hand in this chapter on
-purpose, because it shows how the shell and the core talk to each other. That's
-also why ours is called `CoreWrapper`, so it doesn't get mixed up with the
-generated `Core`. We pick up the generated `Core` in
-[Part II](../../../part-2/shell.md#who-drives-the-loop).
+```admonish note title="Why CoreWrapper?"
+This loop is what the `Core` class generated in `shared_types/app` runs for
+you. Ours is called `CoreWrapper` so it doesn't get mixed up with that one. To
+see the counter use the generated `Core` instead, see
+[Getting started](../../../getting_started/shell.md#web-typescript).
 ```
 
 ```admonish tip
 That `matchEffect` call, above, is where you would
 handle any other effects that your core might ask for.
 For example, if your core needs to make an HTTP
-request, you would handle that here. The
-[counter-http example](https://github.com/redbadger/crux/tree/master/examples/counter-http/web-nextjs/src/app/core.ts)
-in the Crux repository is this app with HTTP and
-Server-Sent Events added. It uses the generated `Core`
-instead of a loop like this one, so its shell is an
-`EffectHandler` with one method per effect: HTTP
-delegates to the handler `crux_http` ships, and the
-Server-Sent Events are written by hand. We get to the
-generated `Core` in
-[Part II](../../../part-2/shell.md#who-drives-the-loop).
+request, you would handle that here. With the generated
+`Core`, each effect gets a method on an `EffectHandler`
+instead — see
+[Adding a capability](../../../getting_started/capabilities.md)
+for this counter with HTTP and Server-Sent Events added.
 ```
 
 #### Create a component to render the UI

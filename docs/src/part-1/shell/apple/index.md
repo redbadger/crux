@@ -165,13 +165,11 @@ That is where effect execution goes. At the moment the switch statement has a si
 lonely case updating the view model whenever the `.render` variant is requested,
 but you can add more in here later, as you expand your `Effect` type.
 
-```admonish note title="Why write this by hand?"
-The codegen also generates a ready-made `Core` class in the `App` package,
-which runs this loop for you. We write the loop by hand in this chapter on
-purpose, because it shows how the shell and the core talk to each other. That's
-also why ours is called `CoreWrapper`, so it doesn't get mixed up with the
-generated `Core`. We pick up the generated `Core` in
-[Part II](../../../part-2/shell.md#who-drives-the-loop).
+```admonish note title="Why CoreWrapper?"
+This loop is what the `Core` class generated in the `App` package runs for you.
+Ours is called `CoreWrapper` so it doesn't get mixed up with that one. To see
+the counter use the generated `Core` instead, see
+[Getting started](../../../getting_started/shell.md#iosmacos).
 ```
 
 ### Build a basic view

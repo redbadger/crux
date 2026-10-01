@@ -27,6 +27,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
+    // ANCHOR: shell_handler
     let mut registry = TypeRegistry::new();
     registry.register_app::<Counter>()?;
     // HTTP is `crux_http`'s business, so the shells hold an instance of the
@@ -34,6 +35,7 @@ fn main() -> Result<()> {
     // own capability, so there is nothing to ship: each shell implements
     // `serverSentEvents` itself.
     registry.shell_handler(&crux_http::HTTP)?;
+    // ANCHOR_END: shell_handler
 
     let typegen_app = registry
         .build()?
