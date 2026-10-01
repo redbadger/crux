@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 721.5" width="1100" height="721.5" role="img" aria-labelledby="title desc">
+<title id="title">Crux: the effect router</title>
+<desc id="desc">The Rust shared crate holds an EffectRouter, which holds the Core and a routing closure. The Core runs the app, and the app does not change. The Core gives each effect and each follow-up effect to the routing closure. The routing closure sends each effect to a route of your own. A Rust handler resolves its requests itself, next to the core. The Serialized lane sends bytes to the shell's EffectHandler, which is the usual serialized interface. The Parked lane sends the typed operation to a custom FFI of your own design. Each output goes back to the Core along one line, and the Core sends the follow-up effects to the routing closure again.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<rect x="15" y="15" width="1070" height="453.5" rx="14" fill="#22c55e" fill-opacity="0.08" stroke="#22c55e" stroke-width="1.5"/>
+<text x="35" y="42" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:15px;font-weight:600">Rust (shared crate)</text>
+<rect x="35" y="58" width="1030" height="148" rx="14" fill="#8b5cf6" fill-opacity="0.08" stroke="#8b5cf6" stroke-width="1.5"/>
+<text x="53" y="85" text-anchor="start" class="s m" style="fill:#8a8a8a;font-size:15px;font-weight:600">EffectRouter</text>
+<rect x="55" y="100" width="196" height="64" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="1.5"/>
+<text x="153" y="129.3" text-anchor="middle" class="b m">Core</text>
+<text x="153" y="147.3" text-anchor="middle" class="s">runs the app, unchanged</text>
+<rect x="522.5" y="100" width="240" height="64" rx="10" fill="#ddd6fe" stroke="#8b5cf6" stroke-width="1.5"/>
+<text x="642.5" y="129.3" text-anchor="middle" class="b">routing closure</text>
+<text x="642.5" y="147.3" text-anchor="middle" class="s">sends each effect to a route</text>
+<path d="M253,132 H520.5" class="ln" marker-end="url(#a)"/>
+<rect x="293.5" y="106.8" width="186.5" height="22.5" rx="11.2" class="pill"/>
+<text x="386.8" y="122.5" text-anchor="middle" class="l">effects and follow-ups</text>
+<rect x="220" y="242" width="845" height="210.5" rx="14" fill="#d97706" fill-opacity="0.08" stroke="#d97706" stroke-width="1.5"/>
+<text x="238" y="438.5" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:15px;font-weight:600" xml:space="preserve">Your Routes type</text>
+<rect x="240" y="344.5" width="215" height="64" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="347.5" y="373.8" text-anchor="middle" class="b">Rust handler</text>
+<text x="347.5" y="391.8" text-anchor="middle" class="s">runs alongside the core</text>
+<path d="M642.5,166 V208 Q642.5,224,626.5,224 H363.5 Q347.5,224,347.5,240 V342.5" class="ln" marker-end="url(#a)"/>
+<rect x="535" y="344.5" width="215" height="64" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="642.5" y="373.8" text-anchor="middle" class="b m">Serialized</text>
+<text x="642.5" y="391.8" text-anchor="middle" class="s">serializes each effect</text>
+<path d="M642.5,166 V342.5" class="ln" marker-end="url(#a)"/>
+<rect x="830" y="344.5" width="215" height="64" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="937.5" y="373.8" text-anchor="middle" class="b m">Parked</text>
+<text x="937.5" y="391.8" text-anchor="middle" class="s">parks the typed request</text>
+<path d="M642.5,166 V208 Q642.5,224,658.5,224 H921.5 Q937.5,224,937.5,240 V342.5" class="ln" marker-end="url(#a)"/>
+<rect x="15" y="508.5" width="1070" height="198" rx="14" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="130" y="535.5" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:15px;font-weight:600">Shell</text>
+<path d="M238,376.5 H116 Q100,376.5,100,360.5 V166" class="ln" marker-end="url(#a)"/>
+<rect x="136.8" y="365.2" width="62.5" height="22.5" rx="11.2" class="pill"/>
+<text x="168" y="381" text-anchor="middle" class="l">output</text>
+<rect x="535" y="568.5" width="215" height="64" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="642.5" y="597.8" text-anchor="middle" class="b m">EffectHandler</text>
+<text x="642.5" y="615.8" text-anchor="middle" class="s">the serialized interface</text>
+<path d="M642.5,410.5 V566.5" class="ln" marker-end="url(#a)"/>
+<rect x="615.1" y="477.2" width="54.8" height="22.5" rx="11.2" class="pill"/>
+<text x="642.5" y="493" text-anchor="middle" class="l">bytes</text>
+<path d="M642.5,634.5 V670.5 Q642.5,686.5,626.5,686.5 H116 Q100,686.5,100,670.5 V166" class="ln" marker-end="url(#a)"/>
+<rect x="568.6" y="648.2" width="147.8" height="22.5" rx="11.2" class="pill"/>
+<text x="642.5" y="664" text-anchor="middle" class="l">serialized output</text>
+<rect x="830" y="568.5" width="215" height="64" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="937.5" y="597.8" text-anchor="middle" class="b">Custom FFI</text>
+<text x="937.5" y="615.8" text-anchor="middle" class="s">your own design</text>
+<path d="M937.5,410.5 V566.5" class="ln" marker-end="url(#a)"/>
+<rect x="871.4" y="477.2" width="132.2" height="22.5" rx="11.2" class="pill"/>
+<text x="937.5" y="493" text-anchor="middle" class="l">typed operation</text>
+<path d="M937.5,634.5 V670.5 Q937.5,686.5,921.5,686.5 H116 Q100,686.5,100,670.5 V166" class="ln" marker-end="url(#a)"/>
+<rect x="883" y="648.2" width="109" height="22.5" rx="11.2" class="pill"/>
+<text x="937.5" y="664" text-anchor="middle" class="l">typed output</text>
+</svg>
