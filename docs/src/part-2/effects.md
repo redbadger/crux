@@ -137,7 +137,7 @@ We've seen an example of this already, but here it is again:
 {{#include ../../../examples/weather/shared/src/model/initializing.rs:start}}
 ```
 
-The two capability calls each produce a command, and we want to run them concurrently. `Command::all` combines them into a single `Command`, which `start()` returns as part of its `Started` bundle.
+Fetching the API key and loading the favourites each produce a command, and we want both to run concurrently. `Command::all` combines them into a single `Command`. `start()` then hands that command to `Started::new` together with the initial state (`Self::default()`), so the initializing state begins with both requests already in flight. [Nested state machines](./nested_state_machines.md) introduced `Started`.
 
 ```admonish note
 Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in [Building Capabilities](./capabilities.md).
@@ -176,7 +176,7 @@ For more details of this, we recommend the [Command API docs](https://docs.rs/cr
 Combining all these tools provides a fair bit of flexibility to create fairly complex orchestrations of effects. Sometimes, you might want to go more complex than that, however. In such cases, Crux attempting to create more APIs trying to achieve every conceivable orchestration with closures would have diminishing returns. In such cases, you probably just want to write `async` code instead.
 
 ```admonish warning
-Notice that nowhere in the above examples have we mentioned working with the model during the execution of the command. This is very much by design: Once started, commands do not have model access, because they execute asynchronously, possibly in parallel, and access to model would introduce data races, which are very difficult to debug.
+Notice that nowhere in the above examples have we mentioned working with the model during the execution of the command. This is very much by design. Once started, commands have no access to the model, because they execute asynchronously, possibly in parallel, and access to the model would introduce data races, which are very difficult to debug.
 
 In order to update state, you should pass the result of the effect orchestration back to your app using an Event (as a kind of callback). It's relatively typical for apps to have a number of "internal" events, which handle results of effects. Sometimes these are also useful in tests, if you want to start a particular journey "from the middle".
 ```
@@ -235,40 +235,7 @@ if let Some(handle) = model.search_handle.take() {
 
 There is more to the `async` effect API than we can or should cover here. Most of what you'd expect in async rust is supported – join handles, aborting tasks (and even Commands), spawning tasks and communicating between them, etc. Again, we recommend the [Command API docs](https://docs.rs/crux_core/latest/crux_core/command/index.html) for the full coverage.
 
-## Migrating from previous versions of Crux
-
-```admonish info title="You can probably skip this"
-If you're new to Crux, it's unlikely you need to read this section. The original API for side-effects
-was very different from Commands and this section is kept to help migrate from that API
+```admonish note title="Coming from an earlier version?"
+If your app still uses the old `Capabilities` API (a `caps` parameter on
+`update`), see [Migrating from Capabilities to Command](../guide/migrate-capabilities-to-command.md).
 ```
-
-The change to `Command` is a breaking one for all Crux apps. The previous API used `Capabilities` to perform side-effects via callbacks. The new API removes `Capabilities` and `caps` from the `App` trait entirely, replacing them with a `Command` return value from `update`.
-
-There are three parts to the migration:
-
-1. Remove the `Capabilities` associated type and the `caps` parameter from `update`
-2. Declare the `Effect` associated type on your App
-3. Return `Command` from `update`
-
-Here's what the end state looks like:
-
-```rust
-impl crux_core::App for App {
-    type Event = Event;
-    type Model = Model;
-    type ViewModel = ViewModel;
-    type Effect = Effect;
-
-    fn update(
-        &self,
-        event: Event,
-        model: &mut Model,
-    ) -> crux_core::Command<Effect, Event> {
-        crux_core::Command::done() // return a Command
-    }
-}
-```
-
-To begin with, you can return `Command::done()` (a no-op) from `update` and
-incrementally migrate your effect handling to use Commands and capability APIs
-that return command builders.

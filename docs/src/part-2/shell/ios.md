@@ -79,7 +79,7 @@ The loop (serialize the event, call the bridge, deserialize the requests, dispat
 }
 ```
 
-`Core` handles `Render` itself: when one arrives it re-reads the view from the bridge and stores it in `view`, which is the class's one observable property. Everything else goes to the generated `EffectDispatcher`, which calls the matching `EffectHandler` method and resolves the request afterwards: never for a notification, once for a request. When a request is resolved, `Core` passes the bytes back through the bridge and loops over any **new** requests that come back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. The shell has to keep processing until the command's task finishes, and now nothing in the shell has to remember to.
+`Core` handles `Render` itself: when one arrives it re-reads the view from the bridge and stores it in `view`, which is the class's one observable property. Everything else goes to the generated `EffectDispatcher`, which calls the matching `EffectHandler` method and resolves the request afterwards: never for a notification, once for a request. When a request is resolved, `Core` passes the bytes back through the bridge and loops over any **new** requests that come back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. Processing has to continue until the command's task finishes, and the generated `Core` keeps it going, so the shell doesn't have to.
 
 What the shell writes is the `EffectHandler`. In WeatherKit that is `WeatherHandler`:
 

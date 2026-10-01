@@ -25,7 +25,7 @@ That's how a capability gets used. But where do these APIs come from? Let's buil
 
 Before we write any code, one rule shapes everything that follows: **an operation type has exactly one output type, and exactly one operation kind.**
 
-The `Operation` trait has always said the first half:
+The output is what the shell answers with. The `Operation` trait ties it to the operation:
 
 ```rust,ignore
 // Rust
@@ -34,17 +34,15 @@ pub trait Operation: Send + 'static {
 }
 ```
 
-The trouble is that it used to be conventional to implement it on a *coarse enum* (one operation type with five variants, one output type with five variants), and then the trait's promise stops being true in practice. Any response variant is a well-formed answer to any request variant, as far as the type system and the deserializer are concerned. So the capability has to check at runtime, and every capability author has to decide what to do when the check fails: panic, invent an error, or quietly ignore it. `crux_kv` and `crux_time` both used to panic.
+Because each operation is its own type, the only answer the shell can give it is a value of its `Output`.
 
-So: one type per operation. Each carries its own output, and the wrong answer stops being expressible.
-
-The second half, the operation kind, is the same idea applied to *how many times* the shell answers:
+The kind says *how many times* the shell answers:
 
 - **notify**: the shell is told, and never answers. `Output` is `()`.
 - **request**: the shell answers exactly once, with the operation's `Output`.
 - **stream**: the shell answers any number of times, each with an `Output`.
 
-That used to be decided by which `Command` constructor you called, so the same operation could be notified in one place and streamed in another. Declaring it on the type instead means the compiler can hold you to it and, more usefully, it means [type generation](../part-4/typegen.md) can tell the *shell* how many times to resolve each effect, which it previously had to learn by reading Rust source.
+The kind is part of the type, so the compiler holds every call site to it: sending an operation with the wrong `Command` constructor fails to compile. [Type generation](../part-4/typegen.md) also passes it on to the shell, so each generated handler method has the right shape. A request returns its output, and a stream is handed a sink to send into.
 
 You declare both with `#[derive(Operation)]`:
 
@@ -68,12 +66,13 @@ pub struct GetValue { pub key: String }
 pub struct Subscribe;
 ```
 
-The derive writes the `Operation` implementation, its `Output`, the kind, and the marker trait (`crux_core::operation::Notify`, `Request` or `Stream`) that goes with it, so the two can't disagree. Sending an operation with the wrong constructor then fails to compile.
+The derive writes the `Operation` implementation, its `Output`, the kind, and the marker trait (`crux_core::operation::Notify`, `Request` or `Stream`) that goes with it, so they can't disagree.
 
 ````admonish note
 Outputs must be types type generation can emit, which rules out
 `std::result::Result`. Where an operation can fail, the convention is a
-concrete two-variant enum in the style of `crux_http`'s `HttpResult`:
+concrete two-variant enum, like `crux_kv`'s `ValueResult` (the output of the
+`GetValue` example above):
 
 ```rust,ignore
 // Rust
@@ -89,7 +88,14 @@ Capabilities usually keep a `From` impl to hand the developer-facing `Result`
 alias back from their builders, so app code still works in `Result`.
 ````
 
-If you're upgrading an app written against the older, enum-shaped capabilities, the [Migrating to per-operation types](../guide/migrate-per-operation-types.md) guide is the mechanical version of this section. And if you're upgrading from before `crux_http` 0.19, note that it switched from `http-types` to the standard [`http`](https://docs.rs/http) crate (see [Migrating `crux_http` to native `http` types](../guide/migrate-crux-http.md)).
+```admonish note title="Coming from an earlier version?"
+Capabilities used to be written as one enum of operations sharing one response
+enum, with the kind chosen by whichever `Command` constructor was called. If
+your app has capabilities like that, the
+[Migrating to per-operation types](../guide/migrate-per-operation-types.md)
+guide walks through the change. Apps upgrading from before `crux_http` 0.19
+should also see [Migrating `crux_http` to native `http` types](../guide/migrate-crux-http.md).
+```
 
 ## A simple custom capability: Location
 
@@ -107,7 +113,7 @@ Here's the whole protocol for Location:
 {{#include ../../../examples/weather/shared/src/effects/location/mod.rs}}
 ```
 
-Two operations, two outputs, and nothing shared between them. `IsLocationEnabled` is answered with a `bool`; `GetLocation` with an `Option<Location>`. Both declare `request`, so the shell answers each exactly once and the compiler rejects `Command::notify_shell(GetLocation)`.
+Location has two operations, and each has its own output: the shell answers `IsLocationEnabled` with a `bool` and `GetLocation` with an `Option<Location>`. Both declare `request`, so the shell answers each exactly once and the compiler rejects `Command::notify_shell(GetLocation)`.
 
 `Location` itself needs no mention anywhere: type generation walks each output's shape and emits every type it finds, so `Option<Location>` is enough for the shells to get a `Location`.
 
@@ -118,24 +124,22 @@ The developer API is equally small:
 {{#include ../../../examples/weather/shared/src/effects/location/command.rs}}
 ```
 
-Each function issues one operation and hands back its output. There's no narrowing step and no fallback for "the shell answered the other question", because there is no other question this request could be answered with.
+Each function issues one operation and hands back its output.
 
 Notice the generic signatures: both functions are generic over `Effect` and `Event`. The trait bound `Effect: From<Request<GetLocation>>` says the caller's `Effect` type must be able to wrap *that* request. Every `#[effect]`-generated enum implements it for each operation it lists. Bounding per operation rather than per capability is what lets an app carry `KvGet` and `KvSet` without ever hearing about `ListKeys`.
 
 ## A richer example: Secret
 
-Location is about as minimal as a capability gets. Secret (storing, fetching, and deleting an API key) has three operations whose outcomes genuinely differ, and it's the clearest illustration of what per-operation outputs buy you.
+Location is about as minimal as a capability gets. Secret (storing, fetching, and deleting an API key) has three operations, and each one has different outcomes.
 
-Fetching a secret either finds it or doesn't. Storing one either succeeds or fails. Deleting one either succeeds or fails. With one shared response enum those six outcomes live in one type, and every call site has to rule out the four that can't happen, which is exactly what this capability used to do, with `unreachable!()` in the arms it had ruled out by hand.
-
-Now each operation names only its own outcomes:
+Fetching a secret either finds it or doesn't. Storing one either succeeds or fails, and so does deleting one. Each operation names only its own outcomes:
 
 ```rust
 // Rust
 {{#include ../../../examples/weather/shared/src/effects/secret/mod.rs}}
 ```
 
-Three operations, three outputs, two variants each. There is no wide `SecretResponse` and no `unreachable!()` anywhere, because a `SecretStoreResponse` is not a possible answer to a `FetchSecret`. The type says so, and the shell's generated handler method for `FetchSecret` returns a `SecretFetchResponse` or nothing at all.
+Secret has three operations, each with a two-variant output of its own. The shell's generated handler method for `FetchSecret`, for example, returns a `SecretFetchResponse`.
 
 The operation names carry the capability's name for a reason that has nothing to do with Rust: type generation puts every operation of every capability into one namespace on the shell side, so a bare `Delete` here would clash with any other capability or app operation called `Delete`. Type generation rejects two shared types that generate the same name. An app-defined operation with a generic name is worth prefixing from the start.
 
@@ -146,7 +150,7 @@ The developer API is correspondingly plain:
 {{#include ../../../examples/weather/shared/src/effects/secret/command.rs}}
 ```
 
-Each builder issues its request and returns the output unchanged. Compare that with what it replaced: a `.map(...)` per builder, matching the wide response down to the narrow one and panicking on the arms that "can't happen".
+Each builder issues its request and returns the output unchanged.
 
 Using these builders looks no different from the location ones: call `secret::command::fetch(API_KEY_NAME)` and finish with `.then_send(...)` to bind the eventual `SecretFetchResponse` to an event.
 
@@ -184,7 +188,7 @@ the kind an associated type of `Operation`, which would turn this into an
 ordinary trait-bound error you see as you type.
 ```
 
-The kinds pay off hardest on the shell side. Because each variant's kind is static, [type generation](../part-4/typegen.md) can emit a handler interface where `publish` returns nothing, `subscribe` is handed a sink to send `Message`s into, and a request method returns its output. The shell can't resolve the wrong number of times, because there is no `resolve` for it to call.
+On the shell side, [type generation](../part-4/typegen.md) uses the kinds to shape the handler interface: `publish` returns nothing, `subscribe` is handed a sink to send `Message`s into, and a request method returns its output.
 
 ## Shipping a shell protocol
 
