@@ -241,12 +241,12 @@ mod context;
 mod executor;
 mod stream;
 
-use std::future::Future;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use core::future::Future;
+use alloc::sync::Arc;
+use core::sync::atomic::AtomicBool;
 
 // TODO: consider switching to flume
-use crossbeam_channel::{Receiver, Sender};
+use crate::sync::channel::{Receiver, Sender};
 use executor::{Task, TaskId};
 use futures::task::AtomicWaker;
 use futures::{FutureExt as _, Stream, StreamExt as _};
@@ -309,11 +309,11 @@ where
         // so a naughty Command can make massive amounts of requests or spawn a huge number of tasks.
         // If these channels supported async, the CommandContext methods could also be async and
         // we could give the channels some bounds
-        let (effect_sender, effect_receiver) = crossbeam_channel::unbounded();
-        let (event_sender, event_receiver) = crossbeam_channel::unbounded();
-        let (ready_sender, ready_receiver) = crossbeam_channel::unbounded();
-        let (spawn_sender, spawn_receiver) = crossbeam_channel::unbounded();
-        let (_, waker_receiver) = crossbeam_channel::unbounded();
+        let (effect_sender, effect_receiver) = crate::sync::channel::unbounded();
+        let (event_sender, event_receiver) = crate::sync::channel::unbounded();
+        let (ready_sender, ready_receiver) = crate::sync::channel::unbounded();
+        let (spawn_sender, spawn_receiver) = crate::sync::channel::unbounded();
+        let (_, waker_receiver) = crate::sync::channel::unbounded();
 
         let context = context::CommandContext {
             effects: effect_sender,
