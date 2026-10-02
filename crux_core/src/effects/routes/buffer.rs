@@ -1,4 +1,6 @@
-use std::sync::Mutex;
+#[allow(unused_imports)]
+use crate::prelude::*;
+use crate::sync::Mutex;
 
 use crate::{Request, capability::Operation};
 
@@ -30,7 +32,6 @@ impl<Op: Operation> Buffer<Op> {
     pub fn push(&self, request: Request<Op>) {
         self.requests
             .lock()
-            .expect("buffer route lock poisoned")
             .push(request);
     }
 
@@ -43,7 +44,6 @@ impl<Op: Operation> Buffer<Op> {
     pub fn drain(&self) -> Vec<Request<Op>> {
         self.requests
             .lock()
-            .expect("buffer route lock poisoned")
             .drain(..)
             .collect()
     }

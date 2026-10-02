@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+use crate::prelude::*;
 use slab::Slab;
 
 use super::effect_id;
