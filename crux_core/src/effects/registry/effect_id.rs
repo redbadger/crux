@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 // The id is a generational id, first 32 bits are the generation
 // the second 32 are the index itself. That way we get to reuse

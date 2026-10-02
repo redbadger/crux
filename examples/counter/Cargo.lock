@@ -1139,7 +1139,6 @@ version = "0.21.0"
 dependencies = [
  "anyhow",
  "bincode",
- "crossbeam-channel",
  "crux_macros",
  "facet",
  "facet_generate",
@@ -1149,6 +1148,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slab",
+ "spin",
  "thiserror 2.0.19",
 ]
 
