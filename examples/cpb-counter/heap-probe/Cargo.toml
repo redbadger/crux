@@ -1,0 +1,13 @@
+[package]
+name = "cpb-counter-heap-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "spike(no_std): run the cpb-counter core on the host, no_std crux_core, and measure peak heap"
+
+[workspace]
+
+[dependencies]
+# Same features as the firmware: no std in crux_core (spin locks, internal channel).
+crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros"] }
+facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
