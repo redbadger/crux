@@ -1,10 +1,10 @@
-use std::{
-    sync::{
-        Arc, Weak,
-        atomic::{AtomicBool, Ordering},
-    },
-    thread::{self, ThreadId},
-};
+#[allow(unused_imports)]
+use crate::prelude::*;
+use alloc::sync::{Arc, Weak};
+use core::sync::atomic::{AtomicBool, Ordering};
+// spike(no_std): no thread ids without an OS; the guard degrades to the flag alone.
+#[cfg(feature = "std")]
+use std::thread::{self, ThreadId};
 
 use crate::{
     OperationKind, Request, RequestHandle, Resolvable, ResolveError, capability::Operation,
@@ -31,6 +31,7 @@ pub struct EffectResolver<Output: Send + 'static> {
     /// `true` while `try_process_effect` is executing on the call stack.
     active: Arc<AtomicBool>,
     /// The thread that called `try_process_effect`.
+    #[cfg(feature = "std")]
     calling_thread: ThreadId,
 }
 
@@ -55,8 +56,14 @@ impl<Output: Send + 'static> EffectResolver<Output> {
     ///
     /// See <https://github.com/redbadger/crux/issues/492>
     pub fn resolve(&mut self, output: Output) {
+        #[cfg(feature = "std")]
+        let same_thread = thread::current().id() == self.calling_thread;
+        // spike(no_std): stricter. A resolve from *anywhere* (another core, an ISR)
+        // while try_process_effect is on the stack panics.
+        #[cfg(not(feature = "std"))]
+        let same_thread = true;
         assert!(
-            !(self.active.load(Ordering::Acquire) && thread::current().id() == self.calling_thread),
+            !(self.active.load(Ordering::Acquire) && same_thread),
             "EffectMiddleware::try_process_effect must not call resolve() synchronously. \
              Dispatch work asynchronously (thread, spawn_local, channel, etc.). \
              See https://github.com/redbadger/crux/issues/492"
@@ -302,7 +309,7 @@ where
 
                     move |req_handle: &mut RequestHandle<<EM::Op as Operation>::Output>, output| {
                         let Some(strong_inner) = inner.upgrade() else {
-                            eprintln!("Inner can't be upgraded after resolving effect");
+                            crate::__crux_log_error!("Inner can't be upgraded after resolving effect");
                             return;
                         };
 
@@ -330,7 +337,7 @@ where
                 };
 
                 let Some(strong_inner) = inner.upgrade() else {
-                    eprintln!("Inner can't be upgraded to process effect");
+                    crate::__crux_log_error!("Inner can't be upgraded to process effect");
                     return None;
                 };
 
@@ -340,6 +347,7 @@ where
                     handle,
                     resolve_fn: Box::new(resolve_fn),
                     active: active.clone(),
+                    #[cfg(feature = "std")]
                     calling_thread: thread::current().id(),
                 };
 

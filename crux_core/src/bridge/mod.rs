@@ -1,10 +1,12 @@
+#[allow(unused_imports)]
+use crate::prelude::*;
 mod formats;
 mod registry;
 mod request_serde;
 
 use facet::Facet;
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
+use core::fmt::Debug;
 use thiserror::Error;
 
 use crate::{App, Core, core::ResolveError};
@@ -21,7 +23,7 @@ pub use request_serde::ResolveSerialized;
 /// the type generation system doesn't yet support automatically generating the shell-side support
 /// for different formats, and you'll need to bring your own solution for this.
 pub trait FfiFormat: Debug + 'static {
-    type Error: std::error::Error;
+    type Error: core::error::Error;
 
     /// Serialize an instance of `T` into the provided growable byte buffer.
     ///

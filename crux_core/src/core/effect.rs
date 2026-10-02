@@ -1,5 +1,7 @@
+#[cfg(feature = "bridge")]
 use serde::Serialize;
 
+#[cfg(feature = "bridge")]
 use crate::bridge::{FfiFormat, ResolveSerialized};
 
 /// Implemented automatically with the effect macro from `crux_macros`.
@@ -19,6 +21,7 @@ pub trait Effect: Send + 'static {}
 /// You should annotate your type with `#[effect(facet_typegen)]` to implement this trait.
 // used in docs/internals/bridge.md
 // ANCHOR: effect_typegen
+#[cfg(feature = "bridge")]
 pub trait EffectFFI: Effect {
     /// Ffi is an enum with variants corresponding to the Effect variants
     /// but instead of carrying a `Request<Op>` they carry the `Op` directly

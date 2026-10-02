@@ -1,15 +1,15 @@
 #![allow(clippy::redundant_pub_crate)]
 // Command is an async Stream
 
-use std::future::Future;
-use std::ops::DerefMut as _;
-use std::task::{Context, Poll};
+use core::future::Future;
+use core::ops::DerefMut as _;
+use core::task::{Context, Poll};
 
-use std::pin::Pin;
+use core::pin::Pin;
 
 use futures::{Sink, Stream, StreamExt as _};
 
-use crossbeam_channel::Sender;
+use crate::sync::channel::Sender;
 use thiserror::Error;
 
 use super::Command;

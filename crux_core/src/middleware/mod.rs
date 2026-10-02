@@ -16,16 +16,24 @@
 //!
 //! Note: In the documentation we refer to the directions in the middleware chain
 //! as "down" - towards the core, and "up" - away from the Core, towards the Shell.
-use crate::{App, Core, EffectFFI, Request, Resolvable, ResolveError, bridge::BridgeError};
+#[allow(unused_imports)]
+use crate::prelude::*;
+use crate::{App, Core, Request, Resolvable, ResolveError};
+#[cfg(feature = "bridge")]
+use crate::{EffectFFI, bridge::BridgeError};
 
+#[cfg(feature = "bridge")]
 mod bridge;
 mod effect_conversion;
 mod effect_handling;
 
+#[cfg(feature = "bridge")]
 pub use crate::bridge::{BincodeFfiFormat, FfiFormat, JsonFfiFormat};
+#[cfg(feature = "bridge")]
 pub use bridge::Bridge;
 pub use effect_conversion::MapEffectLayer;
 pub use effect_handling::{EffectMiddleware, EffectResolver, HandleEffectLayer};
+#[cfg(feature = "bridge")]
 use serde::Deserialize;
 
 /// A layer in the middleware stack.
@@ -127,6 +135,7 @@ pub trait Layer: Send + Sync + Sized {
         MapEffectLayer::new(self)
     }
 
+    #[cfg(feature = "bridge")]
     fn bridge<Format: FfiFormat>(
         self,
         effect_callback: impl Fn(Result<Vec<u8>, BridgeError<Format>>) + Send + Sync + 'static,

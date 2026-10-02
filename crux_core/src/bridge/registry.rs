@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use crate::sync::Mutex;
 
 use facet::Facet;
 use serde::{Deserialize, Serialize};
@@ -323,7 +323,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
         let kind = resolve.kind();
 
         let id = {
-            let mut outstanding = self.0.lock().expect("Registry Mutex poisoned.");
+            let mut outstanding = self.0.lock();
             outstanding.effect = Some(EffectInfo::of::<Eff>());
             let id = outstanding.issue_id(effect_index, kind);
 
@@ -360,7 +360,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
     ///
     /// Panics if the internal mutex has been poisoned
     pub fn resume(&self, id: EffectId, response: &[u8]) -> Result<(), BridgeError<T>> {
-        let mut outstanding = self.0.lock().expect("Registry Mutex poisoned");
+        let mut outstanding = self.0.lock();
 
         let entry = outstanding.entry(id)?;
 

@@ -454,11 +454,15 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     quote! {
         #original_enum
 
-        #ffi_enum
+        // spike(no_std): the FFI enum and EffectFFI impl reference serde and
+        // crux_core::bridge, so they only exist when crux_core has `bridge`.
+        ::crux_core::__crux_core_bridge_items! {
+            #ffi_enum
+
+            #effect_ffi_derive
+        }
 
         impl crux_core::Effect for #enum_ident {}
-
-        #effect_ffi_derive
 
         #(#from_impls)*
 

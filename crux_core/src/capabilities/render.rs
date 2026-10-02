@@ -1,6 +1,6 @@
 //! Built-in capability used to notify the Shell that a UI update is necessary.
 
-use std::future::Future;
+use core::future::Future;
 
 use facet::Facet;
 use serde::{Deserialize, Serialize};

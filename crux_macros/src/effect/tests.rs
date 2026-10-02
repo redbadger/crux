@@ -40,13 +40,15 @@ fn the_largest_effect_enum_the_id_can_describe() {
         effect_with_variants(super::macro_impl::MAX_VARIANTS),
     );
 
-    let actual = pretty_print(&actual);
+    // spike(no_std): the EffectFFI impl is now inside a `__crux_core_bridge_items!`
+    // invocation, which prettyplease prints as raw tokens, so compare without whitespace.
+    let actual: String = pretty_print(&actual).split_whitespace().collect();
 
-    assert!(actual.contains("const VARIANT_COUNT: u16 = 256u16;"));
-    assert!(actual.contains("Effect::V255(_) => 255u8,"));
+    assert!(actual.contains("constVARIANT_COUNT:u16=256u16;"));
+    assert!(actual.contains("Effect::V255(_)=>255u8,"));
     // The index-to-name direction, which is all an error about a request id
     // has to go on.
-    assert!(actual.contains("255u8 => Some(\"V255\"),"));
+    assert!(actual.contains("255u8=>Some(\"V255\"),"));
 }
 
 #[test]
@@ -90,40 +92,18 @@ fn single_with_facet_typegen() {
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "Effect")]
-    #[cfg_attr(
-        feature = "facet_typegen",
-        derive(::facet::Facet),
-        facet(rename = "Effect"),
-        repr(C)
-    )]
-    pub enum EffectFfi {
-        Render(RenderOperation),
+    ::crux_core::__crux_core_bridge_items! {
+        #[derive(::serde::Serialize, ::serde::Deserialize)] #[serde(rename = "Effect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet), facet(rename =
+        "Effect"), repr(C))] pub enum EffectFfi { Render(RenderOperation), } impl
+        crux_core::EffectFFI for Effect { type Ffi = EffectFfi; const VARIANT_COUNT : u16 =
+        1u16; fn variant_index(& self) -> u8 { match self { Effect::Render(_) => 0u8, } } fn
+        variant_name(index : u8) -> Option < & 'static str > { match index { 0u8 =>
+        Some("Render"), _ => None, } } fn serialize < T : ::crux_core::bridge::FfiFormat >
+        (self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized < T >) { match self {
+        Effect::Render(request) => request.serialize(EffectFfi::Render), } } }
     }
     impl crux_core::Effect for Effect {}
-    impl crux_core::EffectFFI for Effect {
-        type Ffi = EffectFfi;
-        const VARIANT_COUNT: u16 = 1u16;
-        fn variant_index(&self) -> u8 {
-            match self {
-                Effect::Render(_) => 0u8,
-            }
-        }
-        fn variant_name(index: u8) -> Option<&'static str> {
-            match index {
-                0u8 => Some("Render"),
-                _ => None,
-            }
-        }
-        fn serialize<T: ::crux_core::bridge::FfiFormat>(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
-            match self {
-                Effect::Render(request) => request.serialize(EffectFfi::Render),
-            }
-        }
-    }
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -241,40 +221,18 @@ fn single_facet_typegen_with_new_name() {
     pub enum MyEffect {
         Render(::crux_core::Request<RenderOperation>),
     }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "MyEffect")]
-    #[cfg_attr(
-        feature = "facet_typegen",
-        derive(::facet::Facet),
-        facet(rename = "MyEffect"),
-        repr(C)
-    )]
-    pub enum MyEffectFfi {
-        Render(RenderOperation),
+    ::crux_core::__crux_core_bridge_items! {
+        #[derive(::serde::Serialize, ::serde::Deserialize)] #[serde(rename = "MyEffect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet), facet(rename =
+        "MyEffect"), repr(C))] pub enum MyEffectFfi { Render(RenderOperation), } impl
+        crux_core::EffectFFI for MyEffect { type Ffi = MyEffectFfi; const VARIANT_COUNT : u16
+        = 1u16; fn variant_index(& self) -> u8 { match self { MyEffect::Render(_) => 0u8, } }
+        fn variant_name(index : u8) -> Option < & 'static str > { match index { 0u8 =>
+        Some("Render"), _ => None, } } fn serialize < T : ::crux_core::bridge::FfiFormat >
+        (self) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized < T >) { match self {
+        MyEffect::Render(request) => request.serialize(MyEffectFfi::Render), } } }
     }
     impl crux_core::Effect for MyEffect {}
-    impl crux_core::EffectFFI for MyEffect {
-        type Ffi = MyEffectFfi;
-        const VARIANT_COUNT: u16 = 1u16;
-        fn variant_index(&self) -> u8 {
-            match self {
-                MyEffect::Render(_) => 0u8,
-            }
-        }
-        fn variant_name(index: u8) -> Option<&'static str> {
-            match index {
-                0u8 => Some("Render"),
-                _ => None,
-            }
-        }
-        fn serialize<T: ::crux_core::bridge::FfiFormat>(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
-            match self {
-                MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
-            }
-        }
-    }
     impl From<::crux_core::Request<RenderOperation>> for MyEffect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -391,6 +349,7 @@ fn single_without_typegen() {
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
+    ::crux_core::__crux_core_bridge_items! {}
     impl crux_core::Effect for Effect {}
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
@@ -479,44 +438,20 @@ fn multiple_with_facet_typegen() {
         Render(::crux_core::Request<RenderOperation>),
         Http(::crux_core::Request<HttpRequest>),
     }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "Effect")]
-    #[cfg_attr(
-        feature = "facet_typegen",
-        derive(::facet::Facet),
-        facet(rename = "Effect"),
-        repr(C)
-    )]
-    pub enum EffectFfi {
-        Render(RenderOperation),
-        Http(HttpRequest),
+    ::crux_core::__crux_core_bridge_items! {
+        #[derive(::serde::Serialize, ::serde::Deserialize)] #[serde(rename = "Effect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet), facet(rename =
+        "Effect"), repr(C))] pub enum EffectFfi { Render(RenderOperation), Http(HttpRequest),
+        } impl crux_core::EffectFFI for Effect { type Ffi = EffectFfi; const VARIANT_COUNT :
+        u16 = 2u16; fn variant_index(& self) -> u8 { match self { Effect::Render(_) => 0u8,
+        Effect::Http(_) => 1u8, } } fn variant_name(index : u8) -> Option < & 'static str > {
+        match index { 0u8 => Some("Render"), 1u8 => Some("Http"), _ => None, } } fn serialize
+        < T : ::crux_core::bridge::FfiFormat > (self) -> (Self::Ffi,
+        ::crux_core::bridge::ResolveSerialized < T >) { match self { Effect::Render(request)
+        => request.serialize(EffectFfi::Render), Effect::Http(request) => request
+        .serialize(EffectFfi::Http), } } }
     }
     impl crux_core::Effect for Effect {}
-    impl crux_core::EffectFFI for Effect {
-        type Ffi = EffectFfi;
-        const VARIANT_COUNT: u16 = 2u16;
-        fn variant_index(&self) -> u8 {
-            match self {
-                Effect::Render(_) => 0u8,
-                Effect::Http(_) => 1u8,
-            }
-        }
-        fn variant_name(index: u8) -> Option<&'static str> {
-            match index {
-                0u8 => Some("Render"),
-                1u8 => Some("Http"),
-                _ => None,
-            }
-        }
-        fn serialize<T: ::crux_core::bridge::FfiFormat>(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
-            match self {
-                Effect::Render(request) => request.serialize(EffectFfi::Render),
-                Effect::Http(request) => request.serialize(EffectFfi::Http),
-            }
-        }
-    }
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
@@ -698,6 +633,7 @@ fn multiple_without_typegen() {
         Render(::crux_core::Request<RenderOperation>),
         Http(::crux_core::Request<HttpRequest>),
     }
+    ::crux_core::__crux_core_bridge_items! {}
     impl crux_core::Effect for Effect {}
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
@@ -842,6 +778,7 @@ fn single_without_typegen_with_attributes() {
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
+    ::crux_core::__crux_core_bridge_items! {}
     impl crux_core::Effect for Effect {}
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
@@ -928,41 +865,19 @@ fn facet_typegen_with_namespace_attribute() {
     pub enum Effect {
         Render(::crux_core::Request<RenderOperation>),
     }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "Effect")]
-    #[cfg_attr(
-        feature = "facet_typegen",
-        derive(::facet::Facet),
-        facet(facet_generate_attrs::namespace = "crux"),
-        facet(rename = "Effect"),
-        repr(C)
-    )]
-    pub enum EffectFfi {
-        Render(RenderOperation),
+    ::crux_core::__crux_core_bridge_items! {
+        #[derive(::serde::Serialize, ::serde::Deserialize)] #[serde(rename = "Effect")]
+        #[cfg_attr(feature = "facet_typegen", derive(::facet::Facet),
+        facet(facet_generate_attrs::namespace = "crux"), facet(rename = "Effect"), repr(C))]
+        pub enum EffectFfi { Render(RenderOperation), } impl crux_core::EffectFFI for Effect
+        { type Ffi = EffectFfi; const VARIANT_COUNT : u16 = 1u16; fn variant_index(& self) ->
+        u8 { match self { Effect::Render(_) => 0u8, } } fn variant_name(index : u8) -> Option
+        < & 'static str > { match index { 0u8 => Some("Render"), _ => None, } } fn serialize
+        < T : ::crux_core::bridge::FfiFormat > (self) -> (Self::Ffi,
+        ::crux_core::bridge::ResolveSerialized < T >) { match self { Effect::Render(request)
+        => request.serialize(EffectFfi::Render), } } }
     }
     impl crux_core::Effect for Effect {}
-    impl crux_core::EffectFFI for Effect {
-        type Ffi = EffectFfi;
-        const VARIANT_COUNT: u16 = 1u16;
-        fn variant_index(&self) -> u8 {
-            match self {
-                Effect::Render(_) => 0u8,
-            }
-        }
-        fn variant_name(index: u8) -> Option<&'static str> {
-            match index {
-                0u8 => Some("Render"),
-                _ => None,
-            }
-        }
-        fn serialize<T: ::crux_core::bridge::FfiFormat>(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
-            match self {
-                Effect::Render(request) => request.serialize(EffectFfi::Render),
-            }
-        }
-    }
     impl From<::crux_core::Request<RenderOperation>> for Effect {
         fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
             Self::Render(value)
