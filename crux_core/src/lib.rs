@@ -209,6 +209,9 @@
 //! all of this end to end, with shells written in Swift, Kotlin, TypeScript, C# and Rust.
 //!
 
+#![cfg_attr(not(feature = "std"), no_std)]
+extern crate alloc;
+
 pub mod bridge;
 pub mod capability;
 pub mod command;
