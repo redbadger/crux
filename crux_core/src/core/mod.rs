@@ -1,11 +1,15 @@
+#[allow(unused_imports)]
+use crate::prelude::*;
 mod effect;
 mod request;
 mod resolve;
 
-use std::collections::VecDeque;
-use std::sync::{Mutex, RwLock};
+use alloc::collections::VecDeque;
+use crate::sync::{Mutex, RwLock};
 
-pub use effect::{Effect, EffectFFI};
+pub use effect::Effect;
+#[cfg(feature = "bridge")]
+pub use effect::EffectFFI;
 pub use request::Request;
 pub use resolve::{EffectVariant, OperationKind, RequestHandle, Resolvable, ResolveError};
 
@@ -92,7 +96,7 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+        let mut model = self.model.write();
 
         let command = self.app.update(event, &mut model);
 
@@ -101,8 +105,7 @@ where
 
         let mut root_command = self
             .root_command
-            .lock()
-            .expect("Capability runtime lock was poisoned");
+            .lock();
         root_command.spawn(|ctx| command.into_future(ctx));
 
         drop(root_command);
@@ -144,13 +147,12 @@ where
     pub(crate) fn process(&self) -> Vec<A::Effect> {
         let mut root_command = self
             .root_command
-            .lock()
-            .expect("Capability runtime lock was poisoned");
+            .lock();
 
         let mut events: VecDeque<_> = root_command.events().collect();
 
         while let Some(event_from_commands) = events.pop_front() {
-            let mut model = self.model.write().expect("Model RwLock was poisoned.");
+            let mut model = self.model.write();
             let command = self.app.update(event_from_commands, &mut model);
             drop(model);
 
@@ -169,7 +171,7 @@ where
     ///
     /// Panics if the model lock was poisoned.
     pub fn view(&self) -> A::ViewModel {
-        let model = self.model.read().expect("Model RwLock was poisoned.");
+        let model = self.model.read();
 
         self.app.view(&model)
     }

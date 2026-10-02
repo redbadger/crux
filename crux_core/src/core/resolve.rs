@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+use crate::prelude::*;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -73,7 +75,7 @@ impl<Output> RequestHandle<Output> {
             Self::Many(f) => f(output).map_err(|()| ResolveError::FinishedMany),
             Self::Once(_) => {
                 // The resolve has been used, turn it into a Never
-                if let Self::Once(f) = std::mem::replace(self, Self::Never) {
+                if let Self::Once(f) = core::mem::replace(self, Self::Never) {
                     f(output);
                 }
 
@@ -97,10 +99,10 @@ pub struct EffectVariant {
     pub name: Option<&'static str>,
 }
 
-impl std::fmt::Display for EffectVariant {
+impl core::fmt::Display for EffectVariant {
     /// Renders as ``` `KvGet` (variant 1) ``` where the name is known, and
     /// `variant 1` where it is not.
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if let Some(name) = self.name {
             write!(f, "`{name}` (variant {})", self.index)
         } else {

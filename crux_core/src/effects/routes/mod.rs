@@ -11,8 +11,10 @@
 
 mod buffer;
 mod parked;
+#[cfg(feature = "bridge")]
 mod serialized;
 
 pub use buffer::Buffer;
 pub use parked::Parked;
+#[cfg(feature = "bridge")]
 pub use serialized::Serialized;

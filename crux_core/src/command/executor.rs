@@ -1,20 +1,21 @@
 #![allow(clippy::redundant_pub_crate)]
 use super::super::Command;
 
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::atomic::Ordering;
-use std::task::{Context, Poll, Wake, Waker};
+use core::future::Future;
+use core::pin::Pin;
+use core::sync::atomic::Ordering;
+use alloc::task::Wake;
+use core::task::{Context, Poll, Waker};
 
-use crossbeam_channel::{Receiver, Sender};
+use crate::sync::channel::{Receiver, Sender};
 
 use futures::future::BoxFuture;
 
-use std::sync::atomic::AtomicBool;
+use core::sync::atomic::AtomicBool;
 
 use futures::task::AtomicWaker;
 
-use std::sync::Arc;
+use alloc::sync::Arc;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct TaskId(pub(crate) usize);

@@ -47,11 +47,13 @@
 //! See the `effect_router_prototype` integration test in `crux_core` for a
 //! complete, worked example, and `docs/src/rfcs/effect-router.md` for the
 //! design rationale.
+#[allow(unused_imports)]
+use crate::prelude::*;
 
 mod registry;
 pub mod routes;
 
-use std::sync::{Arc, Weak};
+use alloc::sync::{Arc, Weak};
 
 use crate::{Core, Request, Resolvable, ResolveError, capability::Operation};
 
