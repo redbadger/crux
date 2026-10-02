@@ -212,6 +212,32 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
 
+/// spike(no_std): the bits of the std prelude that live in `alloc`.
+#[allow(unused_imports)]
+pub(crate) mod prelude {
+    pub(crate) use alloc::{
+        borrow::ToOwned,
+        boxed::Box,
+        string::{String, ToString},
+        vec::Vec,
+    };
+}
+
+#[doc(hidden)]
+pub mod sync;
+
+/// spike(no_std): `eprintln!` under std, silently dropped otherwise.
+/// A proper version would route through `log` (already an optional dependency).
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __crux_log_error {
+    ($($arg:tt)*) => {{
+        #[cfg(feature = "std")]
+        ::std::eprintln!($($arg)*);
+    }};
+}
+
+#[cfg(feature = "bridge")]
 pub mod bridge;
 pub mod capability;
 pub mod command;
@@ -239,13 +265,33 @@ macro_rules! __crux_core_testing_items {
     ($($tokens:tt)*) => {};
 }
 
+/// spike(no_std): emits its input only when crux_core has the `bridge` feature,
+/// so `#[effect]` output does not reference `crux_core::bridge` in no_std builds.
+#[doc(hidden)]
+#[macro_export]
+#[cfg(feature = "bridge")]
+macro_rules! __crux_core_bridge_items {
+    ($($tokens:tt)*) => {
+        $($tokens)*
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+#[cfg(not(feature = "bridge"))]
+macro_rules! __crux_core_bridge_items {
+    ($($tokens:tt)*) => {};
+}
+
 mod capabilities;
 mod core;
 
 pub use capabilities::*;
 pub use command::Command;
+#[cfg(feature = "bridge")]
+pub use core::EffectFFI;
 pub use core::{
-    Core, Effect, EffectFFI, EffectVariant, OperationKind, Request, RequestHandle, Resolvable,
+    Core, Effect, EffectVariant, OperationKind, Request, RequestHandle, Resolvable,
     ResolveError,
 };
 #[cfg(feature = "uniffi_compat_bindgen")]
@@ -254,7 +300,7 @@ pub use core::{
     note = "UniFFI bindgen support is deprecated; use BoltFFI package/generate commands instead"
 )]
 pub mod bindgen;
-#[cfg(feature = "default")]
+#[cfg(feature = "crux_macros")]
 pub use crux_macros as macros;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]

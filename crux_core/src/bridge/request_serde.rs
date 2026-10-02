@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+use crate::prelude::*;
 use crate::{
     Request,
     capability::Operation,
@@ -40,7 +42,7 @@ impl<T: FfiFormat> ResolveSerialized<T> {
             Self::Many(f) => f(response),
             Self::Once(_) => {
                 // The resolve has been used, turn it into a Never
-                let Self::Once(f) = std::mem::replace(self, Self::Never) else {
+                let Self::Once(f) = core::mem::replace(self, Self::Never) else {
                     unreachable!("already resolved");
                 };
 

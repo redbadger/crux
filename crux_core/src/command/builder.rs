@@ -5,8 +5,10 @@
 //! Chaining streams with streams is currently not supported, as the semantics
 //! of the composition are unclear. If you need to compose streams, use the async
 //! API and tools from the `futures` crate.
+#[allow(unused_imports)]
+use crate::prelude::*;
 
-use std::future::Future;
+use core::future::Future;
 
 use futures::{FutureExt, Stream, StreamExt};
 

@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+use crate::prelude::*;
 use super::FfiFormat;
 
 /// The default serialisation format implementation used in the FFI calls. Uses [`bincode`].

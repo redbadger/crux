@@ -1,11 +1,13 @@
-use std::future::Future;
-use std::pin::{Pin, pin};
+#[allow(unused_imports)]
+use crate::prelude::*;
+use core::future::Future;
+use core::pin::{Pin, pin};
 
-use std::sync::Arc;
-use std::task::{Context, Poll};
+use alloc::sync::Arc;
+use core::task::{Context, Poll};
 
-use crossbeam_channel::Sender;
-use futures::channel::mpsc;
+use crate::sync::channel::Sender;
+use crate::sync::channel as mpsc;
 use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};
@@ -101,7 +103,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
         let request = Request::resolves_once(operation, move |output| {
             // If the channel is closed, the associated task has been cancelled
-            let _ = output_sender.unbounded_send(output);
+            let _ = output_sender.send(output);
         });
 
         let send_request = {
@@ -150,7 +152,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let (output_sender, output_receiver) = mpsc::unbounded();
 
         let request = Request::resolves_many_times(operation, move |output| {
-            output_sender.unbounded_send(output).map_err(|_| ())?;
+            output_sender.send(output).map_err(|_| ())?;
 
             // TODO: revisit the error handling in here
             Ok(())
@@ -190,7 +192,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         F: FnOnce(Self) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let (sender, receiver) = crossbeam_channel::unbounded();
+        let (sender, receiver) = crate::sync::channel::unbounded();
 
         let ctx = self.clone();
         let future = make_future(ctx);
@@ -218,14 +220,14 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 }
 
 pub enum ShellStream<T: Unpin + Send> {
-    ReadyToSend(Box<dyn FnOnce() + Send>, mpsc::UnboundedReceiver<T>),
-    Sent(mpsc::UnboundedReceiver<T>),
+    ReadyToSend(Box<dyn FnOnce() + Send>, mpsc::Receiver<T>),
+    Sent(mpsc::Receiver<T>),
 }
 
 impl<T: Unpin + Send> ShellStream<T> {
     fn new(
         send_request: impl FnOnce() + Send + 'static,
-        output_receiver: mpsc::UnboundedReceiver<T>,
+        output_receiver: mpsc::Receiver<T>,
     ) -> Self {
         Self::ReadyToSend(Box::new(send_request), output_receiver)
     }
@@ -235,7 +237,7 @@ impl<T: Unpin + Send> ShellStream<T> {
 
         // 1. take items out of self
         let dummy = Self::Sent(mpsc::unbounded().1);
-        let Self::ReadyToSend(send_request, output_receiver) = std::mem::replace(self, dummy)
+        let Self::ReadyToSend(send_request, output_receiver) = core::mem::replace(self, dummy)
         else {
             unreachable!("cannot send");
         };
@@ -272,7 +274,7 @@ pub struct ShellRequest<T: Unpin + Send> {
 impl<T: Unpin + Send + 'static> ShellRequest<T> {
     fn new(
         send_request: impl FnOnce() + Send + 'static,
-        output_receiver: mpsc::UnboundedReceiver<T>,
+        output_receiver: mpsc::Receiver<T>,
     ) -> Self {
         let inner = ShellStream::new(send_request, output_receiver)
             .into_future()
