@@ -48,8 +48,8 @@ const T0H: u16 = 0x8000 | 7;
 const RES: u16 = 0x8000;
 const WORDS: usize = PIXELS * 24 + 1;
 
-/// Ignore further edges on a button for this long after one.
-const DEBOUNCE: Duration = Duration::from_millis(40);
+/// How long an input must settle after an edge before its level is believed.
+const DEBOUNCE: Duration = Duration::from_millis(30);
 
 type Pwm<'a> = SequencePwm<'a>;
 
@@ -60,6 +60,39 @@ struct Shell<'a> {
     words: [u16; WORDS],
     /// Outstanding `Delay` requests, with the instant each is due.
     delays: Vec<(Instant, crux_core::Request<app::Delay>)>,
+}
+
+/// An input that reports only settled changes of level, on press *and* release,
+/// so contact bounce on either edge cannot produce extra events.
+struct Debounced<'a> {
+    input: Input<'a>,
+    high: bool,
+}
+
+impl<'a> Debounced<'a> {
+    fn new(input: Input<'a>) -> Self {
+        let high = input.is_high();
+        Self { input, high }
+    }
+
+    /// Waits for the input to settle at the opposite level, records it and
+    /// returns it (`true` for high). Cancel-safe: `high` changes only on return,
+    /// so a future dropped by `select4` starts over cleanly.
+    async fn changed(&mut self) -> bool {
+        loop {
+            if self.high {
+                self.input.wait_for_low().await;
+            } else {
+                self.input.wait_for_high().await;
+            }
+            Timer::after(DEBOUNCE).await;
+            let high = self.input.is_high();
+            if high != self.high {
+                self.high = high;
+                return high;
+            }
+        }
+    }
 }
 
 impl Shell<'_> {
@@ -140,9 +173,9 @@ async fn main(_spawner: Spawner) {
     // Power the NeoPixels.
     let _power = Output::new(p.P0_06, Level::Low, OutputDrive::Standard);
     let led = Output::new(p.P1_14, Level::Low, OutputDrive::Standard);
-    let mut button_a = Input::new(p.P1_02, Pull::Down);
-    let mut button_b = Input::new(p.P1_15, Pull::Down);
-    let mut switch = Input::new(p.P1_06, Pull::Up);
+    let mut button_a = Debounced::new(Input::new(p.P1_02, Pull::Down));
+    let mut button_b = Debounced::new(Input::new(p.P1_15, Pull::Down));
+    let mut switch = Debounced::new(Input::new(p.P1_06, Pull::Up));
 
     let mut pwm_config = PwmConfig::default();
     pwm_config.sequence_load = SequenceLoad::Common;
@@ -160,7 +193,7 @@ async fn main(_spawner: Spawner) {
         delays: Vec::new(),
     };
 
-    let effects = shell.core.process_event(Event::Switch(switch.is_low()));
+    let effects = shell.core.process_event(Event::Switch(!switch.high));
     shell.handle(effects);
 
     loop {
@@ -173,27 +206,23 @@ async fn main(_spawner: Spawner) {
         };
 
         let event = match select4(
-            button_a.wait_for_rising_edge(),
-            button_b.wait_for_rising_edge(),
-            switch.wait_for_any_edge(),
+            button_a.changed(),
+            button_b.changed(),
+            switch.changed(),
             timer,
         )
         .await
         {
-            Either4::First(()) => Some(Event::ButtonA),
-            Either4::Second(()) => Some(Event::ButtonB),
-            Either4::Third(()) => {
-                Timer::after(DEBOUNCE).await;
-                Some(Event::Switch(switch.is_low()))
-            }
+            // Buttons are active high: count presses, ignore releases.
+            Either4::First(pressed) => pressed.then_some(Event::ButtonA),
+            Either4::Second(pressed) => pressed.then_some(Event::ButtonB),
+            Either4::Third(high) => Some(Event::Switch(!high)),
             Either4::Fourth(()) => None,
         };
 
         if let Some(event) = event {
             let effects = shell.core.process_event(event);
             shell.handle(effects);
-            // Crude debounce: ignore the buttons for a moment after any press.
-            Timer::after(DEBOUNCE).await;
         }
         shell.resolve_due();
     }
