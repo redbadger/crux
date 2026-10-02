@@ -36,7 +36,10 @@ use app::{Counter, Effect, Event, PIXELS, ViewModel};
 static HEAP: Heap = Heap::empty();
 
 /// Heap for Crux: boxed futures, effect vectors, channel queues.
-const HEAP_SIZE: usize = 16 * 1024;
+/// The host heap probe (heap-probe/, 32-bit wasm) measures ~0.6 KB idle and
+/// ~1.5 KB per press whose flash is still in flight, so 32 KB covers ~20
+/// overlapping presses plus allocator overhead. RAM is not scarce here.
+const HEAP_SIZE: usize = 32 * 1024;
 
 // WS2812 timing with PWM at 16 MHz, 20 ticks per bit (1.25 us). The high bit
 // inverts polarity, so the line starts high.
