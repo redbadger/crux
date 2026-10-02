@@ -62,7 +62,8 @@ that awaits it and sends a follow-up event) links into embassy-nrf firmware:
 crux_core is about 5 KB. With default features, `cargo test --workspace` passes
 (483 tests) after updating the `#[effect]` macro snapshots, and
 `examples/counter` still builds and passes its tests. `thumbv6m-none-eabi` does
-not build (CAS atomics; section 9). Nothing has been run on hardware.
+not build (CAS atomics; section 9). The firmware runs correctly on a real
+Circuit Playground Bluefruit (flashed by UF2, section 11).
 
 ## 3. Changes to crux_core / crux_macros, by blocker
 
@@ -277,8 +278,8 @@ The firmware drives it low.
   and returns `render().and(Command::new(...))`. The async task
   `ctx.request_from_shell(Delay { millis: 120 }).await`, then
   `ctx.send_event(FlashDone(id))`. The red LED is on while a flash is pending.
-- The shell (`main.rs`) is one embassy task: `select4` over the two button
-  rising edges, any edge of the switch, and a `Timer::at` for the earliest
+- The shell (`main.rs`) is one embassy task: `select4` over the debounced
+  level changes of the two buttons and the switch, and a `Timer::at` for the earliest
   outstanding `Delay`. It keeps `Request<Delay>` values with their due
   `Instant`, and calls `core.resolve(&mut request, ())` when due, feeding the
   returned effects back through the same handler.
@@ -287,10 +288,14 @@ The firmware drives it low.
   `pwm_sequence_ws2812b` example, with HFCLK from the external crystal for
   timing. The buffer is 241 `u16` in RAM (EasyDMA requirement). After starting
   the sequence the shell busy-waits ~1 ms before dropping the sequencer (drop
-  stops it); crude but enough. **Unverified on hardware**: colour order (GRB)
-  and the 3.3 V data level are the usual risks. The red LED path is the
-  fallback and is the same `render()` call.
-- Debounce is a 40 ms sleep after any event: crude.
+  stops it); crude but enough. **Verified on hardware (2026-10-04)**: GRB
+  colour order and the 3.3 V data level work, green and red show correctly at
+  both brightnesses. The red LED path is the same `render()` call.
+- Debounce: each input reports only settled level changes (30 ms after an
+  edge, re-checked), on press and release. The first version slept 40 ms
+  after a press only, and on hardware release bounce counted as extra presses.
+  The fix is verified on hardware: taps, long holds and slow releases each
+  count exactly once.
 
 ### Memory layout and its uncertainty
 
@@ -303,7 +308,9 @@ The firmware drives it low.
   enabled here) forwards them to the application at the address where *it*
   ends. So the flash origin is dictated by the SoftDevice version, not chosen:
   0x26000 for S140 6.1.1 (what the CPB ships with, and what Adafruit's current
-  Arduino core still links for), 0x27000 for S140 7.x. **Assumption: S140 v6.**
+  Arduino core still links for), 0x27000 for S140 7.x. **Confirmed: S140 6.1.1**
+  (test board: UF2 bootloader 0.9.0, Board-ID nRF52840-CircuitPlayground-revD,
+  dated May 9 2024).
   `INFO_UF2.TXT` on the CPLAYBTBOOT drive names the SoftDevice. If it says 7.x,
   change both `memory.x` and the `-b` address below to 0x27000.
 - 0xED000..0xF4000 is left for the bootloader's user-data area, 0xF4000 up is
@@ -409,8 +416,10 @@ facet change upstream. Out of scope for a first pass.
    thumbv7em-none-eabihf on every PR, or the no_std path will rot quickly.
 9. **Capability crates**: `crux_time` (no `Instant`/`SystemTime` in core),
    `crux_kv` and `crux_http` were not touched.
-10. Nothing was flashed. Runtime behaviour (WS2812 timing, interrupt
-    forwarding through the SoftDevice, button polarity) is unverified.
+10. Flashed and working on a real CPB (2026-10-04): it boots at 0x26000
+    through the MBR and the disabled SoftDevice, GPIOTE interrupts reach the
+    app, buttons A/B, the slide switch, the NeoPixels and D13 all behave as
+    described in section 7. Not measured on hardware: heap use and timing.
 
 ## 11. Rebuild and flash
 
