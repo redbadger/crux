@@ -1,4 +1,4 @@
-use std::sync::{Arc, Weak};
+use alloc::sync::{Arc, Weak};
 
 use crate::{
     Request, ResolveError,

@@ -1,7 +1,7 @@
 mod effect_id;
 mod storage;
 
-use std::sync::Mutex;
+use crate::sync::Mutex;
 
 use crate::{Request, RequestHandle, ResolveError, capability::Operation};
 pub use effect_id::ParkedEffectId;
@@ -47,7 +47,6 @@ where
         let id = self
             .requests
             .lock()
-            .expect("registry lock poisoned")
             .insert(handle);
 
         (id, operation)
@@ -71,14 +70,13 @@ where
         let mut handle = self
             .requests
             .lock()
-            .expect("registry lock poisoned")
             .take(id)
             .ok_or_else(|| ResolveError::NotFound(id.into_raw()))?;
 
         let result = handle.resolve(output);
         let should_reinsert = result.is_ok() && matches!(handle, RequestHandle::Many(_));
 
-        let mut requests = self.requests.lock().expect("registry lock poisoned");
+        let mut requests = self.requests.lock();
         if should_reinsert {
             requests.reinsert(id, handle);
         } else {

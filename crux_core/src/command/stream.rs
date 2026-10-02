@@ -5,10 +5,10 @@
 //! become available. This is useful for testing, manual orchestration, and
 //! advanced command composition.
 
-use std::future::Future;
-use std::task::{Context, Poll};
+use core::future::Future;
+use core::task::{Context, Poll};
 
-use std::pin::Pin;
+use core::pin::Pin;
 
 use futures::{Sink, Stream, StreamExt as _};
 
