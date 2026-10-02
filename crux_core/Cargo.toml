@@ -63,7 +63,8 @@ bridge = ["std", "dep:bincode", "dep:serde_json"]
 # Deprecated compatibility alias. New binding generation should use BoltFFI directly.
 bindgen = ["uniffi_compat_bindgen"]
 facet_typegen = [
-    "std",
+    # spike(no_std): typegen describes the bridge wire types (and uses serde_json)
+    "bridge",
     "crux_macros/facet_typegen",
     "dep:facet_generate",
     "dep:heck",

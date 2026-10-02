@@ -1,0 +1,3 @@
+# Override the parent firmware config: this runs on the host.
+[build]
+target = "aarch64-apple-darwin"
