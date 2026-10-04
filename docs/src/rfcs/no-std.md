@@ -4,9 +4,9 @@
 This RFC is **proposed**. It contains no implementation code. The evidence in
 it comes from a throwaway spike, which is not part of this pull request, that
 built `crux_core` for a Cortex-M4 and linked a small Crux app into firmware for
-the Adafruit Circuit Playground Bluefruit. The firmware has not yet been run on
-hardware, so everything below about runtime behaviour on the device is still
-pending.
+the Adafruit Circuit Playground Bluefruit. That firmware has since been flashed
+to the board and works as intended. Heap use was measured on a host, not on the
+device.
 ```
 
 This RFC proposes that `crux_core`, and the code its macros emit, build without
@@ -434,8 +434,15 @@ these chips would need `portable-atomic` and its `Arc` (which cannot be a
 `self: Arc<Self>` receiver for `Wake`), `futures`' `portable-atomic` feature,
 a lock that does not need compare-and-swap, and a change upstream in facet.
 
-**On hardware.** Nothing has been flashed yet. NeoPixel timing, interrupt
-forwarding through the SoftDevice and button polarity are unverified.
+**On hardware.** The firmware was flashed through the board's UF2 bootloader
+and runs as intended. Button and switch interrupts reach the `embassy`
+executor, and each press updates the model and redraws the NeoPixels. The
+async command that awaits the shell's `Delay` request and then sends a
+follow-up event also completes, so the internal channel, the command executor
+and request resolution all work on the Cortex-M4 with the spike's `spin`-based
+lock. The only fault was contact bounce in the spike's own shell, which was
+fixed there; `crux_core` needed no change. This was short, manual testing:
+heap use, timing and long-running behaviour were not measured on the device.
 
 ## Open questions
 
@@ -464,8 +471,6 @@ forwarding through the SoftDevice and button polarity are unverified.
 8. **Capability crates.** `crux_time` has no `Instant` or `SystemTime`
    without `std`. Which of `crux_time`, `crux_kv` and `crux_http` should
    follow, and how?
-9. **Runtime verification.** The firmware still has to be run on the board,
-   and the results folded into this RFC.
 
 ## Next steps
 
