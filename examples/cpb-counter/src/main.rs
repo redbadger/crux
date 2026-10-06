@@ -1,11 +1,6 @@
 //! `spike(no_std)`: the firmware "shell" for a Crux core on the Circuit
 //! Playground Bluefruit. It calls `Core` directly; there is no FFI bridge.
 //!
-//! `Delay` requests go to their own embassy task, which awaits an embassy
-//! `Timer` and resolves them with `Core::resolve`. The follow-up effects come
-//! back to the main loop through one lane, which it selects on alongside the
-//! inputs.
-//!
 //! Pins (`CircuitPython` `ports/nordic/boards/circuitplayground_bluefruit`):
 //!   button A    P1.02  (active high, needs pull-down)
 //!   button B    P1.15  (active high, needs pull-down)
@@ -23,27 +18,21 @@ extern crate alloc;
 
 mod app;
 
-use alloc::boxed::Box;
-use alloc::collections::VecDeque;
 use alloc::vec::Vec;
-use core::cell::RefCell;
 
-use crux_core::{Core, Request};
+use crux_core::Core;
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either4, select, select4};
+use embassy_futures::select::{Either4, select4};
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
 use embassy_nrf::pwm::{
     Config as PwmConfig, Prescaler, SequenceConfig, SequenceLoad, SequencePwm, SingleSequenceMode,
     SingleSequencer,
 };
-use embassy_sync::blocking_mutex::Mutex;
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
 use embedded_alloc::LlffHeap as Heap;
 use panic_halt as _;
 
-use app::{Counter, Delay, Effect, Event, PIXELS, ViewModel};
+use app::{Counter, Effect, Event, PIXELS, ViewModel};
 
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
@@ -70,85 +59,13 @@ const DEBOUNCE: Duration = Duration::from_millis(30);
 
 type Pwm<'a> = SequencePwm<'a>;
 
-/// An unbounded queue between two tasks on this executor, with a signal for
-/// the consumer. Unbounded, so neither task can block waiting on the other.
-struct Lane<T> {
-    queue: Mutex<CriticalSectionRawMutex, RefCell<VecDeque<T>>>,
-    ready: Signal<CriticalSectionRawMutex, ()>,
-}
-
-impl<T> Lane<T> {
-    const fn new() -> Self {
-        Self {
-            queue: Mutex::new(RefCell::new(VecDeque::new())),
-            ready: Signal::new(),
-        }
-    }
-
-    fn push(&self, item: T) {
-        self.queue.lock(|queue| queue.borrow_mut().push_back(item));
-        self.ready.signal(());
-    }
-
-    /// Takes everything queued, and clears the signal so the consumer does not
-    /// wake again for items taken here.
-    fn take(&self) -> VecDeque<T> {
-        self.ready.reset();
-        self.queue
-            .lock(|queue| core::mem::take(&mut *queue.borrow_mut()))
-    }
-
-    async fn wait(&self) {
-        self.ready.wait().await;
-    }
-}
-
-/// Effects produced by the delay task, for the main loop.
-static EFFECTS: Lane<Effect> = Lane::new();
-/// `Delay` requests, for the delay task.
-static DELAYS: Lane<Request<Delay>> = Lane::new();
-
-/// Resolves `Delay` requests with embassy timers, and hands the follow-up
-/// effects to the main loop. It runs on the same executor as the main loop,
-/// so it never calls into the core while the main loop is.
-///
-/// It awaits one `Timer`, for the earliest request, polled with this task's
-/// own waker; embassy's default timer queue rejects wakers its executor did
-/// not create.
-#[embassy_executor::task]
-async fn delays(core: &'static Core<Counter>) {
-    let mut pending: Vec<(Instant, Request<Delay>)> = Vec::new();
-    loop {
-        if let Some(due) = pending.iter().map(|(due, _)| *due).min() {
-            let _ = select(DELAYS.wait(), Timer::at(due)).await;
-        } else {
-            DELAYS.wait().await;
-        }
-
-        for request in DELAYS.take() {
-            let due = Instant::now() + Duration::from_millis(request.operation.millis.into());
-            pending.push((due, request));
-        }
-        let now = Instant::now();
-        let mut i = 0;
-        while i < pending.len() {
-            if pending[i].0 <= now {
-                let (_, mut request) = pending.swap_remove(i);
-                for effect in core.resolve(&mut request, ()).unwrap_or_default() {
-                    EFFECTS.push(effect);
-                }
-            } else {
-                i += 1;
-            }
-        }
-    }
-}
-
 struct Shell<'a> {
-    core: &'static Core<Counter>,
+    core: Core<Counter>,
     led: Output<'a>,
     pwm: Pwm<'a>,
     words: [u16; WORDS],
+    /// Outstanding `Delay` requests, with the instant each is due.
+    delays: Vec<(Instant, crux_core::Request<app::Delay>)>,
 }
 
 /// An input that reports only settled changes of level, on press *and* release,
@@ -185,16 +102,38 @@ impl<'a> Debounced<'a> {
 }
 
 impl Shell<'_> {
-    fn handle(&mut self, effects: impl IntoIterator<Item = Effect>) {
+    fn handle(&mut self, effects: Vec<Effect>) {
         for effect in effects {
             match effect {
                 Effect::Render(_) => {
                     let view = self.core.view();
                     self.render(&view);
                 }
-                Effect::Delay(request) => DELAYS.push(request),
+                Effect::Delay(request) => {
+                    let due =
+                        Instant::now() + Duration::from_millis(request.operation.millis.into());
+                    self.delays.push((due, request));
+                }
             }
         }
+    }
+
+    fn resolve_due(&mut self) {
+        let now = Instant::now();
+        let mut i = 0;
+        while i < self.delays.len() {
+            if self.delays[i].0 <= now {
+                let (_, mut request) = self.delays.swap_remove(i);
+                let effects = self.core.resolve(&mut request, ()).unwrap_or_default();
+                self.handle(effects);
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    fn next_due(&self) -> Option<Instant> {
+        self.delays.iter().map(|(due, _)| *due).min()
     }
 
     fn render(&mut self, view: &ViewModel) {
@@ -226,6 +165,7 @@ impl Shell<'_> {
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
+    let _ = spawner; // no other tasks: the shell is the main task
     {
         use core::mem::MaybeUninit;
         static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
@@ -255,29 +195,31 @@ async fn main(spawner: Spawner) {
         panic!("PWM init");
     };
 
-    // Shared by the main loop and the delay task, for the life of the firmware.
-    let core: &'static Core<Counter> = Box::leak(Box::new(Core::new()));
-    let Ok(token) = delays(core) else {
-        panic!("delay task already spawned");
-    };
-    spawner.spawn(token);
-
     let mut shell = Shell {
-        core,
+        core: Core::new(),
         led,
         pwm,
         words: [RES; WORDS],
+        delays: Vec::new(),
     };
 
     let effects = shell.core.process_event(Event::Switch(!switch.high));
     shell.handle(effects);
 
     loop {
+        let due = shell.next_due();
+        let timer = async {
+            match due {
+                Some(at) => Timer::at(at).await,
+                None => core::future::pending().await,
+            }
+        };
+
         let event = match select4(
             button_a.changed(),
             button_b.changed(),
             switch.changed(),
-            EFFECTS.wait(),
+            timer,
         )
         .await
         {
@@ -292,6 +234,6 @@ async fn main(spawner: Spawner) {
             let effects = shell.core.process_event(event);
             shell.handle(effects);
         }
-        shell.handle(EFFECTS.take());
+        shell.resolve_due();
     }
 }
