@@ -26,7 +26,9 @@ Crux app and performs them with `fetch`. Findings are in [SPIKE_NOTES.md](./SPIK
 Each directory has its own README.
 
 On the board: button A increments and button B decrements; the slide switch sets the
-brightness. The NeoPixels show the count (green positive, red negative, up to 10). D13 is lit
+brightness. The NeoPixels show the count (green positive, red negative); past 10 the ring
+wraps like an odometer, each lap of ten filling in a new colour over the last (positive:
+green, cyan, blue; negative: red, orange, magenta; then round again). D13 is lit
 while a change is waiting for the server. One dim blue pixel means "waiting for the
 gateway", and alternating red and blue means the last request failed. If the network drops,
 the board reopens its SSE stream by itself, backing off from 1 s to 30 s.
