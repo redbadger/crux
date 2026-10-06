@@ -268,3 +268,29 @@ fn assert_aborted(cmd: &mut Command<Effect, Event>, stream: &mut crux_core::Requ
     assert!(first.is_ok(), "the task is still there: {first:?}");
     assert!(second.is_err(), "the task is gone: {second:?}");
 }
+
+#[test]
+fn a_response_too_large_for_the_link_becomes_an_error() {
+    let app = Gateway;
+    let mut model = connected();
+    let huge = HttpResult::Ok(
+        HttpResponse::status(502)
+            .body(vec![b'x'; cpb_protocol::MAX_MESSAGE])
+            .build(),
+    );
+    let mut cmd = app.update(
+        Event::HttpDone {
+            id: 9,
+            result: huge,
+        },
+        &mut model,
+    );
+    let write = effects(&mut cmd).remove(0).expect_ble_write();
+    assert_eq!(
+        written(&write.operation.data),
+        ToDevice::Http {
+            id: 9,
+            result: HttpResult::Err(HttpError::Io("response too large for the link".to_string())),
+        }
+    );
+}

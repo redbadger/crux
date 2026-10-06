@@ -49,7 +49,11 @@ impl<'d> NeoPixels<'d> {
         for (&[r, g, b], chunk) in frame.iter().zip(self.words.chunks_mut(24)) {
             let grb = (u32::from(g) << 16) | (u32::from(r) << 8) | u32::from(b);
             for (bit, word) in chunk.iter_mut().enumerate() {
-                *word = if grb & (1 << (23 - bit)) == 0 { T0H } else { T1H };
+                *word = if grb & (1 << (23 - bit)) == 0 {
+                    T0H
+                } else {
+                    T1H
+                };
             }
         }
         self.words[WORDS - 1] = RES;
