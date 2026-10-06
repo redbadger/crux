@@ -1,0 +1,11 @@
+# Host workspace for the parts that test on the host: the wire protocol and the app.
+# `firmware/` (thumbv7em) and `gateway/` (wasm) are separate workspaces with their own
+# build targets; both use these crates by path.
+[workspace]
+members = ["protocol"]
+exclude = ["firmware", "gateway"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+publish = false
