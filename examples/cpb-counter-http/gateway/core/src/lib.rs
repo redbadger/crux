@@ -17,7 +17,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use cpb_protocol::{
     GATEWAY_CHUNK, Id, RX_UUID, Reassembler, SERVICE_UUID, SseRequest, SseResponse, TX_UUID,
-    ToDevice, ToGateway, decode, encode,
+    ToDevice, ToGateway, decode, encode, try_encode,
 };
 use crux_core::{
     App, Command,
@@ -25,7 +25,10 @@ use crux_core::{
     macros::effect,
     render::{RenderOperation, render},
 };
-use crux_http::protocol::{HttpRequest, HttpResult};
+use crux_http::{
+    HttpError,
+    protocol::{HttpRequest, HttpResult},
+};
 
 pub use ble::{BleConnect, BleEvent, BleWrite};
 
@@ -249,7 +252,21 @@ fn send(model: &mut Model, message: &ToDevice) -> Command<Effect, Event> {
         // failed its requests when it saw the disconnect.
         return Command::done();
     }
-    model.outbox.push_back(encode(message));
+    // A response body can be any size; the link takes MAX_MESSAGE. Tell the device rather
+    // than panic (which would kill the page).
+    let frame = try_encode(message).unwrap_or_else(|| {
+        let id = match message {
+            ToDevice::Http { id, .. }
+            | ToDevice::SseChunk { id, .. }
+            | ToDevice::SseDone { id } => *id,
+        };
+        log(model, format!("#{id} too large for the link"));
+        encode(&ToDevice::Http {
+            id,
+            result: HttpResult::Err(HttpError::Io("response too large for the link".to_string())),
+        })
+    });
+    model.outbox.push_back(frame);
     flush(model)
 }
 
