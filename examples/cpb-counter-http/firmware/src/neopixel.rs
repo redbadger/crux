@@ -1,4 +1,4 @@
-//! The ten WS2812-style NeoPixels on P0.13, driven by `SequencePwm` (PWM0 at 16 MHz,
+//! The ten WS2812-style `NeoPixels` on P0.13, driven by `SequencePwm` (PWM0 at 16 MHz,
 //! 20 ticks per bit), as in cpb-counter. P0.06 must be held low or they have no power.
 //!
 //! Unlike cpb-counter, HFCLK is not forced to the crystal here: MPSL owns the CLOCK
@@ -15,7 +15,11 @@ use embassy_nrf::pwm::{
 pub const PIXELS: usize = 10;
 
 // The high bit inverts polarity, so the line starts high.
+// WS2812 timing in PWM ticks; the duty reads best in decimal next to the polarity bit.
+#[allow(clippy::decimal_bitwise_operands)]
 const T1H: u16 = 0x8000 | 13;
+// WS2812 timing in PWM ticks; the duty reads best in decimal next to the polarity bit.
+#[allow(clippy::decimal_bitwise_operands)]
 const T0H: u16 = 0x8000 | 7;
 const RES: u16 = 0x8000;
 const WORDS: usize = PIXELS * 24 + 1;
@@ -25,7 +29,7 @@ pub type Frame = [[u8; 3]; PIXELS];
 
 pub struct NeoPixels<'d> {
     pwm: SequencePwm<'d>,
-    /// In RAM, as EasyDMA requires.
+    /// In RAM, as `EasyDMA` requires.
     words: [u16; WORDS],
 }
 

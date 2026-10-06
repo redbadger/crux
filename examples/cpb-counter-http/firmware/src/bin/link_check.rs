@@ -1,8 +1,8 @@
-//! spike(no_std): phase 2 check of the whole link, without Crux.
+//! `spike(no_std)`: phase 2 check of the whole link, without Crux.
 //!
 //! When the gateway connects and subscribes, the device sends a raw
-//! `ToGateway::Http` GET for `https://crux-counter.fly.dev/` (the request crux_http's
-//! no_std builder would make), and shows what comes back. Button A sends it again;
+//! `ToGateway::Http` GET for `https://crux-counter.fly.dev/` (the request `crux_http`'s
+//! `no_std` builder would make), and shows what comes back. Button A sends it again;
 //! button B opens the SSE stream.
 //!
 //! Pixel 0: dim blue advertising, cyan connected and subscribed, red if the radio failed.
@@ -11,6 +11,8 @@
 
 #![no_std]
 #![no_main]
+// Embassy's thread-mode executor is single-threaded: nothing here needs to be `Send`.
+#![allow(clippy::future_not_send)]
 
 extern crate alloc;
 
@@ -49,7 +51,7 @@ async fn main(spawner: Spawner) {
         }
     }
 
-    let p = embassy_nrf::init(Default::default());
+    let p = embassy_nrf::init(embassy_nrf::config::Config::default());
     let _power = Output::new(p.P0_06, Level::Low, OutputDrive::Standard);
     let mut pixels = NeoPixels::new(p.PWM0, p.P0_13);
     let mut frame: Frame = [OFF; PIXELS];
@@ -105,7 +107,6 @@ async fn main(spawner: Spawner) {
                     Timer::after_millis(100).await;
                     frame[2] = OFF;
                 }
-                Either3::First(LinkEvent::Message(ToDevice::SseDone { .. })) => {}
                 Either3::Second(()) if up => {
                     next_id = next_id.wrapping_add(1);
                     get(next_id, &mut frame).await;
@@ -121,7 +122,9 @@ async fn main(spawner: Spawner) {
                         })
                         .await;
                 }
-                Either3::Second(()) | Either3::Third(()) => {}
+                Either3::First(LinkEvent::Message(ToDevice::SseDone { .. }))
+                | Either3::Second(())
+                | Either3::Third(()) => {}
             }
             pixels.show(&frame);
             // Crude debounce for the buttons.

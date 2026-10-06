@@ -423,6 +423,9 @@ facet change upstream. Out of scope for a first pass.
 
 ## 11. Rebuild and flash
 
+`just flash` (see README.md) does all of this: build, UF2 conversion, and the copy onto
+`CPLAYBTBOOT`. The steps by hand:
+
 ```sh
 cd examples/cpb-counter
 cargo build --release
@@ -437,9 +440,9 @@ python3 uf2conv.py target/cpb-counter.uf2 -i   # check: family NRF52840, address
 (Needs `rustup target add thumbv7em-none-eabihf`, `rustup component add
 llvm-tools`, `cargo install cargo-binutils`.)
 
-Heap probe: `cd heap-probe && cargo run --release` (host; its
-`.cargo/config.toml` hardcodes `aarch64-apple-darwin` to override the parent
-firmware target, so change it on other machines), or
+Heap probe: `just heap-probe` (host). Its `.cargo/config.toml` pins
+`aarch64-apple-darwin` to override the parent firmware target, and the Justfile passes the
+actual host target, so it runs on any machine. Or
 `cargo build --release --target wasm32-wasip1` and run the `.wasm` under any
 WASI runtime for 32-bit figures.
 

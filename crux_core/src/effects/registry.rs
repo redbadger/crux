@@ -44,10 +44,7 @@ where
     /// storage index exceeds the available ID space.
     pub fn register(&self, request: Request<Op>) -> (ParkedEffectId<Op::Output>, Op) {
         let (operation, handle) = request.split();
-        let id = self
-            .requests
-            .lock()
-            .insert(handle);
+        let id = self.requests.lock().insert(handle);
 
         (id, operation)
     }

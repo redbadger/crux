@@ -1,22 +1,22 @@
-//! spike(no_std): counter_http's Crux app, in a `no_std` crate, for the CPB.
+//! `spike(no_std)`: `counter_http`'s Crux app, in a `no_std` crate, for the CPB.
 //!
-//! The HTTP code is counter_http's (`examples/counter-http/shared/src/app.rs`) unchanged:
+//! The HTTP code is `counter_http`'s (`examples/counter-http/shared/src/app.rs`) unchanged:
 //! `Http::get(..).expect_json().build().then_send(..)`, `Url::parse(..).join(..)`,
 //! `crux_http::Result<crux_http::Response<Count>>`, `response.take_body()`. It compiles
-//! against crux_http's no_std subset. What differs, and why:
+//! against `crux_http`'s `no_std` subset. What differs, and why:
 //!
 //! - `Count::updated_at` is epoch milliseconds, not a chrono `DateTime`: nothing here
 //!   displays a date, and "pending" is just `updated_at.is_none()`.
-//! - The view is ten NeoPixels and the red LED, not a string.
+//! - The view is ten `NeoPixels` and the red LED, not a string.
 //! - `Set(Err(_))` sets an error flag instead of `panic!`: with `panic-halt`, a panic
 //!   freezes the board until reset.
 //! - New events: `Connected`/`Disconnected` (the BLE link to the gateway; on connect the
-//!   app does what counter_http's shells do at start-up: `Get`, then `StartWatch`), and
+//!   app does what `counter_http`'s shells do at start-up: `Get`, then `StartWatch`), and
 //!   `Switch` (the slide switch picks the brightness).
 //! - Button A is `Increment`, button B is `Decrement`.
 //! - When the SSE stream ends (the gateway's fetch died with the network, say), the app
 //!   resubscribes after a back-off (1 s, doubling to 30 s), using a `Delay` effect. A browser
-//!   user of counter_http reloads the page; the board has nobody to do that.
+//!   user of `counter_http` reloads the page; the board has nobody to do that.
 
 #![no_std]
 
@@ -39,13 +39,15 @@ use sse::ServerSentEvents;
 
 const API_URL: &str = "https://crux-counter.fly.dev";
 
-/// Number of NeoPixels on the board.
+/// Number of `NeoPixels` on the board.
 pub const PIXELS: usize = 10;
 
 /// The first wait before reopening a stream that ended, and the longest.
 const WATCH_BACKOFF_MIN: u32 = 1_000;
 const WATCH_BACKOFF_MAX: u32 = 30_000;
 
+// Four independent facts (link, last request, brightness, stream open), not a state machine.
+#[allow(clippy::struct_excessive_bools)]
 pub struct Model {
     count: Count,
     connected: bool,
@@ -303,7 +305,7 @@ impl App for Counter {
     }
 }
 
-/// Open the SSE stream, as counter_http's `StartWatch` does, and also report when it ends.
+/// Open the SSE stream, as `counter_http`'s `StartWatch` does, and also report when it ends.
 fn watch(model: &mut Model) -> Command<Effect, Event> {
     if !model.connected || model.watching {
         return Command::done();

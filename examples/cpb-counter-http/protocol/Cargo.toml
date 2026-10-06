@@ -11,3 +11,6 @@ crux_http = { path = "../../../crux_http", default-features = false }
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 serde_bytes = { version = "0.11", default-features = false, features = ["alloc"] }
+
+[lints]
+workspace = true

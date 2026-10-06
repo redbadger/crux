@@ -56,12 +56,16 @@ fn main() {
     // Worst case for the shell: a burst of presses before any delay resolves.
     for burst in [1usize, 5, 20, 20, 20, 1, 1] {
         for i in 0..burst {
-            let event = if i % 2 == 0 { Event::ButtonA } else { Event::ButtonB };
+            let event = if i % 2 == 0 {
+                Event::ButtonA
+            } else {
+                Event::ButtonB
+            };
             handle(core.process_event(event), &mut delays);
         }
         let in_flight = delays.len();
         let peak_in_flight = PEAK.load(Ordering::Relaxed) - base;
-        for mut request in delays.drain(..).collect::<Vec<_>>() {
+        for mut request in std::mem::take(&mut delays) {
             let effects = core.resolve(&mut request, ()).expect("resolves");
             handle(effects, &mut delays);
         }

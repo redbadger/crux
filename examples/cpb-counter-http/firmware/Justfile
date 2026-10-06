@@ -1,0 +1,93 @@
+mod lib '../../../lib.just'
+
+default: dev
+
+target := "thumbv7em-none-eabihf"
+# The board's bootloader drive. Override with CPB_DRIVE=/path/to/CPLAYBTBOOT.
+drive := env("CPB_DRIVE", if os() == "macos" { "/Volumes/CPLAYBTBOOT" } else { "/media/" + env("USER", "") + "/CPLAYBTBOOT" })
+# Flash origin: the end of SoftDevice S140 6.1.1. A board on S140 7.x needs 0x27000 (and memory.x).
+base := "0x26000"
+uf2_family := "0xADA52840"
+uf2_tools := "target/uf2-tools"
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-rust-target {{ target }}
+    @just lib::check-tool cargo-objcopy "rustup component add llvm-tools && cargo install cargo-binutils"
+    @just lib::check-tool python3 "https://www.python.org"
+    @just lib::check-tool curl "your package manager"
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    cargo fmt
+
+# validate formatting and lint
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    cargo fmt -- --check
+    cargo clippy --release --bins -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+
+# build all three binaries: cpb-counter-http, link-check, ble-probe
+build:
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    cargo build --release --bins
+
+# show a binary's section sizes
+size bin="cpb-counter-http": build
+    cargo size --release --bin {{ bin }}
+
+# run tests (the app and protocol are tested on the host: `just test` one level up)
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    @echo "  No tests configured for the firmware"
+
+# clean build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    cargo clean
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test
+
+# --------------------------------------------------------------------------
+# Flashing (Adafruit UF2 bootloader)
+# --------------------------------------------------------------------------
+
+# make target/<bin>.uf2 (bin: cpb-counter-http, link-check or ble-probe)
+uf2 bin="cpb-counter-http": build _uf2-tools
+    @echo '{{ style("command") }}uf2:{{ NORMAL }}'
+    cargo objcopy --release --bin {{ bin }} -- -O binary target/{{ bin }}.bin
+    python3 -I {{ uf2_tools }}/uf2conv.py target/{{ bin }}.bin -c -b {{ base }} -f {{ uf2_family }} -o target/{{ bin }}.uf2
+
+# copy a binary's UF2 to the board (double-press reset first, so CPLAYBTBOOT is mounted)
+[script('bash')]
+flash bin="cpb-counter-http": (uf2 bin)
+    set -euo pipefail
+    echo '{{ style("command") }}flash:{{ NORMAL }}'
+    if [ ! -d '{{ drive }}' ]; then
+        echo '  {{ style("error") }}✗ {{ drive }} is not mounted{{ NORMAL }}: double-press the reset button, or set CPB_DRIVE'
+        exit 1
+    fi
+    # The board resets as soon as it has the image, so the copy may report an error writing
+    # metadata afterwards (macOS: extended attributes); -X skips those there.
+    if [ '{{ os() }}' = macos ]; then cp -X target/{{ bin }}.uf2 '{{ drive }}/'; else cp target/{{ bin }}.uf2 '{{ drive }}/'; fi
+    echo '  ✓ flashed {{ bin }}; the board resets into it'
+
+# (internal) fetch Microsoft's uf2conv.py into target/ (not committed)
+[script('bash')]
+_uf2-tools:
+    set -euo pipefail
+    mkdir -p {{ uf2_tools }}
+    for file in uf2conv.py uf2families.json; do
+        [ -f {{ uf2_tools }}/$file ] || curl -fsSL -o {{ uf2_tools }}/$file https://raw.githubusercontent.com/microsoft/uf2/master/utils/$file
+    done

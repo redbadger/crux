@@ -1,16 +1,18 @@
-//! spike(no_std): the firmware "shell" for a Crux core on the Circuit
+//! `spike(no_std)`: the firmware "shell" for a Crux core on the Circuit
 //! Playground Bluefruit. It calls `Core` directly; there is no FFI bridge.
 //!
-//! Pins (CircuitPython `ports/nordic/boards/circuitplayground_bluefruit`):
+//! Pins (`CircuitPython` `ports/nordic/boards/circuitplayground_bluefruit`):
 //!   button A    P1.02  (active high, needs pull-down)
 //!   button B    P1.15  (active high, needs pull-down)
 //!   slide sw.   P1.06  (needs pull-up)
 //!   red LED     P1.14  (D13, active high)
-//!   NeoPixels   P0.13  (10 x WS2812-style)
-//!   power ctl   P0.06  (low = NeoPixels and sensors powered)
+//!   `NeoPixels`   P0.13  (10 x WS2812-style)
+//!   power ctl   P0.06  (low = `NeoPixels` and sensors powered)
 
 #![no_std]
 #![no_main]
+// Embassy's thread-mode executor is single-threaded: nothing here needs to be `Send`.
+#![allow(clippy::future_not_send)]
 
 extern crate alloc;
 
@@ -43,7 +45,11 @@ const HEAP_SIZE: usize = 32 * 1024;
 
 // WS2812 timing with PWM at 16 MHz, 20 ticks per bit (1.25 us). The high bit
 // inverts polarity, so the line starts high.
+// WS2812 timing in PWM ticks; the duty reads best in decimal next to the polarity bit.
+#[allow(clippy::decimal_bitwise_operands)]
 const T1H: u16 = 0x8000 | 13;
+// WS2812 timing in PWM ticks; the duty reads best in decimal next to the polarity bit.
+#[allow(clippy::decimal_bitwise_operands)]
 const T0H: u16 = 0x8000 | 7;
 const RES: u16 = 0x8000;
 const WORDS: usize = PIXELS * 24 + 1;
@@ -104,7 +110,8 @@ impl Shell<'_> {
                     self.render(&view);
                 }
                 Effect::Delay(request) => {
-                    let due = Instant::now() + Duration::from_millis(request.operation.millis.into());
+                    let due =
+                        Instant::now() + Duration::from_millis(request.operation.millis.into());
                     self.delays.push((due, request));
                 }
             }
@@ -117,10 +124,7 @@ impl Shell<'_> {
         while i < self.delays.len() {
             if self.delays[i].0 <= now {
                 let (_, mut request) = self.delays.swap_remove(i);
-                let effects = self
-                    .core
-                    .resolve(&mut request, ())
-                    .unwrap_or_default();
+                let effects = self.core.resolve(&mut request, ()).unwrap_or_default();
                 self.handle(effects);
             } else {
                 i += 1;
@@ -133,13 +137,18 @@ impl Shell<'_> {
     }
 
     fn render(&mut self, view: &ViewModel) {
-        self.led.set_level(if view.led_on { Level::High } else { Level::Low });
+        self.led
+            .set_level(if view.led_on { Level::High } else { Level::Low });
 
         // GRB, most significant bit first.
         for (pixel, chunk) in view.pixels.iter().zip(self.words.chunks_mut(24)) {
             let grb = (u32::from(pixel.g) << 16) | (u32::from(pixel.r) << 8) | u32::from(pixel.b);
             for (bit, word) in chunk.iter_mut().enumerate() {
-                *word = if grb & (1 << (23 - bit)) == 0 { T0H } else { T1H };
+                *word = if grb & (1 << (23 - bit)) == 0 {
+                    T0H
+                } else {
+                    T1H
+                };
             }
         }
         self.words[WORDS - 1] = RES;
@@ -155,7 +164,8 @@ impl Shell<'_> {
 }
 
 #[embassy_executor::main]
-async fn main(_spawner: Spawner) {
+async fn main(spawner: Spawner) {
+    let _ = spawner; // no other tasks: the shell is the main task
     {
         use core::mem::MaybeUninit;
         static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];

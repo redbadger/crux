@@ -4,8 +4,8 @@ mod effect;
 mod request;
 mod resolve;
 
-use alloc::collections::VecDeque;
 use crate::sync::{Mutex, RwLock};
+use alloc::collections::VecDeque;
 
 pub use effect::Effect;
 #[cfg(feature = "bridge")]
@@ -103,9 +103,7 @@ where
         // drop the model here, we don't want to hold the lock for the process() call
         drop(model);
 
-        let mut root_command = self
-            .root_command
-            .lock();
+        let mut root_command = self.root_command.lock();
         root_command.spawn(|ctx| command.into_future(ctx));
 
         drop(root_command);
@@ -145,9 +143,7 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process
     pub(crate) fn process(&self) -> Vec<A::Effect> {
-        let mut root_command = self
-            .root_command
-            .lock();
+        let mut root_command = self.root_command.lock();
 
         let mut events: VecDeque<_> = root_command.events().collect();
 

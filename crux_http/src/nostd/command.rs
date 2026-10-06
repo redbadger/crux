@@ -1,4 +1,4 @@
-//! spike(no_std): the Command based API for `crux_http`, without std.
+//! `spike(no_std)`: the Command based API for `crux_http`, without std.
 //!
 //! The std `RequestBuilder` wraps a `Request` built on `http` types, which cannot be
 //! built without std. This one builds the protocol [`HttpRequest`] directly. Calls that
@@ -90,7 +90,7 @@ where
 
     /// Instruct the Shell to perform an HTTP request with any method.
     ///
-    /// spike(no_std): the std version takes an `http::Method`; this takes its name.
+    /// `spike(no_std)`: the std version takes an `http::Method`; this takes its name.
     ///
     /// # Panics
     ///
