@@ -1,0 +1,56 @@
+[package]
+name = "cpb-counter-http-firmware"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "spike(no_std): counter_http as Circuit Playground Bluefruit firmware, with its HTTP over BLE"
+
+# Standalone: its own target (.cargo/config.toml) and profile.
+[workspace]
+
+[[bin]]
+name = "ble-probe"
+path = "src/bin/ble_probe.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "link-check"
+path = "src/bin/link_check.rs"
+test = false
+bench = false
+
+[dependencies]
+cpb-protocol = { path = "../protocol" }
+crux_http = { path = "../../../crux_http", default-features = false }
+embedded-alloc = "0.7"
+embassy-executor = { version = "0.10", features = ["platform-cortex-m", "executor-thread"] }
+embassy-futures = "0.1.2"
+embassy-nrf = { version = "0.11", features = ["nrf52840", "time-driver-rtc1", "gpiote", "time", "unstable-pac", "rt"] }
+embassy-sync = "0.8"
+embassy-time = "0.5.1"
+
+# BLE: TrouBLE host + Nordic's SoftDevice Controller, linked into this image. The board's
+# resident S140 6.1.1 stays disabled (nrf-softdevice would need S140 7.x).
+trouble-host = { version = "0.8", default-features = false, features = ["derive", "gatt", "peripheral", "default-packet-pool"] }
+nrf-sdc = { version = "0.4", default-features = false, features = ["nrf52840", "peripheral"] }
+# Provides the critical-section implementation, so cortex-m must not
+# (no `critical-section-single-core`, unlike cpb-counter).
+nrf-mpsl = { version = "0.4", default-features = false, features = ["nrf52840", "critical-section-impl"] }
+bt-hci = { version = "0.10", default-features = false }
+static_cell = "2.1"
+heapless = "0.9"
+
+cortex-m = { version = "0.7.7", features = ["inline-asm"] }
+cortex-m-rt = "0.7.5"
+panic-halt = "1.0"
+
+[profile.release]
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+debug = 2          # symbols in the ELF only; not in the flashed image
+incremental = false
+
+[profile.dev]
+opt-level = "s"

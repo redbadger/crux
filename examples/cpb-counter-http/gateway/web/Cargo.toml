@@ -1,0 +1,39 @@
+[package]
+name = "gateway-web"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "spike: the Leptos shell for the CPB gateway (Web Bluetooth + fetch)"
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+console_log = "1.1.0"
+cpb-protocol.workspace = true
+futures-channel = "0.3.33"
+futures-util = "0.3.33"
+gateway-core = { path = "../core" }
+gloo-net = { version = "0.7.0", features = ["http"] }
+js-sys = "0.3.103"
+leptos = { version = "0.8.20", features = ["csr"] }
+log = "0.4.33"
+wasm-bindgen = "0.2.126"
+wasm-bindgen-futures = "0.4.76"
+wasm-streams = "=0.5"
+web-sys = { version = "0.3.103", features = [
+    "Bluetooth",
+    "BluetoothDevice",
+    "BluetoothLeScanFilterInit",
+    "BluetoothRemoteGattCharacteristic",
+    "BluetoothRemoteGattServer",
+    "BluetoothRemoteGattService",
+    "Event",
+    "EventTarget",
+    "Navigator",
+    "RequestDeviceOptions",
+    "Window",
+] }
+crux_core.workspace = true
+crux_http.workspace = true
+
+[lints]
+workspace = true
