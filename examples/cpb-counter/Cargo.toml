@@ -9,7 +9,7 @@ description = "spike(no_std): a Crux counter as firmware for the Adafruit Circui
 [workspace]
 
 [dependencies]
-crux_core = { path = "../../crux_core", default-features = false, features = ["crux_macros"] }
+crux_core = { path = "../../crux_core", default-features = false, features = ["crux_macros", "critical-section"] }
 facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
 
 embassy-executor = { version = "0.10", features = ["platform-cortex-m", "executor-thread"] }
