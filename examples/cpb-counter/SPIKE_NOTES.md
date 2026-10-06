@@ -582,12 +582,46 @@ place of `spin`.
   `effects/routes/buffer.rs` and `bridge/registry.rs` became closures. None
   were awkward. `Core`'s call sites are unchanged.
 
-### Not shown
+### Interrupt-context wakes (tried, not committed)
 
-- Neither firmware wakes a `Command` task from an interrupt; the Delay is a
-  shell request. So this shows the new locks work and cost nothing. It doesn't
-  show the interrupt-wake deadlock that `spin` risked. That would need a
-  `Command` that awaits `embassy_time::Timer` directly.
+The committed firmware never wakes a `Command` task from an interrupt, because
+its Delay is a shell request. To exercise that path, the cpb-counter flash was
+changed temporarily to await `embassy_time::Timer::after_millis` inside the
+`Command`. The change was flashed on 2026-10-06 and then abandoned. It needed:
+
+- **A way for the shell to hear about the wake.** The executor only runs when
+  the shell calls into `Core`, and a timer wake is not an effect. The
+  `root-waker` branch's `Core::with_waker` and a public `Core::process` were
+  ported for the test. The root waker raised an embassy `Signal` (critical
+  section), and the main loop selected on it and called `process()`. Crux's
+  public API should not have a root waker, so a shipped version needs another
+  answer: for example, a shell-side async adapter, or the rule that hardware
+  futures are always wrapped as effects.
+- **embassy-time's `generic-queue-N`.** The default integrated timer queue
+  takes the timer slot from the waker via `task_from_waker`, which panics on a
+  waker the embassy executor didn't create, such as Crux's `CommandWaker`.
+  The generic queue clones any waker. It cost 520 B of `.data` for 32 slots;
+  when full, it wakes the earliest timer early.
+
+The resulting wake chain runs entirely in the RTC1 interrupt handler, inside
+embassy's own critical section:
+
+1. The timer wakes the task's `CommandWaker`.
+2. The waker sends on the child command's ready channel, which takes a nested
+   critical section.
+3. It wakes the child's `AtomicWaker`, which is the root command's
+   `CommandWaker`.
+4. That sends on the root's ready channel.
+5. It wakes the root waker, which raises the `Signal`.
+
+With `spin`, step 2 or 4 deadlocks if thread mode holds the same channel lock
+when the RTC fires.
+
+On hardware, every press blinked the LED for about 120 ms and back off, even
+under sustained mashing of both buttons and the switch. There was no hang and
+no `Core` contention panic, and the switch still worked. This is good evidence
+but not proof: the exact interleaving can't be forced on this board, and the
+same build was not run with `spin` for comparison.
 - Hardware run (cpb-counter-http, 2026-10-06): flashed and connected through
   the Chrome gateway. The initial GET, the SSE stream (8 chunks) and four
   button POSTs (`/inc`, then `/dec` three times) all completed, and the board
