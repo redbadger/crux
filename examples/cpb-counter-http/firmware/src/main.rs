@@ -29,13 +29,13 @@ use crux_http::{
 };
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
-use embassy_futures::select::{Either4, select4};
+use embassy_futures::select::{Either, Either4, select, select4};
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Instant, Timer};
 use embedded_alloc::LlffHeap as Heap;
 use panic_halt as _;
 
-use cpb_counter_http_app::{Counter, Effect, Event, ViewModel};
+use cpb_counter_http_app::{Counter, Delay, Effect, Event, ViewModel};
 use cpb_protocol::{Id, SseRequest, SseResponse, ToDevice, ToGateway};
 use link::{INCOMING, LinkEvent, OUTGOING};
 use neopixel::{Frame, NeoPixels, PIXELS};
@@ -96,6 +96,8 @@ struct Shell<'a> {
     next_id: Id,
     http: BTreeMap<Id, Request<HttpRequest>>,
     sse: BTreeMap<Id, Request<SseRequest>>,
+    /// Outstanding `Delay` requests, with the instant each is due (as in cpb-counter).
+    delays: Vec<(Instant, Request<Delay>)>,
 }
 
 impl Shell<'_> {
@@ -155,8 +157,31 @@ impl Shell<'_> {
                         self.handle(effects);
                     }
                 }
+                Effect::Delay(request) => {
+                    let due =
+                        Instant::now() + Duration::from_millis(request.operation.millis.into());
+                    self.delays.push((due, request));
+                }
             }
         }
+    }
+
+    fn resolve_due(&mut self) {
+        let now = Instant::now();
+        let mut i = 0;
+        while i < self.delays.len() {
+            if self.delays[i].0 <= now {
+                let (_, mut request) = self.delays.swap_remove(i);
+                let effects = self.core.resolve(&mut request, ()).unwrap_or_default();
+                self.handle(effects);
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    fn next_due(&self) -> Option<Instant> {
+        self.delays.iter().map(|(due, _)| *due).min()
     }
 
     fn link(&mut self, event: LinkEvent) {
@@ -272,6 +297,7 @@ async fn main(spawner: Spawner) {
         next_id: 0,
         http: BTreeMap::new(),
         sse: BTreeMap::new(),
+        delays: Vec::new(),
     };
     // The slide switch's position (left, low, is bright); this also renders the
     // "waiting for the gateway" view.
@@ -284,14 +310,27 @@ async fn main(spawner: Spawner) {
 
     join(link::run(controller), async {
         loop {
-            match select4(
+            let due = shell.next_due();
+            let timer = async {
+                match due {
+                    Some(at) => Timer::at(at).await,
+                    None => core::future::pending().await,
+                }
+            };
+            let inputs = select4(
                 INCOMING.receive(),
                 button_a.changed(),
                 button_b.changed(),
                 switch.changed(),
-            )
-            .await
-            {
+            );
+            let event = match select(inputs, timer).await {
+                Either::First(event) => event,
+                Either::Second(()) => {
+                    shell.resolve_due();
+                    continue;
+                }
+            };
+            match event {
                 Either4::First(event) => shell.link(event),
                 // Buttons are active high: count presses, ignore releases.
                 Either4::Second(pressed) => {
