@@ -64,6 +64,8 @@ impl Shell {
                     }));
                     self.sse = Some(request);
                 }
+                // Only after a stream ends, which this probe does last.
+                Effect::Delay(_) => {}
             }
         }
     }
