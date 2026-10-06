@@ -43,7 +43,8 @@ There's no debug probe, so the NeoPixels are the debug output.
 
 | Path | What |
 |---|---|
-| `src/main.rs` | the app's shell: `Core<Counter>`, debounced buttons, the link, `Delay` timers |
+| `src/main.rs` | the app's shell: `Core<Counter>`, debounced buttons, the link |
+| `src/delay.rs` | the `Delay` task: embassy timers, resolved with `Core::resolve`, effects queued back to the shell |
 | `src/link.rs` | radio set-up (MPSL, SDC), the GATT service, framing; channels to the shell |
 | `src/neopixel.rs` | WS2812 over PWM |
 | `src/bin/` | `link-check` and `ble-probe` |
