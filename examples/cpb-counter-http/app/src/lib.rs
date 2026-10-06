@@ -14,6 +14,9 @@
 //!   app does what counter_http's shells do at start-up: `Get`, then `StartWatch`), and
 //!   `Switch` (the slide switch picks the brightness).
 //! - Button A is `Increment`, button B is `Decrement`.
+//! - When the SSE stream ends (the gateway's fetch died with the network, say), the app
+//!   resubscribes after a back-off (1 s, doubling to 30 s), using a `Delay` effect. A browser
+//!   user of counter_http reloads the page; the board has nobody to do that.
 
 #![no_std]
 
@@ -23,10 +26,11 @@ pub mod sse;
 
 use crux_core::{
     App, Command,
-    macros::effect,
+    macros::{Operation, effect},
     render::{RenderOperation, render},
 };
 use crux_http::{command::Http, protocol::HttpRequest};
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -38,12 +42,43 @@ const API_URL: &str = "https://crux-counter.fly.dev";
 /// Number of NeoPixels on the board.
 pub const PIXELS: usize = 10;
 
-#[derive(Default)]
+/// The first wait before reopening a stream that ended, and the longest.
+const WATCH_BACKOFF_MIN: u32 = 1_000;
+const WATCH_BACKOFF_MAX: u32 = 30_000;
+
 pub struct Model {
     count: Count,
     connected: bool,
     error: bool,
     bright: bool,
+    /// An SSE stream is open (or being opened).
+    watching: bool,
+    /// Identifies the current stream, so a stale end or retry timer is ignored.
+    watch: u32,
+    /// The wait before the next resubscribe.
+    backoff: u32,
+}
+
+impl Default for Model {
+    fn default() -> Self {
+        Self {
+            count: Count::default(),
+            connected: false,
+            error: false,
+            bright: false,
+            watching: false,
+            watch: 0,
+            backoff: WATCH_BACKOFF_MIN,
+        }
+    }
+}
+
+/// Wait this long, then answer with `()` (as in cpb-counter). The firmware shell resolves
+/// it with `embassy_time`.
+#[derive(Operation, Debug, Clone, PartialEq, Eq)]
+#[operation(request, output = ())]
+pub struct Delay {
+    pub millis: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, PartialEq, Eq)]
@@ -84,6 +119,10 @@ pub enum Event {
     // events local to the core
     Set(crux_http::Result<crux_http::Response<Count>>),
     Update(Count),
+    /// The SSE stream with this id ended.
+    WatchEnded(u32),
+    /// The back-off after stream `id` ended is over.
+    Rewatch(u32),
 }
 
 // Plain `#[effect]`: `facet_typegen` would need crux_core's `bridge` (std).
@@ -93,6 +132,7 @@ pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
     ServerSentEvents(SseRequest),
+    Delay(Delay),
 }
 
 #[derive(Default)]
@@ -116,6 +156,10 @@ impl App for Counter {
             }
             Event::Disconnected => {
                 model.connected = false;
+                // The shell ends the stream; forget it, and any retry timer for it.
+                model.watching = false;
+                model.watch = model.watch.wrapping_add(1);
+                model.backoff = WATCH_BACKOFF_MIN;
                 render()
             }
             Event::Switch(bright) => {
@@ -137,6 +181,8 @@ impl App for Counter {
             Event::Update(count) => {
                 model.count = count;
                 model.error = false;
+                // The server is reachable again.
+                model.backoff = WATCH_BACKOFF_MIN;
                 render()
             }
             Event::Increment => {
@@ -169,10 +215,26 @@ impl App for Counter {
 
                 render().and(call_api)
             }
-            Event::StartWatch => {
-                let base = Url::parse(API_URL).unwrap();
-                let url = base.join("/sse").unwrap();
-                ServerSentEvents::get(url).then_send(Event::Update)
+            Event::StartWatch => watch(model),
+            Event::WatchEnded(id) => {
+                if id != model.watch {
+                    return Command::done();
+                }
+                model.watching = false;
+                if !model.connected {
+                    return Command::done();
+                }
+                let millis = model.backoff;
+                model.backoff = (model.backoff * 2).min(WATCH_BACKOFF_MAX);
+                Command::request_from_shell(Delay { millis })
+                    .then_send(move |()| Event::Rewatch(id))
+            }
+            Event::Rewatch(id) => {
+                if id == model.watch {
+                    watch(model)
+                } else {
+                    Command::done()
+                }
             }
         }
     }
@@ -239,6 +301,26 @@ impl App for Counter {
             led_on: pending,
         }
     }
+}
+
+/// Open the SSE stream, as counter_http's `StartWatch` does, and also report when it ends.
+fn watch(model: &mut Model) -> Command<Effect, Event> {
+    if !model.connected || model.watching {
+        return Command::done();
+    }
+    model.watching = true;
+    model.watch = model.watch.wrapping_add(1);
+    let id = model.watch;
+
+    let base = Url::parse(API_URL).unwrap();
+    let url = base.join("/sse").unwrap();
+    Command::new(move |ctx| async move {
+        let mut updates = ServerSentEvents::get(url).into_stream(ctx.clone());
+        while let Some(count) = updates.next().await {
+            ctx.send_event(Event::Update(count));
+        }
+        ctx.send_event(Event::WatchEnded(id));
+    })
 }
 
 #[cfg(test)]
