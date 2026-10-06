@@ -280,22 +280,21 @@ impl App for Counter {
         let pending = model.count.updated_at.is_none();
         // Pending values are shown at a third of the brightness (and D13 is lit).
         let level = if pending { (level / 3).max(2) } else { level };
-        let colour = if model.count.value >= 0 {
-            Rgb {
-                r: 0,
-                g: level,
-                b: 0,
+        // The server's count is unbounded, so the ring is an odometer: each lap of ten
+        // fills in a new colour over the last lap's. 10 is ten green, 11 is one cyan over
+        // nine green, 20 is ten cyan.
+        let positive = model.count.value >= 0;
+        let n = model.count.value.unsigned_abs();
+        if n > 0 {
+            let lap = (n - 1) / PIXELS;
+            let units = (n - 1) % PIXELS + 1;
+            for (i, pixel) in pixels.iter_mut().enumerate() {
+                if i < units {
+                    *pixel = lap_colour(positive, lap, level);
+                } else if lap > 0 {
+                    *pixel = lap_colour(positive, lap - 1, level);
+                }
             }
-        } else {
-            Rgb {
-                r: level,
-                g: 0,
-                b: 0,
-            }
-        };
-        let lit = model.count.value.unsigned_abs().min(PIXELS);
-        for pixel in pixels.iter_mut().take(lit) {
-            *pixel = colour;
         }
 
         ViewModel {
@@ -303,6 +302,20 @@ impl App for Counter {
             led_on: pending,
         }
     }
+}
+
+/// The colour of lap `lap` (0 for 1..=10, 1 for 11..=20, ...): green, cyan, blue for
+/// positive counts, and red, orange, magenta for negative ones, round and round.
+const fn lap_colour(positive: bool, lap: usize, level: u8) -> Rgb {
+    let (r, g, b) = match (positive, lap % 3) {
+        (true, 0) => (0, level, 0),
+        (true, 1) => (0, level, level),
+        (true, _) => (0, 0, level),
+        (false, 0) => (level, 0, 0),
+        (false, 1) => (level, level / 2, 0),
+        (false, _) => (level, 0, level),
+    };
+    Rgb { r, g, b }
 }
 
 /// Open the SSE stream, as `counter_http`'s `StartWatch` does, and also report when it ends.

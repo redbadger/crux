@@ -384,15 +384,44 @@ fn a_failed_request_shows_an_error_until_the_next_success() {
     assert_eq!(lit(&app.view(&model)), [Rgb { r: 0, g: 6, b: 0 }; 4]);
 }
 
+/// The server's count is unbounded: past ten, each lap fills in a new colour over the last.
 #[test]
-fn counts_beyond_ten_light_every_pixel_and_brightness_follows_the_switch() {
+fn counts_beyond_ten_wrap_in_a_new_colour() {
+    let app = Counter;
+    let green = Rgb { r: 0, g: 6, b: 0 };
+    let cyan = Rgb { r: 0, g: 6, b: 6 };
+    let blue = Rgb { r: 0, g: 0, b: 6 };
+    let view_of = |value| {
+        app.view(&connected_model(Count {
+            value,
+            updated_at: Some(NEW_YEAR),
+        }))
+        .pixels
+    };
+
+    assert_eq!(view_of(10), [green; PIXELS]);
+    let mut eleven = [green; PIXELS];
+    eleven[0] = cyan;
+    assert_eq!(view_of(11), eleven);
+    assert_eq!(view_of(20), [cyan; PIXELS]);
+    assert_eq!(view_of(30), [blue; PIXELS]);
+    // round again
+    assert_eq!(view_of(40), [green; PIXELS]);
+}
+
+#[test]
+fn negative_laps_and_brightness_follow_the_switch() {
     let app = Counter;
     let mut model = connected_model(Count {
         value: -25,
         updated_at: Some(NEW_YEAR),
     });
     let _ = app.update(Event::Switch(true), &mut model);
-    assert_eq!(lit(&app.view(&model)), [Rgb { r: 40, g: 0, b: 0 }; PIXELS]);
+    let magenta = Rgb { r: 40, g: 0, b: 40 };
+    let orange = Rgb { r: 40, g: 20, b: 0 };
+    let mut expected = [orange; PIXELS];
+    expected[..5].fill(magenta);
+    assert_eq!(app.view(&model).pixels, expected);
 }
 
 /// Open the stream from a connected model, end it, and return the event that says so.
