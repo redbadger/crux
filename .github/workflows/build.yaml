@@ -49,6 +49,12 @@ jobs:
         with:
           version: latest
 
+      # `crux_core`'s typegen tests run `dotnet build` over a generated C#
+      # package, which the generator targets at `net10.0`.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
       - name: Build crux
         shell: bash
         run: cargo build --workspace

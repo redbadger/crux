@@ -179,7 +179,7 @@ where
     {
         let mut return_buffer = vec![];
 
-        self.resolve(EffectId(id), output, &mut return_buffer)?;
+        self.resolve(EffectId::from(id), output, &mut return_buffer)?;
 
         Ok(return_buffer)
     }

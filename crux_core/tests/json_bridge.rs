@@ -67,7 +67,7 @@ mod tests {
 
     use super::core::Bridge;
     use crux_core::{
-        Core, OperationKind,
+        Core,
         bridge::{EffectId, Request},
     };
     use crux_http::protocol::{HttpResponse, HttpResult};
@@ -196,23 +196,20 @@ mod tests {
         let bridge = Bridge::new(Core::default());
 
         let http = request_http(&bridge);
-        assert_eq!(http.id.effect_index(), 0, "Http is the first variant");
-        assert_eq!(http.id.kind(), OperationKind::Request);
 
         // The same request, relabelled as the `Render` variant.
-        let mangled = EffectId(http.id.0 | (1 << 24));
+        let mangled = EffectId::from(wire_value(http.id) | (1 << 24));
 
         let Err(error) = resolve_http(&bridge, mangled) else {
             panic!("expected resolving under the wrong effect to fail");
         };
 
-        assert_eq!(
-            error.to_string(),
-            format!(
-                "could not process response: Request id {:#010x} names `Render` (variant 1), but request {} was issued for `Http` (variant 0).",
-                mangled.0,
-                http.id.sequence()
-            )
+        assert_message(
+            &error.to_string(),
+            &format!(
+                "expects `Http` (variant 0), but response id {:#010x} carries `Render` (variant 1).",
+                wire_value(mangled)
+            ),
         );
     }
 
@@ -224,20 +221,18 @@ mod tests {
         let http = request_http(&bridge);
 
         // The same request, relabelled as a stream.
-        let mangled = EffectId(http.id.0 | (1 << 23));
-        assert_eq!(mangled.kind(), OperationKind::Stream);
+        let mangled = EffectId::from(wire_value(http.id) | (1 << 23));
 
         let Err(error) = resolve_http(&bridge, mangled) else {
             panic!("expected resolving with the wrong kind to fail");
         };
 
-        assert_eq!(
-            error.to_string(),
-            format!(
-                "could not process response: Request id {:#010x} is marked as a Stream request, but request {} was issued as a Request.",
-                mangled.0,
-                http.id.sequence()
-            )
+        assert_message(
+            &error.to_string(),
+            &format!(
+                "expects the Request kind, but response id {:#010x} carries the Stream kind.",
+                wire_value(mangled)
+            ),
         );
     }
 
@@ -247,7 +242,7 @@ mod tests {
         let bridge = Bridge::new(Core::default());
 
         let http = request_http(&bridge);
-        let mangled = EffectId(http.id.0 | (9 << 24));
+        let mangled = EffectId::from(wire_value(http.id) | (9 << 24));
 
         let Err(error) = resolve_http(&bridge, mangled) else {
             panic!("expected resolving an unknown effect variant to fail");
@@ -256,8 +251,8 @@ mod tests {
         assert_eq!(
             error.to_string(),
             format!(
-                "could not process response: Request id {:#010x} names variant 9 of `json_bridge::app::Effect`, which has only 2 variants.",
-                mangled.0
+                "could not process response: `json_bridge::app::Effect` has only 2 variants, but response id {:#010x} carries variant 9.",
+                wire_value(mangled)
             )
         );
     }
@@ -338,9 +333,36 @@ mod tests {
             error.to_string(),
             format!(
                 "could not process response: Request with id {} not found.",
-                first.id.0
+                wire_value(first.id)
             )
         );
+    }
+
+    /// A wrong-effect or wrong-kind error names the outstanding request by its
+    /// sequence, which this test has no way to read off the id, so check the
+    /// message around it.
+    fn assert_message(message: &str, rest: &str) {
+        let prefix = "could not process response: Request ";
+        assert!(
+            message.starts_with(prefix) && message.ends_with(rest),
+            "unexpected message: {message}"
+        );
+        let sequence = &message[prefix.len()..message.len() - rest.len()];
+        assert!(
+            sequence.trim_end().parse::<u32>().is_ok(),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// The number an id crosses the bridge as, which is all a shell ever sees
+    /// of it. Read off the serialized form, since the id keeps its layout to
+    /// itself.
+    fn wire_value(id: EffectId) -> u32 {
+        serde_json::to_value(id)
+            .ok()
+            .and_then(|value| value.as_u64())
+            .and_then(|number| u32::try_from(number).ok())
+            .expect("an id should serialize as a u32")
     }
 
     fn request_http(bridge: &Bridge) -> Request<EffectFfi> {
