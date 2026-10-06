@@ -1,3 +1,4 @@
+use crux_core::bridge::EffectId;
 use crux_time::operation::NotifyAfter;
 use std::sync::{Arc, Mutex};
 
@@ -377,11 +378,11 @@ mod ffi {
         }
 
         /// Resolve an effect sent over the serialized lane.
-        pub(crate) fn resolve_serialized(&self, id: u32, data: &[u8]) {
+        pub(crate) fn resolve_serialized(&self, id: EffectId, data: &[u8]) {
             self.router
                 .routes
                 .serialized
-                .resolve(EffectId(id), data)
+                .resolve(id, data)
                 .expect("serialized resolve should work");
         }
 
@@ -749,11 +750,11 @@ fn assert_only_render_effect(effects: &[FfiRequest]) {
     assert!(matches!(effects[0].effect, FfiEffect::Render(_)));
 }
 
-pub(crate) fn extract_single_time_request(effects: Vec<FfiRequest>) -> (u32, NotifyAfter) {
+pub(crate) fn extract_single_time_request(effects: Vec<FfiRequest>) -> (EffectId, NotifyAfter) {
     let mut time_effects: Vec<_> = effects
         .into_iter()
         .filter_map(|effect| match effect.effect {
-            FfiEffect::TimeNotifyAfter(request) => Some((effect.id.0, request)),
+            FfiEffect::TimeNotifyAfter(request) => Some((effect.id, request)),
             FfiEffect::Render(_) | FfiEffect::TimeClear(_) | FfiEffect::Permission(_) => None,
         })
         .collect();
@@ -765,11 +766,11 @@ pub(crate) fn extract_single_time_request(effects: Vec<FfiRequest>) -> (u32, Not
 
 pub(crate) fn extract_single_permission_request(
     effects: Vec<FfiRequest>,
-) -> (u32, PermissionRequest) {
+) -> (EffectId, PermissionRequest) {
     let mut permission_effects: Vec<_> = effects
         .into_iter()
         .filter_map(|effect| match effect.effect {
-            FfiEffect::Permission(request) => Some((effect.id.0, request)),
+            FfiEffect::Permission(request) => Some((effect.id, request)),
             FfiEffect::Render(_) | FfiEffect::TimeNotifyAfter(_) | FfiEffect::TimeClear(_) => None,
         })
         .collect();

@@ -179,7 +179,7 @@ impl CoreFfi {
             self.router
                 .routes
                 .serialized
-                .resolve(EffectId(effect_id), data)
+                .resolve(EffectId::from(effect_id), data)
                 .expect("failed to resolve effect");
 
             Vec::new()
@@ -188,7 +188,10 @@ impl CoreFfi {
         #[cfg(target_family = "wasm")]
         {
             let mut effects = Vec::new();
-            match self.inner.resolve(EffectId(effect_id), data, &mut effects) {
+            match self
+                .inner
+                .resolve(EffectId::from(effect_id), data, &mut effects)
+            {
                 Ok(()) => effects,
                 Err(e) => panic!("{e}"),
             }
