@@ -115,6 +115,8 @@ All edits are marked `spike(no_std)` where they are not self-explanatory.
   `std::sync` whose `lock()`/`read()`/`write()` return the guard and panic on
   poison (as every call site did, just with one message now); under no_std,
   `spin::{Mutex, RwLock}` re-exported (same method names, no poisoning).
+  **Superseded**: section 12 replaces `spin` with `critical-section` for the
+  internal locks and a try-lock for `Core`'s.
 - The `.expect("... poisoned")` at 9 call sites in `core/mod.rs`,
   `bridge/registry.rs`, `effects/registry.rs`, `effects/routes/buffer.rs` went.
 - No `unsafe`: `unsafe_code = "forbid"` still holds for crux_core.
@@ -187,7 +189,8 @@ Behaviour differences without `std`:
 
 | | std | no_std |
 |---|---|---|
-| Locks | `std::sync`, panic on poison | `spin`, no poisoning, busy-waits |
+| Internal locks (channel, registries) | `std::sync`, panic on poison | `critical-section`, masks interrupts briefly (section 12) |
+| `Core`'s model and root command | `std::sync`, blocks | try-lock, panics on contention (section 12) |
 | Middleware reentrancy guard | panics on same-thread resolve during `try_process_effect` | panics on any resolve during it |
 | Middleware diagnostics | `eprintln!` | silent |
 | `bridge`, `EffectFFI`, `Serialized` route, `middleware::Bridge` | yes | absent |
@@ -197,7 +200,7 @@ Behaviour differences without `std`:
 ## 5. Dependency changes
 
 - **Removed** from crux_core: `crossbeam-channel` (now a dev-dependency only).
-- **Added**: `spin 0.9` (`mutex`, `spin_mutex`, `rwlock`, no default features).
+- **Added**, then replaced (section 12): `spin 0.9` (`mutex`, `spin_mutex`, `rwlock`, no default features).
   It is unconditional, so std builds compile it without using it (one extra
   small crate in every app's lockfile; `examples/counter/Cargo.lock` changes
   accordingly). Cargo has no "only when a feature is off" dependency; a proper
@@ -392,7 +395,9 @@ facet change upstream. Out of scope for a first pass.
 1. **Lock choice**: `spin` (simple, guard API, deadlocks if an ISR touches
    `Core`) versus `critical-section` (embedded standard, closure API, would
    reshape the shim). Is "Core is only touched from thread mode / one
-   executor" an acceptable documented constraint?
+   executor" an acceptable documented constraint? *Tried in section 12:
+   `critical-section` for the internal locks plus a try-lock for `Core` works,
+   costs nothing measurable, and makes the one-context rule a checked one.*
 2. **Replacing crossbeam everywhere**, std included: one channel
    implementation is good for test coverage, but it needs a performance check
    on the multi-threaded middleware paths, and a careful review of the
@@ -458,3 +463,137 @@ Drag and drop:
 5. Button A (left) adds a pixel, button B (right) removes one (negative counts
    are red), the slide switch picks the brightness, and D13 flashes on each
    press. To go back to CircuitPython, double-press reset and copy its UF2.
+
+## 12. Lock experiment: `critical-section` + try-lock (2026-10-06)
+
+This tries the design recommended in the RFC (`rfc/no-std`, design section 3) in
+place of `spin`.
+
+### Shape
+
+- **Internal locks** (the channel queue, `EffectRegistry`, `Buffer`, and the
+  bridge's `ResolveRegistry`) use `crux_core::sync::Mutex`. It is closure-based
+  in both builds: `with(|value| ...)`. Under `std` it wraps `std::sync::Mutex`.
+  Without `std` it is `critical_section::Mutex<RefCell<T>>` inside
+  `critical_section::with`. If the closure re-enters the same lock, the
+  `RefCell` borrow panics rather than deadlocking.
+- **`Core`'s model and root command** use `CoreRwLock` / `CoreMutex`, which
+  keep the guard API, so `core/mod.rs` and its `runtime.md` anchors barely
+  change. Under `std` they block, as before. Without `std` they are the
+  `try-lock` crate's `TryLock`, `.expect`ed with "Core used from two execution
+  contexts at once". `read()` is exclusive too.
+  - Interrupts stay enabled for the whole of `App::update`.
+  - The model is borrowed in place, never moved.
+  - Nothing anywhere busy-waits on Crux's own locks.
+  - Checking the model out (`Mutex<RefCell<Option<T>>>`: take it, run, put it
+    back) was considered and rejected, because it copies the model on the
+    stack on every call.
+- **Feature**: `critical-section = ["dep:critical-section", "dep:try-lock"]`.
+  Without `std` and without that feature, a `compile_error!` fires. The first
+  error is clear, though unresolved-import errors cascade after it. `spin` is
+  gone.
+- **Still no `unsafe`**: `try-lock` provides the `UnsafeCell` + `AtomicBool`
+  that `unsafe_code = "forbid"` stops crux_core writing itself.
+
+### Rules this encodes
+
+- Without `std`, a `Core` is used from one execution context: one thread,
+  task or core, and never an interrupt handler. Breaking that panics, where
+  `spin` would have deadlocked. It is documented on `Core` and in the
+  `# Panics` sections.
+- Wakers and effect resolution may run anywhere, including interrupt handlers
+  and the other core of a multi-core chip. They only touch the
+  `critical-section` locks.
+- **Multi-core**: multi-core `critical-section` implementations (`embassy-rp`,
+  `esp-hal`) take a hardware spinlock and mask interrupts on the local core.
+  That is correct, but it is **one lock shared by the whole chip**. While Crux
+  holds it, the other core's critical sections wait, including its allocator
+  and embassy channels. So the closures must stay short. Not tested here: no
+  multi-core hardware.
+- With `std`, contention blocks. Host tests therefore never exercise the panic
+  path; only no_std builds (the heap probe, the firmware) do.
+
+### Work kept out of critical sections
+
+- `EffectRegistry::resolve` takes the handle out under the lock, runs
+  `handle.resolve(output)` outside it (resolving wakes tasks, which takes the
+  channel lock), then reinserts it under the lock.
+- `Sender::send` wakes the receiver after leaving the lock. `Receiver::drop`
+  drops the drained queue outside it.
+- `Buffer::drain` now `mem::take`s the vector instead of
+  `drain(..).collect()`, so it doesn't allocate a new one under the lock. The
+  cost is that the buffer's capacity goes with it, so the next `push` allocates.
+- **Still inside**: `VecDeque::push_back` in `send` and the slab insert in
+  `EffectRegistry::register` can grow, and so allocate, inside a critical
+  section. `embedded-alloc` takes its own nested critical section, which is
+  fine. On one core this only adds interrupt latency. On multi-core it also
+  stalls the other core. Not measured.
+- The bridge's `ResolveRegistry::resume` still resolves (deserialises and wakes)
+  under its lock. `bridge` implies `std`, so this is always `std::sync::Mutex`
+  and never an interrupt hazard.
+
+### Measurements (same day, before and after)
+
+| | `spin` | `critical-section` + try-lock |
+|---|---|---|
+| cpb-counter `.text` | 21,356 B | 20,728 B (−628 B) |
+| cpb-counter-http firmware `.text` | 327,288 B | 326,432 B (−856 B) |
+| cpb-counter heap probe, host, peak / idle after the 20-burst | 58,416 / 3,184 B | 58,480 / 3,248 B |
+| cpb-counter-http heap probe, wasm32, peak / idle | 45,435 / 3,896 B | 45,435 / 3,896 B (identical) |
+
+- `data` and `bss` are unchanged.
+- The host probe's constant +64 B is one-time setup in the `critical-section`
+  crate's `std` implementation, not Crux: on wasm the numbers are identical.
+- `cargo bloat --release --crates` puts crux_core at 4.7 KiB of `.text`
+  (5.0 KiB in section 7, an older build, so not a strict before/after). That
+  is consistent with the saving coming from crux_core's locks, but it wasn't
+  measured against the spin build on the same day. A likely reason is that on
+  Cortex-M, `critical_section::with` with `critical-section-single-core` is a
+  PRIMASK save, `cpsid i` and a restore, which is smaller than `spin`'s
+  compare-and-swap loops.
+
+### Friction
+
+- **Every no_std crate that depends on crux_core needs the feature.** That
+  includes library crates that never link a binary (`cpb-protocol`,
+  `cpb-counter-http-app`), or they fail the `compile_error!` when built alone.
+  `crux_http` without `std` now also fails on its own unless something enables
+  `crux_core/critical-section`. Nothing builds it alone today, but a
+  capability crate would want a forwarding feature.
+- **Feature unification brings it into std builds.** The std-only gateway
+  compiles `critical-section` and `try-lock` because `cpb-protocol` enables
+  the feature. That is harmless: the `std` locks win, so no implementation is
+  needed. But the RFC's "std builds exactly as they are" only holds where no
+  no_std library is in the graph. The root workspace `Cargo.lock` also lists
+  both crates, because Cargo locks optional dependencies of members.
+  Re-resolving a plain std app (`examples/counter`) just removes `spin` from
+  `crux_core`'s entry and adds nothing, which confirms that std apps with no
+  no_std library in the graph are unaffected. The other std examples'
+  lockfiles still list `spin` under crux_core until they are next resolved.
+- **Host-run no_std builds need an implementation.** Both heap probes add
+  `critical-section = { features = ["std"] }`. Forgetting it is a link error,
+  not a silent fallback.
+- The firmware already links an implementation: `cortex-m`'s
+  `critical-section-single-core` in cpb-counter, and `nrf-mpsl`'s
+  `critical-section-impl` in cpb-counter-http. The latter leaves MPSL's
+  high-priority radio interrupts unmasked by design, so "masks interrupts"
+  depends on the platform.
+- **Call-site churn**: 11 call sites across `sync.rs`, `effects/registry.rs`,
+  `effects/routes/buffer.rs` and `bridge/registry.rs` became closures. None
+  were awkward. `Core`'s call sites are unchanged.
+
+### Not shown
+
+- Neither firmware wakes a `Command` task from an interrupt; the Delay is a
+  shell request. So this shows the new locks work and cost nothing. It doesn't
+  show the interrupt-wake deadlock that `spin` risked. That would need a
+  `Command` that awaits `embassy_time::Timer` directly.
+- Hardware run (cpb-counter-http, 2026-10-06): flashed and connected through
+  the Chrome gateway. The initial GET, the SSE stream (8 chunks) and four
+  button POSTs (`/inc`, then `/dec` three times) all completed, and the board
+  followed the shared count. There was no `Core` contention panic. This was
+  short, manual testing. With the network dropped, the server closed the SSE
+  stream. The board reopened it by itself four times (#7 to #10) until one
+  held. A button POST then went through and the stream delivered the update.
+  The plain cpb-counter firmware was not re-run on hardware.
+

@@ -44,7 +44,7 @@ where
     /// storage index exceeds the available ID space.
     pub fn register(&self, request: Request<Op>) -> (ParkedEffectId<Op::Output>, Op) {
         let (operation, handle) = request.split();
-        let id = self.requests.lock().insert(handle);
+        let id = self.requests.with(|requests| requests.insert(handle));
 
         (id, operation)
     }
@@ -66,19 +66,21 @@ where
     ) -> Result<(), ResolveError> {
         let mut handle = self
             .requests
-            .lock()
-            .take(id)
+            .with(|requests| requests.take(id))
             .ok_or_else(|| ResolveError::NotFound(id.into_raw()))?;
 
+        // Outside the lock: resolving can wake tasks, which takes the
+        // executor's channel lock.
         let result = handle.resolve(output);
         let should_reinsert = result.is_ok() && matches!(handle, RequestHandle::Many(_));
 
-        let mut requests = self.requests.lock();
-        if should_reinsert {
-            requests.reinsert(id, handle);
-        } else {
-            requests.remove(id);
-        }
+        self.requests.with(|requests| {
+            if should_reinsert {
+                requests.reinsert(id, handle);
+            } else {
+                requests.remove(id);
+            }
+        });
 
         result
     }
