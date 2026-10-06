@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLE Probe</title>
+<style>
+  :root { --bg: #fff; --fg: #111; --muted: #666; --ok: #0a7d32; --err: #b00020; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #111; --fg: #eee; --muted: #999; --ok: #4cc06e; --err: #ff6b7f; } }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.4 system-ui, sans-serif; margin: 0; padding: 16px; max-width: 720px; }
+  button, input { font: inherit; padding: 6px 10px; }
+  input { width: 18em; max-width: 100%; }
+  pre { color: var(--muted); white-space: pre-wrap; word-break: break-all; }
+  .ok { color: var(--ok); } .err { color: var(--err); }
+</style>
+</head>
+<body>
+<h1>CPB BLE probe</h1>
+<p>For the <code>ble-probe</code> firmware: connect, then send text and it should echo back.
+Open this file in Chrome (<code>file://</code> counts as a secure context).</p>
+<p><button id="connect">Connect</button> <span id="state">disconnected</span></p>
+<p><input id="text" value="hello from chrome" maxlength="244"> <button id="send" disabled>Send</button>
+<button id="burst" disabled>Send 20 × 20 bytes</button></p>
+<pre id="log"></pre>
+<script>
+const SERVICE = "744aa621-b4b9-4751-91c0-a43b54bb1544";
+const TX = "ad229cac-4e64-4208-b76b-ed536a1e47c5"; // device -> us (notify)
+const RX = "cb4206ec-fe9c-4fea-ae65-2e7c5b56515b"; // us -> device (write)
+const $ = (id) => document.getElementById(id);
+const log = (msg, cls) => {
+  const line = document.createElement("div");
+  line.textContent = `${new Date().toISOString().slice(11, 23)}  ${msg}`;
+  if (cls) line.className = cls;
+  $("log").prepend(line);
+};
+let rx, sent = 0, echoed = 0, t0 = 0;
+
+$("connect").onclick = async () => {
+  try {
+    const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE] }] });
+    device.addEventListener("gattserverdisconnected", () => {
+      $("state").textContent = "disconnected"; $("send").disabled = $("burst").disabled = true;
+      log("disconnected", "err");
+    });
+    $("state").textContent = "connecting…";
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE);
+    const tx = await service.getCharacteristic(TX);
+    rx = await service.getCharacteristic(RX);
+    tx.addEventListener("characteristicvaluechanged", (e) => {
+      echoed++;
+      const text = new TextDecoder().decode(e.target.value);
+      log(`echo ${echoed}/${sent} (${e.target.value.byteLength} B, ${(performance.now() - t0).toFixed(0)} ms): ${text}`, "ok");
+    });
+    await tx.startNotifications();
+    $("state").textContent = `connected to ${device.name ?? "?"}`;
+    $("send").disabled = $("burst").disabled = false;
+    log("connected; notifications on", "ok");
+  } catch (e) { log(`error: ${e}`, "err"); $("state").textContent = "disconnected"; }
+};
+
+async function send(bytes) {
+  sent++; t0 = performance.now();
+  await rx.writeValueWithoutResponse(bytes);
+}
+$("send").onclick = () => send(new TextEncoder().encode($("text").value)).catch((e) => log(`error: ${e}`, "err"));
+$("burst").onclick = async () => {
+  try {
+    for (let i = 0; i < 20; i++) await send(new TextEncoder().encode(`burst ${String(i).padStart(2, "0")} ${"x".repeat(11)}`));
+  } catch (e) { log(`error: ${e}`, "err"); }
+};
+</script>
+</body>
+</html>

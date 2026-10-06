@@ -1,0 +1,3 @@
+# Web Bluetooth is behind web-sys's unstable APIs.
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg=web_sys_unstable_apis"]
