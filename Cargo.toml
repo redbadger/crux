@@ -22,14 +22,12 @@ categories = ["gui", "wasm", "development-tools::ffi"]
 [workspace.dependencies]
 anyhow = "1.0"
 facet = "=0.46.5"
-# TODO(release): switch to facet_generate = "0.21" once published
-facet_generate = { git = "https://github.com/redbadger/facet-generate", rev = "d9d4fc7b" }
-# From the **same source** as `facet_generate`, not crates.io. `facet_generate`
-# resolves this crate by path inside its own checkout, so a registry copy
-# alongside it is a second, unrelated `Attr` type — and the attribute a
-# `#[facet(fg::namespace = …)]` writes is then invisible to the `get_as::<fg::Attr>()`
-# that reads it, which fails generation with `bad attribute format`.
-facet-generate-attrs = { git = "https://github.com/redbadger/facet-generate", rev = "d9d4fc7b" }
+facet_generate = "0.21"
+# Must be the same crate instance `facet_generate` itself depends on (it requires
+# `^0.18` from crates.io). A second copy from another source is an unrelated `Attr`
+# type: the attribute a `#[facet(fg::namespace = …)]` writes is then invisible to the
+# `get_as::<fg::Attr>()` that reads it, and generation fails with `bad attribute format`.
+facet-generate-attrs = "0.18"
 # facet_generate = { path = "../facet-generate/crates/facet_generate" }
 # facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
 serde = "1.0"
