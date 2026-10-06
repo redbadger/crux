@@ -322,8 +322,9 @@ impl<T: FfiFormat> ResolveRegistry<T> {
         let (effect, resolve) = effect.serialize();
         let kind = resolve.kind();
 
-        let id = {
-            let mut outstanding = self.0.lock();
+        // `bridge` implies `std`, so this is always `std::sync::Mutex`: holding it
+        // across `resolve` below is not an interrupt hazard.
+        let id = self.0.with(|outstanding| {
             outstanding.effect = Some(EffectInfo::of::<Eff>());
             let id = outstanding.issue_id(effect_index, kind);
 
@@ -337,7 +338,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
             }
 
             id
-        };
+        });
 
         Request { id, effect }
     }
@@ -360,20 +361,20 @@ impl<T: FfiFormat> ResolveRegistry<T> {
     ///
     /// Panics if the internal mutex has been poisoned
     pub fn resume(&self, id: EffectId, response: &[u8]) -> Result<(), BridgeError<T>> {
-        let mut outstanding = self.0.lock();
+        self.0.with(|outstanding| {
+            let entry = outstanding.entry(id)?;
 
-        let entry = outstanding.entry(id)?;
+            let resolved = entry.resolve.resolve(response);
 
-        let resolved = entry.resolve.resolve(response);
+            // A `Once` turns itself into a `Never` as it resolves: the request is
+            // finished, and its id will not be issued again, so drop it.
+            let finished = matches!(entry.resolve, ResolveSerialized::Never);
+            if finished {
+                outstanding.entries.remove(&id.sequence());
+            }
 
-        // A `Once` turns itself into a `Never` as it resolves: the request is
-        // finished, and its id will not be issued again, so drop it.
-        let finished = matches!(entry.resolve, ResolveSerialized::Never);
-        if finished {
-            outstanding.entries.remove(&id.sequence());
-        }
-
-        resolved
+            resolved
+        })
     }
 }
 

@@ -4,7 +4,7 @@ mod effect;
 mod request;
 mod resolve;
 
-use crate::sync::{Mutex, RwLock};
+use crate::sync::{CoreMutex, CoreRwLock};
 use alloc::collections::VecDeque;
 
 pub use effect::Effect;
@@ -23,6 +23,11 @@ use crate::{App, Command};
 ///
 /// The result of the capability's work can then be sent back to the core using [`Core::resolve`], passing
 /// in the request and the corresponding capability output type.
+///
+/// Without the `std` feature, a `Core` must only be used from one execution
+/// context at a time: one thread, task or core, and never from an interrupt
+/// handler. Wakers and effect resolutions may come from anywhere. Breaking the
+/// rule panics rather than blocking.
 // used in docs/internals/runtime.md
 // ANCHOR: core
 pub struct Core<A>
@@ -35,11 +40,11 @@ where
     // reason the executor _must_ outlive the user type instances
 
     // user types
-    model: RwLock<A::Model>,
+    model: CoreRwLock<A::Model>,
     app: A,
 
     // internals
-    root_command: Mutex<Command<A::Effect, A::Event>>,
+    root_command: CoreMutex<Command<A::Effect, A::Event>>,
 }
 // ANCHOR_END: core
 
@@ -59,9 +64,9 @@ where
     #[must_use]
     pub fn new() -> Self {
         Self {
-            model: RwLock::default(),
+            model: CoreRwLock::default(),
             app: A::default(),
-            root_command: Mutex::new(Command::done()),
+            root_command: CoreMutex::new(Command::done()),
         }
     }
 }
@@ -81,9 +86,9 @@ where
     #[must_use]
     pub fn new_with(app: A, model: A::Model) -> Self {
         Self {
-            model: RwLock::new(model),
+            model: CoreRwLock::new(model),
             app,
-            root_command: Mutex::new(Command::done()),
+            root_command: CoreMutex::new(Command::done()),
         }
     }
 
@@ -92,7 +97,8 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the model `RwLock` was poisoned.
+    /// Panics if the model lock was poisoned or, without `std`, if the `Core`
+    /// is already in use from another execution context.
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
@@ -165,7 +171,8 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the model lock was poisoned.
+    /// Panics if the model lock was poisoned or, without `std`, if the `Core`
+    /// is already in use from another execution context.
     pub fn view(&self) -> A::ViewModel {
         let model = self.model.read();
 

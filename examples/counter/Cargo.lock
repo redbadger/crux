@@ -1149,7 +1149,6 @@ dependencies = [
  "serde",
  "serde_json",
  "slab",
- "spin",
  "thiserror 2.0.19",
 ]
 

@@ -7,7 +7,7 @@ description = "spike(no_std): counter_http's Crux app, ported to no_std for the 
 
 [dependencies]
 cpb-protocol = { path = "../protocol" }
-crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros"] }
+crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros", "critical-section"] }
 crux_http = { path = "../../../crux_http", default-features = false }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
