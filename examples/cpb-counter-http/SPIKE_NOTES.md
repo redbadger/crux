@@ -187,7 +187,8 @@ unchanged** (`Http::get(API_URL).expect_json().build().then_send(Event::Set)`,
 for thumbv7em. On the board, through the gateway:
 
 - Connecting sends a GET and opens the SSE stream. The count shows as up to 10 pixels, green
-  for positive and red for negative.
+  for positive and red for negative. (Since changed: the server's count is unbounded, so past
+  10 the ring now wraps, each lap of ten in a new colour over the last.)
 - Buttons A and B update optimistically: dim pixels with D13 lit while pending, then solid once
   the POST's 200 returns. One run logged 22 POSTs (#3–#24), each answered with 200. One
   press is one request (cpb-counter's press-and-release debounce).
