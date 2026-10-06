@@ -6,7 +6,7 @@ publish.workspace = true
 description = "spike(no_std): the BLE link between the CPB firmware and the Chrome gateway"
 
 [dependencies]
-crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros"] }
+crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros", "critical-section"] }
 crux_http = { path = "../../../crux_http", default-features = false }
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
