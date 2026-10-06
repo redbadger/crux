@@ -1,6 +1,11 @@
 //! `spike(no_std)`: the firmware "shell" for a Crux core on the Circuit
 //! Playground Bluefruit. It calls `Core` directly; there is no FFI bridge.
 //!
+//! Effects go through an `EffectRouter`. `Render` lands in a buffer that the
+//! main loop drains. `Delay` is handled by its own embassy task, which awaits
+//! an embassy `Timer` per request and resolves it through `ResolveSink`, so
+//! the router runs the core forward without the shell calling it.
+//!
 //! Pins (`CircuitPython` `ports/nordic/boards/circuitplayground_bluefruit`):
 //!   button A    P1.02  (active high, needs pull-down)
 //!   button B    P1.15  (active high, needs pull-down)
@@ -18,21 +23,28 @@ extern crate alloc;
 
 mod app;
 
+use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 
-use crux_core::Core;
+use crux_core::{
+    Core, Request,
+    effects::{EffectRouter, ResolveSink, Routes, routes::Buffer},
+    render::RenderOperation,
+};
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either4, select4};
+use embassy_futures::select::{Either4, select, select4};
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
 use embassy_nrf::pwm::{
     Config as PwmConfig, Prescaler, SequenceConfig, SequenceLoad, SequencePwm, SingleSequenceMode,
     SingleSequencer,
 };
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
 use embedded_alloc::LlffHeap as Heap;
 use panic_halt as _;
 
-use app::{Counter, Effect, Event, PIXELS, ViewModel};
+use app::{Counter, Delay, Effect, Event, PIXELS, ViewModel};
 
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
@@ -59,13 +71,85 @@ const DEBOUNCE: Duration = Duration::from_millis(30);
 
 type Pwm<'a> = SequencePwm<'a>;
 
+type Router = EffectRouter<Counter, Lanes>;
+
+/// Raised when a render request is buffered, so the main loop wakes to draw it
+/// even when the request came from the delay task rather than an input.
+static RENDER: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+/// Raised when a delay request is buffered, for the delay task.
+static DELAY: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+
+/// The router's lanes: both are buffers, drained by whoever was signalled.
+#[derive(Clone)]
+struct Lanes {
+    render: Arc<Buffer<RenderOperation>>,
+    delay: Arc<Buffer<Delay>>,
+}
+
+impl Routes<Counter> for Lanes {
+    fn new(_router: Weak<Router>) -> Self {
+        Self {
+            render: Arc::default(),
+            delay: Arc::default(),
+        }
+    }
+}
+
+fn route(lanes: Lanes) -> impl Fn(Effect) + Send + Sync {
+    move |effect| match effect {
+        Effect::Render(request) => {
+            lanes.render.push(request);
+            RENDER.signal(());
+        }
+        Effect::Delay(request) => {
+            lanes.delay.push(request);
+            DELAY.signal(());
+        }
+    }
+}
+
+/// Resolves `Delay` requests with embassy timers. Runs on the same executor as
+/// the main loop, so it never calls into the core while the main loop is.
+///
+/// It awaits one `Timer` for the earliest request, polled with this task's own
+/// waker. A combinator such as `FuturesUnordered` would poll each timer with a
+/// waker of its own, which embassy's default timer queue rejects.
+#[embassy_executor::task]
+async fn delays(router: Weak<Router>) {
+    let mut pending: Vec<(Instant, Request<Delay>)> = Vec::new();
+    loop {
+        let earliest = pending.iter().map(|(due, _)| *due).min();
+        if let Some(due) = earliest {
+            let _ = select(DELAY.wait(), Timer::at(due)).await;
+        } else {
+            DELAY.wait().await;
+        }
+
+        let Some(router) = router.upgrade() else {
+            return;
+        };
+        for request in router.routes.delay.drain() {
+            let due = Instant::now() + Duration::from_millis(request.operation.millis.into());
+            pending.push((due, request));
+        }
+        let now = Instant::now();
+        let mut i = 0;
+        while i < pending.len() {
+            if pending[i].0 <= now {
+                let (_, mut request) = pending.swap_remove(i);
+                let _ = router.resolve_request(&mut request, ());
+            } else {
+                i += 1;
+            }
+        }
+    }
+}
+
 struct Shell<'a> {
-    core: Core<Counter>,
+    router: Arc<Router>,
     led: Output<'a>,
     pwm: Pwm<'a>,
     words: [u16; WORDS],
-    /// Outstanding `Delay` requests, with the instant each is due.
-    delays: Vec<(Instant, crux_core::Request<app::Delay>)>,
 }
 
 /// An input that reports only settled changes of level, on press *and* release,
@@ -102,38 +186,15 @@ impl<'a> Debounced<'a> {
 }
 
 impl Shell<'_> {
-    fn handle(&mut self, effects: Vec<Effect>) {
-        for effect in effects {
-            match effect {
-                Effect::Render(_) => {
-                    let view = self.core.view();
-                    self.render(&view);
-                }
-                Effect::Delay(request) => {
-                    let due =
-                        Instant::now() + Duration::from_millis(request.operation.millis.into());
-                    self.delays.push((due, request));
-                }
-            }
+    /// Draws once if any render requests are waiting; they need no resolving.
+    /// Clears the signal first, so the main loop does not wake again for
+    /// requests drawn here.
+    fn render_pending(&mut self) {
+        RENDER.reset();
+        if !self.router.routes.render.drain().is_empty() {
+            let view = self.router.view();
+            self.render(&view);
         }
-    }
-
-    fn resolve_due(&mut self) {
-        let now = Instant::now();
-        let mut i = 0;
-        while i < self.delays.len() {
-            if self.delays[i].0 <= now {
-                let (_, mut request) = self.delays.swap_remove(i);
-                let effects = self.core.resolve(&mut request, ()).unwrap_or_default();
-                self.handle(effects);
-            } else {
-                i += 1;
-            }
-        }
-    }
-
-    fn next_due(&self) -> Option<Instant> {
-        self.delays.iter().map(|(due, _)| *due).min()
     }
 
     fn render(&mut self, view: &ViewModel) {
@@ -165,7 +226,6 @@ impl Shell<'_> {
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let _ = spawner; // no other tasks: the shell is the main task
     {
         use core::mem::MaybeUninit;
         static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
@@ -195,31 +255,28 @@ async fn main(spawner: Spawner) {
         panic!("PWM init");
     };
 
+    let router = Router::new(Core::new(), route);
+    let Ok(token) = delays(Arc::downgrade(&router)) else {
+        panic!("delay task already spawned");
+    };
+    spawner.spawn(token);
+
     let mut shell = Shell {
-        core: Core::new(),
+        router,
         led,
         pwm,
         words: [RES; WORDS],
-        delays: Vec::new(),
     };
 
-    let effects = shell.core.process_event(Event::Switch(!switch.high));
-    shell.handle(effects);
+    shell.router.update(Event::Switch(!switch.high));
+    shell.render_pending();
 
     loop {
-        let due = shell.next_due();
-        let timer = async {
-            match due {
-                Some(at) => Timer::at(at).await,
-                None => core::future::pending().await,
-            }
-        };
-
         let event = match select4(
             button_a.changed(),
             button_b.changed(),
             switch.changed(),
-            timer,
+            RENDER.wait(),
         )
         .await
         {
@@ -231,9 +288,8 @@ async fn main(spawner: Spawner) {
         };
 
         if let Some(event) = event {
-            let effects = shell.core.process_event(event);
-            shell.handle(effects);
+            shell.router.update(event);
         }
-        shell.resolve_due();
+        shell.render_pending();
     }
 }
