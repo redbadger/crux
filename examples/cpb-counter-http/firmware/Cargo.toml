@@ -9,6 +9,12 @@ description = "spike(no_std): counter_http as Circuit Playground Bluefruit firmw
 [workspace]
 
 [[bin]]
+name = "cpb-counter-http"
+path = "src/main.rs"
+test = false
+bench = false
+
+[[bin]]
 name = "ble-probe"
 path = "src/bin/ble_probe.rs"
 test = false
@@ -21,7 +27,9 @@ test = false
 bench = false
 
 [dependencies]
+cpb-counter-http-app = { path = "../app" }
 cpb-protocol = { path = "../protocol" }
+crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros"] }
 crux_http = { path = "../../../crux_http", default-features = false }
 embedded-alloc = "0.7"
 embassy-executor = { version = "0.10", features = ["platform-cortex-m", "executor-thread"] }
