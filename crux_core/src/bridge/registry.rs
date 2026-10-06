@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::sync::Mutex;
+use std::collections::HashMap;
 
 use facet::Facet;
 use serde::{Deserialize, Serialize};
