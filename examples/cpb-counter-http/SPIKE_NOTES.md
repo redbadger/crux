@@ -230,7 +230,35 @@ when the network came back, and chunks reached the board again without a BLE rec
 Also checked on hardware: reconnecting after the gateway tab is closed and reopened, and the
 red/blue error pattern for a request that fails while the network is down.
 
-### Sizes
+### `Delay` is resolved by its own task (2026-10-06)
+
+The back-off's `Delay` first lived in the main loop, as a due list it selected on next to the
+link and the inputs (as in cpb-counter). It now has its own embassy task (`firmware/src/delay.rs`),
+the shape the RFC's open question 9 describes for hardware futures:
+
+- The main loop pushes each `Delay` request onto the `DELAYS` queue.
+- The `delays` task awaits an embassy `Timer` for the earliest request, with its own waker
+  (embassy's default timer queue rejects wakers its executor did not create), and resolves it
+  with `Core::resolve`. That runs the core forward and returns the follow-up effects, here the
+  `ServerSentEvents` request that reopens the stream.
+- The task pushes them onto the `EFFECTS` queue, which the main loop selects on alongside the
+  link and the inputs, and handles like any other effects.
+- `Core` is a leaked `&'static`, shared by both tasks. Both run on one executor, so they never
+  call into it at the same time. The queues are unbounded (`VecDeque` behind embassy's
+  critical-section mutex, plus a `Signal`), so neither task can block waiting for the other.
+
+No Crux API was needed beyond the public `Core::resolve`: no root waker, no effect router, no
+`generic-queue-N`. The app is unchanged.
+
+Release text grew by 1,504 B (326,536 to 328,040) and data by 64 B (the two queues). Most of
+it is the task's own inlined copy of `Core::resolve`.
+
+On hardware, through the gateway: the GET, the SSE stream and six button POSTs (#1 to #8)
+worked as before. With Wi-Fi off, the server closed the stream (#2), the board reopened it by
+itself three times (#9 to #11), each closed at once, and #12 held and delivered chunks again.
+The gateway log has no timestamps, so this run confirms the retries and the recovery but not
+the growing intervals; those are in the app, which is unchanged and tested.
+
 
 | | text | rodata | data | bss |
 |---|---|---|---|---|
