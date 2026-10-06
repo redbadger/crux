@@ -8,14 +8,14 @@ an RFC on `no_std` support, not mergeable code. The findings, including what had
 
 On the board: button A adds a NeoPixel, button B removes one (negative counts are red), the
 slide switch sets the brightness, and the red LED (D13) flashes on each press. The flash is a
-custom async `Delay` effect. The shell sends every effect through crux_core's `EffectRouter`:
-renders are drawn by the main loop, and delays are resolved by a separate embassy task with an
-embassy timer, through `ResolveSink`.
+custom async `Delay` effect. A separate embassy task awaits an embassy timer for each one and
+resolves it with `Core::resolve`; the follow-up effects come back to the main loop through one
+queue it selects on.
 
 | Path | What |
 |---|---|
 | `src/app.rs` | the Crux app (`no_std`, knows nothing about the board) |
-| `src/main.rs` | the firmware shell: buttons, switch, NeoPixels (WS2812 over PWM), the effect router and the `Delay` task |
+| `src/main.rs` | the firmware shell: buttons, switch, NeoPixels (WS2812 over PWM), the `Delay` task |
 | `memory.x`, `build.rs`, `.cargo/config.toml` | linker layout for the board's bootloader, target `thumbv7em-none-eabihf` |
 | `heap-probe/` | runs `app.rs` on the host with a counting allocator and reports peak heap |
 
