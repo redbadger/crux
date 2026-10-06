@@ -4,9 +4,9 @@ mod formats;
 mod registry;
 mod request_serde;
 
+use core::fmt::Debug;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
-use core::fmt::Debug;
 use thiserror::Error;
 
 use crate::{App, Core, core::ResolveError};

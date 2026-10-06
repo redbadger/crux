@@ -1,6 +1,6 @@
-//! spike(no_std): BLE go/no-go for the Circuit Playground Bluefruit.
+//! `spike(no_std)`: BLE go/no-go for the Circuit Playground Bluefruit.
 //!
-//! Does Nordic's SoftDevice Controller (nrf-sdc + MPSL, linked into this image) work
+//! Does Nordic's `SoftDevice` Controller (nrf-sdc + MPSL, linked into this image) work
 //! when the board boots through the MBR and a resident but disabled S140 6.1.1, which
 //! forward every interrupt to us? cpb-counter showed that for GPIOTE; MPSL's RADIO,
 //! TIMER0 and RTC0 handlers are timing-critical.
@@ -13,6 +13,8 @@
 
 #![no_std]
 #![no_main]
+// Embassy's thread-mode executor is single-threaded: nothing here needs to be `Send`.
+#![allow(clippy::future_not_send)]
 
 #[path = "../neopixel.rs"]
 mod neopixel;
@@ -123,8 +125,8 @@ fn build_sdc<'d, const N: usize>(
         .support_peripheral()
         .peripheral_count(1)?
         .buffer_cfg(
-            DefaultPacketPool::MTU as u16,
-            DefaultPacketPool::MTU as u16,
+            u16::try_from(DefaultPacketPool::MTU).unwrap_or(u16::MAX),
+            u16::try_from(DefaultPacketPool::MTU).unwrap_or(u16::MAX),
             3,
             3,
         )?
@@ -133,7 +135,7 @@ fn build_sdc<'d, const N: usize>(
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let p = embassy_nrf::init(Default::default());
+    let p = embassy_nrf::init(embassy_nrf::config::Config::default());
 
     // Power the NeoPixels, and show "starting" (dim white) before touching the radio, so
     // a hang in MPSL/SDC set-up is visible.
@@ -148,6 +150,8 @@ async fn main(spawner: Spawner) {
         mpsl::Peripherals::new(p.RTC0, p.TIMER0, p.TEMP, p.PPI_CH19, p.PPI_CH30, p.PPI_CH31);
     // The CPB has no 32 kHz crystal (CircuitPython: BOARD_HAS_32KHZ_XTAL 0), so LFCLK
     // runs from the RC oscillator with periodic calibration.
+    // bindgen types Nordic's constants as `u32`; their values fit the narrower fields.
+    #[allow(clippy::cast_possible_truncation)]
     let lfclk_cfg = mpsl::raw::mpsl_clock_lfclk_cfg_t {
         source: mpsl::raw::MPSL_CLOCK_LF_SRC_RC as u8,
         rc_ctiv: mpsl::raw::MPSL_RECOMMENDED_RC_CTIV as u8,
@@ -205,15 +209,12 @@ async fn run<C: Controller>(controller: C) {
         async {
             loop {
                 STATUS.signal(Status::Advertising);
-                match advertise(&mut peripheral, &server).await {
-                    Ok(conn) => {
-                        STATUS.signal(Status::Connected);
-                        echo(&server, &conn).await;
-                    }
-                    Err(_) => {
-                        STATUS.signal(Status::Error);
-                        return;
-                    }
+                if let Ok(conn) = advertise(&mut peripheral, &server).await {
+                    STATUS.signal(Status::Connected);
+                    echo(&server, &conn).await;
+                } else {
+                    STATUS.signal(Status::Error);
+                    return;
                 }
             }
         },
@@ -261,12 +262,12 @@ async fn echo<P: PacketPool>(server: &Server<'_>, conn: &GattConnection<'_, '_, 
         match conn.next().await {
             GattConnectionEvent::Disconnected { .. } => return,
             GattConnectionEvent::Gatt { event } => {
-                let mut echoed: Option<Vec<u8, VALUE_MAX>> = None;
-                if let GattEvent::Write(write) = &event
-                    && write.handle() == rx
-                {
-                    echoed = write.with_data(|_, data| Vec::from_slice(data).ok());
-                }
+                let echoed: Option<Vec<u8, VALUE_MAX>> = match &event {
+                    GattEvent::Write(write) if write.handle() == rx => {
+                        write.with_data(|_, data| Vec::from_slice(data).ok())
+                    }
+                    _ => None,
+                };
                 if let Ok(reply) = event.accept() {
                     reply.send().await;
                 }

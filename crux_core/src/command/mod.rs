@@ -241,8 +241,8 @@ mod context;
 mod executor;
 mod stream;
 
-use core::future::Future;
 use alloc::sync::Arc;
+use core::future::Future;
 use core::sync::atomic::AtomicBool;
 
 // TODO: consider switching to flume

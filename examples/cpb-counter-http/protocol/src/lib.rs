@@ -1,4 +1,4 @@
-//! spike(no_std): the link between the CPB firmware and the Chrome gateway.
+//! `spike(no_std)`: the link between the CPB firmware and the Chrome gateway.
 //!
 //! The device is the GATT peripheral (Web Bluetooth can only be a central). It exposes
 //! one service with two characteristics: [`TX_UUID`] (notify, device → gateway) and
@@ -10,7 +10,7 @@
 //! The receiver feeds every chunk to a [`Reassembler`], which yields whole messages.
 //! Chunk boundaries carry no meaning, so each side can use whatever size its link allows.
 //!
-//! HTTP travels as crux_http's own protocol types ([`HttpRequest`], [`HttpResult`]),
+//! HTTP travels as `crux_http`'s own protocol types ([`HttpRequest`], [`HttpResult`]),
 //! so the gateway forwards exactly what the device's core asked for. Every request has an
 //! `id`, because requests overlap (a GET, POSTs and an SSE stream can all be in flight).
 
@@ -291,7 +291,10 @@ mod tests {
     fn reset_drops_a_half_received_frame() {
         let frame = encode(&ToDevice::SseDone { id: 1 });
         let mut rx = Reassembler::new();
-        assert!(rx.push(&frame[..frame.len() - 1]).unwrap().is_empty());
+        assert_eq!(
+            rx.push(&frame[..frame.len() - 1]).unwrap(),
+            [] as [alloc::vec::Vec<u8>; 0]
+        );
         rx.reset();
         let got = rx.push(&encode(&ToDevice::SseDone { id: 2 })).unwrap();
         assert_eq!(decode::<ToDevice>(&got[0]), Ok(ToDevice::SseDone { id: 2 }));

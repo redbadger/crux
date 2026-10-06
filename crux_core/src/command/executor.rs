@@ -1,10 +1,10 @@
 #![allow(clippy::redundant_pub_crate)]
 use super::super::Command;
 
+use alloc::task::Wake;
 use core::future::Future;
 use core::pin::Pin;
 use core::sync::atomic::Ordering;
-use alloc::task::Wake;
 use core::task::{Context, Poll, Waker};
 
 use crate::sync::channel::{Receiver, Sender};
