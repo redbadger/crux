@@ -631,3 +631,74 @@ same build was not run with `spin` for comparison.
   held. A button POST then went through and the stream delivered the update.
   The plain cpb-counter firmware was not re-run on hardware.
 
+
+## 13. Effect router experiment: hardware futures without a root waker (2026-10-06)
+
+The RFC's open question 9 asks how a `Command` that waits on hardware (a timer,
+a GPIO edge) gets the core run again without a root waker on `Core`. The
+proposed answer is to keep the hardware future an effect, but handle it
+in-process through crux_core's `EffectRouter`, whose `ResolveSink` resolves
+the request *and* runs the core forward. This firmware now does that for
+`Delay`. `src/app.rs` is unchanged: the app still asks for a `Delay`, and only
+the shell changed how it is resolved.
+
+Shape (`src/main.rs`):
+
+- `Core` is wrapped in an `EffectRouter<Counter, Lanes>`, where `Lanes` has
+  two `Buffer` lanes: one for `RenderOperation`, one for `Delay`.
+- The routing closure must be `Fn + Send + Sync`, so it cannot draw (that
+  needs `&mut` PWM). It pushes the request into its buffer and raises an
+  embassy `Signal` (`RENDER` or `DELAY`).
+- A long-lived embassy task, `delays`, holds a `Weak` to the router. It drains
+  the `Delay` buffer into a due list, awaits one `Timer::at` for the earliest,
+  and calls `ResolveSink::resolve_request` for each one that is due.
+- The main loop selects on the buttons, the switch and `RENDER`, sends events
+  with `router.update`, and draws once if the render buffer is non-empty.
+
+What it shows, before running on hardware:
+
+- **No root waker and no public `Core::process`.** The delay task's
+  `resolve_request` runs the core itself. But the shell still needs *a*
+  signal: the follow-up `Render` (LED off) lands in the buffer while the main
+  loop sleeps on the buttons, so the routing closure raises `RENDER`. That
+  signal is owned by the shell and means "effects are waiting", not "a task
+  woke, call `process()`".
+- **The default embassy timer queue is enough** (no `generic-queue-N`), because
+  the `Timer` is polled with the delay task's own embassy waker.
+  `FuturesUnordered` was tried first and is wrong here: it polls each inner
+  future with a waker of its own, which the default queue rejects just as it
+  rejects `CommandWaker`. Whatever awaits the hardware future must poll it
+  with the embassy task's waker (`embassy_futures::select` is fine).
+- **One execution context.** Both tasks run on the thread-mode executor, so
+  `resolve_request` (which takes `Core`'s try-locks) never overlaps the main
+  loop's `update`. Calling it from an interrupt handler could panic on
+  contention.
+- **Honest caveat.** For a timer, the due list just moves from the main loop
+  into the delay task. The gain is structural (the shell's loop no longer
+  knows about delays, and the core is driven from where the hardware future
+  completes), not less code.
+
+Size, release build, same day:
+
+| | text | data | bss |
+|---|---|---|---|
+| shell-resolved `Delay` (before) | 20,728 B | 24 B | 34,036 B |
+| `EffectRouter` + delay task | 22,756 B (+2,028 B) | 24 B | 34,028 B |
+
+The router, its boxed routing closure, the `Arc`/`Weak` plumbing, two
+`Signal`s and a second embassy task account for the difference; not broken
+down further. The heap probe drives `app.rs` directly, so its numbers do not
+include the router's allocations.
+
+Hardware run (2026-10-06): flashed and run on the board.
+
+1. One press: the pixel count changes and the LED stays on for about 120 ms
+   and then goes off. That runs the whole chain, from effect to router to
+   delay task to `Timer`, then `resolve_request`, the buffered `Render`,
+   `RENDER` and the draw. If embassy's queue had rejected the waker, the
+   board would have frozen (`panic-halt`) on the first press. It did not.
+2. Mashing both buttons and flicking the switch: the LED went off after the
+   last press, the switch still changed the brightness, and nothing froze.
+
+This was short, manual testing. Both tasks run cooperatively on one
+executor, so this run says nothing about lock contention.
