@@ -175,3 +175,82 @@ board needs no bootloader or SoftDevice update.
   yet). On hardware, the gateway logged `#1 → GET https://crux-counter.fly.dev/`, then
   `#1 ← 200 (40 B)`, and the device decoded the 200. Repeats worked. SSE works too: with the
   stream open, every change made from another client reached the board as an `SseChunk`. Size: text 107 KB, bss 47.6 KB (32 KB heap).
+
+## Phase 3: counter_http on the board
+
+### Result (2026-10-06)
+
+`app/` is counter_http's Crux app in a `#![no_std]` crate. **Its HTTP code is counter_http's
+unchanged** (`Http::get(API_URL).expect_json().build().then_send(Event::Set)`,
+`Http::post(url)…`, `Url::parse(..).join(..)`, `crux_http::Result<crux_http::Response<Count>>`,
+`response.take_body()`), compiled against crux_http's no_std subset from phase 1, and it builds
+for thumbv7em. On the board, through the gateway:
+
+- Connecting sends a GET and opens the SSE stream. The count shows as up to 10 pixels, green
+  for positive and red for negative.
+- Buttons A and B update optimistically: dim pixels with D13 lit while pending, then solid once
+  the POST's 200 returns. One run logged 22 POSTs (#3–#24), each answered with 200. One
+  press is one request (cpb-counter's press-and-release debounce).
+- Changes made from other clients arrive over SSE (48-byte chunks; the server also sends
+  3-byte keep-alives).
+- With the network down, the POST failed (`IO error: TypeError: Failed to fetch`) without
+  freezing the board, and later presses worked again.
+
+Deliberate differences from counter_http (all in `app/src/lib.rs`'s header):
+`updated_at` is epoch millis rather than chrono; the view is pixels; `Set(Err)` sets an error
+flag (the pixels alternate red and blue) instead of `panic!`, because `panic-halt` would freeze
+the board; there are `Connected`/`Disconnected` events (the link; connecting does what
+counter_http's shells do at start-up, `Get` then `StartWatch`) and a `Switch` event for the
+brightness. counter_http's four tests are ported (`app/src/tests.rs`), resolving with raw
+protocol types because crux_http's `testing` helpers need std. Seven new tests cover SSE split
+across chunks, connect/disconnect, the error pattern and the view. The SSE command keeps a line
+buffer across chunks (`app/src/sse.rs`), where counter_http uses `async-sse` (std) on each chunk.
+
+### Open: the SSE stream is not reopened after it ends
+
+When the network dropped, the gateway's SSE fetch ended (`SSE closed by the server`), the app's
+stream command finished, and nothing reopened it (`0 open streams`). Requests still worked, but
+the board stopped seeing other clients' changes until the next BLE reconnect. counter_http
+behaves the same way, but a browser user can reload the page; the board has no equivalent. A fix
+needs the core to notice the end of the stream and resubscribe, with a back-off so a dead
+network does not cause a request storm over BLE (which means a timer effect, like cpb-counter's
+`Delay`).
+
+### Sizes
+
+| | text | rodata | data | bss |
+|---|---|---|---|---|
+| `ble-probe` (radio only) | 97.7 KB (incl. rodata) | | 4.2 KB | 14.3 KB |
+| `link-check` (+ protocol, no app) | 107 KB (incl. 1.2 KB rodata) | | 4.2 KB | 47.6 KB (32 KB heap) |
+| `cpb-counter-http` | 208 KB | 116 KB | 4.2 KB | 80.4 KB (64 KB heap) |
+
+`cargo bloat --crates` (.text 203 KiB): std/core 23 KiB, **url 21.7 + idna 19.1 +
+icu_normalizer 5.1 KiB**, nrf_sdc_sys 19.9, trouble_host 19.7, the app 17.9, the shell 15.7,
+nrf_mpsl_sys 9.3, embassy_futures 9.1, embassy_executor 7.9, serde_json 7.7, **crux_core
+3.1 KiB**. Almost all of the extra 115 KB of `.rodata` arrives with the app, in anonymous
+constants: Unicode/IDNA tables (url) and serde_json's tables are the likely bulk, not
+attributed exactly. So **`url` is the biggest single cost of using crux_http's API on an
+MCU**: about 46 KiB of code plus most of the rodata, just to parse and join one base URL. An
+RFC could consider letting the no_std builder accept already-valid URL strings without
+going through `url` (IDNA in particular).
+
+### Heap
+
+`heap-probe/` drives `app::Counter` as the firmware shell does, including encoding each
+request for the link. As wasm32-wasip1 (4-byte pointers, as on the nRF52840):
+
+| | peak | live after |
+|---|---|---|
+| connected, GET + SSE in flight | 4.0 KB | 3.6 KB |
+| GET answered, SSE open, 20 SSE updates | 5.0 KB | 3.3 KB |
+| 5 presses in flight | 14.0 KB | 3.3 KB |
+| 20 presses in flight | 45.4 KB | 3.8 KB |
+| disconnected | | 2.4 KB |
+
+So the cost is about 1.6 KB per HTTP request in flight (crux_http's builder, the Command's
+channels and boxed future, the protocol request and its frame), roughly the same as one
+cpb-counter `Delay`. The firmware has a 64 KB heap and refuses more than 16 requests in flight
+(`MAX_IN_FLIGHT`): the core gets `HttpError::Io` at once and shows the error pattern,
+instead of running out of heap, which with `panic-halt` would freeze the board. The probe
+builds crux_core and crux_http with the firmware's (no_std) features, but runs on a host
+allocator, so allocator overhead is not counted.

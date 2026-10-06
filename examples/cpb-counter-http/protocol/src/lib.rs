@@ -90,18 +90,26 @@ pub enum Error {
 /// Encode `message` as one frame: a `u16` little-endian length, then the postcard bytes.
 ///
 /// # Panics
-/// If the encoding is longer than [`MAX_MESSAGE`] (or postcard fails, which it does not for
-/// these types).
+/// If the encoding is longer than [`MAX_MESSAGE`]. Use [`try_encode`] for messages whose
+/// size is not under the sender's control (an HTTP response body).
 #[must_use]
 pub fn encode<T: Serialize>(message: &T) -> Vec<u8> {
-    let body = postcard::to_allocvec(message).expect("postcard encodes protocol messages");
-    assert!(body.len() <= MAX_MESSAGE, "message too long for the link");
-    let len = u16::try_from(body.len()).expect("MAX_MESSAGE fits a u16");
+    try_encode(message).expect("message too long for the link")
+}
+
+/// [`encode`], or `None` if the message is longer than [`MAX_MESSAGE`].
+#[must_use]
+pub fn try_encode<T: Serialize>(message: &T) -> Option<Vec<u8>> {
+    let body = postcard::to_allocvec(message).ok()?;
+    if body.len() > MAX_MESSAGE {
+        return None;
+    }
+    let len = u16::try_from(body.len()).ok()?;
 
     let mut frame = Vec::with_capacity(2 + body.len());
     frame.extend_from_slice(&len.to_le_bytes());
     frame.extend_from_slice(&body);
-    frame
+    Some(frame)
 }
 
 /// Cut a frame into pieces of at most `max` bytes, to write or notify one by one.
@@ -287,6 +295,15 @@ mod tests {
         rx.reset();
         let got = rx.push(&encode(&ToDevice::SseDone { id: 2 })).unwrap();
         assert_eq!(decode::<ToDevice>(&got[0]), Ok(ToDevice::SseDone { id: 2 }));
+    }
+
+    #[test]
+    fn a_message_over_the_limit_does_not_encode() {
+        let big = ToDevice::SseChunk {
+            id: 1,
+            data: vec![0; MAX_MESSAGE],
+        };
+        assert_eq!(try_encode(&big), None);
     }
 
     #[test]

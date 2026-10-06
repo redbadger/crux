@@ -2,7 +2,7 @@
 # `firmware/` (thumbv7em) and `gateway/` (wasm) are separate workspaces with their own
 # build targets; both use these crates by path.
 [workspace]
-members = ["protocol"]
+members = ["app", "heap-probe", "protocol"]
 exclude = ["firmware", "gateway"]
 resolver = "3"
 
