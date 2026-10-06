@@ -1,0 +1,51 @@
+mod lib '../../../lib.just'
+
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-web-trunk
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    cargo fmt -p gateway-core -p gateway-web
+
+# validate formatting and lint
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    cargo fmt -p gateway-core -p gateway-web -- --check
+    cargo clippy -p gateway-core --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+    cargo clippy -p gateway-web --target wasm32-unknown-unknown -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+
+# build the web app (into web/dist)
+build:
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    cd web && trunk build
+
+# run the gateway core's tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    cargo test -p gateway-core
+
+# serve the gateway at http://127.0.0.1:8080 (open it in Chrome)
+serve:
+    @echo '{{ style("command") }}serve:{{ NORMAL }}'
+    cd web && trunk serve --port 8080
+
+# clean build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    cd web && trunk clean
+    cargo clean
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test

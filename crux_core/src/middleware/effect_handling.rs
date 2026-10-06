@@ -309,7 +309,9 @@ where
 
                     move |req_handle: &mut RequestHandle<<EM::Op as Operation>::Output>, output| {
                         let Some(strong_inner) = inner.upgrade() else {
-                            crate::__crux_log_error!("Inner can't be upgraded after resolving effect");
+                            crate::__crux_log_error!(
+                                "Inner can't be upgraded after resolving effect"
+                            );
                             return;
                         };
 
