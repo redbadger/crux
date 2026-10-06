@@ -573,27 +573,86 @@ Setting `boltffi(..)` when there is no `Core` to bridge — no registered
 app, no `Render` variant, or `without_core()` — is reported as an error
 rather than silently ignored.
 
-### Request ids
+### Resolve errors
 
-The `id` on a `Request` is opaque. You resolve with the one that
-arrived, untouched, and that is the whole story: there is nothing in it
-to decode, and nothing generated to decode it with. How the bridge lays
-the id out is its own business, and may change.
+The bridge encodes some key properties of the effect into each request
+id (which variant of the `Effect` enum the request carries, and whether
+the shell resolves it once or many times), so it can catch common
+mistakes early. When the shell calls `resolve`, the bridge checks the
+id before it deserializes the response, and reports a mismatch as a
+`ResolveError` that says what the outstanding request expects and what
+the id carries. The bridge's `BridgeError` wraps it, so the message
+the shell sees starts with `could not process response:`.
 
-The bridge does check an id on the way back in, and its errors name the
-effect rather than numbering it. Resolving a notification's id is
-reported as "not expected to be resolved", and an id naming an effect
-the enum does not have, or disagreeing with the request its sequence
-belongs to, is rejected as that rather than as an unknown id:
+The id is opaque to the shell, so resolve with it exactly as it
+arrived. The examples below are for an app whose `Effect` enum is
+`Http` followed by `Render`.
+
+#### Resolving a notification
+
+```text
+Attempted to resolve a request that is not expected to be resolved.
+```
+
+This is `ResolveError::Never`. The request was a notification, such as
+`Render`, whose operation kind is `Notify`, and the core does not wait
+for a response to a notification. It usually means a hand-written
+dispatcher resolves every effect it handles, whatever its kind. Check
+the `OperationKind` accessor on the effect, and resolve a `Request`
+once and a `Stream` once per item.
+
+#### Resolving with an id for a different effect
 
 ```text
 Request 1 expects `Http` (variant 0), but response id 0x01000001 carries `Render` (variant 1).
 ```
 
-So the mapping from id to effect that a crash report needs still exists,
-in Rust, next to the layout it depends on. An effect enum is limited to
-256 variants, because the variant index is eight bits — `#[effect]`
-rejects a larger one.
+This is `ResolveError::WrongEffect`. The core has a request outstanding
+under that sequence number, but it was issued for a different variant
+of the `Effect` enum from the one the id names. Either the id was
+altered on its way back to the core, or it was issued by an earlier
+instance of the core and happens to share a sequence number with a
+request the current one is waiting on. An effect whose `EffectFFI`
+implementation is hand-written may not know its variant names, and
+then the message numbers the variants instead of naming them.
+
+#### Resolving with an id of a different kind
+
+```text
+Request 1 expects the Request kind, but response id 0x00800001 carries the Stream kind.
+```
+
+This is `ResolveError::WrongKind`. The outstanding request expects to
+be resolved once and the id says it is a stream, or the other way
+round. The effect matches, so the id was most likely altered on its way
+back to the core, or it was issued by an earlier instance of the core.
+
+#### Resolving with an effect variant the enum does not have
+
+```text
+`shared::Effect` has only 2 variants, but response id 0x09000001 carries variant 9.
+```
+
+This is `ResolveError::NoSuchEffect`. The id names a variant beyond the
+end of the `Effect` enum, so this core cannot have issued it. It
+typically comes from an id altered on its way back to the core, or from
+one kept from a build of the core whose `Effect` enum had more
+variants.
+
+#### Resolving a request that has finished
+
+```text
+Request with id 1 not found.
+```
+
+This is `ResolveError::NotFound`, with the id in decimal. Nothing is
+outstanding under that id: the request was resolved already (a
+`Request` is resolved exactly once), or the id was never issued.
+Sequence numbers are not reused when a request completes, so resolving
+twice reports this rather than reaching an unrelated later request.
+
+An effect enum can have at most 256 variants, and `#[effect]` rejects a
+larger one.
 
 ### Notes and escape hatches
 
