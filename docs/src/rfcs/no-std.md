@@ -5,8 +5,9 @@ This RFC is **proposed**. It contains no implementation code. The evidence in
 it comes from a throwaway spike, which is not part of this pull request, that
 built `crux_core` for a Cortex-M4 and linked a small Crux app into firmware for
 the Adafruit Circuit Playground Bluefruit. That firmware has since been flashed
-to the board and works as intended. Heap use was measured on a host, not on the
-device.
+to the board and works as intended, first with a `spin` lock and then with the
+`critical-section` design this RFC recommends. Heap use was measured on a host,
+not on the device.
 ```
 
 This RFC proposes that `crux_core`, and the code its macros emit, build without
@@ -62,6 +63,9 @@ the chip's 1 MB of flash and 256 KB of RAM.
 - `crux_core` builds and works with `--no-default-features` on Cortex-M
   targets that have compare-and-swap, with `thumbv7em-none-eabihf` as the
   first one kept green in CI.
+- It is correct on multi-core chips, such as the RP2040 or a dual-core ESP32,
+  as long as one execution context owns the `Core`. Wakers may fire on any
+  core and in interrupt handlers.
 - Nothing changes for apps that use the default features. Their behaviour,
   public API and dependency on `std` stay as they are.
 - Code emitted by `#[effect]` and `#[derive(Operation)]` compiles in a
@@ -157,15 +161,15 @@ middleware paths, and it should be before this goes in.
 buffer route each hold a `Mutex`. All of them call `.expect("... poisoned")`
 on every lock.
 
-The spike added a crate-private `sync` module with `Mutex` and `RwLock` types.
-Under `std` they are thin wrappers over `std::sync` whose `lock()`, `read()`
-and `write()` return the guard and panic on poison, as every call site already
-did. Without `std` they are re-exports of `spin::Mutex` and `spin::RwLock`,
-which have the same method names and no poisoning. Call sites lose their
-`.expect`, and `crux_core` keeps `unsafe_code = "forbid"`.
+The spike first added a crate-private `sync` module with `Mutex` and `RwLock`
+types. Under `std` they were thin wrappers over `std::sync` whose `lock()`,
+`read()` and `write()` return the guard and panic on poison, as every call site
+already did. Without `std` they were re-exports of `spin::Mutex` and
+`spin::RwLock`, which have the same method names and no poisoning. Call sites
+lost their `.expect`, and `crux_core` kept `unsafe_code = "forbid"`.
 
-That is the shape the spike measured, and it compiles and links. The open
-question is which lock to use without `std`. There are two candidates.
+That first shape compiled, linked and ran, but the real question is which lock
+to use without `std`. There are two candidates.
 
 **`spin`** keeps the shim trivial, because its guards look like
 `std::sync`'s. It busy-waits, which on a single core means a lock that is
@@ -194,34 +198,69 @@ deadlocks the chip. With `critical-section` it cannot happen, because thread
 mode holds the lock with interrupts masked.
 
 **This RFC recommends `critical-section` without `std`, and `std::sync` with
-it**, for three reasons:
+it**, for two reasons:
 
 1. it is safe when wakers fire from interrupt handlers, which the executor's
    design makes likely as soon as a task awaits a hardware future;
 2. it is what the embedded ecosystem, embassy included, already expects, so a
-   firmware app already has an implementation linked;
-3. it works on chips without compare-and-swap, where `spin` does not compile,
-   and `portable-atomic`, which those chips would need, wants a
-   `critical-section` implementation too.
+   firmware app already has an implementation linked.
 
 It has costs, and they shape the shim:
 
-- The shim becomes closure-based (`with_lock(|value| ...)`) in both builds,
-  which touches every call site, rather than returning a guard.
-- `RwLock` collapses into an exclusive lock. With one core and one executor
-  there is no reader concurrency to lose.
+- The shim becomes closure-based (`with(|value| ...)`) for the locks it
+  covers, rather than returning a guard.
 - A critical section masks interrupts for as long as it lasts. That is fine
   for the channel and the registries, which hold their locks for a few
   instructions, but not for `Core`'s own two locks: `process_event` holds the
   model lock across `App::update`, and `process` holds the root command lock
   across the whole loop of updates and task polls. Wrapping those in a
   critical section would mask interrupts for the entire update.
+- On a multi-core chip, the critical-section implementation adds a hardware
+  spinlock to the masking. It is one lock for the whole chip, so while Crux
+  holds it the other core's critical sections wait, including its allocator's
+  and embassy's channels. That is correct, but it is another reason to keep
+  the closures short.
 
-So the proposed split is `critical-section` for the short-held internal locks,
-and, for `Core`'s model and root command, a non-blocking lock that panics on
+So the split is `critical-section` for the short-held internal locks, and,
+for `Core`'s model and root command, a non-blocking lock that panics on
 contention without `std`. That turns "a `Core` is used from one execution
 context at a time" into a checked rule, which a firmware shell like the spike's
-satisfies naturally. The final choice is kept as open question 1.
+satisfies naturally.
+
+The spike then tried this split:
+
+- **Internal locks.** `sync::Mutex<T>` has one method, `with(|value| ...)`.
+  Under `std` it wraps `std::sync::Mutex`. Without it, it is a
+  `critical_section::Mutex<RefCell<T>>` inside `critical_section::with`, so
+  re-entering the same lock panics on the `RefCell` borrow instead of
+  deadlocking. Eleven call sites in the channel, the effect registry, the
+  buffer route and the bridge registry became closures. None was awkward. Two
+  rules kept the critical sections short:
+  - `EffectRegistry::resolve` resolves the request (which wakes tasks, and so
+    takes the channel's lock) outside the lock, and the channel wakes its
+    receiver outside it.
+  - `Buffer::drain` takes the whole vector instead of collecting a new one.
+
+  A `VecDeque` or slab that grows still allocates inside a critical section.
+- **`Core`'s locks.** `CoreMutex` and `CoreRwLock` keep the guard API, so
+  `Core`'s code barely changes. Under `std` they block, as today. Without it
+  they wrap the [`try-lock`](https://crates.io/crates/try-lock) crate's
+  `TryLock`, a small `no_std` crate with one atomic flag and no waiting.
+  Contention panics with a message naming the one-context rule. `read()` is
+  exclusive too, which loses nothing when one context owns the `Core`. The
+  crate supplies the `UnsafeCell` that `unsafe_code = "forbid"` stops
+  `crux_core` writing itself.
+- **Rejected: moving the model out and back.** Keeping `Core`'s values in a
+  `critical_section::Mutex<RefCell<Option<T>>>`, taking them out for each call
+  and putting them back, would avoid the second crate. It also moves the model
+  on the stack on every call, which is a real risk on a small chip.
+
+`spin` goes away entirely. Both new crates are optional, behind a
+`critical-section` feature, and a `compile_error!` fires when neither it nor
+`std` is enabled. What the spike measured is in [Evidence](#evidence).
+
+`try-lock` needs compare-and-swap, as `spin` did, so this does not help chips
+without it. Those are a non-goal.
 
 ### 4. A `bridge` feature
 
@@ -255,6 +294,12 @@ The alternative is to gate effect middleware on `std`. Middleware exists to
 let the core hand effects to Rust code in the same process, which is less
 likely to be wanted on a microcontroller, but nothing in it needs `std` apart
 from these two points.
+
+The effect router in `crux_core::effects`, the other way to handle effects in
+Rust, needs nothing beyond the path and lock changes above. Only its
+`Serialized` lane needs `std`, and section 4 puts that behind `bridge`.
+`EffectRouter`, `ResolveSink` and the `Parked` and `Buffer` lanes build for
+`thumbv7em-none-eabihf` with the rest of the spike's `crux_core`.
 
 ### 6. Macro output
 
@@ -292,6 +337,7 @@ open question 4 asks for a decision.
 [features]
 default = ["std", "bridge", "crux_macros"]
 std = ["facet/std", "futures/std", "serde/std", "slab/std", "thiserror/std"]
+critical-section = ["dep:critical-section", "dep:try-lock"]  # the locks without std
 bridge = ["std", "dep:bincode", "dep:serde_json"]
 testing = ["std", "dep:anyhow"]
 facet_typegen = ["bridge", "crux_macros/facet_typegen", "dep:facet_generate", "dep:heck", "dep:log"]
@@ -309,7 +355,8 @@ The differences an app would see without `std`:
 
 | | `std` | no `std` |
 |---|---|---|
-| Locks | `std::sync`, panic on poison | see design section 3, no poisoning |
+| Internal locks | `std::sync`, panic on poison | `critical-section`, masks interrupts briefly |
+| `Core`'s model and root command | `std::sync`, blocks | try-lock, panics on contention |
 | Middleware reentrancy guard | panics on a same-thread `resolve` during `try_process_effect` | panics on any `resolve` during it |
 | Middleware diagnostics | `eprintln!` today, `log` proposed | `log` proposed (silent in the spike) |
 | `bridge`, `EffectFFI`, `Serialized` route, `middleware::Bridge` | available | absent |
@@ -330,13 +377,22 @@ them off. The spike spelled out versions in `crux_core`. The proper fix is
 `default-features = false` in `[workspace.dependencies]`, with every member
 that needs `std` opting back in, which touches every crate in the repository.
 
-**The lock crate is compiled in std builds too.** Cargo cannot express "this
-dependency only when a feature is off", so the spike's `spin` is
-unconditional and appears in every app's lockfile without being used. With
-`critical-section` this can be avoided: a `critical-section` feature that a
-`no_std` app turns on, and a `compile_error!` when neither it nor `std` is
-enabled. That is one more feature for firmware authors to know about, but it
-keeps std builds exactly as they are.
+**A feature that every `no_std` crate has to name.** Cargo cannot express
+"this dependency only when a feature is off", which is why the spike's first
+lock, `spin`, was unconditional and sat in every app's lockfile. The
+`critical-section` feature avoids that, and a plain std app's lockfile no
+longer lists any lock crate. It has its own costs, which the spike found:
+
+- Every `no_std` crate that depends on `crux_core` must enable the feature,
+  including library crates that never link a binary, or that crate fails the
+  `compile_error!` when built on its own. A capability crate such as
+  `crux_http` would need a feature that forwards to it.
+- Feature unification brings the two crates into std builds that share a
+  graph with such a library. In the spike, a std-only gateway that depends on
+  the `no_std` protocol crate compiles them, harmlessly, because the `std`
+  locks win.
+- A `no_std` build that runs on a host, such as a heap probe, must link
+  `critical-section`'s `std` implementation. Forgetting it is a link error.
 
 **A second build mode to keep green.** Without a CI job that builds
 `crux_core` and a small example for `thumbv7em-none-eabihf` on every pull
@@ -350,8 +406,8 @@ crate, with its performance under contention not yet measured.
 
 ## Migration
 
-Apps on the default features notice nothing, apart from one more small
-dependency in their lockfile if the lock crate stays unconditional.
+Apps on the default features notice nothing. Their lockfiles lose nothing and
+gain nothing.
 
 Apps that turn default features off today would need to add `std` (and
 `bridge`, if they use it) to keep what they have.
@@ -444,12 +500,127 @@ lock. The only fault was contact bounce in the spike's own shell, which was
 fixed there; `crux_core` needed no change. This was short, manual testing:
 heap use, timing and long-running behaviour were not measured on the device.
 
+**The recommended lock.** With `spin` replaced by the design in section 3, all
+of `crux_core`'s tests still pass, and the `compile_error!` fires on a
+`no_std` build without the feature. Two firmware images were measured before
+and after on the same day:
+
+| | `spin` | `critical-section` and try-lock |
+|---|---|---|
+| Counter firmware text | 21,356 B | 20,728 B (−628 B) |
+| HTTP-over-BLE firmware text | 327,288 B | 326,432 B (−856 B) |
+| HTTP app peak heap, 32-bit host | 45,435 B | 45,435 B |
+
+The second image is a larger spike firmware that runs the `counter_http`
+example's app and reaches the network through a Web Bluetooth page. Data and
+bss did not change, and neither did heap use. On a 64-bit host the counter
+probe shows 64 bytes more, which is one-time setup in `critical-section`'s
+`std` implementation, not Crux.
+
+Flash shrinks, probably because a single-core critical section on a Cortex-M
+is a few instructions to save and restore the interrupt mask, against `spin`'s
+compare-and-swap loops. That cause was not confirmed against a same-day `spin`
+build.
+
+The HTTP firmware was flashed and run against the live server:
+- a GET and a server-sent-events stream;
+- button presses sending POSTs;
+- the stream being dropped and reopened by the board four times in a row.
+
+All of it worked, with no contention panic.
+
+**A wake from an interrupt.** Neither firmware above wakes a `Command` task
+from an interrupt, because each awaits a shell request. To exercise that
+path, the counter's flash was changed temporarily to await an `embassy_time`
+`Timer` inside the `Command`. This was a throwaway experiment, not part of the
+spike's code. Two things outside the lock were needed to make it run at all:
+
+- **Telling the shell about the wake.** Crux's executor only runs when the
+  shell calls `Core`, and a timer wake is not an effect, so nothing tells the
+  shell to call it. The experiment borrowed `Core::with_waker` and a public
+  `Core::process` from an unmerged branch: the shell's waker raised an
+  embassy signal, and its main loop called `process()`. This RFC does not
+  propose exposing a root waker, because making the timer an effect is
+  enough; see below and open question 9.
+- **A different embassy timer queue.** embassy's default timer queue rejects
+  any waker its own executor did not create, and Crux's `CommandWaker` is not
+  one of those, so `Timer` panicked inside a `Command`. The `generic-queue-N`
+  feature of `embassy-time` stores any waker. It cost 520 bytes of data for
+  32 slots.
+
+With both in place, the whole wake chain runs in the RTC interrupt handler:
+
+1. The timer wakes the task's `CommandWaker`.
+2. The waker sends on the child command's ready channel.
+3. That wakes the root command's `CommandWaker`, which sends on the root's
+   ready channel.
+4. That wakes the shell's waker.
+
+With `spin`, steps 2 and 3 are where the chip deadlocks if thread mode holds
+the same channel lock at that moment. On the board, every press blinked the
+LED and turned it off again, even under sustained mashing of both buttons and
+the switch, with no hang and no panic. That is good evidence but not proof:
+the interleaving cannot be forced, and the same build was not run with `spin`
+for comparison.
+
+**Hardware futures as effects.** Both firmwares await their timers as
+effects. The counter's flash and the HTTP firmware's stream back-off each ask
+the shell for a `Delay`. In the counter, the shell's main loop resolves it.
+To check that this works when the timer is awaited away from the main loop,
+the HTTP firmware was changed to resolve `Delay` from a separate embassy
+task. The app was not changed. In the firmware:
+
+- The `Core` is shared, as a `&'static`, by the main loop and the delay task.
+- The main loop passes each `Delay` request to the delay task through a
+  queue.
+- The delay task awaits an embassy `Timer` for the earliest request and
+  calls `Core::resolve`, which resolves it, runs the core forward and returns
+  the follow-up effects (here, the request that reopens the stream). It
+  passes them back to the main loop through a second queue.
+- The main loop waits on the BLE link, the buttons, the switch and that
+  queue, and handles those effects like any others.
+
+Both queues are a `VecDeque` behind embassy's critical-section mutex, with
+an embassy `Signal`. They are unbounded, so neither task can block waiting
+for the other.
+
+This needs no new Crux API, no root waker and no `generic-queue-N`, because
+the delay task polls the `Timer` with its own embassy waker. A handler that
+polls the hardware future with a different waker, as a combinator such as
+`FuturesUnordered` does, is rejected by embassy's default timer queue, just
+as `CommandWaker` is. `embassy_futures::select` passes the task's waker
+through.
+
+On the board, against the live server, the GET, the stream and six button
+POSTs worked as before. With the network down, the server closed the
+stream. The board reopened it by itself three times, each closed at once,
+and the fourth held and delivered updates again. Both tasks run
+cooperatively on one executor, so this run says nothing about lock
+contention. It was short, manual testing.
+
+Release text grew by 1,504 bytes, and data by 64 bytes for the two queues.
+Most of the text is the delay task's own inlined copy of `Core::resolve`.
+For an app with one hardware effect, like the counter, the main loop alone
+is simpler and smaller. A task per peripheral pays off when the main loop
+already has a lot to wait on, as the HTTP firmware's does with the BLE link,
+or when several peripherals each hold pending requests.
+
 ## Open questions
 
-1. **The lock.** `critical-section`, as recommended in design section 3, or
-   `spin` with a documented rule that no Crux code runs in an interrupt
-   handler? And for `Core`'s own locks, is a lock that panics on contention
-   the right tool?
+1. **The lock.** The spike has now tried the recommended split:
+   `critical-section` for the internal locks and a try-lock that panics on
+   contention for `Core`'s own. It worked on hardware and cost nothing
+   measurable (see [Evidence](#evidence)). What is left to decide:
+   - Is "one execution context owns the `Core`" the right rule on multi-core
+     chips? An app that wants to call `view()` on one core while the other
+     is in `process_event` would need a blocking lock. Across cores that is
+     correct, but a blocking lock cannot tell the other core from an
+     interrupt on its own core, so it brings back the interrupt deadlock.
+   - Is the `critical-section` feature, which every `no_std` crate in the
+     graph must enable, acceptable? The alternative is an unconditional
+     dependency.
+   - Is `try-lock` acceptable as a dependency, or should `crux_core` allow
+     the one small `unsafe` block it replaces?
 2. **The channel on multi-threaded paths.** Replacing crossbeam in std builds
    too gives one implementation and full test coverage, but it needs a
    performance check on the middleware paths and a review of its disconnect
@@ -471,6 +642,27 @@ heap use, timing and long-running behaviour were not measured on the device.
 8. **Capability crates.** `crux_time` has no `Instant` or `SystemTime`
    without `std`. Which of `crux_time`, `crux_kv` and `crux_http` should
    follow, and how?
+9. **Futures that are not effects.** A `Command` task can await any future,
+   but when a hardware future, such as an embassy timer or a GPIO edge,
+   wakes it, nothing tells the shell to call `Core` again. Exposing a root
+   waker on `Core` would fix that, but it is not proposed here.
+
+   The spike shows it is not needed if hardware futures are effects. The
+   firmware awaits the hardware future for the request, wherever it likes,
+   and resolves it with `Core::resolve`. That call already runs the core
+   forward and returns the follow-up effects, so no new Crux API is needed
+   (see [Evidence](#evidence)). Two rules apply:
+   - The code that awaits the hardware future must poll it with its own
+     task's waker. Then embassy's default timer queue accepts it.
+   - `Core::resolve` must be called from the context that owns the `Core`,
+     for example a task on the same embassy executor as the shell's main
+     loop, never from an interrupt handler, where it could hit the
+     try-lock's contention panic.
+
+   Should "hardware futures are effects" be the documented rule? The
+   alternative is to support a `Command` awaiting a hardware future
+   directly, which would need some way for the shell to hear about the
+   wake.
 
 ## Next steps
 
@@ -482,7 +674,8 @@ useful on its own:
    opting in.
 3. Replace `crossbeam-channel` and `futures::channel::mpsc` with the internal
    channel, in std builds too, with a performance comparison.
-4. Add the `sync` shim with the chosen lock.
+4. Add the `sync` shim: closure-based `critical-section` locks for the
+   internals, try-locks for `Core`, and the `critical-section` feature.
 5. Add the `bridge` feature and the macro gate.
 6. Add the `no_std` attribute, the prelude and path changes, the middleware
    changes, a small `no_std` example, and a CI job that builds it for
