@@ -212,10 +212,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
 
-/// spike(no_std): the bits of the std prelude that live in `alloc`.
+// spike(no_std): the bits of the std prelude that live in `alloc`.
 #[allow(unused_imports)]
 pub(crate) mod prelude {
-    pub(crate) use alloc::{
+    pub use alloc::{
         borrow::ToOwned,
         boxed::Box,
         string::{String, ToString},
@@ -226,7 +226,7 @@ pub(crate) mod prelude {
 #[doc(hidden)]
 pub mod sync;
 
-/// spike(no_std): `eprintln!` under std, silently dropped otherwise.
+/// `spike(no_std)`: `eprintln!` under std, silently dropped otherwise.
 /// A proper version would route through `log` (already an optional dependency).
 #[doc(hidden)]
 #[macro_export]
@@ -265,7 +265,7 @@ macro_rules! __crux_core_testing_items {
     ($($tokens:tt)*) => {};
 }
 
-/// spike(no_std): emits its input only when crux_core has the `bridge` feature,
+/// `spike(no_std)`: emits its input only when crux_core has the `bridge` feature,
 /// so `#[effect]` output does not reference `crux_core::bridge` in no_std builds.
 #[doc(hidden)]
 #[macro_export]
@@ -291,8 +291,7 @@ pub use command::Command;
 #[cfg(feature = "bridge")]
 pub use core::EffectFFI;
 pub use core::{
-    Core, Effect, EffectVariant, OperationKind, Request, RequestHandle, Resolvable,
-    ResolveError,
+    Core, Effect, EffectVariant, OperationKind, Request, RequestHandle, Resolvable, ResolveError,
 };
 #[cfg(feature = "uniffi_compat_bindgen")]
 #[deprecated(
