@@ -757,3 +757,7 @@ hold pending requests, because the main loop then stays the same size. Both
 answer the RFC's open question 9 the same way: hardware futures are effects,
 and whoever awaits one resolves it with `Core::resolve`. No Crux API change
 is needed.
+
+After this, `cpb-counter` went back to the single loop (section 7), as the
+simplest shell for an app with one hardware effect. The delay-task shape
+moved to `cpb-counter-http`, whose main loop also juggles the BLE link.
