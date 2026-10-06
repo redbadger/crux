@@ -4,13 +4,19 @@
 //! out all their operations by exchanging messages with the platform specific shell.
 //! This module defines the protocol for `crux_http` to communicate with the shell.
 
+#[cfg(feature = "std")]
 use async_trait::async_trait;
 use crux_core::macros::Operation;
 use derive_builder::Builder;
+#[cfg(feature = "std")]
 use facet_generate_attrs as typegen;
 use serde::{Deserialize, Serialize};
 
-use crate::{HttpError, Request, Result};
+#[cfg(feature = "std")]
+use crate::Request;
+#[allow(unused_imports)]
+use crate::prelude::*;
+use crate::{HttpError, Result};
 
 #[derive(facet::Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HttpHeader {
@@ -40,6 +46,7 @@ pub struct HttpHeader {
 )]
 #[operation(request, output = HttpResult, protocol = crate::shell::PROTOCOL)]
 #[builder(
+    no_std,
     custom_constructor,
     build_fn(private, name = "fallible_build"),
     setter(into)
@@ -50,13 +57,13 @@ pub struct HttpRequest {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     #[serde(with = "serde_bytes")]
-    #[facet(typegen::bytes)]
+    #[cfg_attr(feature = "std", facet(typegen::bytes))]
     pub body: Vec<u8>,
 }
 
-impl std::fmt::Debug for HttpRequest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let body_repr = std::str::from_utf8(&self.body).map_or_else(
+impl core::fmt::Debug for HttpRequest {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let body_repr = core::str::from_utf8(&self.body).map_or_else(
             |_| format!("<binary data - {} bytes>", self.body.len()),
             |s| {
                 if s.len() < 50 {
@@ -122,6 +129,7 @@ impl HttpRequestBuilder {
     ///
     /// # Errors
     /// Returns an [`HttpError`] if the serialization fails.
+    #[cfg(feature = "std")]
     pub fn query(&mut self, query: &impl Serialize) -> Result<&mut Self> {
         if let Some(url) = &mut self.url {
             if url.contains('?') {
@@ -178,10 +186,8 @@ impl HttpRequestBuilder {
     /// # Panics
     /// Panics if the serialization fails.
     pub fn body_json(&mut self, body: impl serde::Serialize) -> &mut Self {
-        self.json(body).header(
-            http::header::CONTENT_TYPE.as_str(),
-            mime::APPLICATION_JSON.as_ref(),
-        )
+        // spike(no_std): literals, so this needs neither `http` nor `mime`.
+        self.json(body).header("content-type", "application/json")
     }
 
     /// Builds the request.
@@ -197,6 +203,7 @@ impl HttpRequestBuilder {
 
 #[derive(facet::Facet, Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq, Builder)]
 #[builder(
+    no_std,
     custom_constructor,
     build_fn(private, name = "fallible_build"),
     setter(into)
@@ -206,7 +213,7 @@ pub struct HttpResponse {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     #[serde(with = "serde_bytes")]
-    #[facet(typegen::bytes)]
+    #[cfg_attr(feature = "std", facet(typegen::bytes))]
     pub body: Vec<u8>,
 }
 
@@ -298,15 +305,18 @@ impl From<Result<HttpResponse>> for HttpResult {
     }
 }
 
+#[cfg(feature = "std")]
 #[async_trait]
 pub(crate) trait EffectSender {
     async fn send(&self, effect: HttpRequest) -> HttpResult;
 }
 
+#[cfg(feature = "std")]
 pub(crate) trait ProtocolRequestBuilder {
     fn into_protocol_request(self) -> Result<HttpRequest>;
 }
 
+#[cfg(feature = "std")]
 impl ProtocolRequestBuilder for Request {
     fn into_protocol_request(mut self) -> Result<HttpRequest> {
         let body = self.take_body().into_bytes();
@@ -328,7 +338,7 @@ impl ProtocolRequestBuilder for Request {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};

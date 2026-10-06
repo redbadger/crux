@@ -1,4 +1,7 @@
-use std::marker::PhantomData;
+use core::marker::PhantomData;
+
+#[allow(unused_imports)]
+use crate::prelude::*;
 
 use serde::de::DeserializeOwned;
 
