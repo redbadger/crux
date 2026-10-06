@@ -30,7 +30,7 @@ impl<Op: Operation> Buffer<Op> {
     ///
     /// Panics if the internal mutex has been poisoned.
     pub fn push(&self, request: Request<Op>) {
-        self.requests.lock().push(request);
+        self.requests.with(|requests| requests.push(request));
     }
 
     /// Take all currently buffered requests.
@@ -40,6 +40,8 @@ impl<Op: Operation> Buffer<Op> {
     /// Panics if the internal mutex has been poisoned.
     #[must_use]
     pub fn drain(&self) -> Vec<Request<Op>> {
-        self.requests.lock().drain(..).collect()
+        // Take the whole vector rather than collecting a new one, so nothing
+        // allocates inside the lock.
+        self.requests.with(core::mem::take)
     }
 }
