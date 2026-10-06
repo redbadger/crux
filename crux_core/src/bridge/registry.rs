@@ -15,8 +15,8 @@ use crate::{EffectFFI, EffectVariant, OperationKind, ResolveError};
 /// request carries, how many times the shell is expected to resolve it, and an
 /// ascending sequence number. A resolve that arrives for the wrong effect, the
 /// wrong kind of request, or a request that has already finished can therefore
-/// be reported as what it is, and a log line carrying an id says which effect
-/// and which request it belonged to.
+/// be reported as what it is, and the error names the effect the request was
+/// issued for.
 ///
 /// Sequence numbers ascend and are not reused when a request completes, so an
 /// id that has been resolved stays unusable rather than being handed to some
@@ -26,18 +26,26 @@ use crate::{EffectFFI, EffectVariant, OperationKind, ResolveError};
 /// core will never wait on, so every notification carries that same id, and
 /// resolving one is a [`ResolveError::Never`] rather than a lookup miss.
 ///
-/// The bit layout is the bridge's own business and may change. On the Rust
-/// side, read the pieces through [`effect_index`](Self::effect_index),
-/// [`kind`](Self::kind) and [`sequence`](Self::sequence) rather than by
-/// picking the integer apart. Nothing is generated for the shell to read them
-/// with: a shell resolves with the id exactly as it arrived, and how many
-/// times to do so is answered by the `OperationKind` accessor on the effect,
-/// not by anything in the id.
+/// The layout is private to the bridge and may change in any release. A shell
+/// resolves with the id exactly as it arrived, and learns how many times to do
+/// so from the `OperationKind` accessor on the effect, not from the id.
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 #[facet(transparent)]
-pub struct EffectId(pub u32);
+pub struct EffectId(u32);
+
+/// Rebuild an id from the number the shell received.
+///
+/// This is for a bridge passing back, unchanged, the id the shell was handed
+/// with a request, which crosses the FFI boundary as a plain `u32`. The number
+/// is opaque: build an `EffectId` from one the core issued, not from one you
+/// made up.
+impl From<u32> for EffectId {
+    fn from(id: u32) -> Self {
+        Self(id)
+    }
+}
 
 impl EffectId {
     /// The id every notification is issued with.
@@ -75,7 +83,7 @@ impl EffectId {
     #[must_use]
     // A shift of 24 leaves 8 bits, so nothing can be lost.
     #[allow(clippy::cast_possible_truncation)]
-    pub const fn effect_index(self) -> u8 {
+    pub(crate) const fn effect_index(self) -> u8 {
         (self.0 >> Self::EFFECT_SHIFT) as u8
     }
 
@@ -86,7 +94,7 @@ impl EffectId {
     /// is the kind that operation always has, and otherwise the one the call
     /// site chose.
     #[must_use]
-    pub const fn kind(self) -> OperationKind {
+    pub(crate) const fn kind(self) -> OperationKind {
         if self.0 == Self::NOTIFICATION.0 {
             OperationKind::Notify
         } else if self.0 & Self::STREAM_BIT == 0 {
@@ -96,12 +104,12 @@ impl EffectId {
         }
     }
 
-    /// The ascending number this id was issued with, for logging. Resolve with
-    /// the whole [`EffectId`], not with this.
+    /// The ascending number this id was issued with, which is what the
+    /// registry keys an outstanding request by.
     ///
     /// `0` for a notification, which is the one id that is not sequenced.
     #[must_use]
-    pub const fn sequence(self) -> u32 {
+    pub(crate) const fn sequence(self) -> u32 {
         self.0 & Sequence::MASK
     }
 }
@@ -446,6 +454,29 @@ mod tests {
         assert_eq!(stream.0 - request.0, 1 << 23, "stream is the bit above 23");
         assert_eq!(request.kind(), OperationKind::Request);
         assert_eq!(stream.kind(), OperationKind::Stream);
+    }
+
+    /// `tests/json_bridge.rs` cannot see the layout, so it fabricates bad ids
+    /// by setting bits on one the bridge issued. This pins down what each of
+    /// those bits changes, so that the errors it asserts are the ones meant.
+    #[test]
+    fn setting_bits_on_an_issued_id_changes_only_what_they_claim() {
+        let id = EffectId::new(0, OperationKind::Request, sequence(5));
+
+        let other_effect = EffectId(id.0 | (1 << 24));
+        assert_eq!(other_effect.effect_index(), 1);
+        assert_eq!(other_effect.kind(), OperationKind::Request);
+        assert_eq!(other_effect.sequence(), 5);
+
+        let stream = EffectId(id.0 | (1 << 23));
+        assert_eq!(stream.effect_index(), 0);
+        assert_eq!(stream.kind(), OperationKind::Stream);
+        assert_eq!(stream.sequence(), 5);
+
+        let out_of_range = EffectId(id.0 | (9 << 24));
+        assert_eq!(out_of_range.effect_index(), 9);
+        assert_eq!(out_of_range.kind(), OperationKind::Request);
+        assert_eq!(out_of_range.sequence(), 5);
     }
 
     #[test]

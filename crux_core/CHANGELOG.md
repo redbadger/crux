@@ -294,19 +294,19 @@ and this project adheres to
   companion-file and manifest hooks (0.21).
 
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
-  An `EffectId` used to be a bare counter. It now packs, from the top, eight
-  bits of effect variant index, one bit that is set for a stream and clear for
-  a request, and twenty-three bits of sequence. Sequences start at one, wrap
-  within their own bits and step over anything still outstanding, so counting
-  can never disturb the effect or the kind. Id `0` is reserved: every
-  notification is issued that one id, and — as before — nothing is stored for
-  it.
+  An `EffectId` was a bare counter. The bridge now encodes into each id the
+  effect variant the request carries, whether the shell resolves it once or
+  many times, and a sequence number that is not reused when the request
+  completes. Id `0` is reserved: every notification is issued that one id, and
+  nothing is stored for it. The layout is private to the bridge and may change
+  in any release; a shell resolves with the id exactly as it arrived.
 
-  Read the pieces through `EffectId::{effect_index, kind, sequence}`. The
-  layout is an implementation detail of the bridge: a shell resolves with the
-  id exactly as it arrived and never takes it apart.
+  **`EffectId`'s field is private.** An FFI bridge that wraps the `u32` its
+  shell passes back writes `EffectId::from(id)` instead of `EffectId(id)`.
+  There is no way to read the number back out: it is opaque, and only good for
+  handing back to the bridge. On the wire the id is still a plain `u32`.
 
-  The bridge checks the structure before it deserializes anything, and
+  The bridge checks each id before it deserializes anything, and
   `ResolveError` gains three variants to report what it finds:
 
   ```text
@@ -316,9 +316,8 @@ and this project adheres to
   Request 1 expects the Request kind, but response id 0x00800001 carries the Stream kind.
   ```
 
-  Ids are printed in hex so the effect index, kind bit and sequence can be read
-  off them. `WrongEffect` carries both sides as `EffectVariant { index, name }`,
-  and `NoSuchEffect` names the effect type.
+  `WrongEffect` carries both sides as `EffectVariant { index, name }`, and
+  `NoSuchEffect` names the effect type.
 
   `NotFound` now means only what it says — never issued, or already resolved.
   Resolving a notification used to report `NotFound` and now reports

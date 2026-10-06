@@ -17,8 +17,12 @@ and the [RFC](../rfcs/per-operation-types.md) for the design and its reasoning.
 ## Quick checklist
 
 If your app doesn't use `crux_kv` or `crux_time` and doesn't define its own
-capabilities, it compiles unchanged and there is nothing to do; the generated
-handler API is additive, so your shells keep working too.
+capabilities, there is only the one change below; the generated handler API is
+additive, so your shells keep working too.
+
+The change that reaches every app: `EffectId`'s field is private, so a hand-written
+FFI bridge that wraps the id its shell passes back writes `EffectId::from(id)`
+instead of `EffectId(id)`.
 
 Otherwise, in this order:
 
