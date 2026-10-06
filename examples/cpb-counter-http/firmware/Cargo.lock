@@ -239,13 +239,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpb-counter-http-app"
+version = "0.1.0"
+dependencies = [
+ "cpb-protocol",
+ "crux_core",
+ "crux_http",
+ "futures-util",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "cpb-counter-http-firmware"
 version = "0.1.0"
 dependencies = [
  "bt-hci",
  "cortex-m",
  "cortex-m-rt",
+ "cpb-counter-http-app",
  "cpb-protocol",
+ "crux_core",
  "crux_http",
  "embassy-executor",
  "embassy-futures",
