@@ -11,3 +11,7 @@ description = "spike(no_std): run the cpb-counter core on the host, no_std crux_
 # Same features as the firmware: no std in crux_core (spin locks, internal channel).
 crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros"] }
 facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }

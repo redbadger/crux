@@ -120,7 +120,7 @@ pub enum HttpError {
         #[cfg(feature = "std")]
         #[facet(opaque)]
         headers: Box<HeaderMap>,
-        /// spike(no_std): without `std` there is no `http::HeaderMap`; the headers are kept
+        /// `spike(no_std)`: without `std` there is no `http::HeaderMap`; the headers are kept
         /// as the shell sent them.
         #[cfg(not(feature = "std"))]
         #[facet(opaque)]
@@ -253,7 +253,7 @@ impl HttpError {
         }
     }
 
-    /// spike(no_std): a header from the rejected response, matched case-insensitively.
+    /// `spike(no_std)`: a header from the rejected response, matched case-insensitively.
     #[cfg(not(feature = "std"))]
     #[must_use]
     pub fn header(&self, name: &str) -> Option<&str> {
@@ -263,7 +263,7 @@ impl HttpError {
             .map(|header| header.value.as_str())
     }
 
-    /// spike(no_std): all headers from the rejected response, as the shell sent them.
+    /// `spike(no_std)`: all headers from the rejected response, as the shell sent them.
     #[cfg(not(feature = "std"))]
     #[must_use]
     pub fn headers(&self) -> Option<&[HttpHeader]> {

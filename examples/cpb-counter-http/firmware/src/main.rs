@@ -1,17 +1,19 @@
-//! spike(no_std): the firmware "shell" for counter_http's Crux core on the Circuit
+//! `spike(no_std)`: the firmware "shell" for `counter_http`'s Crux core on the Circuit
 //! Playground Bluefruit. The core's HTTP and SSE effects go over BLE to the Chrome
 //! gateway (`../gateway`), which performs them.
 //!
-//! Pins (CircuitPython `ports/nordic/boards/circuitplayground_bluefruit`):
+//! Pins (`CircuitPython` `ports/nordic/boards/circuitplayground_bluefruit`):
 //!   button A    P1.02  (active high, needs pull-down)   -> Increment
 //!   button B    P1.15  (active high, needs pull-down)   -> Decrement
 //!   slide sw.   P1.06  (needs pull-up)                  -> brightness
 //!   red LED     P1.14  (D13, active high)               -> count pending
-//!   NeoPixels   P0.13  (10 x WS2812-style)              -> the count
-//!   power ctl   P0.06  (low = NeoPixels and sensors powered)
+//!   `NeoPixels`   P0.13  (10 x WS2812-style)              -> the count
+//!   power ctl   P0.06  (low = `NeoPixels` and sensors powered)
 
 #![no_std]
 #![no_main]
+// Embassy's thread-mode executor is single-threaded: nothing here needs to be `Send`.
+#![allow(clippy::future_not_send)]
 
 extern crate alloc;
 
@@ -43,7 +45,7 @@ use neopixel::{Frame, NeoPixels, PIXELS};
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
 
-/// Heap for Crux (boxed futures, channels, effect vectors), crux_http, serde_json and
+/// Heap for Crux (boxed futures, channels, effect vectors), `crux_http`, `serde_json` and
 /// postcard. The heap probe (32-bit) measures ~3.3 KB with the SSE stream open and
 /// ~1.6 KB more per request in flight: 20 in flight peaked at 45 KB.
 const HEAP_SIZE: usize = 64 * 1024;
@@ -205,13 +207,12 @@ impl Shell<'_> {
                 let Some(request) = self.sse.get_mut(&id) else {
                     return;
                 };
-                match self.core.resolve(request, SseResponse::Chunk(data)) {
-                    Ok(effects) => self.handle(effects),
-                    Err(_) => {
-                        // The core no longer wants this stream.
-                        self.sse.remove(&id);
-                        let _ = OUTGOING.try_send(ToGateway::Cancel { id });
-                    }
+                if let Ok(effects) = self.core.resolve(request, SseResponse::Chunk(data)) {
+                    self.handle(effects);
+                } else {
+                    // The core no longer wants this stream.
+                    self.sse.remove(&id);
+                    let _ = OUTGOING.try_send(ToGateway::Cancel { id });
                 }
             }
             LinkEvent::Message(ToDevice::SseDone { id }) => {
@@ -279,7 +280,7 @@ async fn main(spawner: Spawner) {
         }
     }
 
-    let p = embassy_nrf::init(Default::default());
+    let p = embassy_nrf::init(embassy_nrf::config::Config::default());
 
     // Power the NeoPixels.
     let _power = Output::new(p.P0_06, Level::Low, OutputDrive::Standard);

@@ -1,4 +1,4 @@
-//! spike(no_std): internal synchronisation shim.
+//! `spike(no_std)`: internal synchronisation shim.
 //!
 //! Locks: `std::sync` under `std` (panicking on poison, as the call sites used
 //! to), `spin` otherwise. Both expose `lock()` / `read()` / `write()` returning

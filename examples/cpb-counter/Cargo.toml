@@ -22,6 +22,10 @@ cortex-m-rt = "0.7.5"
 embedded-alloc = "0.7"
 panic-halt = "1.0"
 
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+
 [profile.release]
 opt-level = "s"
 lto = "fat"
