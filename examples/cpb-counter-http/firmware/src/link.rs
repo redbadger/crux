@@ -67,7 +67,11 @@ struct GatewayService {
     #[characteristic(uuid = "ad229cac-4e64-4208-b76b-ed536a1e47c5", notify)]
     tx: HVec<u8, VALUE_MAX>,
     /// Gateway -> device.
-    #[characteristic(uuid = "cb4206ec-fe9c-4fea-ae65-2e7c5b56515b", write_without_response, write)]
+    #[characteristic(
+        uuid = "cb4206ec-fe9c-4fea-ae65-2e7c5b56515b",
+        write_without_response,
+        write
+    )]
     rx: HVec<u8, VALUE_MAX>,
 }
 
@@ -108,9 +112,21 @@ macro_rules! radio {
             temp: $p.TEMP,
             rng: $p.RNG,
             ppi: (
-                $p.PPI_CH17, $p.PPI_CH18, $p.PPI_CH19, $p.PPI_CH20, $p.PPI_CH21, $p.PPI_CH22,
-                $p.PPI_CH23, $p.PPI_CH24, $p.PPI_CH25, $p.PPI_CH26, $p.PPI_CH27, $p.PPI_CH28,
-                $p.PPI_CH29, $p.PPI_CH30, $p.PPI_CH31,
+                $p.PPI_CH17,
+                $p.PPI_CH18,
+                $p.PPI_CH19,
+                $p.PPI_CH20,
+                $p.PPI_CH21,
+                $p.PPI_CH22,
+                $p.PPI_CH23,
+                $p.PPI_CH24,
+                $p.PPI_CH25,
+                $p.PPI_CH26,
+                $p.PPI_CH27,
+                $p.PPI_CH28,
+                $p.PPI_CH29,
+                $p.PPI_CH30,
+                $p.PPI_CH31,
             ),
         }
     };
@@ -138,9 +154,7 @@ pub fn controller(spawner: Spawner, radio: Radio) -> Option<SoftdeviceController
     let mpsl = MPSL.init(MultiprotocolServiceLayer::new(mpsl_p, Irqs, lfclk_cfg).ok()?);
     spawner.spawn(mpsl_task(mpsl).ok()?);
 
-    let sdc_p = sdc::Peripherals::new(
-        c17, c18, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29,
-    );
+    let sdc_p = sdc::Peripherals::new(c17, c18, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29);
     static RNG_CELL: StaticCell<rng::Rng<'static, Async>> = StaticCell::new();
     let rng = RNG_CELL.init(rng::Rng::new(radio.rng, Irqs));
     static MEM: StaticCell<sdc::Mem<4720>> = StaticCell::new();
@@ -221,7 +235,9 @@ async fn advertise<'values, 'server, C: Controller>(
     // in the scan response.
     let mut scan_data = [0; 31];
     let scan_len = AdStructure::encode_slice(
-        &[AdStructure::CompleteLocalName(cpb_protocol::DEVICE_NAME.as_bytes())],
+        &[AdStructure::CompleteLocalName(
+            cpb_protocol::DEVICE_NAME.as_bytes(),
+        )],
         &mut scan_data[..],
     )?;
     let advertiser = peripheral
