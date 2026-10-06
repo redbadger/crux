@@ -1,10 +1,10 @@
 //! `spike(no_std)`: the firmware "shell" for a Crux core on the Circuit
 //! Playground Bluefruit. It calls `Core` directly; there is no FFI bridge.
 //!
-//! Effects go through an `EffectRouter`. `Render` lands in a buffer that the
-//! main loop drains. `Delay` is handled by its own embassy task, which awaits
-//! an embassy `Timer` per request and resolves it through `ResolveSink`, so
-//! the router runs the core forward without the shell calling it.
+//! `Delay` requests go to their own embassy task, which awaits an embassy
+//! `Timer` and resolves them with `Core::resolve`. The follow-up effects come
+//! back to the main loop through one lane, which it selects on alongside the
+//! inputs.
 //!
 //! Pins (`CircuitPython` `ports/nordic/boards/circuitplayground_bluefruit`):
 //!   button A    P1.02  (active high, needs pull-down)
@@ -23,14 +23,12 @@ extern crate alloc;
 
 mod app;
 
-use alloc::sync::{Arc, Weak};
+use alloc::boxed::Box;
+use alloc::collections::VecDeque;
 use alloc::vec::Vec;
+use core::cell::RefCell;
 
-use crux_core::{
-    Core, Request,
-    effects::{EffectRouter, ResolveSink, Routes, routes::Buffer},
-    render::RenderOperation,
-};
+use crux_core::{Core, Request};
 use embassy_executor::Spawner;
 use embassy_futures::select::{Either4, select, select4};
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
@@ -38,6 +36,7 @@ use embassy_nrf::pwm::{
     Config as PwmConfig, Prescaler, SequenceConfig, SequenceLoad, SequencePwm, SingleSequenceMode,
     SingleSequencer,
 };
+use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
@@ -71,64 +70,62 @@ const DEBOUNCE: Duration = Duration::from_millis(30);
 
 type Pwm<'a> = SequencePwm<'a>;
 
-type Router = EffectRouter<Counter, Lanes>;
-
-/// Raised when a render request is buffered, so the main loop wakes to draw it
-/// even when the request came from the delay task rather than an input.
-static RENDER: Signal<CriticalSectionRawMutex, ()> = Signal::new();
-/// Raised when a delay request is buffered, for the delay task.
-static DELAY: Signal<CriticalSectionRawMutex, ()> = Signal::new();
-
-/// The router's lanes: both are buffers, drained by whoever was signalled.
-#[derive(Clone)]
-struct Lanes {
-    render: Arc<Buffer<RenderOperation>>,
-    delay: Arc<Buffer<Delay>>,
+/// An unbounded queue between two tasks on this executor, with a signal for
+/// the consumer. Unbounded, so neither task can block waiting on the other.
+struct Lane<T> {
+    queue: Mutex<CriticalSectionRawMutex, RefCell<VecDeque<T>>>,
+    ready: Signal<CriticalSectionRawMutex, ()>,
 }
 
-impl Routes<Counter> for Lanes {
-    fn new(_router: Weak<Router>) -> Self {
+impl<T> Lane<T> {
+    const fn new() -> Self {
         Self {
-            render: Arc::default(),
-            delay: Arc::default(),
+            queue: Mutex::new(RefCell::new(VecDeque::new())),
+            ready: Signal::new(),
         }
+    }
+
+    fn push(&self, item: T) {
+        self.queue.lock(|queue| queue.borrow_mut().push_back(item));
+        self.ready.signal(());
+    }
+
+    /// Takes everything queued, and clears the signal so the consumer does not
+    /// wake again for items taken here.
+    fn take(&self) -> VecDeque<T> {
+        self.ready.reset();
+        self.queue
+            .lock(|queue| core::mem::take(&mut *queue.borrow_mut()))
+    }
+
+    async fn wait(&self) {
+        self.ready.wait().await;
     }
 }
 
-fn route(lanes: Lanes) -> impl Fn(Effect) + Send + Sync {
-    move |effect| match effect {
-        Effect::Render(request) => {
-            lanes.render.push(request);
-            RENDER.signal(());
-        }
-        Effect::Delay(request) => {
-            lanes.delay.push(request);
-            DELAY.signal(());
-        }
-    }
-}
+/// Effects produced by the delay task, for the main loop.
+static EFFECTS: Lane<Effect> = Lane::new();
+/// `Delay` requests, for the delay task.
+static DELAYS: Lane<Request<Delay>> = Lane::new();
 
-/// Resolves `Delay` requests with embassy timers. Runs on the same executor as
-/// the main loop, so it never calls into the core while the main loop is.
+/// Resolves `Delay` requests with embassy timers, and hands the follow-up
+/// effects to the main loop. It runs on the same executor as the main loop,
+/// so it never calls into the core while the main loop is.
 ///
-/// It awaits one `Timer` for the earliest request, polled with this task's own
-/// waker. A combinator such as `FuturesUnordered` would poll each timer with a
-/// waker of its own, which embassy's default timer queue rejects.
+/// It awaits one `Timer`, for the earliest request, polled with this task's
+/// own waker; embassy's default timer queue rejects wakers its executor did
+/// not create.
 #[embassy_executor::task]
-async fn delays(router: Weak<Router>) {
+async fn delays(core: &'static Core<Counter>) {
     let mut pending: Vec<(Instant, Request<Delay>)> = Vec::new();
     loop {
-        let earliest = pending.iter().map(|(due, _)| *due).min();
-        if let Some(due) = earliest {
-            let _ = select(DELAY.wait(), Timer::at(due)).await;
+        if let Some(due) = pending.iter().map(|(due, _)| *due).min() {
+            let _ = select(DELAYS.wait(), Timer::at(due)).await;
         } else {
-            DELAY.wait().await;
+            DELAYS.wait().await;
         }
 
-        let Some(router) = router.upgrade() else {
-            return;
-        };
-        for request in router.routes.delay.drain() {
+        for request in DELAYS.take() {
             let due = Instant::now() + Duration::from_millis(request.operation.millis.into());
             pending.push((due, request));
         }
@@ -137,7 +134,9 @@ async fn delays(router: Weak<Router>) {
         while i < pending.len() {
             if pending[i].0 <= now {
                 let (_, mut request) = pending.swap_remove(i);
-                let _ = router.resolve_request(&mut request, ());
+                for effect in core.resolve(&mut request, ()).unwrap_or_default() {
+                    EFFECTS.push(effect);
+                }
             } else {
                 i += 1;
             }
@@ -146,7 +145,7 @@ async fn delays(router: Weak<Router>) {
 }
 
 struct Shell<'a> {
-    router: Arc<Router>,
+    core: &'static Core<Counter>,
     led: Output<'a>,
     pwm: Pwm<'a>,
     words: [u16; WORDS],
@@ -186,14 +185,15 @@ impl<'a> Debounced<'a> {
 }
 
 impl Shell<'_> {
-    /// Draws once if any render requests are waiting; they need no resolving.
-    /// Clears the signal first, so the main loop does not wake again for
-    /// requests drawn here.
-    fn render_pending(&mut self) {
-        RENDER.reset();
-        if !self.router.routes.render.drain().is_empty() {
-            let view = self.router.view();
-            self.render(&view);
+    fn handle(&mut self, effects: impl IntoIterator<Item = Effect>) {
+        for effect in effects {
+            match effect {
+                Effect::Render(_) => {
+                    let view = self.core.view();
+                    self.render(&view);
+                }
+                Effect::Delay(request) => DELAYS.push(request),
+            }
         }
     }
 
@@ -255,28 +255,29 @@ async fn main(spawner: Spawner) {
         panic!("PWM init");
     };
 
-    let router = Router::new(Core::new(), route);
-    let Ok(token) = delays(Arc::downgrade(&router)) else {
+    // Shared by the main loop and the delay task, for the life of the firmware.
+    let core: &'static Core<Counter> = Box::leak(Box::new(Core::new()));
+    let Ok(token) = delays(core) else {
         panic!("delay task already spawned");
     };
     spawner.spawn(token);
 
     let mut shell = Shell {
-        router,
+        core,
         led,
         pwm,
         words: [RES; WORDS],
     };
 
-    shell.router.update(Event::Switch(!switch.high));
-    shell.render_pending();
+    let effects = shell.core.process_event(Event::Switch(!switch.high));
+    shell.handle(effects);
 
     loop {
         let event = match select4(
             button_a.changed(),
             button_b.changed(),
             switch.changed(),
-            RENDER.wait(),
+            EFFECTS.wait(),
         )
         .await
         {
@@ -288,8 +289,9 @@ async fn main(spawner: Spawner) {
         };
 
         if let Some(event) = event {
-            shell.router.update(event);
+            let effects = shell.core.process_event(event);
+            shell.handle(effects);
         }
-        shell.render_pending();
+        shell.handle(EFFECTS.take());
     }
 }

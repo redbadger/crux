@@ -702,3 +702,58 @@ Hardware run (2026-10-06): flashed and run on the board.
 
 This was short, manual testing. Both tasks run cooperatively on one
 executor, so this run says nothing about lock contention.
+
+## 14. Without the router: `Core::resolve` from the delay task (2026-10-06)
+
+Section 13's router turned out not to be needed. What a hardware handler
+needs is to resolve the request and run the core forward, and the public
+`Core::resolve` already does both: it returns the follow-up effects.
+`ResolveSink` and the router's private `process()` exist for lanes whose
+output type has been erased (`Parked`, `Serialized`); a firmware shell knows
+its types.
+
+Shape (`src/main.rs`):
+
+- `Core` is leaked into a `&'static Core<Counter>`, shared by the main loop
+  and the delay task.
+- The main loop's `handle` draws on `Render` and pushes each `Delay` request
+  onto the `DELAYS` lane.
+- The `delays` task keeps a due list, awaits one `Timer::at` for the earliest
+  (with its own embassy waker, so the default timer queue is fine), and calls
+  `core.resolve(&mut request, ())`. It pushes the returned effects onto the
+  `EFFECTS` lane.
+- The main loop selects on the buttons, the switch and `EFFECTS`, and handles
+  whatever is queued.
+- A `Lane<T>` is a `VecDeque` behind embassy's critical-section blocking
+  mutex, plus a `Signal`. Both lanes are unbounded, so neither task can block
+  waiting for the other (with two bounded channels, each full and each task
+  waiting to send, they could deadlock).
+
+Size, release build, same day:
+
+| | text | data | bss |
+|---|---|---|---|
+| shell-resolved `Delay`, one loop (section 7) | 20,728 B | 24 B | 34,036 B |
+| `EffectRouter` + delay task (section 13) | 22,756 B | 24 B | 34,028 B |
+| `Core::resolve` + delay task (this) | 22,164 B | 88 B | 34,020 B |
+
+Of the +1,436 B against the single loop, about 1.1 KB is the delay task's
+poll function, which has its own inlined copy of `Core::resolve` and
+`process` (the main loop has the other). The two static lanes are the 64 B of
+data. A first version converted the drained `VecDeque` into a `Vec`, which
+pulled in a 498 B `ptr_rotate`; iterating it directly avoids that. The
+router's extra ~600 B was its own plumbing: `update`, the boxed closure,
+`Arc::drop_slow` for values that are never dropped, and generic `Buffer`
+code per lane.
+
+Hardware run (2026-10-06): every press lit the LED and turned it off about
+120 ms later; mashing both buttons and the switch caused no freeze. Short,
+manual testing; both tasks are on one executor, so nothing here exercises
+lock contention.
+
+Is it better than the single loop? Not for this firmware: the loop is
+smaller and simpler. The task shape pays off when several peripherals each
+hold pending requests, because the main loop then stays the same size. Both
+answer the RFC's open question 9 the same way: hardware futures are effects,
+and whoever awaits one resolves it with `Core::resolve`. No Crux API change
+is needed.
