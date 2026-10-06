@@ -1,9 +1,14 @@
 use facet::Facet;
+#[cfg(feature = "std")]
 use http::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error as ThisError;
 
 use crate::Result;
+#[allow(unused_imports)]
+use crate::prelude::*;
+#[cfg(not(feature = "std"))]
+use crate::protocol::HttpHeader;
 
 /// An error produced when an HTTP request fails.
 ///
@@ -112,8 +117,14 @@ pub enum HttpError {
     Http {
         code: u16,
         message: String,
+        #[cfg(feature = "std")]
         #[facet(opaque)]
         headers: Box<HeaderMap>,
+        /// spike(no_std): without `std` there is no `http::HeaderMap`; the headers are kept
+        /// as the shell sent them.
+        #[cfg(not(feature = "std"))]
+        #[facet(opaque)]
+        headers: Vec<HttpHeader>,
         body: Vec<u8>,
     },
     /// A response body could not be deserialized (or a request body serialized).
@@ -219,6 +230,7 @@ impl HttpError {
     ///
     /// assert_eq!(error.header("Retry-After").unwrap(), "30");
     /// ```
+    #[cfg(feature = "std")]
     #[must_use]
     pub fn header(&self, name: impl http::header::AsHeaderName) -> Option<&HeaderValue> {
         self.headers()?.get(name)
@@ -232,8 +244,29 @@ impl HttpError {
     ///
     /// `Some` for a rejection — possibly an empty map, if the server sent no headers — and
     /// `None` for every other error, none of which had a response behind them.
+    #[cfg(feature = "std")]
     #[must_use]
     pub fn headers(&self) -> Option<&HeaderMap> {
+        match self {
+            Self::Http { headers, .. } => Some(headers),
+            _ => None,
+        }
+    }
+
+    /// spike(no_std): a header from the rejected response, matched case-insensitively.
+    #[cfg(not(feature = "std"))]
+    #[must_use]
+    pub fn header(&self, name: &str) -> Option<&str> {
+        self.headers()?
+            .iter()
+            .find(|header| header.name.eq_ignore_ascii_case(name))
+            .map(|header| header.value.as_str())
+    }
+
+    /// spike(no_std): all headers from the rejected response, as the shell sent them.
+    #[cfg(not(feature = "std"))]
+    #[must_use]
+    pub fn headers(&self) -> Option<&[HttpHeader]> {
         match self {
             Self::Http { headers, .. } => Some(headers),
             _ => None,
@@ -264,6 +297,7 @@ impl HttpError {
     ///     Some("application/problem+json".to_string())
     /// );
     /// ```
+    #[cfg(feature = "std")]
     #[must_use]
     pub fn content_type(&self) -> Option<mime::Mime> {
         self.header(http::header::CONTENT_TYPE)?
@@ -310,6 +344,7 @@ impl HttpError {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<std::io::Error> for HttpError {
     fn from(e: std::io::Error) -> Self {
         Self::Io(e.to_string())
@@ -328,13 +363,14 @@ impl From<url::ParseError> for HttpError {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<serde_qs::Error> for HttpError {
     fn from(e: serde_qs::Error) -> Self {
         Self::Json(e.to_string())
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
 

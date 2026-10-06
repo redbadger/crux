@@ -12,30 +12,53 @@ categories.workspace = true
 rust-version.workspace = true
 
 [features]
-default = ["encoding"]
+default = ["std", "encoding"]
+# spike(no_std): without `std`, crux_http is a subset: the protocol types, `HttpError`, and a
+# `command::Http` builder over them with a minimal `Response<T>` (see `src/nostd/`). The full
+# API (`http`/`mime` types, `Client`, middleware, `query`, `testing`) needs std.
+std = [
+    "crux_core/std",
+    "dep:async-trait",
+    "dep:facet-generate-attrs",
+    "dep:http",
+    "dep:mime",
+    "dep:serde_qs",
+    "derive_builder/std",
+    "facet/std",
+    "futures-util/default",
+    "serde/std",
+    "serde_json/std",
+    "serde_bytes/std",
+    "thiserror/std",
+    "url/std",
+]
 # requires web-sys for TextDecoder on wasm
-encoding = ["encoding_rs", "web-sys"]
-facet_typegen = ["crux_core/facet_typegen"]
+encoding = ["std", "encoding_rs", "web-sys"]
+facet_typegen = ["std", "crux_core/facet_typegen"]
 # Enable this feature to interoperate with the legacy `http-types` crate.
-http-types = ["dep:http-types"]
+http-types = ["std", "dep:http-types"]
 
 [dependencies]
-async-trait = "0.1.92"
-crux_core = { version = "0.21.0", path = "../crux_core" }
-derive_builder = "0.20"
+async-trait = { version = "0.1.92", optional = true }
+# spike(no_std): `std` (and the bridge) come back through our `std` feature.
+crux_core = { version = "0.21.0", path = "../crux_core", default-features = false, features = ["crux_macros"] }
+derive_builder = { version = "0.20", default-features = false, features = ["alloc"] }
 encoding_rs = { version = "0.8", optional = true }
-facet.workspace = true
-facet-generate-attrs.workspace = true
-futures-util = "0.3"
-http = "1.5"
+# spike(no_std): not `.workspace = true`, whose entries enable std (as in crux_core).
+facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
+# spike(no_std): facet-generate-attrs 0.18 depends on facet with default features (std),
+# so it is std-only here; the `typegen::bytes` attributes are `cfg_attr`'d on it.
+facet-generate-attrs = { version = "0.18", optional = true }
+futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
+http = { version = "1.5", optional = true }
 http-types = { package = "http-types-red-badger-temporary-fork", version = "6.0", default-features = false, optional = true }
-mime = "0.3"
-serde = { workspace = true, features = ["derive"] }
-serde_bytes = "0.11"
-serde_json = "1.0"
-serde_qs = "1.1"
-thiserror.workspace = true
-url = "2.5"
+mime = { version = "0.3", optional = true }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+serde_bytes = { version = "0.11", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde_qs = { version = "1.1", optional = true }
+thiserror = { version = "2.0", default-features = false }
+url = { version = "2.5.8", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 web-sys = { optional = true, version = "0.3", features = ["TextDecoder"] }

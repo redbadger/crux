@@ -21,30 +21,66 @@
 //! [`HttpError::Json`], [`HttpError::BodyAlreadyTaken`], [`HttpError::InvalidStatusCode`] —
 //! as are the shell's ([`HttpError::Url`], [`HttpError::Io`], [`HttpError::Timeout`]).
 // #![warn(missing_docs)]
+// spike(no_std): without `std` this crate is a subset, see `src/nostd/`.
+#![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
+/// The parts of the std prelude that live in `alloc`.
+#[allow(unused_imports)]
+mod prelude {
+    pub use alloc::{
+        borrow::ToOwned,
+        boxed::Box,
+        format,
+        string::{String, ToString},
+        vec,
+        vec::Vec,
+    };
+}
+
+#[cfg(feature = "std")]
 mod config;
 mod error;
 mod expect;
+#[cfg(feature = "std")]
 mod request;
+#[cfg(feature = "std")]
 mod request_builder;
+#[cfg(feature = "std")]
+mod response;
+#[cfg(not(feature = "std"))]
+#[path = "nostd/response.rs"]
 mod response;
 
+#[cfg(feature = "std")]
 mod body;
+#[cfg(feature = "std")]
 pub mod client;
+#[cfg(feature = "std")]
+pub mod command;
+#[cfg(not(feature = "std"))]
+#[path = "nostd/command.rs"]
 pub mod command;
 #[cfg(feature = "http-types")]
 mod compat;
+#[cfg(feature = "std")]
 pub mod middleware;
 pub mod protocol;
 #[cfg(feature = "facet_typegen")]
 pub mod shell;
+#[cfg(feature = "std")]
 pub mod testing;
 
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
+#[cfg(feature = "std")]
 pub use crate::body::Body;
+#[cfg(feature = "std")]
 pub use http;
+#[cfg(feature = "std")]
 pub use http::Method;
+#[cfg(feature = "std")]
 pub use mime;
 pub use url::Url;
 
@@ -55,21 +91,27 @@ pub use crate::protocol::{HttpRequest, HttpResponse};
 #[cfg(feature = "facet_typegen")]
 pub use crate::shell::HTTP;
 
-pub use self::{config::Config, error::HttpError, request::Request};
+pub use self::error::HttpError;
+#[cfg(feature = "std")]
+pub use self::{config::Config, request::Request};
 pub use response::Response;
 
+#[cfg(feature = "std")]
 pub use request_builder::RequestBuilder;
+#[cfg(feature = "std")]
 pub use response::RawResponse;
 
+#[cfg(feature = "std")]
 use client::Client;
 
-pub type Result<T> = std::result::Result<T, HttpError>;
+pub type Result<T> = core::result::Result<T, HttpError>;
 
 pub struct Http<Effect, Event> {
     effect: PhantomData<Effect>,
     event: PhantomData<Event>,
 }
 
+#[cfg(feature = "std")]
 impl<Effect, Event> Http<Effect, Event>
 where
     Effect: Send + From<crux_core::Request<HttpRequest>> + 'static,
