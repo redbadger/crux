@@ -206,15 +206,28 @@ protocol types because crux_http's `testing` helpers need std. Seven new tests c
 across chunks, connect/disconnect, the error pattern and the view. The SSE command keeps a line
 buffer across chunks (`app/src/sse.rs`), where counter_http uses `async-sse` (std) on each chunk.
 
-### Open: the SSE stream is not reopened after it ends
+### The SSE stream is reopened after it ends (with back-off)
 
-When the network dropped, the gateway's SSE fetch ended (`SSE closed by the server`), the app's
-stream command finished, and nothing reopened it (`0 open streams`). Requests still worked, but
-the board stopped seeing other clients' changes until the next BLE reconnect. counter_http
-behaves the same way, but a browser user can reload the page; the board has no equivalent. A fix
-needs the core to notice the end of the stream and resubscribe, with a back-off so a dead
-network does not cause a request storm over BLE (which means a timer effect, like cpb-counter's
-`Delay`).
+First run: when the network dropped, the gateway's SSE fetch ended (`SSE closed by the
+server`), the app's stream command finished, and nothing reopened it (`0 open streams`).
+Requests still worked, but the board stopped seeing other clients' changes until the next BLE
+reconnect. counter_http behaves the same way (a browser user reloads the page; checked), but
+the board has nobody to do that.
+
+Fix, in this app only (counter_http is unchanged): `StartWatch` runs the
+`ServerSentEvents` stream inside a `Command::new` task (via `StreamBuilder::into_stream`), so
+the core sees the stream end (`WatchEnded`). If the link is still up, it asks the shell for a
+`Delay` (cpb-counter's custom operation, resolved with embassy timers), then reopens the
+stream. The delay starts at 1 s, doubles to at most 30 s, and resets on the next update from
+the server. Each stream has an id, so a stream end or timer left over from before a reconnect
+is ignored, and `StartWatch` does nothing while a stream is open. There are 3 tests (back-off
+growth and reset, stale timers after a reconnect, no retry while disconnected).
+
+On hardware, with Wi-Fi off and then on: `#2 ← SSE closed by the server`, then retries #3–#6
+each closed at once while the network was down, spaced further apart each time. #7 succeeded
+when the network came back, and chunks reached the board again without a BLE reconnect.
+Also checked on hardware: reconnecting after the gateway tab is closed and reopened, and the
+red/blue error pattern for a request that fails while the network is down.
 
 ### Sizes
 
@@ -223,6 +236,8 @@ network does not cause a request storm over BLE (which means a timer effect, lik
 | `ble-probe` (radio only) | 97.7 KB (incl. rodata) | | 4.2 KB | 14.3 KB |
 | `link-check` (+ protocol, no app) | 107 KB (incl. 1.2 KB rodata) | | 4.2 KB | 47.6 KB (32 KB heap) |
 | `cpb-counter-http` | 208 KB | 116 KB | 4.2 KB | 80.4 KB (64 KB heap) |
+
+(With the SSE back-off, `size` reports text 327 KB, bss 80.4 KB.)
 
 `cargo bloat --crates` (.text 203 KiB): std/core 23 KiB, **url 21.7 + idna 19.1 +
 icu_normalizer 5.1 KiB**, nrf_sdc_sys 19.9, trouble_host 19.7, the app 17.9, the shell 15.7,
