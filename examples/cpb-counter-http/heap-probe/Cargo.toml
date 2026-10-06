@@ -11,3 +11,6 @@ cpb-counter-http-app = { path = "../app" }
 cpb-protocol = { path = "../protocol" }
 crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros"] }
 crux_http = { path = "../../../crux_http", default-features = false }
+
+[lints]
+workspace = true

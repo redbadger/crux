@@ -75,7 +75,7 @@ struct GatewayService {
     rx: HVec<u8, VALUE_MAX>,
 }
 
-/// The peripherals MPSL and the SoftDevice Controller take over.
+/// The peripherals MPSL and the `SoftDevice` Controller take over.
 pub struct Radio {
     pub rtc0: Peri<'static, RTC0>,
     pub timer0: Peri<'static, TIMER0>,
@@ -102,7 +102,7 @@ pub struct Radio {
     ),
 }
 
-/// Take the peripherals MPSL and the SoftDevice Controller own out of `$p`.
+/// Take the peripherals MPSL and the `SoftDevice` Controller own out of `$p`.
 #[macro_export]
 macro_rules! radio {
     ($p:ident) => {
@@ -137,12 +137,18 @@ async fn mpsl_task(mpsl: &'static MultiprotocolServiceLayer<'static>) -> ! {
     mpsl.run().await
 }
 
-/// Start MPSL and build the SoftDevice Controller. `None` if the radio stack refuses.
+/// Start MPSL and build the `SoftDevice` Controller. `None` if the radio stack refuses.
 pub fn controller(spawner: Spawner, radio: Radio) -> Option<SoftdeviceController<'static>> {
+    static MPSL: StaticCell<MultiprotocolServiceLayer> = StaticCell::new();
+    static RNG_CELL: StaticCell<rng::Rng<'static, Async>> = StaticCell::new();
+    static MEM: StaticCell<sdc::Mem<4720>> = StaticCell::new();
+
     let (c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31) = radio.ppi;
     let mpsl_p = mpsl::Peripherals::new(radio.rtc0, radio.timer0, radio.temp, c19, c30, c31);
     // The CPB has no 32 kHz crystal (CircuitPython: BOARD_HAS_32KHZ_XTAL 0), so LFCLK
     // runs from the RC oscillator with periodic calibration.
+    // bindgen types Nordic's constants as `u32`; their values fit the narrower fields.
+    #[allow(clippy::cast_possible_truncation)]
     let lfclk_cfg = mpsl::raw::mpsl_clock_lfclk_cfg_t {
         source: mpsl::raw::MPSL_CLOCK_LF_SRC_RC as u8,
         rc_ctiv: mpsl::raw::MPSL_RECOMMENDED_RC_CTIV as u8,
@@ -150,14 +156,11 @@ pub fn controller(spawner: Spawner, radio: Radio) -> Option<SoftdeviceController
         accuracy_ppm: mpsl::raw::MPSL_DEFAULT_CLOCK_ACCURACY_PPM as u16,
         skip_wait_lfclk_started: mpsl::raw::MPSL_DEFAULT_SKIP_WAIT_LFCLK_STARTED != 0,
     };
-    static MPSL: StaticCell<MultiprotocolServiceLayer> = StaticCell::new();
     let mpsl = MPSL.init(MultiprotocolServiceLayer::new(mpsl_p, Irqs, lfclk_cfg).ok()?);
     spawner.spawn(mpsl_task(mpsl).ok()?);
 
     let sdc_p = sdc::Peripherals::new(c17, c18, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29);
-    static RNG_CELL: StaticCell<rng::Rng<'static, Async>> = StaticCell::new();
     let rng = RNG_CELL.init(rng::Rng::new(radio.rng, Irqs));
-    static MEM: StaticCell<sdc::Mem<4720>> = StaticCell::new();
     let mem = MEM.init(sdc::Mem::new());
 
     sdc::Builder::new()
@@ -167,8 +170,8 @@ pub fn controller(spawner: Spawner, radio: Radio) -> Option<SoftdeviceController
         .peripheral_count(1)
         .ok()?
         .buffer_cfg(
-            DefaultPacketPool::MTU as u16,
-            DefaultPacketPool::MTU as u16,
+            u16::try_from(DefaultPacketPool::MTU).ok()?,
+            u16::try_from(DefaultPacketPool::MTU).ok()?,
             3,
             3,
         )

@@ -1,4 +1,4 @@
-//! spike(no_std): the no_std subset of `command::Http`.
+//! `spike(no_std)`: the `no_std` subset of `command::Http`.
 //!
 //! Run with `cargo test -p crux_http --no-default-features --test nostd_command`.
 //! The library is built without `std` (the test harness itself still has std), so
@@ -33,6 +33,8 @@ mod shared {
         Http(HttpRequest),
     }
 
+    // Shaped like `App::update`, which takes the event by value.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn update(event: Event) -> Command<Effect, Event> {
         match event {
             // The exact shape counter_http uses.

@@ -1,6 +1,6 @@
-//! counter_http's `ServerSentEvents` command, without std.
+//! `counter_http`'s `ServerSentEvents` command, without std.
 //!
-//! counter_http decodes each chunk on its own with `async-sse` (std). Here a small
+//! `counter_http` decodes each chunk on its own with `async-sse` (std). Here a small
 //! parser keeps a buffer across chunks, because an event can be split between them:
 //! the gateway forwards fetch's chunks as they come.
 
@@ -43,8 +43,9 @@ impl ServerSentEvents {
     }
 }
 
-/// The subset of the SSE wire format the counter needs: `data:` lines, joined with
-/// newlines, dispatched on a blank line. Other fields (`event:`, `id:`, `retry:`) and
+/// The subset of the SSE wire format the counter needs.
+///
+/// `data:` lines are joined with newlines and dispatched on a blank line. Other fields (`event:`, `id:`, `retry:`) and
 /// comments are ignored. Lines may end in `\n` or `\r\n`.
 #[derive(Default)]
 pub struct Parser {
@@ -104,9 +105,9 @@ mod tests {
     #[test]
     fn a_message_split_across_chunks() {
         let mut parser = Parser::default();
-        assert!(parser.push(b"da").is_empty());
-        assert!(parser.push(b"ta: {\"val").is_empty());
-        assert!(parser.push(b"ue\":3}\r\n").is_empty());
+        assert_eq!(parser.push(b"da"), [] as [alloc::vec::Vec<u8>; 0]);
+        assert_eq!(parser.push(b"ta: {\"val"), [] as [alloc::vec::Vec<u8>; 0]);
+        assert_eq!(parser.push(b"ue\":3}\r\n"), [] as [alloc::vec::Vec<u8>; 0]);
         assert_eq!(parser.push(b"\r\n"), vec![b"{\"value\":3}".to_vec()]);
     }
 

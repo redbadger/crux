@@ -6,8 +6,8 @@ use core::pin::{Pin, pin};
 use alloc::sync::Arc;
 use core::task::{Context, Poll};
 
-use crate::sync::channel::Sender;
 use crate::sync::channel as mpsc;
+use crate::sync::channel::Sender;
 use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::{FutureExt as _, Stream, StreamExt};

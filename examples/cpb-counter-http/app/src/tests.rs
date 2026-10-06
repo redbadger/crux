@@ -1,5 +1,5 @@
-//! counter_http's tests, ported. The flow and assertions are the same; responses are
-//! built from crux_http's protocol types (its `testing` helpers need std), dates are epoch
+//! `counter_http`'s tests, ported. The flow and assertions are the same; responses are
+//! built from `crux_http`'s protocol types (its `testing` helpers need std), dates are epoch
 //! milliseconds, and the view is pixels.
 
 use alloc::{string::ToString, vec::Vec};
@@ -23,7 +23,7 @@ fn ok_json(body: &str) -> HttpResult {
     HttpResult::Ok(HttpResponse::ok().body(body).build())
 }
 
-/// The `Response<Count>` crux_http hands the app for a 200 with this body.
+/// The `Response<Count>` `crux_http` hands the app for a 200 with this body.
 fn response(count: Count) -> Response<Count> {
     Response::try_from(HttpResponse::ok().build())
         .unwrap()
@@ -79,7 +79,7 @@ fn get_counter() {
     // check in flight that the app has not been updated with the server data
     // (counter_http: "0 (pending)"): nothing lit, D13 on
     let view = app.view(&model);
-    assert!(lit(&view).is_empty());
+    assert_eq!(lit(&view), [] as [Rgb; 0]);
     assert!(view.led_on);
 
     // this should generate an `Update` event
@@ -354,7 +354,7 @@ fn connecting_fetches_and_watches() {
     assert!(lit(&app.view(&model)).is_empty(), "no error pattern");
 }
 
-/// counter_http panics on a failed request; on the board that would freeze it, so the app
+/// `counter_http` panics on a failed request; on the board that would freeze it, so the app
 /// shows an error pattern until the next good answer.
 #[test]
 fn a_failed_request_shows_an_error_until_the_next_success() {
@@ -403,7 +403,7 @@ fn start_and_end_watch(app: &Counter, model: &mut Model) -> Event {
     cmd.expect_one_event()
 }
 
-/// counter_http never reopens a stream that ended; a browser user reloads. The board
+/// `counter_http` never reopens a stream that ended; a browser user reloads. The board
 /// resubscribes after a back-off that doubles to a limit and resets once data arrives.
 #[test]
 fn a_stream_that_ends_is_reopened_after_a_backoff() {
@@ -469,7 +469,7 @@ fn stale_stream_ends_and_timers_are_ignored() {
     let _ = app.update(Event::Disconnected, &mut model);
     let mut connected = app.update(Event::Connected, &mut model);
     connected.expect_render();
-    for event in connected.events().collect::<Vec<_>>() {
+    for event in connected.events() {
         if event == Event::StartWatch {
             let _stream = app
                 .update(event, &mut model)

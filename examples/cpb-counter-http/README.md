@@ -23,31 +23,37 @@ Crux app and performs them with `fetch`. Findings are in [SPIKE_NOTES.md](./SPIK
 | `gateway/` | the Chrome gateway: `core` (a Crux app) and `web` (Leptos) | wasm, host (tests) |
 | `heap-probe/` | runs the app as the shell does and reports peak heap | host, wasm32-wasip1 |
 
+Each directory has its own README.
+
 On the board: button A increments and button B decrements; the slide switch sets the
 brightness. The NeoPixels show the count (green positive, red negative, up to 10). D13 is lit
 while a change is waiting for the server. One dim blue pixel means "waiting for the
-gateway", and alternating red and blue means the last request failed.
+gateway", and alternating red and blue means the last request failed. If the network drops,
+the board reopens its SSE stream by itself, backing off from 1 s to 30 s.
 
 ## Running
 
-Needs Chrome (Web Bluetooth), `trunk`, and for the firmware
-`rustup target add thumbv7em-none-eabihf`, `rustup component add llvm-tools` and
-`cargo install cargo-binutils`.
-
-Tests: `cargo test` here (app, protocol), and `cargo test -p gateway-core` in `gateway/`.
-
-Gateway: `cd gateway/web && trunk serve`, then open http://127.0.0.1:8080.
-
-Firmware:
+Everything goes through `just` (`just --list` here, in `firmware/` and in `gateway/`).
+You need Chrome (for Web Bluetooth) and a Circuit Playground Bluefruit.
 
 ```sh
-cd firmware
-cargo build --release
-cargo objcopy --release --bin cpb-counter-http -- -O binary target/cpb-counter-http.bin
-# uf2conv.py and uf2families.json, from github.com/microsoft/uf2 utils/ (not committed)
-python3 uf2conv.py target/cpb-counter-http.bin -c -b 0x26000 -f 0xADA52840 -o target/cpb-counter-http.uf2
+just doctor           # check the tools for all the parts
+just test             # app and protocol tests on the host, plus the gateway core's
+just check            # fmt + clippy (pedantic) everywhere, including the thumbv7em build
+just heap-probe-wasm  # the 32-bit heap numbers in SPIKE_NOTES (needs Node)
 ```
 
-Double-press the board's reset button. When the `CPLAYBTBOOT` drive appears, copy the
-`.uf2` onto it (0x26000 assumes the S140 6.x SoftDevice the board ships with; see
-`../cpb-counter/SPIKE_NOTES.md` §7). Then click **Connect** in the gateway and pick "CPB Counter".
+Then, to run it end to end:
+
+1. `just serve` starts the gateway at http://127.0.0.1:8080. Leave it running, and open
+   that page in Chrome.
+2. Double-press the board's reset button. When the `CPLAYBTBOOT` drive appears, run
+   `just flash` in another terminal. One dim blue pixel means the board is advertising.
+3. In the gateway page, click **Connect** and choose "CPB Counter". The board shows the shared
+   count from crux-counter.fly.dev, and the gateway logs each request it forwards.
+
+Changes made from any other counter_http client (for example
+`examples/counter-http/web-leptos`) appear on the board, and presses on the board appear there.
+
+`just flash link-check` and `just flash ble-probe` flash the bring-up binaries instead; see
+[firmware/README.md](./firmware/README.md).

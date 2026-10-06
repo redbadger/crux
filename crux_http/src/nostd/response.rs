@@ -1,4 +1,4 @@
-//! spike(no_std): the [`Response`] an app sees, without `http` types.
+//! `spike(no_std)`: the [`Response`] an app sees, without `http` types.
 //!
 //! The std `Response` keeps an `http::StatusCode` and `http::HeaderMap`; `http` cannot be
 //! built without std. This one keeps the status as a `u16` and the headers as the shell

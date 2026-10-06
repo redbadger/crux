@@ -11,8 +11,12 @@ use crux_core::{
 };
 use facet::Facet;
 
-/// Number of NeoPixels on the board.
+/// Number of `NeoPixels` on the board.
 pub const PIXELS: usize = 10;
+
+/// The count is clamped to the pixels available, either way.
+#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+const MAX_COUNT: i32 = PIXELS as i32;
 
 /// How long the red LED stays on after a press.
 const FLASH_MILLIS: u32 = 120;
@@ -82,11 +86,11 @@ impl App for Counter {
     fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
             Event::ButtonA => {
-                model.count = (model.count + 1).min(PIXELS as i32);
+                model.count = (model.count + 1).min(MAX_COUNT);
                 flash(model)
             }
             Event::ButtonB => {
-                model.count = (model.count - 1).max(-(PIXELS as i32));
+                model.count = (model.count - 1).max(-MAX_COUNT);
                 flash(model)
             }
             Event::Switch(left) => {
@@ -105,9 +109,17 @@ impl App for Counter {
     fn view(&self, model: &Model) -> ViewModel {
         let level = if model.bright { 40 } else { 6 };
         let colour = if model.count >= 0 {
-            Rgb { r: 0, g: level, b: 0 }
+            Rgb {
+                r: 0,
+                g: level,
+                b: 0,
+            }
         } else {
-            Rgb { r: level, g: 0, b: 0 }
+            Rgb {
+                r: level,
+                g: 0,
+                b: 0,
+            }
         };
         let lit = model.count.unsigned_abs() as usize;
 
