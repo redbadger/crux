@@ -64,7 +64,11 @@ struct GatewayService {
     #[characteristic(uuid = "ad229cac-4e64-4208-b76b-ed536a1e47c5", notify)]
     tx: Vec<u8, VALUE_MAX>,
     /// Gateway -> device.
-    #[characteristic(uuid = "cb4206ec-fe9c-4fea-ae65-2e7c5b56515b", write_without_response, write)]
+    #[characteristic(
+        uuid = "cb4206ec-fe9c-4fea-ae65-2e7c5b56515b",
+        write_without_response,
+        write
+    )]
     rx: Vec<u8, VALUE_MAX>,
 }
 

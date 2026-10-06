@@ -1,0 +1,13 @@
+[package]
+name = "cpb-counter-http-heap-probe"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "spike(no_std): run the cpb-counter-http core on the host, no_std crux_core/crux_http, and measure peak heap"
+
+[dependencies]
+# Same features as the firmware: no std in crux_core or crux_http.
+cpb-counter-http-app = { path = "../app" }
+cpb-protocol = { path = "../protocol" }
+crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros"] }
+crux_http = { path = "../../../crux_http", default-features = false }
