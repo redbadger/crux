@@ -10,7 +10,10 @@ use crux_http::{
     protocol::{HttpRequest, HttpResponse, HttpResult},
 };
 
-use super::{Count, Counter, EffectTestExt, Event, Model, PIXELS, Rgb};
+use super::{
+    Count, Counter, Delay, EffectTestExt, Event, Model, PIXELS, Rgb, WATCH_BACKOFF_MAX,
+    WATCH_BACKOFF_MIN,
+};
 use cpb_protocol::{SseRequest, SseResponse};
 
 /// 2023-01-01T00:00:00Z
@@ -320,8 +323,9 @@ fn server_sent_events_split_across_chunks() {
         })
     );
 
-    // When the link drops, the shell ends the stream with `Done`, and the command finishes.
+    // When the stream ends (`Done`), the command says so, then finishes.
     request.resolve(SseResponse::Done).unwrap();
+    assert_eq!(cmd.expect_one_event(), Event::WatchEnded(model.watch));
     assert!(cmd.is_done());
 }
 
@@ -389,4 +393,116 @@ fn counts_beyond_ten_light_every_pixel_and_brightness_follows_the_switch() {
     });
     let _ = app.update(Event::Switch(true), &mut model);
     assert_eq!(lit(&app.view(&model)), [Rgb { r: 40, g: 0, b: 0 }; PIXELS]);
+}
+
+/// Open the stream from a connected model, end it, and return the event that says so.
+fn start_and_end_watch(app: &Counter, model: &mut Model) -> Event {
+    let mut cmd = app.update(Event::StartWatch, model);
+    let mut request = cmd.expect_one_effect().expect_server_sent_events();
+    request.resolve(SseResponse::Done).unwrap();
+    cmd.expect_one_event()
+}
+
+/// counter_http never reopens a stream that ended; a browser user reloads. The board
+/// resubscribes after a back-off that doubles to a limit and resets once data arrives.
+#[test]
+fn a_stream_that_ends_is_reopened_after_a_backoff() {
+    let app = Counter;
+    let mut model = connected_model(Count::default());
+
+    let mut cmd = app.update(Event::StartWatch, &mut model);
+    let mut stream = cmd.expect_one_effect().expect_server_sent_events();
+
+    let mut expected = WATCH_BACKOFF_MIN;
+    for _ in 0..8 {
+        // The stream ends: wait, then reopen.
+        stream.resolve(SseResponse::Done).unwrap();
+        let ended = cmd.expect_one_event();
+        let mut waiting = app.update(ended, &mut model);
+        let mut delay = waiting.expect_one_effect().expect_delay();
+        assert_eq!(delay.operation, Delay { millis: expected });
+        expected = (expected * 2).min(WATCH_BACKOFF_MAX);
+
+        delay.resolve(()).unwrap();
+        let rewatch = waiting.expect_one_event();
+        cmd = app.update(rewatch, &mut model);
+        stream = cmd.expect_one_effect().expect_server_sent_events();
+
+        // It is open again, so another StartWatch must not open a second one.
+        assert!(effects_none(&mut app.update(Event::StartWatch, &mut model)));
+    }
+    assert_eq!(model.backoff, WATCH_BACKOFF_MAX);
+
+    // Data from the server resets the back-off.
+    stream
+        .resolve(SseResponse::Chunk(
+            b"data: {\"value\":1,\"updated_at\":1672531200000}\n\n".to_vec(),
+        ))
+        .unwrap();
+    let update = cmd.expect_one_event();
+    let _ = app.update(update, &mut model);
+    stream.resolve(SseResponse::Done).unwrap();
+    let ended = cmd.expect_one_event();
+    assert_eq!(
+        app.update(ended, &mut model)
+            .expect_one_effect()
+            .expect_delay()
+            .operation,
+        Delay {
+            millis: WATCH_BACKOFF_MIN
+        }
+    );
+}
+
+/// After a disconnect and reconnect, the old stream's end and the old retry timer must not
+/// open a second stream next to the new one.
+#[test]
+fn stale_stream_ends_and_timers_are_ignored() {
+    let app = Counter;
+    let mut model = connected_model(Count::default());
+
+    let ended = start_and_end_watch(&app, &mut model);
+    let mut cmd = app.update(ended, &mut model);
+    let mut delay = cmd.expect_one_effect().expect_delay();
+
+    // The link drops and comes back before the timer fires; connecting opens a new stream.
+    let _ = app.update(Event::Disconnected, &mut model);
+    let mut connected = app.update(Event::Connected, &mut model);
+    connected.expect_render();
+    for event in connected.events().collect::<Vec<_>>() {
+        if event == Event::StartWatch {
+            let _stream = app
+                .update(event, &mut model)
+                .expect_one_effect()
+                .expect_server_sent_events();
+        }
+    }
+    assert!(model.watching);
+
+    // The old timer fires: its `Rewatch` is for a stream that no longer exists.
+    delay.resolve(()).unwrap();
+    let stale = cmd.expect_one_event();
+    assert!(effects_none(&mut app.update(stale, &mut model)));
+    assert!(effects_none(
+        &mut app.update(Event::WatchEnded(0), &mut model)
+    ));
+    assert!(model.watching);
+}
+
+/// While disconnected, a stream that ends is not retried (connecting will reopen it).
+#[test]
+fn no_retry_while_disconnected() {
+    let app = Counter;
+    let mut model = connected_model(Count::default());
+    let mut cmd = app.update(Event::StartWatch, &mut model);
+    let mut request = cmd.expect_one_effect().expect_server_sent_events();
+
+    let _ = app.update(Event::Disconnected, &mut model);
+    request.resolve(SseResponse::Done).unwrap();
+    let ended = cmd.expect_one_event();
+    assert!(effects_none(&mut app.update(ended, &mut model)));
+}
+
+fn effects_none(cmd: &mut crux_core::Command<super::Effect, Event>) -> bool {
+    cmd.effects().next().is_none()
 }
