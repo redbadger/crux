@@ -107,3 +107,71 @@ std-only, and `response.status()` is already a `u16` without std.
 5. The no_std builder has no middleware. Whether `crux_http::middleware` (async-trait,
    `Box<dyn>`, `Arc`) is wanted on MCUs is the same question as crux_core's effect
    middleware (cpb-counter SPIKE_NOTES §10.6).
+
+## Phase 2: the BLE link
+
+### 2a. Go/no-go: passed (2026-10-06)
+
+`firmware/src/bin/ble_probe.rs`: TrouBLE 0.8 host + Nordic's SoftDevice Controller
+(`nrf-sdc 0.4`, `nrf-mpsl 0.4`, crates.io releases, which now line up with embassy-nrf
+0.11 / embassy-sync 0.8, so the git pin TrouBLE's own examples use was not needed).
+Flashed by UF2 at 0x26000 on the same board (bootloader 0.9.0, S140 6.1.1): it
+advertises, Chrome connects through Web Bluetooth, and writes to `rx` come back as `tx`
+notifications (`firmware/tools/ble-probe.html`). A 17-byte echo takes 36–50 ms round trip
+(write without response → notify, as measured in the page), about one to two connection intervals.
+
+So **MPSL's timing-critical RADIO/TIMER0/RTC0 interrupts survive the MBR → disabled
+S140 forwarding**, as GPIOTE did in cpb-counter. The resident SoftDevice can stay; the
+board needs no bootloader or SoftDevice update.
+
+- Manifest differences from cpb-counter: `cortex-m` loses `critical-section-single-core`
+  (`nrf-mpsl/critical-section-impl` provides it), and embassy-nrf gains `unstable-pac`, `rt`.
+  HFCLK is no longer forced to the crystal in `embassy_nrf::init`, because MPSL owns CLOCK;
+  the WS2812 timing is fine on the internal oscillator.
+- LFCLK is from the RC oscillator with MPSL's recommended calibration intervals: the CPB
+  has no 32 kHz crystal (CircuitPython `mpconfigboard.h`: `BOARD_HAS_32KHZ_XTAL (0)`).
+- MPSL takes RTC0, TIMER0, TEMP, RADIO, CLOCK, EGU0, the RNG and PPI channels 17–31; the
+  app keeps RTC1 (the embassy time driver), PWM0 (the NeoPixels) and GPIOTE.
+- Size: text 97.7 KB, data 4.2 KB, bss 14.3 KB, almost all of it the controller
+  library (the peripheral-only variant).
+- GATT service: 128-bit UUID `744aa621-…-a43b54bb1544`, `tx` (notify, device → gateway)
+  and `rx` (write / write without response, gateway → device), each up to 244 bytes. The
+  device is the peripheral because Web Bluetooth can only be a central, so the SIG HTTP
+  Proxy Service (0x1823, where the proxy is the GATT server) does not fit.
+
+### 2b/2c. Wire protocol, gateway, firmware link: HTTP round trip works (2026-10-06)
+
+- `protocol/` (no_std): `ToGateway { Http, Sse, Cancel }` and `ToDevice { Http, SseChunk,
+  SseDone }`. Each carries an `id`, and the HTTP payloads are crux_http's own
+  `HttpRequest`/`HttpResult`. Encoding is postcard plus a `u16` length prefix. The receiver
+  treats chunks as a byte stream, so each direction picks its own chunk size: the device
+  notifies at ATT MTU − 3, and the gateway writes 20 bytes at a time because Chrome does not
+  expose the MTU. A POST /inc is 85 bytes and its answer 77. There are 6 host tests,
+  including round trips at every chunk size.
+- `gateway/core`: a Crux app. Effects: `BleConnect` (stream), `BleWrite`, crux_http's
+  `Http`, and `ServerSentEvents`. It re-emits each decoded request with
+  `Command::request_from_shell` / `stream_from_shell`, so it is a generic proxy. Writes are
+  serialised through an outbox, because Chrome runs one GATT operation at a time. SSE streams
+  are aborted (`AbortHandle`) on `Cancel` or disconnect. An answer that arrives after a
+  disconnect is dropped. There are 7 host tests.
+  - Finding: after `AbortHandle::abort()`, the *first* `resolve` of that stream's request
+    still returns `Ok` (the aborted task is only dropped when the command next runs). The
+    next one returns `Err(FinishedMany)`. So a shell that stops reading when `resolve` fails
+    closes the fetch one chunk late, which is fine but worth knowing.
+  - `#[operation(output = Result<(), String>)]` does not parse (the macro splits on the
+    comma), so the gateway uses a type alias. That is arguably a feature: facet_generate
+    cannot emit more than one monomorphisation of a generic, so a named output type is what
+    typegen'd apps need anyway. Note that an alias is erased before facet sees it, so for
+    typegen the output has to be a real named type (e.g. `enum WriteResult { Ok, Err(String) }`),
+    not an alias. The gateway is Rust-only, so the alias is enough here.
+- `gateway/web`: Leptos with web-sys Web Bluetooth (`--cfg=web_sys_unstable_apis`). It
+  remembers the device, so a reconnect needs no chooser. Its HTTP and SSE handlers are
+  counter-http's, extended with request bodies and all methods.
+- `firmware/src/link.rs`: radio set-up, the GATT server, framing, and two channels to the
+  app. **TrouBLE's `notify` returns `Ok` and sends nothing when the central has not
+  subscribed**, so the link is "up" only when the CCCD write arrives (it does surface as a
+  GATT write event).
+- `firmware` `link-check` binary: on connect it sends a raw `ToGateway::Http` GET (no Crux
+  yet). On hardware, the gateway logged `#1 → GET https://crux-counter.fly.dev/`, then
+  `#1 ← 200 (40 B)`, and the device decoded the 200. Repeats worked. SSE works too: with the
+  stream open, every change made from another client reached the board as an `SseChunk`. Size: text 107 KB, bss 47.6 KB (32 KB heap).

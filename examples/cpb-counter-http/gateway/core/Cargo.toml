@@ -1,0 +1,17 @@
+[package]
+name = "gateway-core"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "spike: a Crux app that forwards the CPB's HTTP and SSE requests from BLE"
+
+[dependencies]
+cpb-protocol.workspace = true
+crux_core.workspace = true
+crux_http.workspace = true
+
+[dev-dependencies]
+crux_core = { workspace = true, features = ["testing"] }
+
+[lints]
+workspace = true
