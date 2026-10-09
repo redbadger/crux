@@ -26,6 +26,7 @@ directly.
 - Android/Kotlin: `Android/`
 - Leptos: `web-leptos/`
 - NextJS: `web-nextjs/`
+- Embedded firmware (Circuit Playground Bluefruit, `no_std`, over BLE): `cpb/`
 
 The Swift, Kotlin and TypeScript shells use the `Core` that type generation
 emits: the codegen binary is told where `boltffi pack` puts the FFI bindings
@@ -45,5 +46,6 @@ sending every chunk it reads into the `EffectSink` it is given, and then
 2. In the shell's directory, run `just doctor` to make sure you have the right
   tools installed
 3. Run `just dev` to generate code and build that shell
-4. For `apple` and `android` shells, open the IDE. For others, run `just serve`
-  in the shell directory.
+4. For `apple` and `android` shells, open the IDE. For `cpb`, see its
+  [README](./cpb/README.md). For others, run `just serve` in the shell
+  directory.

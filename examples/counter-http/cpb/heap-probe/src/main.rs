@@ -1,16 +1,18 @@
-//! Host-side heap probe for the cpb-counter-http core. Drives `app::Counter` the way the
-//! firmware shell does (including encoding each request for the link, as `link.rs`
-//! does) and reports peak heap. Run it as wasm32-wasip1 for 4-byte pointers, as on the
+//! Host-side heap probe for the counter-http core, built without std as the firmware
+//! builds it. Drives `shared::Counter` the way the cpb shell does (including encoding
+//! each request for the link, as `link.rs` does) and reports peak heap. Run it as wasm32-wasip1 for 4-byte pointers, as on the
 //! nRF52840; on a 64-bit host the numbers are an upper bound.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use ble_protocol::{SseResponse, ToGateway, encode};
-use cpb_counter_http_app::{Counter, Effect, Event};
-use crux_core::{Core, Request};
-use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
+use ble_protocol::{ToGateway, encode};
+use crux_core::Request;
+use shared::http::protocol::{HttpRequest, HttpResponse, HttpResult};
+use shared::sse::{SseRequest, SseResponse};
+use shared::time::operation::NotifyAfter;
+use shared::{Core, Counter, Effect, Event};
 
 struct Tracking;
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
@@ -34,7 +36,8 @@ static GLOBAL: Tracking = Tracking;
 #[derive(Default)]
 struct Shell {
     http: BTreeMap<u16, Request<HttpRequest>>,
-    sse: Option<Request<ble_protocol::SseRequest>>,
+    sse: Option<Request<SseRequest>>,
+    timers: Vec<Request<NotifyAfter>>,
     next_id: u16,
     renders: usize,
 }
@@ -60,12 +63,17 @@ impl Shell {
                 Effect::ServerSentEvents(request) => {
                     drop(encode(&ToGateway::Sse {
                         id,
-                        request: request.operation.clone(),
+                        request: ble_protocol::SseRequest {
+                            url: request.operation.url.clone(),
+                        },
                     }));
                     self.sse = Some(request);
                 }
-                // Only after a stream ends, which this probe does last.
-                Effect::Delay(_) => {}
+                // Only after a stream ends, which this probe does last. The firmware's
+                // timer task holds the request until it fires.
+                Effect::TimeNotifyAfter(request) => self.timers.push(request),
+                // Never asked for by this app.
+                Effect::TimeClear(_) => {}
             }
         }
     }
@@ -112,9 +120,11 @@ fn main() {
     let mut shell = Shell::default();
     let mut value = 0;
 
-    let effects = core.process_event(Event::Switch(true));
+    // The gateway connects: the shell draws the view, then sends `Get` and `StartWatch`.
+    let _ = core.view();
+    let effects = core.process_event(Event::Get);
     shell.handle(&core, effects);
-    let effects = core.process_event(Event::Connected);
+    let effects = core.process_event(Event::StartWatch);
     shell.handle(&core, effects);
     println!(
         "connected, GET + SSE in flight: peak {} B, live {} B",
@@ -158,15 +168,18 @@ fn main() {
         );
     }
 
-    // The link drops: the shell ends the stream with Done.
+    // The link drops: the shell ends the stream with Done, and the core asks for a
+    // timer before reopening it (held, as the firmware's timer task holds it).
     if let Some(mut request) = shell.sse.take() {
         let effects = core
             .resolve(&mut request, SseResponse::Done)
             .expect("resolves");
         shell.handle(&core, effects);
     }
-    let effects = core.process_event(Event::Disconnected);
-    shell.handle(&core, effects);
-    println!("disconnected, stream ended:     live {} B", live(base));
+    println!(
+        "disconnected, stream ended:     live {} B ({} timer pending)",
+        live(base),
+        shell.timers.len()
+    );
     println!("renders: {}", shell.renders);
 }

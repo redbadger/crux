@@ -30,9 +30,9 @@ use embedded_alloc::LlffHeap as Heap;
 use panic_halt as _;
 
 use ble_protocol::{SseRequest, ToDevice, ToGateway};
-use crux_http::protocol::{HttpRequest, HttpResult};
 use link::{INCOMING, LinkEvent, OUTGOING};
 use neopixel::{Frame, NeoPixels, PIXELS};
+use shared::http::protocol::{HttpRequest, HttpResult};
 
 #[global_allocator]
 static HEAP: Heap = Heap::empty();

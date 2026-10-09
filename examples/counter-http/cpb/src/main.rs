@@ -1,8 +1,22 @@
-//! `spike(no_std)`: the firmware "shell" for `counter_http`'s Crux core on the Circuit
-//! Playground Bluefruit. The core's HTTP and SSE effects go over BLE to the Chrome
-//! gateway (`../gateway`), which performs them. `Delay` (the SSE back-off) is resolved
-//! by its own task (`delay.rs`), whose follow-up effects come back through a queue the
-//! main loop selects on.
+//! `spike(no_std)`: a firmware shell for the counter-http example's core (`../shared`) on
+//! the Circuit Playground Bluefruit. It calls `Core` directly; there is no FFI bridge.
+//!
+//! Like any Crux shell it turns input into events, handles the effects the core asks for,
+//! and draws the view. The core is the same one the iOS, Android and web shells use; what
+//! is particular to this board stays here:
+//!   - the core's HTTP requests and Server-Sent Events go over BLE to the Chrome gateway
+//!     (`examples_support/ble_gateway`), which performs them;
+//!   - its timers (`crux_time`, which paces reopening the event stream) are resolved by
+//!     their own task (`delay.rs`), whose follow-up effects come back through a queue the
+//!     main loop selects on;
+//!   - when the gateway connects, the shell sends `Get` and `StartWatch`, as the other
+//!     shells do at start-up;
+//!   - button A sends `Increment` and button B sends `Decrement`;
+//!   - the view's `value` is drawn on the ring of `NeoPixels` as an odometer, dimmed while
+//!     the count is waiting for the server; the view's `error`, and the shell's own link
+//!     state, have pixel patterns of their own;
+//!   - the slide switch picks the brightness, which is presentation, so the core never
+//!     hears about it.
 //!
 //! Pins (`CircuitPython` `ports/nordic/boards/circuitplayground_bluefruit`):
 //!   button A    P1.02  (active high, needs pull-down)   -> Increment
@@ -27,11 +41,7 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 
-use crux_core::{Core, Request};
-use crux_http::{
-    HttpError,
-    protocol::{HttpRequest, HttpResult},
-};
+use crux_core::Request;
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_futures::select::{Either, Either4, select, select4};
@@ -40,9 +50,15 @@ use embassy_time::{Duration, Timer};
 use embedded_alloc::LlffHeap as Heap;
 use panic_halt as _;
 
-use ble_protocol::{Id, SseRequest, SseResponse, ToDevice, ToGateway};
-use cpb_counter_http_app::{Counter, Effect, Event, ViewModel};
-use delay::{DELAYS, EFFECTS};
+use ble_protocol::{Id, ToDevice, ToGateway};
+use shared::http::{
+    HttpError,
+    protocol::{HttpRequest, HttpResult},
+};
+use shared::sse::{SseRequest, SseResponse};
+use shared::{Core, Counter, Effect, Event, ViewModel};
+
+use delay::{EFFECTS, TIMERS, TimeRequest};
 use link::{INCOMING, LinkEvent, OUTGOING};
 use neopixel::{Frame, NeoPixels, PIXELS};
 
@@ -58,11 +74,15 @@ const HEAP_SIZE: usize = 64 * 1024;
 /// button-masher cannot exhaust the heap (with `panic-halt`, that would freeze the board).
 const MAX_IN_FLIGHT: usize = 16;
 
+/// Pixel brightness (0–255) for each position of the slide switch.
+const BRIGHT: u8 = 40;
+const DIM: u8 = 6;
+
 /// How long an input must settle after an edge before its level is believed.
 const DEBOUNCE: Duration = Duration::from_millis(30);
 
 /// An input that reports only settled changes of level, on press *and* release, so
-/// contact bounce on either edge cannot produce extra events (as in cpb-counter).
+/// contact bounce on either edge cannot produce extra events.
 struct Debounced<'a> {
     input: Input<'a>,
     high: bool,
@@ -93,19 +113,26 @@ impl<'a> Debounced<'a> {
     }
 }
 
+// Three independent facts about the shell (link, radio, switch), not a state machine.
+#[allow(clippy::struct_excessive_bools)]
 struct Shell<'a> {
     core: &'static Core<Counter>,
     led: Output<'a>,
     pixels: NeoPixels<'a>,
     /// The gateway is connected and subscribed.
     up: bool,
+    /// The radio stack failed; the link is gone until reset.
+    failed: bool,
+    /// Shell-local state: the slide switch's brightness.
+    bright: bool,
     next_id: Id,
     http: BTreeMap<Id, Request<HttpRequest>>,
     sse: BTreeMap<Id, Request<SseRequest>>,
 }
 
 impl Shell<'_> {
-    fn event(&mut self, event: Event) {
+    /// Sends an event to the core and handles the effects it asks for.
+    fn process_event(&mut self, event: Event) {
         let effects = self.core.process_event(event);
         self.handle(effects);
     }
@@ -113,10 +140,7 @@ impl Shell<'_> {
     fn handle(&mut self, effects: impl IntoIterator<Item = Effect>) {
         for effect in effects {
             match effect {
-                Effect::Render(_) => {
-                    let view = self.core.view();
-                    self.render(&view);
-                }
+                Effect::Render(_) => self.render(),
                 Effect::Http(mut request) => {
                     let id = self.id();
                     let message = ToGateway::Http {
@@ -147,13 +171,17 @@ impl Shell<'_> {
                 }
                 Effect::ServerSentEvents(mut request) => {
                     let id = self.id();
+                    // The core's SSE capability is its own; the link carries a wire copy.
                     let message = ToGateway::Sse {
                         id,
-                        request: request.operation.clone(),
+                        request: ble_protocol::SseRequest {
+                            url: request.operation.url.clone(),
+                        },
                     };
                     if self.up && OUTGOING.try_send(message).is_ok() {
                         self.sse.insert(id, request);
                     } else {
+                        // The stream ends at once; the core reopens it after a wait.
                         let effects = self
                             .core
                             .resolve(&mut request, SseResponse::Done)
@@ -161,7 +189,8 @@ impl Shell<'_> {
                         self.handle(effects);
                     }
                 }
-                Effect::Delay(request) => DELAYS.push(request),
+                Effect::TimeNotifyAfter(request) => TIMERS.push(TimeRequest::NotifyAfter(request)),
+                Effect::TimeClear(request) => TIMERS.push(TimeRequest::Clear(request)),
             }
         }
     }
@@ -170,12 +199,16 @@ impl Shell<'_> {
         match event {
             LinkEvent::Up => {
                 self.up = true;
-                self.event(Event::Connected);
+                self.render();
+                // What the other shells do at start-up.
+                self.process_event(Event::Get);
+                self.process_event(Event::StartWatch);
             }
             LinkEvent::Advertising | LinkEvent::Down => self.down(),
             LinkEvent::Failed => {
                 self.down();
-                self.pixels.show(&[[24, 0, 0]; PIXELS]);
+                self.failed = true;
+                self.render();
             }
             LinkEvent::Message(ToDevice::Http { id, result }) => {
                 if let Some(mut request) = self.http.remove(&id) {
@@ -207,12 +240,14 @@ impl Shell<'_> {
         }
     }
 
-    /// The gateway went away: fail what was in flight, end the streams, tell the core.
+    /// The gateway went away: fail what was in flight and end the streams. The core
+    /// reopens its stream after a wait, which fails again until the gateway is back.
     fn down(&mut self) {
         if !self.up {
             return;
         }
         self.up = false;
+        self.render();
         for (_, mut request) in core::mem::take(&mut self.http) {
             let effects = self
                 .core
@@ -230,7 +265,6 @@ impl Shell<'_> {
                 .unwrap_or_default();
             self.handle(effects);
         }
-        self.event(Event::Disconnected);
     }
 
     const fn id(&mut self) -> Id {
@@ -238,14 +272,77 @@ impl Shell<'_> {
         self.next_id
     }
 
-    fn render(&mut self, view: &ViewModel) {
+    /// Draws the core's current view, with the shell's own state, on the ring and D13.
+    fn render(&mut self) {
+        let view = self.core.view();
+        let (frame, pending) = frame(&view, self.up, self.failed, self.bright);
         self.led
-            .set_level(if view.led_on { Level::High } else { Level::Low });
-        let mut frame: Frame = [[0; 3]; PIXELS];
-        for (out, pixel) in frame.iter_mut().zip(view.pixels.iter()) {
-            *out = [pixel.r, pixel.g, pixel.b];
-        }
+            .set_level(if pending { Level::High } else { Level::Low });
         self.pixels.show(&frame);
+    }
+}
+
+/// The pixels for a view, and whether D13 should be lit (the count is waiting for the
+/// server):
+/// - all red: the radio stack failed;
+/// - one dim blue pixel: waiting for the gateway;
+/// - alternating red and blue: the last request failed (`view.error`);
+/// - otherwise the count, as an odometer: the core's count is unbounded, so each lap of
+///   ten fills in a new colour over the last lap's. 10 is ten green, 11 is one cyan over
+///   nine green, 20 is ten cyan. A count waiting for the server is drawn at a third of the
+///   brightness.
+fn frame(view: &ViewModel, up: bool, failed: bool, bright: bool) -> (Frame, bool) {
+    let mut frame: Frame = [[0; 3]; PIXELS];
+    let level = if bright { BRIGHT } else { DIM };
+
+    if failed {
+        return ([[24, 0, 0]; PIXELS], false);
+    }
+
+    if !up {
+        frame[0] = [0, 0, DIM];
+        return (frame, false);
+    }
+
+    if view.error.is_some() {
+        for (i, pixel) in frame.iter_mut().enumerate() {
+            *pixel = if i % 2 == 0 {
+                [level, 0, 0]
+            } else {
+                [0, 0, level]
+            };
+        }
+        return (frame, false);
+    }
+
+    let pending = !view.confirmed;
+    let level = if pending { (level / 3).max(2) } else { level };
+    let positive = view.value >= 0;
+    let n = view.value.unsigned_abs() as usize;
+    if n > 0 {
+        let lap = (n - 1) / PIXELS;
+        let units = (n - 1) % PIXELS + 1;
+        for (i, pixel) in frame.iter_mut().enumerate() {
+            if i < units {
+                *pixel = lap_colour(positive, lap, level);
+            } else if lap > 0 {
+                *pixel = lap_colour(positive, lap - 1, level);
+            }
+        }
+    }
+    (frame, pending)
+}
+
+/// The colour of lap `lap` (0 for 1..=10, 1 for 11..=20, ...): green, cyan, blue for
+/// positive counts, and red, orange, magenta for negative ones, round and round.
+const fn lap_colour(positive: bool, lap: usize, level: u8) -> [u8; 3] {
+    match (positive, lap % 3) {
+        (true, 0) => [0, level, 0],
+        (true, 1) => [0, level, level],
+        (true, _) => [0, 0, level],
+        (false, 0) => [level, 0, 0],
+        (false, 1) => [level, level / 2, 0],
+        (false, _) => [level, 0, level],
     }
 }
 
@@ -270,10 +367,10 @@ async fn main(spawner: Spawner) {
     let mut switch = Debounced::new(Input::new(p.P1_06, Pull::Up));
     let pixels = NeoPixels::new(p.PWM0, p.P0_13);
 
-    // Shared by the main loop and the delay task, for the life of the firmware.
+    // Shared by the main loop and the timer task, for the life of the firmware.
     let core: &'static Core<Counter> = Box::leak(Box::new(Core::new()));
-    let Ok(token) = delay::delays(core) else {
-        panic!("delay task already spawned");
+    let Ok(token) = delay::timers(core) else {
+        panic!("timer task already spawned");
     };
     spawner.spawn(token);
 
@@ -282,16 +379,19 @@ async fn main(spawner: Spawner) {
         led,
         pixels,
         up: false,
+        failed: false,
+        // The switch reads low in its left position: bright.
+        bright: !switch.high,
         next_id: 0,
         http: BTreeMap::new(),
         sse: BTreeMap::new(),
     };
-    // The slide switch's position (left, low, is bright); this also renders the
-    // "waiting for the gateway" view.
-    shell.event(Event::Switch(!switch.high));
+    // Draw the "waiting for the gateway" view. No event is needed to read the core's view.
+    shell.render();
 
     let Some(controller) = link::controller(spawner, radio!(p)) else {
-        shell.pixels.show(&[[24, 0, 0]; PIXELS]);
+        shell.failed = true;
+        shell.render();
         return;
     };
 
@@ -312,18 +412,23 @@ async fn main(spawner: Spawner) {
             };
             match event {
                 Either4::First(event) => shell.link(event),
-                // Buttons are active high: count presses, ignore releases.
+                // Buttons are active high: count presses, ignore releases. Presses while
+                // the gateway is away are ignored rather than failed.
                 Either4::Second(pressed) => {
                     if pressed && shell.up {
-                        shell.event(Event::Increment);
+                        shell.process_event(Event::Increment);
                     }
                 }
                 Either4::Third(pressed) => {
                     if pressed && shell.up {
-                        shell.event(Event::Decrement);
+                        shell.process_event(Event::Decrement);
                     }
                 }
-                Either4::Fourth(high) => shell.event(Event::Switch(!high)),
+                // Brightness is the shell's own business: redraw the same view.
+                Either4::Fourth(high) => {
+                    shell.bright = !high;
+                    shell.render();
+                }
             }
         }
     })

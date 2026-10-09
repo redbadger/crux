@@ -3,7 +3,8 @@
 The messages between a Crux app's firmware and the [BLE gateway](../ble_gateway/), shared by
 both. It's `no_std` and builds for thumbv7em (the firmware), wasm (the gateway) and the host
 (tests). It knows nothing about any particular app; the
-[`cpb-counter-http`](../../examples/cpb-counter-http/) spike is its first user.
+counter-http example's firmware shell, [`examples/counter-http/cpb`](../../examples/counter-http/cpb/),
+is its first user.
 
 - The GATT service and characteristic UUIDs, and the advertised name.
 - `ToGateway` (`Http`, `Sse`, `Cancel`) and `ToDevice` (`Http`, `SseChunk`, `SseDone`). Each
