@@ -1,4 +1,4 @@
-use cpb_protocol::{
+use ble_protocol::{
     GATEWAY_CHUNK, Reassembler, SseRequest, SseResponse, ToDevice, ToGateway, chunks, decode,
     encode,
 };
@@ -20,7 +20,7 @@ fn connected() -> Model {
     let mut model = Model::default();
     let mut cmd = app.update(Event::Connect, &mut model);
     let request = effects(&mut cmd).remove(0).expect_ble_connect();
-    assert_eq!(request.operation.service, cpb_protocol::SERVICE_UUID);
+    assert_eq!(request.operation.service, ble_protocol::SERVICE_UUID);
     assert_eq!(model.link, Link::Connecting);
 
     let _ = app.update(
@@ -275,7 +275,7 @@ fn a_response_too_large_for_the_link_becomes_an_error() {
     let mut model = connected();
     let huge = HttpResult::Ok(
         HttpResponse::status(502)
-            .body(vec![b'x'; cpb_protocol::MAX_MESSAGE])
+            .body(vec![b'x'; ble_protocol::MAX_MESSAGE])
             .build(),
     );
     let mut cmd = app.update(

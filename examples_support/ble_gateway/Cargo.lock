@@ -119,6 +119,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ble_protocol"
+version = "0.1.0"
+dependencies = [
+ "crux_core",
+ "crux_http",
+ "postcard",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -281,17 +292,6 @@ name = "core_detect"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f8f80099a98041a3d1622845c271458a2d73e688351bf3cb999266764b81d48"
-
-[[package]]
-name = "cpb-protocol"
-version = "0.1.0"
-dependencies = [
- "crux_core",
- "crux_http",
- "postcard",
- "serde",
- "serde_bytes",
-]
 
 [[package]]
 name = "cpufeatures"
@@ -607,8 +607,7 @@ dependencies = [
 [[package]]
 name = "facet-generate-attrs"
 version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8759a95863bc332c2cdbdacdbe2595573aa3431ce42609b66a1eccf62f1ee1bb"
+source = "git+https://github.com/redbadger/facet-generate?rev=3108944a6547368fd3e443b649e4924cccb6055b#3108944a6547368fd3e443b649e4924cccb6055b"
 dependencies = [
  "facet",
 ]
@@ -771,7 +770,7 @@ dependencies = [
 name = "gateway-core"
 version = "0.1.0"
 dependencies = [
- "cpb-protocol",
+ "ble_protocol",
  "crux_core",
  "crux_http",
 ]
@@ -780,9 +779,9 @@ dependencies = [
 name = "gateway-web"
 version = "0.1.0"
 dependencies = [
+ "ble_protocol",
  "console_error_panic_hook",
  "console_log",
- "cpb-protocol",
  "crux_core",
  "crux_http",
  "futures-channel",

@@ -5,7 +5,7 @@ use std::rc::Rc;
 use futures_util::StreamExt;
 use leptos::{prelude::*, task};
 
-use cpb_protocol::SseResponse;
+use ble_protocol::SseResponse;
 use gateway_core::{Effect, Event, Gateway, ViewModel};
 
 use crate::{ble, http, sse};

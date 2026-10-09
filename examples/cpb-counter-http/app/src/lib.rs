@@ -34,7 +34,7 @@ use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use cpb_protocol::SseRequest;
+use ble_protocol::SseRequest;
 use sse::ServerSentEvents;
 
 const API_URL: &str = "https://crux-counter.fly.dev";

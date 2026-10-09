@@ -18,12 +18,15 @@ Crux app and performs them with `fetch`. Findings are in [SPIKE_NOTES.md](./SPIK
 | Directory | What | Builds for |
 |---|---|---|
 | `app/` | counter_http's app, `no_std`. Its HTTP code is unchanged | thumbv7em, host (tests) |
-| `protocol/` | messages over BLE: `ToGateway`/`ToDevice` carrying crux_http's protocol types, framing, UUIDs, `SseRequest` | thumbv7em, wasm, host |
 | `firmware/` | the board: `cpb-counter-http` (the app), plus `ble-probe` and `link-check` (bring-up) | thumbv7em |
-| `gateway/` | the Chrome gateway: `core` (a Crux app) and `web` (Leptos) | wasm, host (tests) |
 | `heap-probe/` | runs the app as the shell does and reports peak heap | host, wasm32-wasip1 |
 
-Each directory has its own README.
+Each directory has its own README. The app-agnostic BLE parts live in `examples_support/`:
+
+| Directory | What | Builds for |
+|---|---|---|
+| [`ble_protocol/`](../../examples_support/ble_protocol/) | messages over BLE: `ToGateway`/`ToDevice` carrying crux_http's protocol types, framing, UUIDs, and a wire copy of `SseRequest` | thumbv7em, wasm, host |
+| [`ble_gateway/`](../../examples_support/ble_gateway/) | the Chrome gateway: `core` (a Crux app) and `web` (Leptos) | wasm, host (tests) |
 
 On the board: button A increments and button B decrements; the slide switch sets the
 brightness. The NeoPixels show the count (green positive, red negative); past 10 the ring
@@ -35,19 +38,20 @@ the board reopens its SSE stream by itself, backing off from 1 s to 30 s.
 
 ## Running
 
-Everything goes through `just` (`just --list` here, in `firmware/` and in `gateway/`).
+Everything goes through `just` (`just --list` here, in `firmware/`, and in
+`examples_support/ble_protocol/` and `examples_support/ble_gateway/`).
 You need Chrome (for Web Bluetooth) and a Circuit Playground Bluefruit.
 
 ```sh
 just doctor           # check the tools for all the parts
-just test             # app and protocol tests on the host, plus the gateway core's
-just check            # fmt + clippy (pedantic) everywhere, including the thumbv7em build
+just test             # app tests on the host (the protocol's and gateway's: `just test` in theirs)
+just check            # fmt + clippy (pedantic) here and in firmware/, including thumbv7em
 just heap-probe-wasm  # the 32-bit heap numbers in SPIKE_NOTES (needs Node)
 ```
 
 Then, to run it end to end:
 
-1. `just serve` starts the gateway at http://127.0.0.1:8080. Leave it running, and open
+1. `just serve` starts the gateway (`examples_support/ble_gateway`) at http://127.0.0.1:8080. Leave it running, and open
    that page in Chrome.
 2. Double-press the board's reset button. When the `CPLAYBTBOOT` drive appears, run
    `just flash` in another terminal. One dim blue pixel means the board is advertising.
