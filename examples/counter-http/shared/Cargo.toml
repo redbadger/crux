@@ -16,6 +16,7 @@ std = [
     "crux_core/std",
     "crux_http/std",
     "crux_http/encoding",
+    "crux_time/std",
     "facet/std",
     "futures/std",
     "serde/std",
@@ -26,6 +27,7 @@ std = [
 facet_typegen = [
     "crux_core/facet_typegen",
     "crux_http/facet_typegen",
+    "crux_time/facet_typegen",
 ]
 # ANCHOR_END: facet_typegen
 
@@ -33,6 +35,7 @@ facet_typegen = [
 chrono.workspace = true
 crux_core.workspace = true
 crux_http.workspace = true
+crux_time.workspace = true
 facet.workspace = true
 futures.workspace = true
 serde = { workspace = true, features = ["derive"] }

@@ -1,13 +1,18 @@
 package com.crux.examples.counter.http
 
 import android.util.Log
+import com.crux.examples.counter.ClearTimer
+import com.crux.examples.counter.CoroutineTimeHandler
 import com.crux.examples.counter.EffectHandler
 import com.crux.examples.counter.EffectSink
 import com.crux.examples.counter.HttpHandler
 import com.crux.examples.counter.HttpRequest
 import com.crux.examples.counter.HttpResult
+import com.crux.examples.counter.NotifyAfter
 import com.crux.examples.counter.SseRequest
 import com.crux.examples.counter.SseResponse
+import com.crux.examples.counter.TimeHandler
+import com.crux.examples.counter.TimerId
 import com.crux.examples.counter.UrlConnectionHttpHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -22,8 +27,8 @@ import kotlin.coroutines.cancellation.CancellationException
 /// before the dispatcher sees it and refreshes its `view` flow, so the
 /// interface's default no-op stands.
 ///
-/// @param scope where the Server-Sent Events connection runs, so that it is
-///   closed when the scope is cancelled.
+/// @param scope where the Server-Sent Events connection and the timers run, so
+///   that they are stopped when the scope is cancelled.
 class CounterHandler(
     private val scope: CoroutineScope,
 ) : EffectHandler {
@@ -32,9 +37,17 @@ class CounterHandler(
     /// shell writes for HTTP is the line that delegates.
     private val httpHandler: HttpHandler = UrlConnectionHttpHandler()
 
+    /// The handler `crux_time` ships. It owns the timer table, so there is
+    /// one of it, made here.
+    private val timeHandler: TimeHandler = CoroutineTimeHandler(scope)
+
     private val sseClient = SseClient()
 
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
+
+    override suspend fun timeNotifyAfter(operation: NotifyAfter): TimerId = timeHandler.notifyAfter(operation)
+
+    override suspend fun timeClear(operation: ClearTimer): TimerId = timeHandler.clear(operation)
 
     /// `ServerSentEvents` is a stream: every item sent into `sink` is one
     /// resolution of the request that opened it.

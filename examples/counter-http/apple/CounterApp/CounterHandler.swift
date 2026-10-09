@@ -12,11 +12,26 @@ struct CounterHandler: EffectHandler {
     /// The shipped `crux_http` handler, over the shared `URLSession`.
     let httpHandler = URLSessionHttpHandler.shared
 
+    /// The shipped `crux_time` handler. It owns the timer table, so there is
+    /// one of it, made here.
+    let timeHandler = TaskTimeHandler()
+
     /// `Http` is a request: the shell performs it and answers with exactly one
     /// `HttpResult`. HTTP is `crux_http`'s business, so the rules for
     /// producing one belong to the handler it ships, and this line delegates.
     func http(_ operation: HttpRequest) async -> HttpResult {
         await httpHandler.request(operation)
+    }
+
+    /// `TimeNotifyAfter` is answered exactly once, with the id of the timer
+    /// that fired. Timers are `crux_time`'s business, so these two delegate.
+    func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId {
+        await timeHandler.notifyAfter(operation)
+    }
+
+    /// `TimeClear` cancels the timer and answers with the id it named.
+    func timeClear(_ operation: ClearTimer) async -> TimerId {
+        await timeHandler.clear(operation)
     }
 
     /// `ServerSentEvents` is a stream: every item sent into `sink` is one

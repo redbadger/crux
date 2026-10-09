@@ -1,13 +1,16 @@
 import type {
+  ClearTimer,
   EffectHandler,
   EffectSink,
   HttpRequest,
   HttpResult,
+  NotifyAfter,
   SseRequest,
   SseResponse,
+  TimerId,
   ViewModel,
 } from "shared_types/app";
-import { Core, fetchHttpHandler } from "shared_types/app";
+import { Core, TimeoutTimeHandler, fetchHttpHandler } from "shared_types/app";
 
 import * as sse from "./sse";
 
@@ -28,6 +31,18 @@ export class CounterHandler implements EffectHandler {
 
   http(operation: HttpRequest): Promise<HttpResult> {
     return this.httpHandler.request(operation);
+  }
+
+  /// The handler `crux_time` ships. The timer table is state, so there is one
+  /// handler, for the page's life.
+  private readonly timeHandler = new TimeoutTimeHandler();
+
+  timeNotifyAfter(operation: NotifyAfter): Promise<TimerId> {
+    return this.timeHandler.notifyAfter(operation);
+  }
+
+  timeClear(operation: ClearTimer): Promise<TimerId> {
+    return this.timeHandler.clear(operation);
   }
 
   /// `ServerSentEvents` is a stream: every item sent into `sink` is one
