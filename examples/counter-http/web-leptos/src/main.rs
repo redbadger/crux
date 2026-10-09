@@ -1,6 +1,7 @@
 mod core;
 mod http;
 mod sse;
+mod time;
 
 use leptos::prelude::*;
 

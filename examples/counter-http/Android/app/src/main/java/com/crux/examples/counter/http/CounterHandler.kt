@@ -1,12 +1,15 @@
 package com.crux.examples.counter.http
 
 import android.util.Log
+import com.crux.examples.counter.ClearTimer
 import com.crux.examples.counter.EffectHandler
 import com.crux.examples.counter.EffectSink
 import com.crux.examples.counter.HttpRequest
 import com.crux.examples.counter.HttpResult
+import com.crux.examples.counter.NotifyAfter
 import com.crux.examples.counter.SseRequest
 import com.crux.examples.counter.SseResponse
+import com.crux.examples.counter.TimerId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
@@ -33,9 +36,19 @@ class CounterHandler(
      */
     private val httpHandler = KtorHttpHandler()
 
+    /**
+     * The shell's own timers, with `delay` (see `CoroutineTimeHandler.kt`).
+     * The handler owns the timer table, so there is one of it, made here.
+     */
+    private val timeHandler = CoroutineTimeHandler()
+
     private val sseClient = SseClient()
 
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
+
+    override suspend fun timeNotifyAfter(operation: NotifyAfter): TimerId = timeHandler.notifyAfter(operation)
+
+    override suspend fun timeClear(operation: ClearTimer): TimerId = timeHandler.clear(operation)
 
     /**
      * `ServerSentEvents` is a stream: every item sent into `sink` is one
