@@ -1,0 +1,47 @@
+mod lib '../../lib.just'
+
+default: dev
+
+# A member of the root workspace, so every command names the package.
+pkg := "ble_protocol"
+lints := "--no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings"
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-rust-target thumbv7em-none-eabihf
+    @just lib::check-rust-target wasm32-unknown-unknown
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    cargo fmt -p {{ pkg }}
+
+# validate formatting and lint, on the host and for both the firmware's and the gateway's targets
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    cargo fmt -p {{ pkg }} -- --check
+    cargo clippy -p {{ pkg }} --all-targets -- {{ lints }}
+    cargo clippy -p {{ pkg }} --target thumbv7em-none-eabihf -- {{ lints }}
+    cargo clippy -p {{ pkg }} --target wasm32-unknown-unknown -- {{ lints }}
+
+# build for the firmware's target
+build:
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    cargo build -p {{ pkg }} --target thumbv7em-none-eabihf
+
+# round-trip every message at every chunk size (on the host)
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    cargo test -p {{ pkg }}
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test

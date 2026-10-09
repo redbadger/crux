@@ -40,8 +40,8 @@ use embassy_time::{Duration, Timer};
 use embedded_alloc::LlffHeap as Heap;
 use panic_halt as _;
 
+use ble_protocol::{Id, SseRequest, SseResponse, ToDevice, ToGateway};
 use cpb_counter_http_app::{Counter, Effect, Event, ViewModel};
-use cpb_protocol::{Id, SseRequest, SseResponse, ToDevice, ToGateway};
 use delay::{DELAYS, EFFECTS};
 use link::{INCOMING, LinkEvent, OUTGOING};
 use neopixel::{Frame, NeoPixels, PIXELS};

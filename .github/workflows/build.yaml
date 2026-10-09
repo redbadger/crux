@@ -46,7 +46,8 @@ jobs:
           cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
       # spike(no_std): crux_http and crux_time without std, on a real no_std target
-      # and through their no_std tests on the host. Mirrors `just check-nostd`.
+      # and through their no_std tests on the host; ble_protocol (examples_support)
+      # for the firmware's and the gateway's targets. Mirrors `just check-nostd`.
       - name: no_std
         shell: bash
         run: |
@@ -54,6 +55,8 @@ jobs:
           cargo check -p crux_time --no-default-features --features crux_core/critical-section --target thumbv7em-none-eabihf
           cargo test -p crux_http --no-default-features --test nostd_command
           cargo test -p crux_time --no-default-features --test nostd_clock
+          cargo check -p ble_protocol --target thumbv7em-none-eabihf
+          cargo check -p ble_protocol --target wasm32-unknown-unknown
 
       - uses: pnpm/action-setup@v4
         with:

@@ -29,7 +29,7 @@ use embassy_time::Timer;
 use embedded_alloc::LlffHeap as Heap;
 use panic_halt as _;
 
-use cpb_protocol::{SseRequest, ToDevice, ToGateway};
+use ble_protocol::{SseRequest, ToDevice, ToGateway};
 use crux_http::protocol::{HttpRequest, HttpResult};
 use link::{INCOMING, LinkEvent, OUTGOING};
 use neopixel::{Frame, NeoPixels, PIXELS};

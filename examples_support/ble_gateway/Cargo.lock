@@ -119,6 +119,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ble_protocol"
+version = "0.1.0"
+dependencies = [
+ "crux_core",
+ "crux_http",
+ "postcard",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -281,17 +292,6 @@ name = "core_detect"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f8f80099a98041a3d1622845c271458a2d73e688351bf3cb999266764b81d48"
-
-[[package]]
-name = "cpb-protocol"
-version = "0.1.0"
-dependencies = [
- "crux_core",
- "crux_http",
- "postcard",
- "serde",
- "serde_bytes",
-]
 
 [[package]]
 name = "cpufeatures"
@@ -771,7 +771,7 @@ dependencies = [
 name = "gateway-core"
 version = "0.1.0"
 dependencies = [
- "cpb-protocol",
+ "ble_protocol",
  "crux_core",
  "crux_http",
 ]
@@ -780,9 +780,9 @@ dependencies = [
 name = "gateway-web"
 version = "0.1.0"
 dependencies = [
+ "ble_protocol",
  "console_error_panic_hook",
  "console_log",
- "cpb-protocol",
  "crux_core",
  "crux_http",
  "futures-channel",

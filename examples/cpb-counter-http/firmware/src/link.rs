@@ -8,7 +8,7 @@
 
 use alloc::vec::Vec;
 
-use cpb_protocol::{Reassembler, SERVICE_UUID_U128, ToDevice, ToGateway, chunks, decode, encode};
+use ble_protocol::{Reassembler, SERVICE_UUID_U128, ToDevice, ToGateway, chunks, decode, encode};
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_futures::select::{Either, select};
@@ -193,7 +193,7 @@ pub async fn run<C: Controller>(controller: C) {
     let mut peripheral = stack.peripheral();
 
     let Ok(server) = Server::new_with_config(GapConfig::Peripheral(PeripheralConfig {
-        name: cpb_protocol::DEVICE_NAME,
+        name: ble_protocol::DEVICE_NAME,
         appearance: &appearance::UNKNOWN,
     })) else {
         INCOMING.send(LinkEvent::Failed).await;
@@ -239,7 +239,7 @@ async fn advertise<'values, 'server, C: Controller>(
     let mut scan_data = [0; 31];
     let scan_len = AdStructure::encode_slice(
         &[AdStructure::CompleteLocalName(
-            cpb_protocol::DEVICE_NAME.as_bytes(),
+            ble_protocol::DEVICE_NAME.as_bytes(),
         )],
         &mut scan_data[..],
     )?;

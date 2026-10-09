@@ -191,11 +191,13 @@ ci: check build
 
 # spike(no_std): the capability crates without std, on a real no_std target and on the host
 check-nostd:
-    @echo '{{ style("command") }}check-nostd (crux_http, crux_time for thumbv7em-none-eabihf):{{ NORMAL }}'
+    @echo '{{ style("command") }}check-nostd (crux_http, crux_time, ble_protocol for thumbv7em-none-eabihf):{{ NORMAL }}'
     cargo check -p crux_http --no-default-features --features crux_core/critical-section --target thumbv7em-none-eabihf
     cargo check -p crux_time --no-default-features --features crux_core/critical-section --target thumbv7em-none-eabihf
     cargo test -p crux_http --no-default-features --test nostd_command
     cargo test -p crux_time --no-default-features --test nostd_clock
+    cargo check -p ble_protocol --target thumbv7em-none-eabihf
+    cargo check -p ble_protocol --target wasm32-unknown-unknown
 
 # Mirror the `examples` CI workflow — every example x shell, serially (very heavy)
 ci-examples:

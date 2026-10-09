@@ -28,7 +28,7 @@ bench = false
 
 [dependencies]
 cpb-counter-http-app = { path = "../app" }
-cpb-protocol = { path = "../protocol" }
+ble_protocol = { path = "../../../examples_support/ble_protocol" }
 crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros", "critical-section"] }
 crux_http = { path = "../../../crux_http", default-features = false }
 embedded-alloc = "0.7"
