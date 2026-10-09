@@ -1,16 +1,12 @@
-//! Host-side heap probe for the cpb-counter core. Uses the firmware's `app.rs`
-//! unchanged, drives it the way the shell does, and reports peak heap use.
-//! Host pointers are 8 bytes against 4 on the nRF52840, so treat the result as
-//! an upper bound.
+//! Host-side heap probe for the counter's core, built without std as the
+//! firmware builds it. Drives it the way the cpb shell does and reports peak
+//! heap use. Host pointers are 8 bytes against 4 on the nRF52840, so treat the
+//! result as an upper bound.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[path = "../../src/app.rs"]
-mod app;
-
-use app::{Counter, Effect, Event};
-use crux_core::Core;
+use shared::{Core, Counter, Effect, Event};
 
 struct Tracking;
 static CURRENT: AtomicUsize = AtomicUsize::new(0);
@@ -36,43 +32,39 @@ fn main() {
     PEAK.store(base, Ordering::Relaxed);
 
     let core: Core<Counter> = Core::new();
-    let mut delays = Vec::new();
     let mut renders = 0;
 
-    let mut handle = |effects: Vec<Effect>, delays: &mut Vec<_>| {
+    // The shell's handler: every render reads the view, as the firmware does.
+    let mut handle = |effects: Vec<Effect>| {
         for effect in effects {
             match effect {
                 Effect::Render(_) => {
                     let _ = core.view();
                     renders += 1;
                 }
-                Effect::Delay(request) => delays.push(request),
             }
         }
     };
 
-    handle(core.process_event(Event::Switch(true)), &mut delays);
+    // The firmware draws the initial view without an event.
+    let _ = core.view();
 
-    // Worst case for the shell: a burst of presses before any delay resolves.
+    // Bursts of presses, as fast as the shell can take them. Each event
+    // finishes with its render, so nothing is left in flight between presses.
     for burst in [1usize, 5, 20, 20, 20, 1, 1] {
         for i in 0..burst {
             let event = if i % 2 == 0 {
-                Event::ButtonA
+                Event::Increment
             } else {
-                Event::ButtonB
+                Event::Decrement
             };
-            handle(core.process_event(event), &mut delays);
-        }
-        let in_flight = delays.len();
-        let peak_in_flight = PEAK.load(Ordering::Relaxed) - base;
-        for mut request in std::mem::take(&mut delays) {
-            let effects = core.resolve(&mut request, ()).expect("resolves");
-            handle(effects, &mut delays);
+            handle(core.process_event(event));
         }
         println!(
-            "burst of {burst:>2} presses: {in_flight:>2} delays in flight, peak heap so far {peak_in_flight} B, live after settle {} B",
+            "burst of {burst:>2} presses: peak heap so far {} B, live after {} B",
+            PEAK.load(Ordering::Relaxed) - base,
             CURRENT.load(Ordering::Relaxed) - base
         );
     }
-    println!("renders: {renders}, view: {:?}", core.view());
+    println!("renders: {renders}, value: {}", core.view().value);
 }

@@ -20,7 +20,7 @@ version = "0.1.0"
 dependencies = [
  "critical-section",
  "crux_core",
- "facet",
+ "shared",
 ]
 
 [[package]]
@@ -322,6 +322,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.6",
+]
+
+[[package]]
+name = "shared"
+version = "0.1.0"
+dependencies = [
+ "crux_core",
+ "facet",
+ "serde",
 ]
 
 [[package]]

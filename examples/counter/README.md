@@ -28,6 +28,7 @@ binary that generates their types. The Rust shells depend on `shared` directly.
 - React Router — `web-react-router/`
 - Tauri — `tauri/`
 - TUI (ratatui) — `tui/`
+- Embedded firmware (Circuit Playground Bluefruit, `no_std`) — `cpb/`
 
 The Swift, Kotlin, TypeScript and C# shells use the `Core` that type
 generation emits: the codegen binary is told where `boltffi pack` puts the FFI
@@ -46,5 +47,6 @@ directly as Part I of the book walks through, see
   tools installed
 3. Run `just dev` to generate code and build that shell
 4. For `apple`, `android`, and `windows` shells, open the IDE (Xcode,
-  Android Studio, or Visual Studio). For `tui`, run `just run`. For others,
-  run `just serve` in the shell directory.
+  Android Studio, or Visual Studio). For `tui`, run `just run`. For `cpb`,
+  see its [README](./cpb/README.md). For others, run `just serve` in the shell
+  directory.

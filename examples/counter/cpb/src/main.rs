@@ -1,5 +1,14 @@
-//! `spike(no_std)`: the firmware "shell" for a Crux core on the Circuit
-//! Playground Bluefruit. It calls `Core` directly; there is no FFI bridge.
+//! `spike(no_std)`: a firmware shell for the counter's core (`../shared`) on the
+//! Circuit Playground Bluefruit. It calls `Core` directly; there is no FFI bridge.
+//!
+//! Like any Crux shell it turns input into events, handles the effects the core
+//! asks for, and draws the view. The core is the same one the iOS, Android and
+//! web shells use; what is particular to this board stays here:
+//!   - button A sends `Increment` and button B sends `Decrement`;
+//!   - the view's `value` is drawn as a row of `NeoPixels`: green counting up,
+//!     red counting down;
+//!   - the slide switch picks the brightness, and the red LED flashes on each
+//!     press. Both are presentation, so the core never hears about them.
 //!
 //! Pins (`CircuitPython` `ports/nordic/boards/circuitplayground_bluefruit`):
 //!   button A    P1.02  (active high, needs pull-down)
@@ -16,11 +25,8 @@
 
 extern crate alloc;
 
-mod app;
-
 use alloc::vec::Vec;
 
-use crux_core::Core;
 use embassy_executor::Spawner;
 use embassy_futures::select::{Either4, select4};
 use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
@@ -32,16 +38,27 @@ use embassy_time::{Duration, Instant, Timer};
 use embedded_alloc::LlffHeap as Heap;
 use panic_halt as _;
 
-use app::{Counter, Effect, Event, PIXELS, ViewModel};
+use shared::{Core, Counter, Effect, Event};
 
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
 
-/// Heap for Crux: boxed futures, effect vectors, channel queues.
-/// The host heap probe (heap-probe/, 32-bit wasm) measures ~0.6 KB idle and
-/// ~1.5 KB per press whose flash is still in flight, so 32 KB covers ~20
-/// overlapping presses plus allocator overhead. RAM is not scarce here.
+/// Heap for Crux: the core's command and effect queues. Every event here
+/// finishes with a single `Render`, so nothing stays in flight between presses,
+/// and the host heap probe (heap-probe/, 64-bit pointers) peaks at about 3 KB.
+/// 32 KB is generous; RAM is not scarce here.
 const HEAP_SIZE: usize = 32 * 1024;
+
+/// Number of `NeoPixels` on the board. The count is drawn clamped to this,
+/// either way.
+const PIXELS: usize = 10;
+
+/// Pixel brightness (0–255) for each position of the slide switch.
+const BRIGHT: u8 = 40;
+const DIM: u8 = 6;
+
+/// How long the red LED stays on after a press.
+const FLASH: Duration = Duration::from_millis(120);
 
 // WS2812 timing with PWM at 16 MHz, 20 ticks per bit (1.25 us). The high bit
 // inverts polarity, so the line starts high.
@@ -59,13 +76,23 @@ const DEBOUNCE: Duration = Duration::from_millis(30);
 
 type Pwm<'a> = SequencePwm<'a>;
 
+/// One `NeoPixel`'s colour.
+#[derive(Clone, Copy, Default)]
+struct Rgb {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
 struct Shell<'a> {
     core: Core<Counter>,
-    led: Output<'a>,
     pwm: Pwm<'a>,
     words: [u16; WORDS],
-    /// Outstanding `Delay` requests, with the instant each is due.
-    delays: Vec<(Instant, crux_core::Request<app::Delay>)>,
+    /// Shell-local state: the slide switch's brightness.
+    bright: bool,
+    led: Output<'a>,
+    /// Shell-local state: when the red LED's flash ends, if one is showing.
+    led_off_at: Option<Instant>,
 }
 
 /// An input that reports only settled changes of level, on press *and* release,
@@ -102,46 +129,59 @@ impl<'a> Debounced<'a> {
 }
 
 impl Shell<'_> {
+    /// Sends an event to the core and handles the effects it asks for.
+    fn process_event(&mut self, event: Event) {
+        let effects = self.core.process_event(event);
+        self.handle(effects);
+    }
+
     fn handle(&mut self, effects: Vec<Effect>) {
         for effect in effects {
             match effect {
-                Effect::Render(_) => {
-                    let view = self.core.view();
-                    self.render(&view);
-                }
-                Effect::Delay(request) => {
-                    let due =
-                        Instant::now() + Duration::from_millis(request.operation.millis.into());
-                    self.delays.push((due, request));
-                }
+                Effect::Render(_) => self.render(),
             }
         }
     }
 
-    fn resolve_due(&mut self) {
-        let now = Instant::now();
-        let mut i = 0;
-        while i < self.delays.len() {
-            if self.delays[i].0 <= now {
-                let (_, mut request) = self.delays.swap_remove(i);
-                let effects = self.core.resolve(&mut request, ()).unwrap_or_default();
-                self.handle(effects);
-            } else {
-                i += 1;
+    /// Lights the red LED for `FLASH`. The main loop turns it off again.
+    fn flash(&mut self) {
+        self.led.set_high();
+        self.led_off_at = Some(Instant::now() + FLASH);
+    }
+
+    /// Draws the core's current view: `|value|` pixels, green for a positive
+    /// count and red for a negative one, at the switch's brightness.
+    fn render(&mut self) {
+        let value = self.core.view().value;
+
+        let level = if self.bright { BRIGHT } else { DIM };
+        let colour = if value >= 0 {
+            Rgb {
+                r: 0,
+                g: level,
+                b: 0,
             }
+        } else {
+            Rgb {
+                r: level,
+                g: 0,
+                b: 0,
+            }
+        };
+        // The core's count is unbounded; the ring has ten pixels.
+        let lit = (value.unsigned_abs() as usize).min(PIXELS);
+
+        let mut pixels = [Rgb::default(); PIXELS];
+        for pixel in pixels.iter_mut().take(lit) {
+            *pixel = colour;
         }
+        self.show(&pixels);
     }
 
-    fn next_due(&self) -> Option<Instant> {
-        self.delays.iter().map(|(due, _)| *due).min()
-    }
-
-    fn render(&mut self, view: &ViewModel) {
-        self.led
-            .set_level(if view.led_on { Level::High } else { Level::Low });
-
+    /// Sends the pixels down the WS2812 line.
+    fn show(&mut self, pixels: &[Rgb; PIXELS]) {
         // GRB, most significant bit first.
-        for (pixel, chunk) in view.pixels.iter().zip(self.words.chunks_mut(24)) {
+        for (pixel, chunk) in pixels.iter().zip(self.words.chunks_mut(24)) {
             let grb = (u32::from(pixel.g) << 16) | (u32::from(pixel.r) << 8) | u32::from(pixel.b);
             for (bit, word) in chunk.iter_mut().enumerate() {
                 *word = if grb & (1 << (23 - bit)) == 0 {
@@ -197,43 +237,59 @@ async fn main(spawner: Spawner) {
 
     let mut shell = Shell {
         core: Core::new(),
-        led,
         pwm,
         words: [RES; WORDS],
-        delays: Vec::new(),
+        // The switch reads low in its left position: bright.
+        bright: !switch.high,
+        led,
+        led_off_at: None,
     };
 
-    let effects = shell.core.process_event(Event::Switch(!switch.high));
-    shell.handle(effects);
+    // Draw the initial view. The core hasn't asked for a render yet, and no
+    // event is needed to read its view.
+    shell.render();
 
     loop {
-        let due = shell.next_due();
-        let timer = async {
-            match due {
+        // Wake when the LED's flash is due to end, if one is showing.
+        let led_off_at = shell.led_off_at;
+        let flash_ends = async {
+            match led_off_at {
                 Some(at) => Timer::at(at).await,
                 None => core::future::pending().await,
             }
         };
 
-        let event = match select4(
+        match select4(
             button_a.changed(),
             button_b.changed(),
             switch.changed(),
-            timer,
+            flash_ends,
         )
         .await
         {
             // Buttons are active high: count presses, ignore releases.
-            Either4::First(pressed) => pressed.then_some(Event::ButtonA),
-            Either4::Second(pressed) => pressed.then_some(Event::ButtonB),
-            Either4::Third(high) => Some(Event::Switch(!high)),
-            Either4::Fourth(()) => None,
-        };
-
-        if let Some(event) = event {
-            let effects = shell.core.process_event(event);
-            shell.handle(effects);
+            // (The core's `Reset` event has no button here.)
+            Either4::First(pressed) => {
+                if pressed {
+                    shell.flash();
+                    shell.process_event(Event::Increment);
+                }
+            }
+            Either4::Second(pressed) => {
+                if pressed {
+                    shell.flash();
+                    shell.process_event(Event::Decrement);
+                }
+            }
+            // Brightness is the shell's own business: redraw the same view.
+            Either4::Third(high) => {
+                shell.bright = !high;
+                shell.render();
+            }
+            Either4::Fourth(()) => {
+                shell.led.set_low();
+                shell.led_off_at = None;
+            }
         }
-        shell.resolve_due();
     }
 }

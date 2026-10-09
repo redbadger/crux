@@ -1,21 +1,27 @@
 # Counter on a Circuit Playground Bluefruit (no_std spike)
 
-Spike: a Crux core running as `no_std` firmware on an Adafruit
+Spike: the counter's Crux core ([`../shared`](../shared)), the same one the iOS, Android and
+web shells use, running as `no_std` firmware on an Adafruit
 [Circuit Playground Bluefruit](https://www.adafruit.com/product/4333) (nRF52840, Cortex-M4F,
 1 MB flash, 256 KB RAM), with [embassy](https://embassy.dev) as the shell. It's evidence for
 an RFC on `no_std` support, not mergeable code. The findings, including what had to change in
 `crux_core`, are in [SPIKE_NOTES.md](./SPIKE_NOTES.md).
 
-On the board: button A adds a NeoPixel, button B removes one (negative counts are red), the
-slide switch sets the brightness, and the red LED (D13) flashes on each press. The flash is a
-custom async `Delay` effect, resolved by the shell with an embassy timer.
+On the board: button A sends `Increment` and button B sends `Decrement`. On each `Render` the
+shell draws the view's `value` as NeoPixels (green counting up, red counting down, clamped to
+the ten pixels). The slide switch sets the brightness and the red LED (D13) flashes on each
+press; both are presentation, so they live in the shell and the core never hears about them.
+
+The firmware is its own Cargo workspace, excluded from the counter's (`exclude = ["cpb"]` in
+`../Cargo.toml`). It builds for another target with its own release profile, and depends on
+`shared` with `default-features = false`, so feature unification with the std shells can't
+pull std back in.
 
 | Path | What |
 |---|---|
-| `src/app.rs` | the Crux app (`no_std`, knows nothing about the board) |
-| `src/main.rs` | the firmware shell: buttons, switch, NeoPixels (WS2812 over PWM), `Delay` |
+| `src/main.rs` | the shell: buttons, switch, NeoPixels (WS2812 over PWM), LED flash |
 | `memory.x`, `build.rs`, `.cargo/config.toml` | linker layout for the board's bootloader, target `thumbv7em-none-eabihf` |
-| `heap-probe/` | runs `app.rs` on the host with a counting allocator and reports peak heap |
+| `heap-probe/` | runs the core on the host, as the firmware builds it, with a counting allocator, and reports peak heap |
 
 ## Running
 
@@ -27,6 +33,7 @@ just check       # fmt + clippy (pedantic), firmware and heap probe
 just build       # release firmware
 just size        # section sizes
 just heap-probe  # peak heap on the host (pointers are 8 bytes there, so it's an upper bound)
+just uf2         # target/cpb-counter.uf2, ready to copy onto the board
 ```
 
 To put it on the board:

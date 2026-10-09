@@ -1,0 +1,20 @@
+[package]
+name = "cpb-counter-heap-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "spike(no_std): run the counter core on the host, no_std crux_core, and measure peak heap"
+
+[workspace]
+
+[dependencies]
+# Same features as the firmware: the counter's core and crux_core without std
+# (critical-section locks, internal channel).
+shared = { path = "../../shared", default-features = false }
+crux_core = { path = "../../../../crux_core", default-features = false, features = ["critical-section"] }
+# no_std crux_core takes critical sections; on the host, use the std implementation.
+critical-section = { version = "1.2", features = ["std"] }
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
