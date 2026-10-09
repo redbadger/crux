@@ -39,6 +39,7 @@ const Home: NextPage = () => {
       </section>
       <section className="container has-text-centered">
         <p className="is-size-5">{view.text}</p>
+        {view.error && <p className="has-text-danger">{view.error}</p>}
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-warning"

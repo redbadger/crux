@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context as _, Result, bail};
 use futures_util::{StreamExt, stream};
 use gloo_net::http;
 use js_sys::Uint8Array;
@@ -13,8 +13,11 @@ pub async fn request(
 ) -> Result<impl stream::TryStream<Ok = SseResponse, Error = JsValue>> {
     let response = http::Request::get(url).send().await?;
 
-    let raw_body = response.body().unwrap_throw();
-    let body = ReadableStream::from_raw(raw_body.dyn_into().unwrap_throw());
+    if !response.ok() {
+        bail!("SSE request failed: {}", response.status());
+    }
+    let raw_body = response.body().context("SSE response has no body")?;
+    let body = ReadableStream::from_raw(raw_body.unchecked_into());
 
     let stream = body.into_stream();
 

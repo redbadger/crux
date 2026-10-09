@@ -43,8 +43,9 @@ struct CounterHandler: EffectHandler {
     /// capability.
     ///
     /// Each complete event (the bytes up to a blank line) goes back as a
-    /// `chunk`, for the core to decode. When the server closes the connection
-    /// the stream ends with `done`, and nothing is sent after it.
+    /// `chunk`, for the core to decode. Whether the server closes the
+    /// connection or the connection fails, the stream ends with `done`, so the
+    /// core knows to reopen it, and nothing is sent after it.
     func serverSentEvents(_ operation: SseRequest, into sink: EffectSink<SseResponse>) {
         guard let url = URL(string: operation.url) else { return }
 
@@ -60,11 +61,11 @@ struct CounterHandler: EffectHandler {
                         buffer = Data()
                     }
                 }
-
-                sink.send(.done)
             } catch {
                 print("SSE error: \(error)")
             }
+
+            sink.send(.done)
         }
     }
 }

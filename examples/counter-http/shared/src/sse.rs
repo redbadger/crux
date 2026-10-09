@@ -8,9 +8,11 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use crux_core::{Request, command::StreamBuilder, macros::Operation};
 
 // ANCHOR: operation
-/// Open a Server-Sent Events stream on `url`. The shell answers with a
-/// sequence of [`SseResponse`]s: a `Chunk` per batch of bytes it reads, then
-/// one `Done` when the server closes the connection.
+/// Open a Server-Sent Events stream on `url`.
+///
+/// The shell answers with a sequence of [`SseResponse`]s: a `Chunk` per batch
+/// of bytes it reads, then one `Done` when the stream ends, whether the server
+/// closed it or the connection failed.
 #[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[operation(stream, output = SseResponse)]
 pub struct SseRequest {

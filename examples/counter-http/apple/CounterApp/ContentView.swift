@@ -14,6 +14,10 @@ struct ContentView: View {
             Text(core.view.text)
                 .foregroundColor(core.view.confirmed ? .primary : .secondary)
                 .padding()
+            if let error = core.view.error {
+                Text(error)
+                    .foregroundColor(.red)
+            }
             HStack {
                 ActionButton(label: "Dec", color: .yellow) {
                     core.update(.decrement)
