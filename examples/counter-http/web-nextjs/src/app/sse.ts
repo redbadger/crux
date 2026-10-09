@@ -5,8 +5,8 @@ export async function* request({ url }: SseRequest) {
   const request = new Request(url);
 
   const response = await fetch(request);
-  if (!response.body) {
-    throw new Error("SSE response has no body");
+  if (!response.ok || !response.body) {
+    throw new Error(`SSE request failed: ${response.status}`);
   }
 
   const reader = response.body.getReader();

@@ -10,7 +10,12 @@ import type {
   TimerId,
   ViewModel,
 } from "shared_types/app";
-import { Core, TimeoutTimeHandler, fetchHttpHandler } from "shared_types/app";
+import {
+  Core,
+  TimeoutTimeHandler,
+  fetchHttpHandler,
+  sseResponseDone,
+} from "shared_types/app";
 
 import * as sse from "./sse";
 
@@ -52,11 +57,17 @@ export class CounterHandler implements EffectHandler {
   /// `shared/src/sse.rs`), so no crate ships a handler for them and the shell
   /// implements the operation here with `sse.ts`, which yields a `Chunk` per
   /// read from the response body and a final `Done`. That is the pattern for
-  /// any custom capability.
+  /// any custom capability. If the connection fails, the stream still ends
+  /// with `Done`, so the core knows to reopen it.
   serverSentEvents(operation: SseRequest, sink: EffectSink<SseResponse>): void {
     void (async () => {
-      for await (const response of sse.request(operation)) {
-        sink.send(response);
+      try {
+        for await (const response of sse.request(operation)) {
+          sink.send(response);
+        }
+      } catch (error) {
+        console.error("SSE error", error);
+        sink.send(sseResponseDone());
       }
     })();
   }
