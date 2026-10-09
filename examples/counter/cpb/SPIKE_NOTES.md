@@ -423,7 +423,11 @@ facet change upstream. Out of scope for a first pass.
 8. **CI**: build crux_core and a tiny no_std example (this one) for
    thumbv7em-none-eabihf on every PR, or the no_std path will rot quickly.
 9. **Capability crates**: `crux_time` (no `Instant`/`SystemTime` in core),
-   `crux_kv` and `crux_http` were not touched.
+   `crux_kv` and `crux_http` were not touched. Without `std`, `crux_time` does not
+   have `clock::Time::notify_every`. It uses an unbounded `futures` mpsc channel and a
+   boxed stream, which need std (or more porting work), and the no_std targets in this
+   spike do not use them. A no_std version is possible later, for example with a
+   channel that uses only `alloc`.
 10. Flashed and working on a real CPB (2026-10-04): it boots at 0x26000
     through the MBR and the disabled SoftDevice, GPIOTE interrupts reach the
     app, buttons A/B, the slide switch, the NeoPixels and D13 all behave as
