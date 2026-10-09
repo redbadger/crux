@@ -4,6 +4,10 @@
 //! Current time (on a wall clock) is considered a side-effect (although if we were to get pedantic, it's
 //! more of a side-cause) by Crux, and has to be obtained externally. This capability provides a simple
 //! interface to do so.
+// spike(no_std): without `std` the deprecated root `Time` and anything naming `SystemTime` go.
+#![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate alloc;
 
 pub mod clock;
 pub mod command;
@@ -12,25 +16,24 @@ pub mod protocol;
 #[cfg(feature = "facet_typegen")]
 pub mod shell;
 
+use core::sync::atomic::{AtomicUsize, Ordering};
+
+#[cfg(feature = "std")]
 use std::{
     collections::HashSet,
     future::Future,
     marker::PhantomData,
     pin::Pin,
-    sync::{
-        LazyLock, Mutex,
-        atomic::{AtomicUsize, Ordering},
-    },
+    sync::{LazyLock, Mutex},
     task::Poll,
     time,
 };
 
+#[cfg(feature = "std")]
 use crux_core::{Command, Request, command::RequestBuilder};
-use futures::{
-    FutureExt,
-    channel::oneshot::{self, Sender},
-    select_biased,
-};
+use futures::channel::oneshot::Sender;
+#[cfg(feature = "std")]
+use futures::{FutureExt, channel::oneshot, select_biased};
 
 pub use protocol::*;
 #[cfg(feature = "facet_typegen")]
@@ -53,6 +56,7 @@ pub enum TimerOutcome {
 ///
 /// The capability also supports cancellation from the core side, using the [`TimerHandle`]
 /// returned by [`notify_at`](Time::notify_at) and [`notify_after`](Time::notify_after).
+#[cfg(feature = "std")]
 #[allow(deprecated)]
 #[deprecated(
     since = "0.19.0",
@@ -64,6 +68,7 @@ pub struct Time<Effect, Event> {
     event: PhantomData<Event>,
 }
 
+#[cfg(feature = "std")]
 #[allow(deprecated)]
 impl<Effect, Event> Time<Effect, Event>
 where
@@ -296,11 +301,14 @@ impl From<TimerHandle> for CompletedTimerHandle {
     }
 }
 
+// spike(no_std): `fetch_add` needs atomic compare-and-swap, which thumbv7em has (thumbv6m
+// would not).
 fn get_timer_id() -> TimerId {
     static COUNTER: AtomicUsize = AtomicUsize::new(1);
     TimerId(COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
+#[cfg(feature = "std")]
 #[allow(deprecated)]
 #[deprecated(
     since = "0.19.0",
@@ -315,6 +323,7 @@ where
     future: F,
 }
 
+#[cfg(feature = "std")]
 #[allow(deprecated)]
 impl<F> Future for TimerFuture<F>
 where
@@ -352,10 +361,11 @@ where
 // but the whose futures have _not since been polled_. When the future is next
 // polled, the timer id is evicted from this set and the timer is 'poisoned'
 // so as to return immediately without waiting on the shell.
+#[cfg(feature = "std")]
 static CLEARED_TIMER_IDS: LazyLock<Mutex<HashSet<TimerId>>> =
     LazyLock::new(|| Mutex::new(HashSet::new()));
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 #[allow(deprecated)]
 mod test {
     use super::*;

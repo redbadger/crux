@@ -90,7 +90,7 @@ check-versions:
         fi
     done <<FACET_PINS
     $(grep -HoE '^facet = "=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/shared/Cargo.toml || true)
-    $(grep -HoE '^facet = \{ version = "=[0-9]+\.[0-9]+\.[0-9]+"' examples/*/shared/Cargo.toml || true)
+    $(grep -HoE '^facet = \{ version = "=[0-9]+\.[0-9]+\.[0-9]+"' examples/*/Cargo.toml examples/*/shared/Cargo.toml crux_*/Cargo.toml || true)
     $(grep -rHoE '^facet = "=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
     $(grep -HoE 'Pin facet to [0-9]+\.[0-9]+\.[0-9]+' renovate.json || true)
     $(grep -F -A3 -H '"matchPackageNames": ["facet"],' renovate.json | grep -E 'allowedVersions' || true)
@@ -187,6 +187,15 @@ ci: check build
     cargo test --doc -p crux_http --features crux_http/http-types
     @echo '{{ style("command") }}check (crux_http for wasm32-unknown-unknown):{{ NORMAL }}'
     cargo check -p crux_http --target wasm32-unknown-unknown
+    just check-nostd
+
+# spike(no_std): the capability crates without std, on a real no_std target and on the host
+check-nostd:
+    @echo '{{ style("command") }}check-nostd (crux_http, crux_time for thumbv7em-none-eabihf):{{ NORMAL }}'
+    cargo check -p crux_http --no-default-features --features crux_core/critical-section --target thumbv7em-none-eabihf
+    cargo check -p crux_time --no-default-features --features crux_core/critical-section --target thumbv7em-none-eabihf
+    cargo test -p crux_http --no-default-features --test nostd_command
+    cargo test -p crux_time --no-default-features --test nostd_clock
 
 # Mirror the `examples` CI workflow — every example x shell, serially (very heavy)
 ci-examples:

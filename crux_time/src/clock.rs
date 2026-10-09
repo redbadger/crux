@@ -10,9 +10,14 @@
 //! will go on meaning exactly what it means today, and `crux_time::Time` will
 //! come to mean this type.
 
-use std::{future::Future, marker::PhantomData, time};
+use core::{future::Future, marker::PhantomData, time};
+// spike(no_std): `now` and `notify_at` deal in `SystemTime`, so they need std.
+#[cfg(feature = "std")]
+use std::time::SystemTime;
 
-use crux_core::{Command, Request, command::RequestBuilder};
+#[cfg(feature = "std")]
+use crux_core::Command;
+use crux_core::{Request, command::RequestBuilder};
 use futures::{FutureExt, channel::oneshot, select_biased};
 
 use crate::{CompletedTimerHandle, TimerHandle, TimerOutcome, get_timer_id, operation};
@@ -61,8 +66,9 @@ where
     Event: Send + 'static,
 {
     /// Ask for the current wall-clock time.
+    #[cfg(feature = "std")]
     #[must_use]
-    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = time::SystemTime>>
+    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = SystemTime>>
     where
         Effect: From<Request<operation::Now>>,
     {
@@ -75,9 +81,10 @@ where
     ///
     /// # Panics
     /// Panics if the timer ID the shell answers with is not the one it was asked about.
+    #[cfg(feature = "std")]
     #[must_use]
     pub fn notify_at(
-        system_time: time::SystemTime,
+        system_time: SystemTime,
     ) -> (
         RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
         TimerHandle,
@@ -142,7 +149,7 @@ where
     }
 
     /// Ask to receive a notification after the specified
-    /// [`Duration`](std::time::Duration) has elapsed. Returns the `RequestBuilder`
+    /// [`Duration`](core::time::Duration) has elapsed. Returns the `RequestBuilder`
     /// alongside a [`TimerHandle`], which can be stored and used to clear the timer.
     ///
     /// # Panics

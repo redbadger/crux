@@ -12,12 +12,14 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-chrono = { version = "0.4", features = ["serde"], optional = true }
-crux_core = { version = "0.21.0", path = "../crux_core" }
-facet.workspace = true
-futures = "0.3"
-serde = { workspace = true, features = ["derive"] }
-thiserror.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["alloc", "serde"], optional = true }
+# spike(no_std): `std` comes back through our `std` feature.
+crux_core = { version = "0.21.0", path = "../crux_core", default-features = false, features = ["crux_macros"] }
+# spike(no_std): not `.workspace = true`, whose entries enable std (as in crux_core).
+facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
+futures = { version = "0.3", default-features = false, features = ["alloc", "async-await"] }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+thiserror = { version = "2.0", default-features = false }
 
 [dev-dependencies]
 tempfile = "3.27.0"
@@ -27,4 +29,16 @@ crux_core = { version = "0.21.0", path = "../crux_core", features = [
 ] }
 
 [features]
-facet_typegen = ["crux_core/facet_typegen"]
+default = ["std"]
+# spike(no_std): without `std`, crux_time keeps the protocol and operation types,
+# `clock::Time::notify_after` and the timer handles. The deprecated root `Time`, and
+# everything that names `SystemTime` (`clock::Time::{now, notify_at}`), need std.
+std = [
+    "chrono?/default",
+    "crux_core/std",
+    "facet/std",
+    "futures/std",
+    "serde/std",
+    "thiserror/std",
+]
+facet_typegen = ["std", "crux_core/facet_typegen"]
