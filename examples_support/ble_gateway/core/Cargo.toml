@@ -6,7 +6,7 @@ publish.workspace = true
 description = "spike: a Crux app that forwards the CPB's HTTP and SSE requests from BLE"
 
 [dependencies]
-cpb-protocol.workspace = true
+ble_protocol.workspace = true
 crux_core.workspace = true
 crux_http.workspace = true
 

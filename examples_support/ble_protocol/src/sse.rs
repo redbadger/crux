@@ -1,7 +1,8 @@
 //! The Server-Sent Events operation, as in counter-http's `sse.rs`, without std.
 //!
-//! Only the operation lives here, because the firmware app and the gateway both need it.
-//! The app's `ServerSentEvents::get` command (which parses the stream) is in the app crate.
+//! This is the wire copy, independent of any app: the firmware maps its app's own SSE
+//! request onto it (the url) and the responses back, and the gateway performs it. The app's
+//! `ServerSentEvents::get` command (which parses the stream) stays in the app.
 
 use alloc::{string::String, vec::Vec};
 

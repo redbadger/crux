@@ -15,7 +15,7 @@ pub mod ble;
 
 use std::collections::{BTreeMap, VecDeque};
 
-use cpb_protocol::{
+use ble_protocol::{
     GATEWAY_CHUNK, Id, RX_UUID, Reassembler, SERVICE_UUID, SseRequest, SseResponse, TX_UUID,
     ToDevice, ToGateway, decode, encode, try_encode,
 };

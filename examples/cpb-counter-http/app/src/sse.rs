@@ -11,7 +11,7 @@ use crux_core::{Request, command::StreamBuilder};
 use futures_util::{Stream, StreamExt, stream};
 use serde::de::DeserializeOwned;
 
-use cpb_protocol::{SseRequest, SseResponse};
+use ble_protocol::{SseRequest, SseResponse};
 
 pub struct ServerSentEvents;
 

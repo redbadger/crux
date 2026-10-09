@@ -1,11 +1,13 @@
-# Gateway
+# BLE gateway
 
-A page in Chrome that connects to the Circuit Playground Bluefruit over Web Bluetooth and
-performs its HTTP requests and Server-Sent Events streams. It's a Crux app too:
+A page in Chrome that connects to a Crux device over Web Bluetooth (for now, the Circuit
+Playground Bluefruit in [`cpb-counter-http`](../../examples/cpb-counter-http/)) and performs its
+HTTP requests and Server-Sent Events streams. It speaks [`ble_protocol`](../ble_protocol/) and
+knows nothing about the device's app. It's a Crux app too, and a workspace of its own:
 
 | Crate | What |
 |---|---|
-| `core/` | `gateway-core`: reassembles the device's messages, re-emits each `HttpRequest` / `SseRequest` as an effect, and frames the answers back. It knows nothing about the counter, so it works as a generic proxy for one device |
+| `core/` | `gateway-core`: reassembles the device's messages, re-emits each `HttpRequest` / `SseRequest` as an effect, and frames the answers back. It works as a generic proxy for one device |
 | `web/` | `gateway-web`: the Leptos shell. Web Bluetooth (`src/ble.rs`), `fetch` for HTTP and SSE (adapted from counter-http's Leptos shell), and a log of what it forwards |
 
 ```sh
@@ -15,9 +17,9 @@ just test     # the core's tests
 just check    # fmt + clippy (pedantic), core and the wasm shell
 ```
 
-Click **Connect** and choose "CPB Counter". Chrome remembers the device, so reconnecting
-later needs no chooser. Web Bluetooth needs Chrome (or another Chromium) and a secure
-context; `localhost` counts.
+Click **Connect** and choose the device, which advertises as `ble_protocol::DEVICE_NAME` ("CPB Counter").
+Chrome remembers the device, so reconnecting later needs no chooser. Web Bluetooth needs
+Chrome (or another Chromium) and a secure context; `localhost` counts.
 
 Points worth knowing:
 - Chrome allows one GATT operation at a time, so the core queues its writes and sends the

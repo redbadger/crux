@@ -8,6 +8,7 @@ members = [
     "crux_time",
     "doctest_support",
     "examples_support/api_server",
+    "examples_support/ble_protocol",
 ]
 # The examples are workspaces of their own. Excluding them matters when one of
 # their crates is a path dependency of a third workspace (an embedded shell):
