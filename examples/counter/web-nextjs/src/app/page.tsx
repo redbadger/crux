@@ -15,7 +15,7 @@ import { createCore } from "./core";
 
 // ANCHOR: create_core
 const Home: NextPage = () => {
-  const [view, setView] = useState(new ViewModel(""));
+  const [view, setView] = useState(new ViewModel("", 0));
   const core = useRef<Core | null>(null);
   const initialized = useRef(false);
 

@@ -83,5 +83,5 @@ fun View(view: ViewModel, update: (Event) -> Unit) {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    CounterTheme { View(ViewModel("Count is: 0"), {}) }
+    CounterTheme { View(ViewModel("Count is: 0", 0), {}) }
 }

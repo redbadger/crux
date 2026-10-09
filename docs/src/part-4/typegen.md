@@ -56,8 +56,9 @@ The process has three parts:
 1. **Annotate your types**: derive `Facet` on types that cross the
    FFI boundary, and use `#[effect(facet_typegen)]` on your `Effect`
    enum.
-2. **Add a codegen binary to your shared crate**: a short `main`
-   that registers your app and generates the foreign code.
+2. **Add a codegen binary to your shared crate**, or to the crate
+   that holds your FFI: a short `main` that registers your app and
+   generates the foreign code.
 3. **Run it**: typically via a `just typegen` recipe as part of your
    build workflow.
 
@@ -123,12 +124,13 @@ and `#[facet(opaque)]` on its field.
 
 ## The codegen binary
 
-Each shared crate includes a small binary that drives the type
-generation. Here's the one from the counter example:
+Each example includes a small binary that drives the type
+generation. Here's the one from the counter example, which keeps it in
+its FFI crate, `ffi`:
 
 ```rust,no_run,noplayground
-// Rust
-{{#include ../../../examples/counter/shared/src/bin/codegen.rs}}
+// Rust: ffi/src/bin/codegen.rs
+{{#include ../../../examples/counter/ffi/src/bin/codegen.rs}}
 ```
 
 The key steps are:
@@ -164,31 +166,39 @@ in `boltffi.toml`.
 
 ### Cargo.toml setup
 
-The codegen binary needs a few additions to your `shared/Cargo.toml`.
+The codegen binary needs a few additions to the two manifests.
 
-Declare the binary, gated on a `codegen` feature:
+In `ffi/Cargo.toml`, declare the binary, gated on a `codegen` feature:
 
 ```toml
-# TOML
-{{#include ../../../examples/counter/shared/Cargo.toml:typegen_bin}}
+# TOML: ffi/Cargo.toml
+{{#include ../../../examples/counter/ffi/Cargo.toml:typegen_bin}}
 ```
 
-Enable `facet_typegen` in `crux_core`:
+In `shared/Cargo.toml`, enable `facet_typegen` in `crux_core`:
 
 ```toml
-# TOML
+# TOML: shared/Cargo.toml
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen}}
+```
+
+and turn it on from `ffi/Cargo.toml` (the `codegen` feature enables
+this one):
+
+```toml
+# TOML: ffi/Cargo.toml
+{{#include ../../../examples/counter/ffi/Cargo.toml:typegen}}
 ```
 
 If your app uses `crux_http`, `crux_kv` or `crux_time`, type generation also
 emits the protocol of each one. You do not need a feature of these crates for
 it. See [Shell protocols](#shell-protocols).
 
-And add `facet` as a dependency, because all types that cross the FFI
-boundary derive `Facet`:
+And add `facet` as a dependency of `shared`, because all types that
+cross the FFI boundary derive `Facet`:
 
 ```toml
-# TOML
+# TOML: shared/Cargo.toml
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen_deps}}
 ```
 
@@ -202,6 +212,7 @@ layout looks like this:
 ```text
 examples/counter/
 ├── shared/            # the Crux core
+├── ffi/               # its FFI, and the codegen binary
 ├── apple/
 │   └── generated/     # Swift package "App"
 ├── Android/
@@ -220,7 +231,7 @@ shell runs:
 
 ```sh
 RUST_LOG=info cargo run \
-    --package shared \
+    --package shared_ffi \
     --bin codegen \
     --features codegen,facet_typegen \
     -- \
