@@ -7,8 +7,8 @@ knows nothing about the device's app. It's a Crux app too, and a workspace of it
 
 | Crate | What |
 |---|---|
-| `core/` | `gateway-core`: reassembles the device's messages, re-emits each `HttpRequest` / `SseRequest` as an effect, and frames the answers back. It works as a generic proxy for one device |
-| `web/` | `gateway-web`: the Leptos shell. Web Bluetooth (`src/ble.rs`), `fetch` for HTTP and SSE (adapted from counter-http's Leptos shell), and a log of what it forwards |
+| `core/` | `gateway-core`: reassembles the device's messages, re-emits each `HttpRequest` / `SseRequest` as an effect (SSE as its own `SseStream`, so the shell can say whether a stream was closed or failed), and frames the answers back. It works as a generic proxy for one device |
+| `web/` | `gateway-web`: the Leptos shell. Web Bluetooth (`src/ble.rs`), `fetch` for HTTP and SSE (adapted from counter-http's Leptos shell), and a log of what it forwards, each line stamped with the time the shell first showed it |
 
 ```sh
 just doctor   # trunk and the wasm32 target
@@ -27,5 +27,8 @@ Points worth knowing:
 - The core writes in 20-byte chunks, because Chrome doesn't reveal the negotiated MTU.
 - When the device disconnects, the core aborts its open SSE streams. The shell then stops
   reading the response body, which closes the fetch.
+- An SSE stream ends on the device the same way (`SseDone`) whether the server closed it or
+  it failed (fetch rejected, a non-2xx status, or a body read error); only the log tells them
+  apart (`SSE closed by the server` / `SSE failed: …`). The device reopens it either way.
 - Web Bluetooth is behind web-sys's unstable APIs: `.cargo/config.toml` sets
   `--cfg=web_sys_unstable_apis` for wasm builds.

@@ -5,10 +5,9 @@ use std::rc::Rc;
 use futures_util::StreamExt;
 use leptos::{prelude::*, task};
 
-use ble_protocol::SseResponse;
-use gateway_core::{Effect, Event, Gateway, ViewModel};
+use gateway_core::{Effect, Event, Gateway, SseEvent, ViewModel};
 
-use crate::{ble, http, sse};
+use crate::{ble, clock, http, sse};
 
 pub type Core = Rc<crux_core::Core<Gateway>>;
 
@@ -54,7 +53,11 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
 
     match effect {
         Effect::Render(_) => {
-            render.update(|view| *view = core.view());
+            let view = core.view();
+            // Lines first shown now were logged now: the core only changes when the shell
+            // hands it an event or an answer, and the shell renders straight after.
+            clock::stamp(&view.log);
+            render.set(view);
         }
 
         Effect::Http(mut request) => {
@@ -68,21 +71,28 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
         Effect::ServerSentEvents(mut request) => {
             let core = core.clone();
             task::spawn_local(async move {
-                let operation = request.operation.clone();
-                match sse::request(&operation).await {
-                    Ok(stream) => {
-                        let mut stream = std::pin::pin!(stream);
-                        while let Some(Ok(chunk)) = stream.next().await {
+                let stream = match sse::request(&request.operation).await {
+                    Ok(stream) => stream,
+                    Err(error) => {
+                        resolve(&core, &mut request, SseEvent::Failed(error), render);
+                        return;
+                    }
+                };
+                let mut stream = std::pin::pin!(stream);
+                let end = loop {
+                    match stream.next().await {
+                        Some(Ok(chunk)) => {
                             // Stops reading (and so closes the fetch) once the core has
                             // aborted the stream, e.g. after the device disconnected.
-                            if !resolve(&core, &mut request, chunk, render) {
+                            if !resolve(&core, &mut request, SseEvent::Chunk(chunk), render) {
                                 return;
                             }
                         }
+                        Some(Err(error)) => break SseEvent::Failed(error),
+                        None => break SseEvent::Closed,
                     }
-                    Err(error) => log::warn!("SSE {}: {error}", operation.url),
-                }
-                resolve(&core, &mut request, SseResponse::Done, render);
+                };
+                resolve(&core, &mut request, end, render);
             });
         }
 

@@ -1,6 +1,7 @@
 //! spike: the Chrome gateway between the Circuit Playground Bluefruit and the internet.
 
 mod ble;
+mod clock;
 mod core;
 mod http;
 mod sse;
@@ -49,7 +50,15 @@ fn root_component() -> impl IntoView {
                     view.get()
                         .log
                         .into_iter()
-                        .map(|line| view! { <li>{line}</li> })
+                        .map(|line| {
+                            view! {
+                                <li>
+                                    <span class="time">{clock::time_of(line.seq)}</span>
+                                    " "
+                                    {line.text}
+                                </li>
+                            }
+                        })
                         .collect_view()
                 }}
             </ul>

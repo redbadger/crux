@@ -780,7 +780,6 @@ dependencies = [
 name = "gateway-web"
 version = "0.1.0"
 dependencies = [
- "ble_protocol",
  "console_error_panic_hook",
  "console_log",
  "crux_core",
