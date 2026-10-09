@@ -117,21 +117,10 @@ version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 
-[lib]
-crate-type = ["cdylib", "lib", "staticlib"]
-name = "shared"
-
 [dependencies]
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
 ```
-
-Note the `crate-type` in the `[lib]` section. This is in preparation for linking with the
-shells:
-
-- `lib` is the default rust library when linking into a rust binary
-- `staticlib` is a static library (`libshared.a`) for use with Apple apps
-- `cdylib` is a C-ABI dynamic library (`libshared.so`) for use with Android and other native shells
 
 ### The basic files
 

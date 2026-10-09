@@ -5,7 +5,7 @@ use crux_core::{
     bridge::{Bridge, EffectId},
 };
 
-use crate::Counter;
+use shared::Counter;
 
 /// The main interface used by the shell
 pub struct CoreFfi {
