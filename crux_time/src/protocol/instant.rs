@@ -1,3 +1,5 @@
+// spike(no_std): the `SystemTime` conversions need std.
+#[cfg(feature = "std")]
 use std::time::SystemTime;
 
 use facet::Facet;
@@ -35,6 +37,7 @@ impl Instant {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<SystemTime> for Instant {
     fn from(time: SystemTime) -> Self {
         let duration = time
@@ -46,6 +49,7 @@ impl From<SystemTime> for Instant {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<Instant> for SystemTime {
     fn from(time: Instant) -> Self {
         Self::UNIX_EPOCH + std::time::Duration::new(time.seconds, time.nanos)
@@ -69,6 +73,7 @@ mod test {
         let _ = Instant::new(1_000_000_000, 1_000_000_000);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn instant_to_std() {
         let actual: SystemTime = Instant::new(1_000_000_000, 10).into();
@@ -76,6 +81,7 @@ mod test {
         assert_eq!(actual, expected);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn std_to_instant() {
         let sys_time = SystemTime::UNIX_EPOCH + std::time::Duration::new(1_000_000_000, 10);
