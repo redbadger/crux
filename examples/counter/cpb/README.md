@@ -8,8 +8,9 @@ an RFC on `no_std` support, not mergeable code. The findings, including what had
 `crux_core`, are in [SPIKE_NOTES.md](./SPIKE_NOTES.md).
 
 On the board: button A sends `Increment` and button B sends `Decrement`. On each `Render` the
-shell draws the view's `value` as NeoPixels (green counting up, red counting down, clamped to
-the ten pixels). The slide switch sets the brightness and the red LED (D13) flashes on each
+shell draws the view's `value` on the ten NeoPixels as an odometer: the core's count is
+unbounded, so each lap of ten fills a new colour over the last (green, cyan, blue counting up;
+red, orange, magenta counting down). The slide switch sets the brightness and the red LED (D13) flashes on each
 press; both are presentation, so they live in the shell and the core never hears about them.
 
 The firmware is its own Cargo workspace, excluded from the counter's (`exclude = ["cpb"]` in

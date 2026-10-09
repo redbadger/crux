@@ -5,8 +5,10 @@
 //! asks for, and draws the view. The core is the same one the iOS, Android and
 //! web shells use; what is particular to this board stays here:
 //!   - button A sends `Increment` and button B sends `Decrement`;
-//!   - the view's `value` is drawn as a row of `NeoPixels`: green counting up,
-//!     red counting down;
+//!   - the view's `value` is drawn on the ring of `NeoPixels` as an odometer:
+//!     the core's count is unbounded, so each lap of ten fills a new colour over
+//!     the last (green, cyan, blue counting up; red, orange, magenta counting
+//!     down);
 //!   - the slide switch picks the brightness, and the red LED flashes on each
 //!     press. Both are presentation, so the core never hears about them.
 //!
@@ -49,8 +51,7 @@ static HEAP: Heap = Heap::empty();
 /// 32 KB is generous; RAM is not scarce here.
 const HEAP_SIZE: usize = 32 * 1024;
 
-/// Number of `NeoPixels` on the board. The count is drawn clamped to this,
-/// either way.
+/// Number of `NeoPixels` on the board: one lap of the odometer.
 const PIXELS: usize = 10;
 
 /// Pixel brightness (0–255) for each position of the slide switch.
@@ -149,31 +150,28 @@ impl Shell<'_> {
         self.led_off_at = Some(Instant::now() + FLASH);
     }
 
-    /// Draws the core's current view: `|value|` pixels, green for a positive
-    /// count and red for a negative one, at the switch's brightness.
+    /// Draws the core's current view at the switch's brightness. The core's
+    /// count is unbounded, so the ring is an odometer: each lap of ten fills in
+    /// a new colour over the last lap's. 10 is ten green, 11 is one cyan over
+    /// nine green, 20 is ten cyan. (Ported from `cpb-counter-http`.)
     fn render(&mut self) {
         let value = self.core.view().value;
 
         let level = if self.bright { BRIGHT } else { DIM };
-        let colour = if value >= 0 {
-            Rgb {
-                r: 0,
-                g: level,
-                b: 0,
-            }
-        } else {
-            Rgb {
-                r: level,
-                g: 0,
-                b: 0,
-            }
-        };
-        // The core's count is unbounded; the ring has ten pixels.
-        let lit = (value.unsigned_abs() as usize).min(PIXELS);
+        let positive = value >= 0;
+        let n = value.unsigned_abs() as usize;
 
         let mut pixels = [Rgb::default(); PIXELS];
-        for pixel in pixels.iter_mut().take(lit) {
-            *pixel = colour;
+        if n > 0 {
+            let lap = (n - 1) / PIXELS;
+            let units = (n - 1) % PIXELS + 1;
+            for (i, pixel) in pixels.iter_mut().enumerate() {
+                if i < units {
+                    *pixel = lap_colour(positive, lap, level);
+                } else if lap > 0 {
+                    *pixel = lap_colour(positive, lap - 1, level);
+                }
+            }
         }
         self.show(&pixels);
     }
@@ -201,6 +199,21 @@ impl Shell<'_> {
         cortex_m::asm::delay(64_000); // ~1 ms at 64 MHz
         drop(sequencer);
     }
+}
+
+/// The colour of lap `lap` (0 for 1..=10, 1 for 11..=20, ...): green, cyan,
+/// blue for positive counts, and red, orange, magenta for negative ones, round
+/// and round.
+const fn lap_colour(positive: bool, lap: usize, level: u8) -> Rgb {
+    let (r, g, b) = match (positive, lap % 3) {
+        (true, 0) => (0, level, 0),
+        (true, 1) => (0, level, level),
+        (true, _) => (0, 0, level),
+        (false, 0) => (level, 0, 0),
+        (false, 1) => (level, level / 2, 0),
+        (false, _) => (level, 0, level),
+    };
+    Rgb { r, g, b }
 }
 
 #[embassy_executor::main]

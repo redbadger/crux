@@ -790,9 +790,12 @@ What it took:
   trap again).
 
 The shell (`src/main.rs`) maps button A to `Increment` and button B to `Decrement`. On
-`Render` it reads `core.view().value`, clamps it to the ten pixels and draws it, with the
-colour and brightness logic that used to be the app's `view`. The core's count itself is
-unbounded now. Brightness and the LED flash are presentation, so they are shell state rather
+`Render` it reads `core.view().value` and draws it, with the brightness logic that used to be
+the app's `view`. The core's count is unbounded now, so clamping it to the ten pixels made
+every count above 10 look like 10 (found on hardware). The shell draws an odometer instead,
+ported from `cpb-counter-http`: each lap of ten fills a new colour over the last (green,
+cyan, blue up; red, orange, magenta down). That is presentation, so it stays in the shell and
+`shared` is unchanged. Brightness and the LED flash are presentation, so they are shell state rather
 than events:
 
 - the switch sets a `bright` flag and redraws the current view;
@@ -807,9 +810,10 @@ and `crux_macros` in the firmware's own manifest (`shared` brings what it needs)
 |---|---|---|---|
 | own app with a `Delay` effect, one loop (section 7) | 20,728 B | 24 B | 34,036 B |
 | shell over `counter/shared`, LED timer in the shell | 19,688 B | 24 B | 34,036 B |
+| the same, drawing an odometer rather than clamping | 19,824 B | 24 B | 34,036 B |
 
 Heap probe (host, 64-bit), 20-press bursts: peak 3,264 B and 2,064 B live afterwards, against
 58,480 / 3,248 B with the `Delay` commands in flight. Each event now ends with its `Render`,
 so nothing is left in flight between presses.
 
-Not yet run on hardware.
+Run on hardware (2026-10-09): buttons, dimming and the LED flash work; the odometer fills a new colour per lap of ten in both directions.
