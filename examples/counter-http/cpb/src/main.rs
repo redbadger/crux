@@ -137,6 +137,7 @@ impl Shell<'_> {
         self.handle(effects);
     }
 
+    // ANCHOR: handle
     fn handle(&mut self, effects: impl IntoIterator<Item = Effect>) {
         for effect in effects {
             match effect {
@@ -194,6 +195,7 @@ impl Shell<'_> {
             }
         }
     }
+    // ANCHOR_END: handle
 
     fn link(&mut self, event: LinkEvent) {
         match event {
@@ -210,12 +212,14 @@ impl Shell<'_> {
                 self.failed = true;
                 self.render();
             }
+            // ANCHOR: http_answer
             LinkEvent::Message(ToDevice::Http { id, result }) => {
                 if let Some(mut request) = self.http.remove(&id) {
                     let effects = self.core.resolve(&mut request, result).unwrap_or_default();
                     self.handle(effects);
                 }
             }
+            // ANCHOR_END: http_answer
             LinkEvent::Message(ToDevice::SseChunk { id, data }) => {
                 let Some(request) = self.sse.get_mut(&id) else {
                     return;

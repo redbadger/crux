@@ -42,6 +42,7 @@ use panic_halt as _;
 
 use shared::{Core, Counter, Effect, Event};
 
+// ANCHOR: allocator
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
 
@@ -50,6 +51,7 @@ static HEAP: Heap = Heap::empty();
 /// and the host heap probe (heap-probe/, 64-bit pointers) peaks at about 3 KB.
 /// 32 KB is generous; RAM is not scarce here.
 const HEAP_SIZE: usize = 32 * 1024;
+// ANCHOR_END: allocator
 
 /// Number of `NeoPixels` on the board: one lap of the odometer.
 const PIXELS: usize = 10;
@@ -85,6 +87,7 @@ struct Rgb {
     b: u8,
 }
 
+// ANCHOR: shell
 struct Shell<'a> {
     core: Core<Counter>,
     pwm: Pwm<'a>,
@@ -95,6 +98,7 @@ struct Shell<'a> {
     /// Shell-local state: when the red LED's flash ends, if one is showing.
     led_off_at: Option<Instant>,
 }
+// ANCHOR_END: shell
 
 /// An input that reports only settled changes of level, on press *and* release,
 /// so contact bounce on either edge cannot produce extra events.
@@ -130,6 +134,7 @@ impl<'a> Debounced<'a> {
 }
 
 impl Shell<'_> {
+    // ANCHOR: process_event
     /// Sends an event to the core and handles the effects it asks for.
     fn process_event(&mut self, event: Event) {
         let effects = self.core.process_event(event);
@@ -143,6 +148,7 @@ impl Shell<'_> {
             }
         }
     }
+    // ANCHOR_END: process_event
 
     /// Lights the red LED for `FLASH`. The main loop turns it off again.
     fn flash(&mut self) {
@@ -150,6 +156,7 @@ impl Shell<'_> {
         self.led_off_at = Some(Instant::now() + FLASH);
     }
 
+    // ANCHOR: render
     /// Draws the core's current view at the switch's brightness. The core's
     /// count is unbounded, so the ring is an odometer: each lap of ten fills in
     /// a new colour over the last lap's. 10 is ten green, 11 is one cyan over
@@ -175,6 +182,7 @@ impl Shell<'_> {
         }
         self.show(&pixels);
     }
+    // ANCHOR_END: render
 
     /// Sends the pixels down the WS2812 line.
     fn show(&mut self, pixels: &[Rgb; PIXELS]) {
@@ -248,6 +256,7 @@ async fn main(spawner: Spawner) {
         panic!("PWM init");
     };
 
+    // ANCHOR: main_loop
     let mut shell = Shell {
         core: Core::new(),
         pwm,
@@ -305,4 +314,5 @@ async fn main(spawner: Spawner) {
             }
         }
     }
+    // ANCHOR_END: main_loop
 }

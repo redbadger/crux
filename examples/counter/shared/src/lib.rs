@@ -1,7 +1,9 @@
+// ANCHOR: nostd
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unsafe_derive_deserialize)]
 
 extern crate alloc;
+// ANCHOR_END: nostd
 
 // ANCHOR: lib
 mod app;

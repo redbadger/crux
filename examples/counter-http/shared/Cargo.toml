@@ -8,6 +8,7 @@ repository.workspace = true
 license.workspace = true
 keywords.workspace = true
 
+# ANCHOR: nostd
 [features]
 default = ["std"]
 # On by default. Turn it off to build the core for an embedded target.
@@ -23,6 +24,7 @@ std = [
     "serde_json/std",
     "url/std",
 ]
+# ANCHOR_END: nostd
 # ANCHOR: facet_typegen
 facet_typegen = [
     "crux_core/facet_typegen",
