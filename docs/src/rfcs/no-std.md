@@ -9,10 +9,10 @@ to the board and works as intended, first with a `spin` lock and then with the
 `critical-section` design this RFC recommends. Heap use was measured on a host,
 not on the device.
 
-Since then the spike has made the counter example's own core build without
-`std` and rebuilt the firmware as one more shell over it, which has also been
-flashed and works. Work the spike has planned but not done is marked as
-planned.
+Since then the spike has made the counter and `counter_http` examples' own
+cores build without `std` and rebuilt both firmwares as shells over them, and
+both have been flashed and work. Work the spike has planned but not done is
+marked as planned.
 ```
 
 This RFC proposes that `crux_core`, and the code its macros emit, build without
@@ -64,16 +64,15 @@ The motivating case is the Circuit Playground Bluefruit, an nRF52840 board
 with two buttons, a slide switch, a red LED and ten NeoPixels. The spike's
 first counter app on it used a render effect, a custom async `Delay` operation
 resolved by the shell, and a `Command::new` task that awaited it and sent a
-follow-up event. A second firmware runs a copy of the `counter_http` app,
-with HTTP and server-sent events reaching the network over Bluetooth. That is
+follow-up event. A second firmware runs the `counter_http` app, with HTTP
+and server-sent events reaching the network over Bluetooth. That is
 a realistic slice of Crux, and the spike shows it fits comfortably in the
 chip's 1 MB of flash and 256 KB of RAM.
 
 The aim is one core for every shell: the same `shared` crate that the iOS,
 Android and web shells use, built without `std` for the firmware, with the
 device's own presentation (pixels, brightness, LEDs) in the firmware shell.
-The spike has done that for the counter example, and plans it for
-`counter_http`.
+The spike has done that for the counter and `counter_http` examples.
 
 ## Goals
 
@@ -415,17 +414,20 @@ serve.
   (see [Evidence](#evidence)). One fix is needed outside it:
   `facet-generate-attrs` must depend on `facet` with `default-features =
   false`, or it turns `facet/std` on for the whole build.
-- **`crux_time` (planned).** A default `std` feature and
-  `core::time::Duration`. `notify_after`, `TimerHandle`, `TimerOutcome` and
-  the `NotifyAfter` and `ClearTimer` operations work without `std`. `now` and
-  `notify_at`, which are built on `SystemTime`, and the deprecated root
-  `Time` and `TimerFuture` stay std-only.
+- **`crux_time` (done in the spike).** A default `std` feature and
+  `core::time::Duration`. The protocol types, `clock::Time::notify_after`,
+  the timer handles and the `NotifyAfter` and `ClearTimer` operations work
+  without `std`. `clock::Time::{now, notify_at}`, which name `SystemTime`, and
+  the deprecated root `Time` stay std-only. It has its own `no_std` test, and
+  `just check-nostd` and CI check it, with `crux_http`'s subset, for
+  `thumbv7em-none-eabihf`.
 - **`crux_kv`** is not touched.
 
 This is how cores should wait for time: through `crux_time`'s `NotifyAfter`
 and `ClearTimer`, as effect variants `TimeNotifyAfter` and `TimeClear`, rather
-than an app's own `Delay` operation as in the spike's first firmware. The
-shell serves them the same way it served `Delay`.
+than an app's own `Delay` operation as in the spike's first firmwares. The
+shell serves them the same way it served `Delay`, and the `counter_http`
+firmware now does.
 
 ### 9. Examples
 
@@ -458,12 +460,19 @@ so the firmware can draw the count. Brightness and the LED flash are
 presentation, kept in the firmware shell, so the counter's core needs no timer
 at all.
 
-The same is planned for `counter_http`, whose firmware would move to
-`examples/counter-http/cpb`. Its core would adopt what the spike's copy had to
-add for a board with nobody to reload a page: an error state in place of a
-`panic!`, and reopening the server-sent-events stream with back-off when it
-ends, timed with `crux_time`, so every shell benefits. The app-agnostic
-Bluetooth protocol and the browser gateway would move to `examples_support/`.
+`counter_http` now has the same split, and its firmware is a shell at
+`examples/counter-http/cpb`. Its core adopted what the spike's copy had added
+for a board with nobody to reload a page, so every shell benefits: an error
+state in the model and view in place of a `panic!`, and reopening the
+server-sent-events stream when it ends, after a `crux_time` back-off of 1 s
+doubling to 30 s. For that, every shell ends a failed stream with `Done`. The
+firmware answers `NotifyAfter` and `ClearTimer` from an embassy task, and its
+`Delay` is gone. Link-up and link-down stay in the shell: it sends the same
+start-up events as the other shells, and on link-down fails the requests in
+flight and ends the streams. The app-agnostic Bluetooth protocol and the
+browser gateway are in `examples_support/`: `ble_protocol` is a member of the
+root workspace, with its own wire copy of the SSE types, and `ble_gateway` is a
+workspace of its own.
 
 ## Drawbacks
 
@@ -514,6 +523,12 @@ generated items in a `macro_rules!` invocation (design section 6).
 
 **The internal channel is new code on a hot path**, replacing a well-tested
 crate, with its performance under contention not yet measured.
+
+**One core means the device carries the whole app.** `counter_http`'s view
+formats a `chrono` timestamp into `text`, which the board never reads, and
+that is most of the 9 KB its firmware grew by (see [Evidence](#evidence)).
+Keeping link state out of the core also has a small cost: requests failed on
+link-down show the core's error until the next update after reconnecting.
 
 **A capability crate's subset is a second API to keep in step.** Every method
 added to `crux_http`'s std builder needs a decision for the `no_std` twin.
@@ -746,6 +761,25 @@ above. The counter's `shared` crate is also checked for
 `thumbv7em-none-eabihf` alongside its usual checks, and the spike's examples
 CI job installs that target.
 
+The `counter_http` firmware has since been rebuilt the same way, over that
+example's `shared` with `crux_time` (design section 9):
+
+| | text | data | bss |
+|---|---|---|---|
+| Own app copy, `Delay` task | 328,040 B | 4,256 B | 80,392 B |
+| Shell over `counter-http/shared`, `crux_time` | 337,096 B | 4,264 B | 80,400 B |
+
+Most of the 9,056 bytes is likely `chrono`: the shared view formats the
+update time into `text`, which this shell never reads. `crux_time` itself is
+0.4 KiB. Heap, probed on a 32-bit host, is within 2% of the copy's (peak
+46,135 B against 45,435 B for twenty presses in flight), except that after a
+disconnect 3,612 B stays live against 2,424 B, because the core now holds its
+back-off timer.
+
+On 2026-10-09 it was flashed and run with the gateway. The count, pending
+state on presses, link-down and reconnect, and stream recovery with Wi-Fi off
+(four retries, then updates again without a Bluetooth reconnect) all worked.
+
 ## Open questions
 
 1. **The lock.** The spike has now tried the recommended split:
@@ -827,12 +861,11 @@ useful on its own:
    changes, and a CI job that builds `crux_core` for `thumbv7em-none-eabihf`.
 7. Split the counter example's FFI into its own crate and gate its `shared`
    on `std`, with CI checking `shared` for `thumbv7em-none-eabihf`. Add the
-   CPB shell at `examples/counter/cpb`, which the spike already has, and an
-   embedded page in the book.
-8. Add the `no_std` subsets of `crux_http` (done in the spike) and
-   `crux_time` (planned), and fix `facet-generate-attrs`' `facet`
-   dependency.
+   CPB shell at `examples/counter/cpb`, and the experimental Embedded page in
+   Part III of the book (both done in the spike).
+8. Add the `no_std` subsets of `crux_http` and `crux_time` (both done in the
+   spike), and fix `facet-generate-attrs`' `facet` dependency.
 9. Do the same for `counter_http`: restart-with-backoff and an error state in
    its core, its firmware at `examples/counter-http/cpb`, and the Bluetooth
-   protocol and gateway in `examples_support/` (all planned).
+   protocol and gateway in `examples_support/` (all done in the spike).
 10. Later: targets without compare-and-swap once facet supports them.
