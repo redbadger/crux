@@ -386,4 +386,22 @@ Within 2% everywhere, except after the disconnect: the core now holds the back-o
 (the `NotifyAfter` request and its command) where the old app, told `Disconnected`, dropped
 everything. On the host (8-byte pointers) the 20-press peak is 88,143 B against 88,031 B.
 
-Not yet run on hardware.
+### Run on hardware (2026-10-09)
+
+Flashed and run with the gateway. All worked: the advertising pixel, connecting, the count,
+the brightness switch, pending dimming and D13 on presses with the confirmation arriving over
+SSE, and the link-down pixel on closing the gateway tab, with recovery on reconnect.
+
+With Wi-Fi off, the SSE stream ended and the core retried (4 retries seen), then recovered
+without a BLE reconnect once Wi-Fi came back. The retry spacing wasn't measured: the
+gateway's log had no timestamps then. It does now (wall-clock `HH:MM:SS.s`, stamped by the
+gateway's shell when a line first shows).
+
+The red/blue error pattern was not seen on reconnect. That is expected: it needs a request
+to be in flight when the link drops.
+
+The gateway logged the failed fetches as `SSE closed by the server`, because its shell
+answered every end of a stream with `Done`. Fixed in the gateway: it now asks its shell with
+its own `SseStream` operation, which ends with `Closed` or `Failed(reason)` (the fetch
+rejected, a non-2xx status, or a body read error), and logs `SSE failed: <reason>` for the
+latter. The device still gets `SseDone` either way.

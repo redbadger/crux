@@ -12,12 +12,13 @@
 //! and rejects a second one started while the first is in progress.
 
 pub mod ble;
+pub mod sse;
 
 use std::collections::{BTreeMap, VecDeque};
 
 use ble_protocol::{
-    GATEWAY_CHUNK, Id, RX_UUID, Reassembler, SERVICE_UUID, SseRequest, SseResponse, TX_UUID,
-    ToDevice, ToGateway, decode, encode, try_encode,
+    GATEWAY_CHUNK, Id, RX_UUID, Reassembler, SERVICE_UUID, TX_UUID, ToDevice, ToGateway, decode,
+    encode, try_encode,
 };
 use crux_core::{
     App, Command,
@@ -31,6 +32,7 @@ use crux_http::{
 };
 
 pub use ble::{BleConnect, BleEvent, BleWrite};
+pub use sse::{SseEvent, SseStream};
 
 /// How many log lines the view keeps.
 const LOG_LINES: usize = 200;
@@ -49,7 +51,7 @@ pub enum Event {
     },
     Sse {
         id: Id,
-        response: SseResponse,
+        event: SseEvent,
     },
 }
 
@@ -60,7 +62,7 @@ pub enum Effect {
     BleConnect(BleConnect),
     BleWrite(BleWrite),
     Http(HttpRequest),
-    ServerSentEvents(SseRequest),
+    ServerSentEvents(SseStream),
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -83,7 +85,9 @@ pub struct Model {
     writing: bool,
     /// Open SSE streams, by request id.
     streams: BTreeMap<Id, AbortHandle>,
-    log: VecDeque<String>,
+    log: VecDeque<LogLine>,
+    /// How many lines have ever been logged: the next line's `seq`.
+    logged: u64,
     stats: Stats,
 }
 
@@ -103,7 +107,15 @@ pub struct ViewModel {
     pub open_streams: usize,
     pub stats: Stats,
     /// Newest first.
-    pub log: Vec<String>,
+    pub log: Vec<LogLine>,
+}
+
+/// One line of the log. `seq` numbers lines in the order they were logged, so the shell can
+/// tell a new line from one it has already shown (and, for instance, timestamp it).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LogLine {
+    pub seq: u64,
+    pub text: String,
 }
 
 #[derive(Default)]
@@ -184,18 +196,21 @@ impl App for Gateway {
                 }
                 render().and(send(model, &ToDevice::Http { id, result }))
             }
-            Event::Sse { id, response } => match response {
-                SseResponse::Chunk(data) => {
-                    model.stats.sse_chunks += 1;
-                    log(model, format!("#{id} ← SSE chunk ({} B)", data.len()));
-                    render().and(send(model, &ToDevice::SseChunk { id, data }))
-                }
-                SseResponse::Done => {
-                    model.streams.remove(&id);
-                    log(model, format!("#{id} ← SSE closed by the server"));
-                    render().and(send(model, &ToDevice::SseDone { id }))
-                }
-            },
+            Event::Sse { id, event } => {
+                let line = match event {
+                    SseEvent::Chunk(data) => {
+                        model.stats.sse_chunks += 1;
+                        log(model, format!("#{id} ← SSE chunk ({} B)", data.len()));
+                        return render().and(send(model, &ToDevice::SseChunk { id, data }));
+                    }
+                    SseEvent::Closed => format!("#{id} ← SSE closed by the server"),
+                    SseEvent::Failed(reason) => format!("#{id} ← SSE failed: {reason}"),
+                };
+                // Either way the device only hears that the stream ended, and reopens it.
+                model.streams.remove(&id);
+                log(model, line);
+                render().and(send(model, &ToDevice::SseDone { id }))
+            }
         }
     }
 
@@ -230,8 +245,8 @@ fn forward(model: &mut Model, message: ToGateway) -> Command<Effect, Event> {
             if let Some(old) = model.streams.remove(&id) {
                 old.abort();
             }
-            let stream = Command::stream_from_shell(request)
-                .then_send(move |response| Event::Sse { id, response });
+            let stream = Command::stream_from_shell(SseStream { url: request.url })
+                .then_send(move |event| Event::Sse { id, event });
             model.streams.insert(id, stream.abort_handle());
             stream
         }
@@ -303,7 +318,11 @@ fn log(model: &mut Model, line: String) {
     if model.log.len() == LOG_LINES {
         model.log.pop_front();
     }
-    model.log.push_back(line);
+    model.log.push_back(LogLine {
+        seq: model.logged,
+        text: line,
+    });
+    model.logged += 1;
 }
 
 fn len_u32(bytes: &[u8]) -> u32 {
