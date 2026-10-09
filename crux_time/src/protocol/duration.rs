@@ -46,8 +46,8 @@ impl Duration {
     }
 }
 
-impl From<std::time::Duration> for Duration {
-    fn from(duration: std::time::Duration) -> Self {
+impl From<core::time::Duration> for Duration {
+    fn from(duration: core::time::Duration) -> Self {
         Self {
             // Safe because we don't expect durations to exceed u64::MAX nanoseconds in practice
             #[allow(clippy::cast_possible_truncation)]
@@ -56,7 +56,7 @@ impl From<std::time::Duration> for Duration {
     }
 }
 
-impl From<Duration> for std::time::Duration {
+impl From<Duration> for core::time::Duration {
     fn from(duration: Duration) -> Self {
         Self::from_nanos(duration.nanos)
     }
@@ -65,7 +65,7 @@ impl From<Duration> for std::time::Duration {
 #[cfg(test)]
 mod test {
     use super::Duration;
-    use std::time::Duration as StdDuration;
+    use core::time::Duration as StdDuration;
 
     #[test]
     fn duration_from_millis() {

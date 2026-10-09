@@ -10,12 +10,18 @@
 //! will go on meaning exactly what it means today, and `crux_time::Time` will
 //! come to mean this type.
 
-use std::{future::Future, marker::PhantomData, time};
+use core::{future::Future, marker::PhantomData, time};
+// spike(no_std): `now` and `notify_at` deal in `SystemTime`, so they need std.
+// `now_instant` and `notify_at_instant` deal in `Instant`, so they do not.
+#[cfg(feature = "std")]
+use std::time::SystemTime;
 
 use crux_core::{Command, Request, command::RequestBuilder};
 use futures::{FutureExt, channel::oneshot, select_biased};
 
-use crate::{CompletedTimerHandle, TimerHandle, TimerOutcome, get_timer_id, operation};
+use crate::{
+    CompletedTimerHandle, TimerHandle, TimerOutcome, get_timer_id, operation, protocol::Instant,
+};
 
 /// Time capability API, one operation type at a time.
 ///
@@ -61,12 +67,40 @@ where
     Event: Send + 'static,
 {
     /// Ask for the current wall-clock time.
+    #[cfg(feature = "std")]
     #[must_use]
-    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = time::SystemTime>>
+    pub fn now() -> RequestBuilder<Effect, Event, impl Future<Output = SystemTime>>
     where
         Effect: From<Request<operation::Now>>,
     {
         Command::request_from_shell(operation::Now).map(Into::into)
+    }
+
+    /// Ask for the current wall-clock time as an [`Instant`].
+    ///
+    /// This builder sends the same [`operation::Now`] request as [`now`](Time::now).
+    /// It gives the shell's answer unchanged, so it does not need `std`. A core that
+    /// builds both with and without `std` can use this builder in both builds.
+    /// [`Instant::seconds`] and [`Instant::nanos`] give the time since the Unix epoch.
+    ///
+    /// ```
+    /// # use crux_core::{Command, macros::effect};
+    /// use crux_time::{Instant, clock::Time, operation};
+    ///
+    /// #[effect]
+    /// enum Effect {
+    ///     TimeNow(operation::Now),
+    /// }
+    ///
+    /// # enum Event { Now(Instant) }
+    /// let now: Command<Effect, Event> = Time::now_instant().then_send(Event::Now);
+    /// ```
+    #[must_use]
+    pub fn now_instant() -> RequestBuilder<Effect, Event, impl Future<Output = Instant>>
+    where
+        Effect: From<Request<operation::Now>>,
+    {
+        Command::request_from_shell(operation::Now)
     }
 
     /// Ask to receive a notification when the specified
@@ -75,9 +109,47 @@ where
     ///
     /// # Panics
     /// Panics if the timer ID the shell answers with is not the one it was asked about.
+    #[cfg(feature = "std")]
     #[must_use]
     pub fn notify_at(
-        system_time: time::SystemTime,
+        system_time: SystemTime,
+    ) -> (
+        RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
+        TimerHandle,
+    )
+    where
+        Effect: From<Request<operation::NotifyAt>> + From<Request<operation::ClearTimer>>,
+    {
+        Self::notify_at_instant(system_time.into())
+    }
+
+    /// Ask to receive a notification when the specified [`Instant`] has arrived.
+    /// Returns the `RequestBuilder` alongside a [`TimerHandle`], which can be stored
+    /// and used to clear the timer.
+    ///
+    /// This builder is [`notify_at`](Time::notify_at) with an [`Instant`] in place of
+    /// a `SystemTime`, so it does not need `std`.
+    ///
+    /// ```
+    /// # use crux_core::{Command, macros::effect};
+    /// use crux_time::{Instant, TimerOutcome, clock::Time, operation};
+    ///
+    /// #[effect]
+    /// enum Effect {
+    ///     TimeNotifyAt(operation::NotifyAt),
+    ///     TimeClear(operation::ClearTimer),
+    /// }
+    ///
+    /// # enum Event { Arrived(TimerOutcome) }
+    /// let (builder, _handle) = Time::notify_at_instant(Instant::new(1_700_000_000, 0));
+    /// let timer: Command<Effect, Event> = builder.then_send(Event::Arrived);
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if the timer ID the shell answers with is not the one it was asked about.
+    #[must_use]
+    pub fn notify_at_instant(
+        instant: Instant,
     ) -> (
         RequestBuilder<Effect, Event, impl Future<Output = TimerOutcome>>,
         TimerHandle,
@@ -110,7 +182,7 @@ where
                 id = ctx.request_from_shell(
                     operation::NotifyAt {
                         id: timer_id,
-                        instant: system_time.into(),
+                        instant,
                     }
                 ).fuse() => {
                     assert_eq!(id, timer_id, "NotifyAt resolved with an unexpected timer ID");
@@ -142,7 +214,7 @@ where
     }
 
     /// Ask to receive a notification after the specified
-    /// [`Duration`](std::time::Duration) has elapsed. Returns the `RequestBuilder`
+    /// [`Duration`](core::time::Duration) has elapsed. Returns the `RequestBuilder`
     /// alongside a [`TimerHandle`], which can be stored and used to clear the timer.
     ///
     /// # Panics

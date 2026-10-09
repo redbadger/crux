@@ -17,12 +17,15 @@ pub enum Effect {
 pub enum Event {
     // from the shell
     GetNow,
+    GetNowInstant,
     Start,
     StartAt(SystemTime),
+    StartAtInstant(Instant),
     Cancel,
 
     // from the core
     Now(SystemTime),
+    NowInstant(Instant),
     Completed(TimerOutcome),
 }
 
@@ -40,6 +43,7 @@ struct Model {
     handle: Option<TimerHandle>,
     status: Status,
     now: Option<SystemTime>,
+    now_instant: Option<Instant>,
 }
 
 #[derive(Default)]
@@ -61,6 +65,17 @@ impl App for Timer {
             Event::Now(now) => {
                 model.now = Some(now);
                 Command::done()
+            }
+            Event::GetNowInstant => Time::now_instant().then_send(Event::NowInstant),
+            Event::NowInstant(now) => {
+                model.now_instant = Some(now);
+                Command::done()
+            }
+            Event::StartAtInstant(instant) => {
+                let (request, handle) = Time::notify_at_instant(instant);
+                model.handle = Some(handle);
+                model.status = Status::Pending;
+                request.then_send(Event::Completed)
             }
             Event::Start => {
                 let (request, handle) = Time::notify_after(StdDuration::from_secs(1));
@@ -116,6 +131,51 @@ fn now_is_answered_with_an_instant() {
         model.now,
         Some(SystemTime::UNIX_EPOCH + StdDuration::new(1, 2))
     );
+}
+
+#[test]
+fn now_instant_is_answered_with_the_same_instant() {
+    let app = Timer;
+    let mut model = Model::default();
+
+    let mut cmd = app.update(Event::GetNowInstant, &mut model);
+
+    cmd.expect_no_events();
+    let mut request = cmd.expect_one_effect().expect_now();
+    assert_eq!(request.operation, operation::Now);
+
+    let now = Instant::new(1_700_000_000, 250);
+    request.resolve(now).expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    assert_eq!(event, Event::NowInstant(now));
+    app.update(event, &mut model).expect_no_effect_or_events();
+
+    assert_eq!(model.now_instant, Some(now));
+}
+
+#[test]
+fn notify_at_instant_sends_the_instant() {
+    let app = Timer;
+    let mut model = Model::default();
+    let at = Instant::new(1_700_000_000, 250);
+
+    let mut cmd = app.update(Event::StartAtInstant(at), &mut model);
+
+    cmd.expect_no_events();
+    let mut request = cmd.expect_one_effect().expect_notify_at();
+    assert_eq!(request.operation.instant, at);
+
+    let timer_id = request.operation.id;
+    request.resolve(timer_id).expect("effect should resolve");
+
+    let event = cmd.expect_one_event();
+    assert!(matches!(
+        event,
+        Event::Completed(TimerOutcome::Completed(_))
+    ));
+    app.update(event, &mut model).expect_no_effect_or_events();
+    assert_eq!(model.status, Status::Completed);
 }
 
 #[test]
