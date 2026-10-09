@@ -2210,7 +2210,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c33cf9d80307e9a29f93e5a65ddb65b227b5fa082d649c65d4083345f5d398d0"
 dependencies = [
  "autocfg",
- "chrono",
  "const-fnv1a-hash",
  "iddqd",
  "impls",
@@ -6119,14 +6118,22 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
+ "crux_core",
+ "facet",
+ "serde",
+]
+
+[[package]]
+name = "shared_ffi"
+version = "0.1.0"
+dependencies = [
  "anyhow",
  "boltffi",
  "clap",
  "crux_core",
- "facet",
  "log",
  "pretty_env_logger",
- "serde",
+ "shared",
 ]
 
 [[package]]
