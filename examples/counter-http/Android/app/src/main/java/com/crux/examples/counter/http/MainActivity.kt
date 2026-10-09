@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
                                 Color.Gray
                             }, modifier = Modifier.padding(10.dp)
                         )
+                        state.error?.let { Text(text = it, color = Color.Red) }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Button(
                                 onClick = {

@@ -17,7 +17,8 @@ These are two different kinds of capability. HTTP and timers come from
 `crux_http` and `crux_time`, which define the shell side of their protocols
 along with the core side. Server-Sent Events are a _local_ capability of this
 app: a stream operation declared in `shared/src/sse.rs`, which the shell
-answers with a `Chunk` per batch of bytes it reads, then `Done`:
+answers with a `Chunk` per batch of bytes it reads, then `Done` when the stream
+ends, whether the server closed it or the connection failed:
 
 ```rust,noplayground
 // Rust: shared/src/sse.rs
@@ -38,7 +39,8 @@ Here's the Swift handler. HTTP and each timer operation are one line. They
 delegate to `SessionHttpHandler` and `TaskTimeHandler`, the shell's own HTTP
 client and timers. Server-Sent Events are the app's own capability, so the
 shell is the one implementing the stream, sending each event it reads into the
-`EffectSink` it's given:
+`EffectSink` it's given. However the connection ends, the last thing it sends
+is `done`: that is how the core knows to reopen the stream.
 
 ```swift
 // Swift: apple/CounterApp/CounterHandler.swift
