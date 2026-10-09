@@ -3,20 +3,21 @@
 The counter's only effect is `Render`. Most apps need more: HTTP, storage,
 timers, or something of their own. The
 [`counter-http`](https://github.com/redbadger/crux/tree/master/examples/counter-http)
-example is the counter with two more effects: it keeps the count on a server,
+example is the counter with more effects: it keeps the count on a server,
 over HTTP, and hears about changes from other clients through Server-Sent
-Events:
+Events. If the stream ends, the app reopens it after a wait, which doubles each
+time up to 30 seconds, so it also needs a timer:
 
 ```rust,noplayground
 // Rust: shared/src/app.rs
 {{#include ../../../examples/counter-http/shared/src/app.rs:effect}}
 ```
 
-The two are different kinds of capability. HTTP comes from `crux_http`, which
-defines the shell side of its protocol along with the core side.
-Server-Sent Events are a _local_ capability of this app: a stream operation
-declared in `shared/src/sse.rs`, which the shell answers with a `Chunk` per
-batch of bytes it reads, then `Done`:
+These are two different kinds of capability. HTTP and timers come from
+`crux_http` and `crux_time`, which define the shell side of their protocols
+along with the core side. Server-Sent Events are a _local_ capability of this
+app: a stream operation declared in `shared/src/sse.rs`, which the shell
+answers with a `Chunk` per batch of bytes it reads, then `Done`:
 
 ```rust,noplayground
 // Rust: shared/src/sse.rs
@@ -29,13 +30,15 @@ How the core uses them is the subject of Part II, from
 
 ## Implementing the handler
 
-The generated `EffectHandler` has an `http` method for the `Http` effect and a
+The generated `EffectHandler` has an `http` method for the `Http` effect,
+`timeNotifyAfter` and `timeClear` methods for the timer effects, and a
 `serverSentEvents` method for the `ServerSentEvents` effect.
 
-Here's the Swift handler. HTTP is one line, delegating to
-`SessionHttpHandler`, the shell's own HTTP client. Server-Sent Events are the
-app's own capability, so the shell is the one implementing the stream, sending
-each event it reads into the `EffectSink` it's given:
+Here's the Swift handler. HTTP and each timer operation are one line. They
+delegate to `SessionHttpHandler` and `TaskTimeHandler`, the shell's own HTTP
+client and timers. Server-Sent Events are the app's own capability, so the
+shell is the one implementing the stream, sending each event it reads into the
+`EffectSink` it's given:
 
 ```swift
 // Swift: apple/CounterApp/CounterHandler.swift

@@ -9,3 +9,4 @@ pub mod sse;
 pub use app::*;
 pub use crux_core::Core;
 pub use crux_http as http;
+pub use crux_time as time;

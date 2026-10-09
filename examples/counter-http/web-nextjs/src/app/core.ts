@@ -1,16 +1,20 @@
 import type {
+  ClearTimer,
   EffectHandler,
   EffectSink,
   HttpRequest,
   HttpResult,
+  NotifyAfter,
   SseRequest,
   SseResponse,
+  TimerId,
   ViewModel,
 } from "shared_types/app";
 import { Core } from "shared_types/app";
 
 import { FetchHttpHandler } from "./http";
 import * as sse from "./sse";
+import { TimeoutTimeHandler } from "./time";
 
 /**
  * The shell's side of the effect protocol.
@@ -31,6 +35,20 @@ export class CounterHandler implements EffectHandler {
 
   http(operation: HttpRequest): Promise<HttpResult> {
     return this.httpHandler.request(operation);
+  }
+
+  /**
+   * The shell's own timers, over `setTimeout` (see `time.ts`). The timer table
+   * is state, so there is one handler, for the page's life.
+   */
+  private readonly timeHandler = new TimeoutTimeHandler();
+
+  timeNotifyAfter(operation: NotifyAfter): Promise<TimerId> {
+    return this.timeHandler.notifyAfter(operation);
+  }
+
+  timeClear(operation: ClearTimer): Promise<TimerId> {
+    return this.timeHandler.clear(operation);
   }
 
   /**

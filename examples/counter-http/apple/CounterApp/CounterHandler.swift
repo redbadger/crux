@@ -13,11 +13,26 @@ struct CounterHandler: EffectHandler {
     /// `http.swift`).
     let httpHandler = SessionHttpHandler()
 
+    /// The shell's own timers, as sleeping tasks (see `time.swift`). The
+    /// handler owns the timer table, so there is one of it, made here.
+    let timeHandler = TaskTimeHandler()
+
     /// `Http` is a request: the shell performs it and answers with exactly one
     /// `HttpResult`. `SessionHttpHandler` sends the request, so this line
     /// delegates.
     func http(_ operation: HttpRequest) async -> HttpResult {
         await httpHandler.request(operation)
+    }
+
+    /// `TimeNotifyAfter` is answered exactly once, with the id of the timer
+    /// that fired. `TaskTimeHandler` runs the timers, so these two delegate.
+    func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId {
+        await timeHandler.notifyAfter(operation)
+    }
+
+    /// `TimeClear` cancels the timer and answers with the id it named.
+    func timeClear(_ operation: ClearTimer) async -> TimerId {
+        await timeHandler.clear(operation)
     }
 
     /// `ServerSentEvents` is a stream: every item sent into `sink` is one

@@ -12,8 +12,10 @@ rust-version.workspace = true
 anyhow.workspace = true
 console_error_panic_hook = "0.1.7"
 console_log = "1.1.0"
+crux_core.workspace = true
 futures-util = "0.3.33"
 gloo-net = { version = "0.7.0", features = ["http"] }
+gloo-timers = "0.4"
 js-sys = "0.3.103"
 log = "0.4.33"
 shared = { path = "../shared" }
