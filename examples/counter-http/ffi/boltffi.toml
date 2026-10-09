@@ -1,6 +1,6 @@
 [package]
 name = "shared"
-crate = "shared"
+crate = "shared_ffi"
 version = "0.1.0"
 repository = "https://github.com/redbadger/crux/"
 license = "Apache-2.0"
@@ -36,7 +36,7 @@ output = "../Android/generated/jniLibs"
 [targets.wasm]
 output = "../web-nextjs/generated"
 profile = "release"
-artifact_path = "../target/wasm32-unknown-unknown/release/shared.wasm"
+artifact_path = "../target/wasm32-unknown-unknown/release/shared_ffi.wasm"
 
 [targets.wasm.typescript]
 output = "../web-nextjs/generated/pkg"
