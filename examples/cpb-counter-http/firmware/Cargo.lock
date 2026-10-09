@@ -65,6 +65,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
+name = "ble_protocol"
+version = "0.1.0"
+dependencies = [
+ "crux_core",
+ "crux_http",
+ "postcard",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "bt-hci"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -242,7 +253,7 @@ dependencies = [
 name = "cpb-counter-http-app"
 version = "0.1.0"
 dependencies = [
- "cpb-protocol",
+ "ble_protocol",
  "crux_core",
  "crux_http",
  "futures-util",
@@ -255,11 +266,11 @@ dependencies = [
 name = "cpb-counter-http-firmware"
 version = "0.1.0"
 dependencies = [
+ "ble_protocol",
  "bt-hci",
  "cortex-m",
  "cortex-m-rt",
  "cpb-counter-http-app",
- "cpb-protocol",
  "crux_core",
  "crux_http",
  "embassy-executor",
@@ -274,17 +285,6 @@ dependencies = [
  "panic-halt",
  "static_cell",
  "trouble-host",
-]
-
-[[package]]
-name = "cpb-protocol"
-version = "0.1.0"
-dependencies = [
- "crux_core",
- "crux_http",
- "postcard",
- "serde",
- "serde_bytes",
 ]
 
 [[package]]

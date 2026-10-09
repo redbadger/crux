@@ -141,6 +141,11 @@ board needs no bootloader or SoftDevice update.
 
 ### 2b/2c. Wire protocol, gateway, firmware link: HTTP round trip works (2026-10-06)
 
+> 2026-10-09: `protocol/` and `gateway/` have moved to `examples_support/ble_protocol` (package
+> `ble_protocol`, was `cpb-protocol`; now a root workspace member) and
+> `examples_support/ble_gateway` (still its own workspace), because neither depends on this
+> app. The paths below are as they were.
+
 - `protocol/` (no_std): `ToGateway { Http, Sse, Cancel }` and `ToDevice { Http, SseChunk,
   SseDone }`. Each carries an `id`, and the HTTP payloads are crux_http's own
   `HttpRequest`/`HttpResult`. Encoding is postcard plus a `u16` length prefix. The receiver
