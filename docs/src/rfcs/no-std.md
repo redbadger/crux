@@ -2,9 +2,11 @@
 
 ```admonish
 This RFC is **proposed**. It contains no implementation code. The evidence in
-it comes from a throwaway spike, which is not part of this pull request, that
-built `crux_core` for a Cortex-M4 and linked a small Crux app into firmware for
-the Adafruit Circuit Playground Bluefruit. That firmware has since been flashed
+it comes from a throwaway spike on the
+[`spike/no-std`](https://github.com/redbadger/crux/tree/spike/no-std) branch,
+which stands alone and is not part of this pull request or meant to be merged.
+The spike built `crux_core` for a Cortex-M4 and linked a small Crux app into
+firmware for the Adafruit Circuit Playground Bluefruit. That firmware has since been flashed
 to the board and works as intended, first with a `spin` lock and then with the
 `critical-section` design this RFC recommends. Heap use was measured on a host,
 not on the device.
@@ -13,6 +15,10 @@ Since then the spike has made the counter and `counter_http` examples' own
 cores build without `std` and rebuilt both firmwares as shells over them, and
 both have been flashed and work. Work the spike has planned but not done is
 marked as planned.
+
+Paths and crates the RFC cites from the spike, such as `examples/counter/cpb`,
+`examples_support/ble_gateway` or the `std` feature of `crux_time`, exist only
+on that branch.
 ```
 
 This RFC proposes that `crux_core`, and the code its macros emit, build without
@@ -576,8 +582,10 @@ plain state machine.
 
 The spike made `crux_core` and the macro output build for
 `thumbv7em-none-eabihf`, then linked a counter app of its own into
-`embassy-nrf` firmware for the Circuit Playground Bluefruit. It was built on a branch close to master;
-every type, path and feature named in this RFC was checked against master.
+`embassy-nrf` firmware for the Circuit Playground Bluefruit. The
+`spike/no-std` branch sits on top of the open examples and per-operation pull
+requests (up to #625), not on master; every `crux_core` type, path and feature
+named in this RFC was checked against master.
 
 **Errors.** With only the `std` feature and `#![no_std]` added, the host build
 gives 142 errors at name resolution. The target build fails earlier, in
