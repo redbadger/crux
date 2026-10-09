@@ -1,0 +1,46 @@
+mod lib '../../../lib.just'
+
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+# checks required tools are installed
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-shared
+    @just lib::check-boltffi
+
+# auto-fix formatting issues
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    cargo fmt
+
+# validate formatting and lint
+check:
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    cargo fmt -- --check
+    cargo clippy -p shared_ffi --features codegen --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+    cargo clippy -p shared_ffi --target wasm32-unknown-unknown -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+
+# build the FFI library and the codegen binary
+build:
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    cargo build -p shared_ffi --features codegen
+
+# run tests
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    @echo "  No tests: the app's tests live in shared"
+
+# clean build artifacts
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    cargo clean
+
+# local development workflow
+dev: fix check build test
+
+# CI workflow
+ci: check build test
