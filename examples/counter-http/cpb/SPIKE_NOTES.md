@@ -1,6 +1,12 @@
 # Spike: counter_http on the Circuit Playground Bluefruit, over BLE
 
-Throwaway spike, following `examples/cpb-counter`. Evidence for an RFC, not mergeable code.
+Throwaway spike, following `examples/cpb-counter` (now `examples/counter/cpb`). Evidence for
+an RFC, not mergeable code.
+
+(Until 2026-10-09 this was `examples/cpb-counter-http`, with its own copy of the app in `app/`
+and the firmware in `firmware/`. The firmware is now this directory, a shell over
+`examples/counter-http/shared`, and `app/` is gone; see Phase 4. Paths in Phases 1–3 are as
+they were then.)
 
 The goal is `examples/counter-http` (a shared counter on crux-counter.fly.dev: GET, POST
 /inc and /dec with an optimistic update, SSE) running as no_std firmware, using
@@ -183,6 +189,9 @@ board needs no bootloader or SoftDevice update.
 
 ## Phase 3: counter_http on the board
 
+(Phase 3 describes the spike's own copy of the app, `app/`, and its custom `Delay` effect. Both
+are gone; see Phase 4.)
+
 ### Result (2026-10-06)
 
 `app/` is counter_http's Crux app in a `#![no_std]` crate. **Its HTTP code is counter_http's
@@ -303,3 +312,78 @@ cpb-counter `Delay`. The firmware has a 64 KB heap and refuses more than 16 requ
 instead of running out of heap, which with `panic-halt` would freeze the board. The probe
 builds crux_core and crux_http with the firmware's (no_std) features, but runs on a host
 allocator, so allocator overhead is not counted.
+
+## Phase 4: a shell over counter-http's core (2026-10-09)
+
+The firmware moved from `examples/cpb-counter-http/firmware` to `examples/counter-http/cpb`.
+It no longer has an app of its own: it is one more shell over `examples/counter-http/shared`,
+the core the iOS, Android and web shells use. `app/` is gone, and so is the spike's host
+workspace; `heap-probe/` moved under the firmware, as a workspace of its own. The BLE protocol
+and the gateway had already moved to `examples_support/ble_protocol` and
+`examples_support/ble_gateway`. This follows `examples/counter/cpb` (its SPIKE_NOTES §15).
+
+What it took, beyond what the counter needed (a `std` feature on `shared`, on by default; the
+FFI in its own crate; the root `exclude = ["examples"]`; the firmware as its own `[workspace]`,
+in counter-http's `exclude`):
+
+- **The core adopted what the spike's app did for the board**, because it is good for every
+  shell: `Set(Err)` records an `error` in the model and the view instead of `panic!`ing, and
+  when the event stream ends the core reopens it after a wait (1 s, doubling to 30 s, reset by
+  the next update), with stale ends and retries ignored by stream id. Every shell gets the
+  recovery, given a time handler and an SSE handler that ends the stream on error.
+- **crux_time replaces `Delay`.** The wait is `crux_time::clock::Time::notify_after`, which
+  builds without std now, so the core's effects are `TimeNotifyAfter` and `TimeClear`, as in
+  the notes and weather examples. The firmware's timer task (`src/delay.rs`, the same shape as
+  the `Delay` task) queues `(deadline, Request<NotifyAfter>)` and answers with the timer's own
+  `TimerId` when it fires; a `ClearTimer` drops the timer it names and is answered with the
+  same id at once. Those are the rules `crux_time`'s shipped Swift/Kotlin/TypeScript handlers
+  follow. (This app never clears a timer, but `TimeClear` is in its `Effect`.)
+- **Connected/Disconnected stayed out of the core.** On link-up the shell sends `Get` and
+  `StartWatch`, as the other shells do at start-up. On link-down it fails the requests in
+  flight (`HttpError::Io`) and ends the streams with `Done`; the core sees `WatchEnded` and
+  backs off. While the link is down each retry's `ServerSentEvents` is answered `Done` at
+  once, so the core keeps retrying at the capped back-off until the gateway is back, and a
+  `StartWatch` on reconnect opens a fresh stream (the pending retry is then stale).
+- **SSE types.** The core keeps its own `SseRequest`/`SseResponse` (`shared/src/sse.rs`, which
+  the book teaches); `ble_protocol` has its own wire copy. The shell copies the url across,
+  and turns `SseChunk`/`SseDone` back into `SseResponse::Chunk`/`Done`. `shared`'s SSE parser is
+  the spike's chunk-buffering one, now no_std in place.
+- **The view is the shared `ViewModel`** (`text`, `confirmed`, `value: i32`, `error`); the
+  pixels are the shell's. It draws `value` as the odometer, dims it while `!confirmed` with
+  D13 lit (as before), alternates red and blue while `error` is set, and shows one dim blue
+  pixel while its own `up` flag is false and all red if the radio failed. The brightness
+  switch is shell state. D13 means "pending", as it did, rather than counter/cpb's press
+  flash: a press makes the count pending at once, so it lights on every press anyway.
+- Firmware dependencies: `shared` (no default features), `ble_protocol`, and `crux_core` with
+  `critical-section` (`nrf-mpsl` provides the implementation). `crux_http` and `crux_time`
+  types come through `shared`'s re-exports (`shared::http`, `shared::time`), so the firmware
+  no longer names them; `link-check` takes `crux_http`'s protocol types the same way.
+
+Release sizes for `cpb-counter-http` (`just size`):
+
+| | text | data | bss |
+|---|---|---|---|
+| own app, `Delay` task (Phase 3) | 328,040 B | 4,256 B | 80,392 B |
+| shell over `counter-http/shared`, crux_time | 337,096 B | 4,264 B | 80,400 B |
+
+So +9,056 B of text. `cargo bloat --crates` puts `shared` at 22.0 KiB (the old app was 17.9)
+and std/core at 27.1 KiB (23), while the shell shrank to 13.7 KiB (15.7); crux_time is
+0.4 KiB. The likely bulk is chrono: `updated_at` is a `DateTime<Utc>` again, and the view
+formats it into `text`, which this shell never reads. `ble-probe` is unchanged (97,684 B) and
+`link-check` is +48 B.
+
+Heap probe, as wasm32-wasip1 (4-byte pointers, as on the board):
+
+| | Phase 3 peak / live | now peak / live |
+|---|---|---|
+| connected, GET + SSE in flight | 4,067 / 3,723 B | 3,935 / 3,575 B |
+| GET answered, SSE open, 20 SSE updates | 5,035 / 3,336 B | 4,887 / 3,380 B |
+| 5 presses in flight | 14,088 / 3,416 B | 14,308 / 3,460 B |
+| 20 presses in flight | 45,435 / 3,896 B | 46,135 / 3,940 B |
+| disconnected, stream ended | 2,424 B live | 3,612 B live |
+
+Within 2% everywhere, except after the disconnect: the core now holds the back-off timer
+(the `NotifyAfter` request and its command) where the old app, told `Disconnected`, dropped
+everything. On the host (8-byte pointers) the 20-press peak is 88,143 B against 88,031 B.
+
+Not yet run on hardware.

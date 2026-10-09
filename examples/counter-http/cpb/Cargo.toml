@@ -3,9 +3,10 @@ name = "cpb-counter-http-firmware"
 version = "0.1.0"
 edition = "2024"
 publish = false
-description = "spike(no_std): counter_http as Circuit Playground Bluefruit firmware, with its HTTP over BLE"
+description = "spike(no_std): the counter-http example's shell for the Adafruit Circuit Playground Bluefruit, as firmware, with its HTTP over BLE"
 
-# Standalone: its own target (.cargo/config.toml) and profile.
+# Its own workspace, excluded from counter-http's: it builds for another target with its own
+# profile, and feature unification with the std shells would pull std into the firmware.
 [workspace]
 
 [[bin]]
@@ -27,10 +28,11 @@ test = false
 bench = false
 
 [dependencies]
-cpb-counter-http-app = { path = "../app" }
+# The counter-http core, without std.
+shared = { path = "../shared", default-features = false }
 ble_protocol = { path = "../../../examples_support/ble_protocol" }
-crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros", "critical-section"] }
-crux_http = { path = "../../../crux_http", default-features = false }
+# Without std, crux_core's internal locks are critical sections; nrf-mpsl provides them below.
+crux_core = { path = "../../../crux_core", default-features = false, features = ["critical-section"] }
 embedded-alloc = "0.7"
 embassy-executor = { version = "0.10", features = ["platform-cortex-m", "executor-thread"] }
 embassy-futures = "0.1.2"
