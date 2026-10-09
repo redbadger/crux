@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <!-- Type generation emits an FfiBridge over BoltFFI's CoreFfi into the
-       generated project (see `.boltffi(..)` in shared/src/bin/codegen.rs), so
+       generated project (see `.boltffi(..)` in ffi/src/bin/codegen.rs), so
        that project needs the local NuGet `boltffi pack csharp` builds. The
        generated .csproj is rewritten on every typegen, so the reference is
        added here. It sits outside CounterApp/Directory.Packages.props, so the

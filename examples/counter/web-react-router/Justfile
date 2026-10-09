@@ -25,7 +25,7 @@ check:
 typegen: wasm
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
-        --package shared \
+        --package shared_ffi \
         --bin codegen \
         --features codegen,facet_typegen \
         -- \
@@ -33,7 +33,7 @@ typegen: wasm
             --output-dir generated/types
 
 # build wasm package
-[working-directory('../shared')]
+[working-directory('../ffi')]
 wasm:
     @echo '{{ style("command") }}wasm:{{ NORMAL }}'
     boltffi --overlay boltffi.web-react-router.toml pack wasm

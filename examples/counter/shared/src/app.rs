@@ -1,3 +1,5 @@
+use alloc::{format, string::String};
+
 // ANCHOR: app
 // ANCHOR: crux_imports
 use crux_core::{
@@ -29,13 +31,15 @@ pub enum Effect {
 
 #[derive(Default)]
 pub struct Model {
-    count: isize,
+    count: i32,
 }
 
 // ANCHOR: view_model
 #[derive(Facet, Serialize, Deserialize, Clone, Default)]
 pub struct ViewModel {
     pub count: String,
+    /// The count as a number, for shells that draw it rather than print it.
+    pub value: i32,
 }
 // ANCHOR_END: view_model
 
@@ -62,6 +66,7 @@ impl App for Counter {
     fn view(&self, model: &Model) -> ViewModel {
         ViewModel {
             count: format!("Count is: {}", model.count),
+            value: model.count,
         }
     }
 }
@@ -146,6 +151,16 @@ mod test {
         let actual = app.view(&model).count;
         let expected = "Count is: 1";
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn shows_count_as_a_number() {
+        let app = Counter;
+        let mut model = Model::default();
+
+        let _ = app.update(Event::Decrement, &mut model);
+
+        assert_eq!(app.view(&model).value, -1);
     }
 }
 // ANCHOR_END: test

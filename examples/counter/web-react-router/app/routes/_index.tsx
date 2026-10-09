@@ -17,7 +17,7 @@ export const meta = () => {
 };
 
 export default function Index() {
-  const [view, setView] = useState(new ViewModel(""));
+  const [view, setView] = useState(new ViewModel("", 0));
   const core = useRef<Core | null>(null);
   const initialized = useRef(false);
 

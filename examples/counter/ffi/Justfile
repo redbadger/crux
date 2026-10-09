@@ -10,6 +10,7 @@ default: dev
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-shared
+    @just lib::check-boltffi
 
 # auto-fix formatting issues
 fix:
@@ -20,20 +21,18 @@ fix:
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt -- --check
-    cargo clippy -p shared -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
-    cargo clippy -p shared --target wasm32-unknown-unknown -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
-    # the core also builds without std, for an embedded shell
-    cargo check -p shared --no-default-features --features crux_core/critical-section --target thumbv7em-none-eabihf
+    cargo clippy -p shared_ffi --features codegen --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+    cargo clippy -p shared_ffi --target wasm32-unknown-unknown -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
-# build the shared library
+# build the FFI library and the codegen binary
 build:
     @echo '{{ style("command") }}build:{{ NORMAL }}'
-    cargo build -p shared
+    cargo build -p shared_ffi --features codegen
 
 # run tests
 test:
     @echo '{{ style("command") }}test:{{ NORMAL }}'
-    cargo nextest run -p shared
+    @echo "  No tests: the app's tests live in shared"
 
 # clean build artifacts
 clean:

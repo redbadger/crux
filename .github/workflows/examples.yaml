@@ -5,7 +5,7 @@
 # cover every example x shell combination for that platform.
 #
 # Matrix shape:
-#   shared     — 8 entries (all 7 examples x shared + counter/tui)
+#   shared     — 9 entries (all 7 examples x shared + counter/ffi + counter/tui)
 #   web-trunk  — 6 entries (5 examples x web-leptos + counter/web-yew)
 #   web-dioxus — 1 entry   (counter only)
 #   web-js     — 8 entries (all 7 examples x web-nextjs + counter/web-react-router)
@@ -45,6 +45,7 @@ jobs:
       matrix:
         include:
           - { example: counter, shell: shared }
+          - { example: counter, shell: ffi }
           - { example: counter, shell: tui }
           - { example: counter-tutorial, shell: shared }
           - { example: counter-http, shell: shared }
@@ -65,7 +66,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown, thumbv7em-none-eabihf
           components: clippy, rustfmt
 
       - uses: mozilla-actions/sccache-action@v0.0.9
