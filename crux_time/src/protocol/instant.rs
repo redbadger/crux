@@ -1,3 +1,5 @@
+// spike(no_std): the `SystemTime` conversions need std.
+#[cfg(feature = "std")]
 use std::time::SystemTime;
 
 use facet::Facet;
@@ -33,8 +35,31 @@ impl Instant {
         );
         Self { seconds, nanos }
     }
+
+    /// Returns the number of whole seconds since the Unix epoch (1970-01-01T00:00:00Z).
+    ///
+    /// ```
+    /// use crux_time::Instant;
+    ///
+    /// let instant = Instant::new(1_700_000_000, 250);
+    /// assert_eq!(instant.seconds(), 1_700_000_000);
+    /// assert_eq!(instant.nanos(), 250);
+    /// ```
+    #[must_use]
+    pub const fn seconds(&self) -> u64 {
+        self.seconds
+    }
+
+    /// Returns the number of nanoseconds since the last whole second.
+    ///
+    /// The value is always less than one billion.
+    #[must_use]
+    pub const fn nanos(&self) -> u32 {
+        self.nanos
+    }
 }
 
+#[cfg(feature = "std")]
 impl From<SystemTime> for Instant {
     fn from(time: SystemTime) -> Self {
         let duration = time
@@ -46,6 +71,7 @@ impl From<SystemTime> for Instant {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<Instant> for SystemTime {
     fn from(time: Instant) -> Self {
         Self::UNIX_EPOCH + std::time::Duration::new(time.seconds, time.nanos)
@@ -64,11 +90,26 @@ mod test {
     }
 
     #[test]
+    fn instant_getters() {
+        let instant = Instant::new(1_700_000_000, 999_999_999);
+        assert_eq!(instant.seconds(), 1_700_000_000);
+        assert_eq!(instant.nanos(), 999_999_999);
+    }
+
+    #[test]
+    fn instant_getters_at_the_epoch() {
+        let instant = Instant::new(0, 0);
+        assert_eq!(instant.seconds(), 0);
+        assert_eq!(instant.nanos(), 0);
+    }
+
+    #[test]
     #[should_panic = "nanos must be less than 1000000000"]
     fn new_instant_invalid_nanos() {
         let _ = Instant::new(1_000_000_000, 1_000_000_000);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn instant_to_std() {
         let actual: SystemTime = Instant::new(1_000_000_000, 10).into();
@@ -76,6 +117,7 @@ mod test {
         assert_eq!(actual, expected);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn std_to_instant() {
         let sys_time = SystemTime::UNIX_EPOCH + std::time::Duration::new(1_000_000_000, 10);
