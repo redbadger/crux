@@ -8,9 +8,9 @@ edition = "2024"
 publish = false
 
 [workspace.dependencies]
-cpb-protocol = { path = "../protocol" }
-crux_core = { path = "../../../crux_core" }
-crux_http = { path = "../../../crux_http" }
+ble_protocol = { path = "../ble_protocol" }
+crux_core = { path = "../../crux_core" }
+crux_http = { path = "../../crux_http" }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

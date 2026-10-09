@@ -8,7 +8,7 @@ description = "spike(no_std): run the cpb-counter-http core on the host, no_std 
 [dependencies]
 # Same features as the firmware: no std in crux_core or crux_http.
 cpb-counter-http-app = { path = "../app" }
-cpb-protocol = { path = "../protocol" }
+ble_protocol = { path = "../../../examples_support/ble_protocol" }
 crux_core = { path = "../../../crux_core", default-features = false, features = ["crux_macros", "critical-section"] }
 # no_std crux_core takes critical sections; on the host, use the std implementation.
 critical-section = { version = "1.2", features = ["std"] }

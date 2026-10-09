@@ -30,6 +30,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ble_protocol"
+version = "0.1.0"
+dependencies = [
+ "crux_core",
+ "crux_http",
+ "postcard",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "cobs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -48,7 +59,7 @@ checksum = "32b13ea120a812beba79e34316b3942a857c86ec1593cb34f27bb28272ce2cca"
 name = "cpb-counter-http-app"
 version = "0.1.0"
 dependencies = [
- "cpb-protocol",
+ "ble_protocol",
  "crux_core",
  "crux_http",
  "futures-util",
@@ -61,22 +72,11 @@ dependencies = [
 name = "cpb-counter-http-heap-probe"
 version = "0.1.0"
 dependencies = [
+ "ble_protocol",
  "cpb-counter-http-app",
- "cpb-protocol",
  "critical-section",
  "crux_core",
  "crux_http",
-]
-
-[[package]]
-name = "cpb-protocol"
-version = "0.1.0"
-dependencies = [
- "crux_core",
- "crux_http",
- "postcard",
- "serde",
- "serde_bytes",
 ]
 
 [[package]]
