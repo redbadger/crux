@@ -273,6 +273,9 @@ The firmware drives it low.
 
 ### What the app does
 
+(Until 2026-10-09 the firmware had its own app in `src/app.rs`, described here. It is now a
+shell over `examples/counter/shared`; see section 15.)
+
 - `Event::{ButtonA, ButtonB, Switch(bool), FlashDone(u32)}`;
   `Effect::{Render(RenderOperation), Delay(Delay)}` via `#[effect]`;
   `Delay { millis }` via `#[derive(Operation)]`, a `request` with output `()`.
@@ -432,7 +435,7 @@ facet change upstream. Out of scope for a first pass.
 `CPLAYBTBOOT`. The steps by hand:
 
 ```sh
-cd examples/cpb-counter
+cd examples/counter/cpb
 cargo build --release
 cargo size --release                      # optional
 cargo objcopy --release -- -O binary target/cpb-counter.bin
@@ -761,3 +764,52 @@ is needed.
 After this, `cpb-counter` went back to the single loop (section 7), as the
 simplest shell for an app with one hardware effect. The delay-task shape
 moved to `cpb-counter-http`, whose main loop also juggles the BLE link.
+
+## 15. A shell over the counter example's core (2026-10-09)
+
+The firmware moved from `examples/cpb-counter` to `examples/counter/cpb`. It no longer has an
+app of its own: it is one more shell over `examples/counter/shared`, the core the iOS,
+Android and web shells use. `src/app.rs` is gone.
+
+What it took:
+
+- `shared` builds without std behind a `std` feature that is on by default. The firmware
+  depends on it with `default-features = false`, and turns on `crux_core/critical-section`
+  itself.
+- **FFI split out of `shared`.** Cargo builds every declared `crate-type` of a dependency, so
+  `shared`'s `staticlib` failed on thumbv7em (no panic handler, no allocator). BoltFFI reads
+  the crate types from `cargo metadata`, so they can't just be dropped. The FFI moved to a
+  sibling crate, `examples/counter/ffi`, which keeps `cdylib`/`staticlib`; `shared` is a plain
+  lib.
+- **Root `exclude`.** The repo's root `Cargo.toml` needs `exclude = ["examples"]`. Without it,
+  once the firmware also depends on `crux_core` and the root workspace gets loaded, Cargo
+  resolves `shared`'s `workspace = true` keys against the repo root rather than
+  `examples/counter`.
+- The firmware stays its own `[workspace]`, listed in `examples/counter/Cargo.toml`'s
+  `exclude`, so feature unification with the std shells can't pull std into it (section 5's
+  trap again).
+
+The shell (`src/main.rs`) maps button A to `Increment` and button B to `Decrement`. On
+`Render` it reads `core.view().value`, clamps it to the ten pixels and draws it, with the
+colour and brightness logic that used to be the app's `view`. The core's count itself is
+unbounded now. Brightness and the LED flash are presentation, so they are shell state rather
+than events:
+
+- the switch sets a `bright` flag and redraws the current view;
+- a press turns the LED on and sets `led_off_at`, and the single `select4` loop waits on
+  `Timer::at(led_off_at)` in place of the earliest `Delay`.
+
+So the `Delay` effect, the `delays` vector and `resolve_due` are gone, along with `facet`
+and `crux_macros` in the firmware's own manifest (`shared` brings what it needs).
+`heap-probe/` depends on `shared` too, and drives `Increment`/`Decrement`.
+
+| | text | data | bss |
+|---|---|---|---|
+| own app with a `Delay` effect, one loop (section 7) | 20,728 B | 24 B | 34,036 B |
+| shell over `counter/shared`, LED timer in the shell | 19,688 B | 24 B | 34,036 B |
+
+Heap probe (host, 64-bit), 20-press bursts: peak 3,264 B and 2,064 B live afterwards, against
+58,480 / 3,248 B with the `Delay` commands in flight. Each event now ends with its `Render`,
+so nothing is left in flight between presses.
+
+Not yet run on hardware.

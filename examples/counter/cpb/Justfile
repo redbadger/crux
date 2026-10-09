@@ -1,4 +1,4 @@
-mod lib '../../lib.just'
+mod lib '../../../lib.just'
 
 default: dev
 
@@ -50,7 +50,7 @@ build:
 size: build
     cargo size --release
 
-# run the heap probe (the firmware's app on the host, counting allocations)
+# run the heap probe (the counter's core on the host, counting allocations)
 heap-probe:
     @echo '{{ style("command") }}heap-probe:{{ NORMAL }}'
     cd heap-probe && cargo run --release --target {{ host }}
