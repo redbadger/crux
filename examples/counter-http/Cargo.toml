@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "web-leptos"]
+members = ["ffi", "shared", "web-leptos"]
 resolver = "3"
 
 [workspace.package]
@@ -21,9 +21,17 @@ unsafe_code = "forbid"
 [workspace.dependencies]
 anyhow = "1.0.104"
 boltffi = "=0.30.1"
-crux_core = { path = "../../crux_core" }
-crux_http = { path = "../../crux_http" }
-serde = "1.0.229"
+# No default features, so `shared` can be built without `std`. `shared`'s
+# own `std` feature (on by default) turns them back on.
+chrono = { version = "0.4.45", default-features = false, features = ["alloc", "serde"] }
+crux_core = { path = "../../crux_core", default-features = false, features = ["crux_macros"] }
+crux_http = { path = "../../crux_http", default-features = false }
+crux_time = { path = "../../crux_time", default-features = false }
+facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
+futures = { version = "0.3.33", default-features = false, features = ["alloc"] }
+serde = { version = "1.0.229", default-features = false, features = ["alloc"] }
+serde_json = { version = "1.0.151", default-features = false, features = ["alloc"] }
+url = { version = "2.5.8", default-features = false }
 
 [profile]
 

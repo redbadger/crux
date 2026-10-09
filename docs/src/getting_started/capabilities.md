@@ -30,11 +30,11 @@ How the core uses them is the subject of Part II, from
 ## Registering the shipped handler
 
 A capability that ships a shell handler is registered in the codegen companion
-binary, next to the app:
+binary, in the `ffi` crate, next to the app:
 
 ```rust,noplayground
-// Rust: shared/src/bin/codegen.rs
-{{#include ../../../examples/counter-http/shared/src/bin/codegen.rs:shell_extension}}
+// Rust: ffi/src/bin/codegen.rs
+{{#include ../../../examples/counter-http/ffi/src/bin/codegen.rs:shell_extension}}
 ```
 
 `crux_http::shell::EXTENSION` is only there when `crux_http`'s own

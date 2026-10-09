@@ -1,3 +1,8 @@
+use alloc::{
+    format,
+    string::{String, ToString},
+};
+
 use chrono::{DateTime, Utc, serde::ts_milliseconds_option::deserialize as ts_milliseconds_option};
 use crux_core::{
     App, Command,
@@ -380,10 +385,7 @@ mod tests {
         // resolve the request with a simulated response from the web API
         request
             .resolve(SseResponse::Chunk(
-                br#"data: {"value":1,"updated_at":1672531200000}
-
-                    "#
-                .to_vec(),
+                b"data: {\"value\":1,\"updated_at\":1672531200000}\n\n".to_vec(),
             ))
             .unwrap();
 
@@ -400,10 +402,7 @@ mod tests {
         // we can resolve the request with another simulated response
         request
             .resolve(SseResponse::Chunk(
-                br#"data: {"value":2,"updated_at":1672531200000}
-
-                    "#
-                .to_vec(),
+                b"data: {\"value\":2,\"updated_at\":1672531200000}\n\n".to_vec(),
             ))
             .unwrap();
 
