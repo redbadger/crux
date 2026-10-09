@@ -1,7 +1,7 @@
 # BLE gateway
 
 A page in Chrome that connects to a Crux device over Web Bluetooth (for now, the Circuit
-Playground Bluefruit in [`cpb-counter-http`](../../examples/cpb-counter-http/)) and performs its
+Playground Bluefruit in [`examples/counter-http/cpb`](../../examples/counter-http/cpb/)) and performs its
 HTTP requests and Server-Sent Events streams. It speaks [`ble_protocol`](../ble_protocol/) and
 knows nothing about the device's app. It's a Crux app too, and a workspace of its own:
 
