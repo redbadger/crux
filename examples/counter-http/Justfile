@@ -2,7 +2,8 @@ mod lib '../../lib.just'
 
 default: dev
 
-common := "shared ffi web-leptos web-nextjs android"
+# `cpb` is firmware: it needs the thumbv7em-none-eabihf target, which `shared/check` needs already.
+common := "shared ffi web-leptos web-nextjs android cpb"
 shells := if os() == "macos" { common + " apple" } else { common }
 
 # checks required tools across all shells

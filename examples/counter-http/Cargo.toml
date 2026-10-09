@@ -1,5 +1,7 @@
 [workspace]
 members = ["ffi", "shared", "web-leptos"]
+# the embedded shell builds for another target, in its own workspace
+exclude = ["cpb"]
 resolver = "3"
 
 [workspace.package]
