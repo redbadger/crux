@@ -606,8 +606,9 @@ dependencies = [
 
 [[package]]
 name = "facet-generate-attrs"
-version = "0.18.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=3108944a6547368fd3e443b649e4924cccb6055b#3108944a6547368fd3e443b649e4924cccb6055b"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9748acb73b45dbcbc3fd9b61cc2e6b678ec6e05d6ada20775851e798764e566e"
 dependencies = [
  "facet",
 ]
@@ -653,7 +654,6 @@ dependencies = [
  "facet-macro-types",
  "proc-macro2",
  "quote",
- "strsim",
  "unsynn",
 ]
 
@@ -779,7 +779,6 @@ dependencies = [
 name = "gateway-web"
 version = "0.1.0"
 dependencies = [
- "ble_protocol",
  "console_error_panic_hook",
  "console_log",
  "crux_core",
