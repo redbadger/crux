@@ -59,10 +59,10 @@ check: assert-windows typegen pack
 # generate C# types via the codegen binary
 typegen: assert-windows
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
-    $env:RUST_LOG='info'; cargo run --package shared --bin codegen --features codegen,facet_typegen -- --language csharp --output-dir generated/types
+    $env:RUST_LOG='info'; cargo run --package shared_ffi --bin codegen --features codegen,facet_typegen -- --language csharp --output-dir generated/types
 
 # pack the C# FFI bindings + native dll into a local NuGet via BoltFFI
-[working-directory('../shared')]
+[working-directory('../ffi')]
 pack: assert-windows
     @echo '{{ style("command") }}pack:{{ NORMAL }}'
     boltffi pack csharp --release

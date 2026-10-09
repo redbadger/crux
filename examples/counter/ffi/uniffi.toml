@@ -1,3 +1,3 @@
 [bindings.kotlin]
 package_name = "com.crux.examples.counter"
-cdylib_name = "shared"
+cdylib_name = "shared_ffi"
