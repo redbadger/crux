@@ -3,9 +3,9 @@ use std::rc::Rc;
 use futures_util::TryStreamExt;
 use leptos::{prelude::*, task};
 
-use shared::{Counter, Effect, Event, ViewModel};
+use shared::{Counter, Effect, Event, ViewModel, sse::SseResponse};
 
-use crate::{http, sse};
+use crate::{http, sse, time};
 
 pub type Core = Rc<shared::Core<Counter>>;
 
@@ -52,18 +52,36 @@ pub fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel
                 let operation = request.operation.clone();
 
                 async move {
-                    let mut stream = sse::request(&operation).await.unwrap();
-
-                    while let Ok(Some(response)) = stream.try_next().await {
-                        for effect in core
-                            .resolve(&mut request, response)
-                            .expect("should resolve")
-                        {
-                            process_effect(&core, effect, render);
+                    if let Ok(mut stream) = sse::request(&operation).await {
+                        while let Ok(Some(response)) = stream.try_next().await {
+                            resolve_effect(&core, &mut request, response, render);
                         }
                     }
+                    // the stream ended, or failed: say so, so the core can reopen it
+                    resolve_effect(&core, &mut request, SseResponse::Done, render);
                 }
             });
         }
+
+        Effect::TimeNotifyAfter(request) => time::notify_after(core, request, render),
+        Effect::TimeClear(request) => time::clear(core, request, render),
+    }
+}
+
+/// Resolve a request by handing its output back to the core, and process the
+/// effects that follow.
+pub fn resolve_effect<Output>(
+    core: &Core,
+    request: &mut impl crux_core::Resolvable<Output>,
+    output: Output,
+    render: WriteSignal<ViewModel>,
+) {
+    match core.resolve(request, output) {
+        Ok(effects) => {
+            for effect in effects {
+                process_effect(core, effect, render);
+            }
+        }
+        Err(e) => log::warn!("failed to resolve effect: {e:?}"),
     }
 }

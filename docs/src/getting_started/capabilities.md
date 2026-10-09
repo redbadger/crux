@@ -3,20 +3,21 @@
 The counter's only effect is `Render`. Most apps need more: HTTP, storage,
 timers, or something of their own. The
 [`counter-http`](https://github.com/redbadger/crux/tree/master/examples/counter-http)
-example is the counter with two more effects: it keeps the count on a server,
+example is the counter with more effects: it keeps the count on a server,
 over HTTP, and hears about changes from other clients through Server-Sent
-Events:
+Events. If the stream ends, the app reopens it after a wait, which doubles each
+time up to 30 seconds, so it also needs a timer:
 
 ```rust,noplayground
 // Rust: shared/src/app.rs
 {{#include ../../../examples/counter-http/shared/src/app.rs:effect}}
 ```
 
-The two are different kinds of capability. HTTP comes from `crux_http`, which
-ships the shell implementation of its protocol along with the core side.
-Server-Sent Events are a _local_ capability of this app: a stream operation
-declared in `shared/src/sse.rs`, which the shell answers with a `Chunk` per
-batch of bytes it reads, then `Done`:
+These are two different kinds of capability. HTTP and timers come from
+`crux_http` and `crux_time`, which ship the shell implementation of their
+protocols along with the core side. Server-Sent Events are a _local_ capability
+of this app: a stream operation declared in `shared/src/sse.rs`, which the
+shell answers with a `Chunk` per batch of bytes it reads, then `Done`:
 
 ```rust,noplayground
 // Rust: shared/src/sse.rs
@@ -37,9 +38,9 @@ binary, in the `ffi` crate, next to the app:
 {{#include ../../../examples/counter-http/ffi/src/bin/codegen.rs:shell_extension}}
 ```
 
-`crux_http::shell::EXTENSION` is only there when `crux_http`'s own
-`facet_typegen` feature is on, so the app's `facet_typegen` feature turns it
-on too:
+`crux_http::shell::EXTENSION` and `crux_time::shell::EXTENSION` are only there
+when each crate's own `facet_typegen` feature is on, so the app's
+`facet_typegen` feature turns them on too:
 
 ```toml
 # TOML: shared/Cargo.toml
@@ -48,17 +49,20 @@ on too:
 
 `.shell_extension(&crux_http::shell::EXTENSION)` copies `crux_http`'s
 handler for each language into the generated package, and that's all it
-does. The generated `EffectHandler` gains an `http` method for the `Http`
-effect and a `serverSentEvents` method for the `ServerSentEvents` one whether
-you register it or not; registering it means you don't have to write the
-first one yourself.
+does; `crux_time::shell::EXTENSION` does the same for the timers. The
+generated `EffectHandler` gains an `http` method for the `Http` effect,
+`timeNotifyAfter` and `timeClear` methods for the timer effects, and a
+`serverSentEvents` method for the `ServerSentEvents` one whether you register
+the extensions or not; registering them means you don't have to write the HTTP
+and timer methods yourself.
 
 ## Implementing the handler
 
-Here's the Swift handler. HTTP is one line, delegating to the
-`URLSessionHttpHandler` provided by the crate. Server-Sent Events have no
-provided handler, so the shell is the one implementing the stream, sending each
-event it reads into the `EffectSink` it's given:
+Here's the Swift handler. HTTP and each timer operation are one line,
+delegating to the `URLSessionHttpHandler` and `TaskTimeHandler` provided by the
+crates. Server-Sent Events have no provided handler, so the shell is the one
+implementing the stream, sending each event it reads into the
+`EffectSink` it's given:
 
 ```swift
 // Swift: apple/CounterApp/CounterHandler.swift

@@ -30,11 +30,13 @@ fn main() -> Result<()> {
     // ANCHOR: shell_extension
     let mut registry = TypeRegistry::new();
     registry.register_app::<Counter>()?;
-    // HTTP is `crux_http`'s business, so the shells hold an instance of the
-    // handler it ships and delegate to it. Server-Sent Events are this app's
-    // own capability, so there is nothing to ship: each shell implements
-    // `serverSentEvents` itself.
-    registry.shell_extension(&crux_http::shell::EXTENSION)?;
+    // HTTP and timers are `crux_http`'s and `crux_time`'s business, so the
+    // shells hold an instance of the handler each ships and delegate to it.
+    // Server-Sent Events are this app's own capability, so there is nothing
+    // to ship: each shell implements `serverSentEvents` itself.
+    registry
+        .shell_extension(&crux_http::shell::EXTENSION)?
+        .shell_extension(&crux_time::shell::EXTENSION)?;
     // ANCHOR_END: shell_extension
 
     let typegen_app = registry
