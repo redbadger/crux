@@ -1,6 +1,5 @@
 use ble_protocol::{
-    GATEWAY_CHUNK, Reassembler, SseRequest, SseResponse, ToDevice, ToGateway, chunks, decode,
-    encode,
+    GATEWAY_CHUNK, Reassembler, SseRequest, ToDevice, ToGateway, chunks, decode, encode,
 };
 use crux_core::{App as _, Command};
 use crux_http::{
@@ -8,7 +7,7 @@ use crux_http::{
     protocol::{HttpRequest, HttpResponse, HttpResult},
 };
 
-use super::{BleEvent, Effect, Event, Gateway, Link, Model};
+use super::{BleEvent, Effect, Event, Gateway, Link, Model, SseEvent, SseStream};
 
 /// Every effect but `Render`.
 fn effects(cmd: &mut Command<Effect, Event>) -> Vec<Effect> {
@@ -102,7 +101,7 @@ fn forwards_an_http_request_and_frames_the_answer() {
     let view = app.view(&model);
     assert_eq!(view.stats.requests, 1);
     assert_eq!(view.stats.responses, 1);
-    assert_eq!(view.log[0], "#7 ← 200 (38 B)");
+    assert_eq!(view.log[0].text, "#7 ← 200 (38 B)");
 }
 
 #[test]
@@ -149,14 +148,15 @@ fn forwards_an_sse_stream_until_the_server_closes_it() {
             .map(|event| app.update(event, &mut model)),
     );
     let mut stream = effects(&mut cmd).remove(0).expect_server_sent_events();
+    assert_eq!(stream.operation.url, "https://crux-counter.fly.dev/sse");
     assert_eq!(app.view(&model).open_streams, 1);
 
     stream
-        .resolve(SseResponse::Chunk(b"data: {\"value\":1}\n\n".to_vec()))
+        .resolve(SseEvent::Chunk(b"data: {\"value\":1}\n\n".to_vec()))
         .unwrap();
     let chunk = cmd.expect_one_event();
     let mut out = app.update(chunk, &mut model);
-    let write = effects(&mut out).remove(0).expect_ble_write();
+    let mut write = effects(&mut out).remove(0).expect_ble_write();
     assert_eq!(
         written(&write.operation.data),
         ToDevice::SseChunk {
@@ -165,10 +165,63 @@ fn forwards_an_sse_stream_until_the_server_closes_it() {
         }
     );
 
-    stream.resolve(SseResponse::Done).unwrap();
+    // The server ends the stream while the chunk is still being written; the end waits
+    // its turn.
+    stream.resolve(SseEvent::Closed).unwrap();
     let done = cmd.expect_one_event();
-    let _ = app.update(done, &mut model);
-    assert_eq!(app.view(&model).open_streams, 0);
+    assert!(effects(&mut app.update(done, &mut model)).is_empty());
+    write.resolve(Ok(())).unwrap();
+    let mut next = app.update(out.expect_one_event(), &mut model);
+    let write = effects(&mut next).remove(0).expect_ble_write();
+    assert_eq!(written(&write.operation.data), ToDevice::SseDone { id: 3 });
+    let view = app.view(&model);
+    assert_eq!(view.open_streams, 0);
+    assert_eq!(view.log[0].text, "#3 ← SSE closed by the server");
+}
+
+#[test]
+fn a_failed_sse_stream_is_logged_as_a_failure_and_still_ends_on_the_device() {
+    let app = Gateway;
+    let mut model = connected();
+    let sse = ToGateway::Sse {
+        id: 5,
+        request: SseRequest {
+            url: "https://crux-counter.fly.dev/sse".to_string(),
+        },
+    };
+    let mut cmd = Command::all(
+        notifications(&sse)
+            .into_iter()
+            .map(|event| app.update(event, &mut model)),
+    );
+    let mut stream = effects(&mut cmd).remove(0).expect_server_sent_events();
+
+    stream
+        .resolve(SseEvent::Failed("TypeError: Failed to fetch".to_string()))
+        .unwrap();
+    let failed = cmd.expect_one_event();
+    let mut out = app.update(failed, &mut model);
+    // The device can't tell the difference: it reopens the stream either way.
+    let write = effects(&mut out).remove(0).expect_ble_write();
+    assert_eq!(written(&write.operation.data), ToDevice::SseDone { id: 5 });
+    let view = app.view(&model);
+    assert_eq!(view.open_streams, 0);
+    assert_eq!(
+        view.log[0].text,
+        "#5 ← SSE failed: TypeError: Failed to fetch"
+    );
+}
+
+#[test]
+fn log_lines_are_numbered_in_order() {
+    let app = Gateway;
+    let mut model = connected();
+    for event in notifications(&post_inc(1)) {
+        let _ = app.update(event, &mut model);
+    }
+    let seqs: Vec<u64> = app.view(&model).log.iter().map(|line| line.seq).collect();
+    // Newest first: "#1 → POST …" after "connected to …".
+    assert_eq!(seqs, [1, 0]);
 }
 
 #[test]
@@ -259,11 +312,11 @@ fn cancel_closes_a_stream() {
 /// Once a stream's command is aborted, what the shell still sends goes nowhere, and once
 /// the command has run again (the aborted task is dropped), `resolve` fails. The shell
 /// stops reading the SSE body when it does, which closes the fetch.
-fn assert_aborted(cmd: &mut Command<Effect, Event>, stream: &mut crux_core::Request<SseRequest>) {
-    let first = stream.resolve(SseResponse::Chunk(b"data: late\n\n".to_vec()));
+fn assert_aborted(cmd: &mut Command<Effect, Event>, stream: &mut crux_core::Request<SseStream>) {
+    let first = stream.resolve(SseEvent::Chunk(b"data: late\n\n".to_vec()));
     assert!(cmd.events().next().is_none());
     assert!(effects(cmd).is_empty());
-    let second = stream.resolve(SseResponse::Chunk(b"data: later\n\n".to_vec()));
+    let second = stream.resolve(SseEvent::Chunk(b"data: later\n\n".to_vec()));
     assert!(cmd.events().next().is_none());
     assert!(first.is_ok(), "the task is still there: {first:?}");
     assert!(second.is_err(), "the task is gone: {second:?}");
