@@ -8,6 +8,11 @@ the Adafruit Circuit Playground Bluefruit. That firmware has since been flashed
 to the board and works as intended, first with a `spin` lock and then with the
 `critical-section` design this RFC recommends. Heap use was measured on a host,
 not on the device.
+
+Since then the spike has made the counter example's own core build without
+`std` and rebuilt the firmware as one more shell over it, which has also been
+flashed and works. Work the spike has planned but not done is marked as
+planned.
 ```
 
 This RFC proposes that `crux_core`, and the code its macros emit, build without
@@ -34,6 +39,10 @@ on `alloc` in all builds. The work falls into a handful of blockers, each small:
 This is `no_std` with `alloc`, not a heap-free Crux. `Command`, the executor
 and the effect registries all allocate, and removing that is out of scope.
 
+Beyond `crux_core`, capability crates would offer a `no_std` subset behind the
+same kind of `std` feature, and an example's `shared` crate would build without
+`std` so that firmware is one more shell over the same core.
+
 ## Why?
 
 A Crux core is a pure function of events and a model, with every side effect
@@ -52,11 +61,19 @@ does not use. What stops Crux building today is the rest: paths spelled
 `eprintln!` calls.
 
 The motivating case is the Circuit Playground Bluefruit, an nRF52840 board
-with two buttons, a slide switch, a red LED and ten NeoPixels. A counter app
-on it uses a render effect, a custom async `Delay` operation resolved by the
-shell, and a `Command::new` task that awaits it and sends a follow-up event.
-That is a realistic slice of Crux, and the spike shows it fits comfortably in
-the chip's 1 MB of flash and 256 KB of RAM.
+with two buttons, a slide switch, a red LED and ten NeoPixels. The spike's
+first counter app on it used a render effect, a custom async `Delay` operation
+resolved by the shell, and a `Command::new` task that awaited it and sent a
+follow-up event. A second firmware runs a copy of the `counter_http` app,
+with HTTP and server-sent events reaching the network over Bluetooth. That is
+a realistic slice of Crux, and the spike shows it fits comfortably in the
+chip's 1 MB of flash and 256 KB of RAM.
+
+The aim is one core for every shell: the same `shared` crate that the iOS,
+Android and web shells use, built without `std` for the firmware, with the
+device's own presentation (pixels, brightness, LEDs) in the firmware shell.
+The spike has done that for the counter example, and plans it for
+`counter_http`.
 
 ## Goals
 
@@ -79,14 +96,17 @@ the chip's 1 MB of flash and 256 KB of RAM.
 - The FFI bridge without `std`. A firmware shell calls `Core` directly. A
   non-Rust shell over FFI without `std`, for example C firmware, would need a
   `no_std` wire format, which is left as an open question.
-- The capability crates. `crux_http`, `crux_kv` and `crux_time` are not
-  touched by this RFC.
+- The full API of the capability crates without `std`. Each can offer a
+  `no_std` subset behind a default `std` feature, as described in
+  [Capability crates](#8-capability-crates), but making one API serve both
+  modes is left to their own RFCs. `crux_kv` is not touched.
 - Running without a heap.
 
 ## Design
 
-Each subsection below is one blocker, with the fix the spike used and what it
-costs.
+Sections 1 to 7 are each one blocker in `crux_core`, with the fix the spike
+used and what it costs. Sections 8 and 9 cover the capability crates and the
+examples.
 
 ### 1. Prelude and paths
 
@@ -274,7 +294,8 @@ with `Layer::bridge` and the format re-exports, and the `Serialized` route in
 generated code describes the bridge's wire types and the `Export` impl from
 `#[effect(facet_typegen)]` names `crux_core::bridge::Request`. Keeping
 `bridge` separate from `std`, rather than implied by it, lets an app ask for
-`std` without the bridge.
+`std` without the bridge. In the examples, only the FFI crate turns it on (see
+[Examples](#9-examples)).
 
 ### 5. Middleware without `std`
 
@@ -328,8 +349,13 @@ their formatting; the spike had to compare
 `the_largest_effect_enum_the_id_can_describe` with whitespace stripped. The
 alternative is a hard error, emitted by the same kind of gate, that says
 `facet_typegen` needs `crux_core`'s `bridge` feature. That is clearer for the
-user and leaves the snapshots readable. This RFC leans towards the hard error;
-open question 4 asks for a decision.
+user and leaves the snapshots readable.
+
+The examples now argue the other way. The counter's `shared` crate keeps
+`#[effect(facet_typegen)]` and builds without `std`, and also with `std` but
+without `bridge` when a Rust shell is built on its own, because only the FFI
+crate enables `bridge` (section 9). With a hard error, every such core would need
+`cfg_attr` around the attribute. Open question 4 asks for a decision.
 
 ### 7. Feature layout
 
@@ -361,12 +387,83 @@ The differences an app would see without `std`:
 | Middleware diagnostics | `eprintln!` today, `log` proposed | `log` proposed (silent in the spike) |
 | `bridge`, `EffectFFI`, `Serialized` route, `middleware::Bridge` | available | absent |
 | `testing`, `facet_typegen`, `uniffi_compat_bindgen` | available | require `std` |
-| `#[effect(facet_typegen)]` | FFI enum and `EffectFFI` impl | omitted in the spike, an error proposed |
+| `#[effect(facet_typegen)]` | FFI enum and `EffectFFI` impl | FFI items omitted (open question 4) |
 
 `serde` is still compiled into firmware, because `crux_core` derives
 `Serialize` and `Deserialize` on `RenderOperation` and similar types
 unconditionally. It costs about 270 bytes in the spike's firmware, and could
 become optional along with the bridge later.
+
+### 8. Capability crates
+
+A core that uses a capability crate needs that crate without `std` too. The
+pattern the spike settled on is a `no_std` subset: a default `std` feature
+carries the full API, and without it the crate keeps what a firmware shell can
+serve.
+
+- **`crux_http` (done in the spike).** `http` and `mime` have no `no_std`
+  mode and are in its public API, so without `std` the crate keeps the
+  protocol types, `HttpError` and `expect`, and swaps in twins of
+  `crux_http::Response<T>` and `command::{Http, RequestBuilder}` from
+  `src/nostd/`. The twins have the same names and call shapes, not the same
+  types: `status()` is a `u16`, headers are a `Vec<HttpHeader>`, and
+  `Http::request` takes the method as a string. `counter_http`'s HTTP code
+  compiles unchanged against either. `Client`, middleware, `.query()` and
+  `testing` stay std-only. The serialised types are identical, so a `no_std`
+  device and a std gateway agree on the wire. The subset builds for
+  `thumbv7em-none-eabihf`, has its own seven tests, and runs on the board
+  (see [Evidence](#evidence)). One fix is needed outside it:
+  `facet-generate-attrs` must depend on `facet` with `default-features =
+  false`, or it turns `facet/std` on for the whole build.
+- **`crux_time` (planned).** A default `std` feature and
+  `core::time::Duration`. `notify_after`, `TimerHandle`, `TimerOutcome` and
+  the `NotifyAfter` and `ClearTimer` operations work without `std`. `now` and
+  `notify_at`, which are built on `SystemTime`, and the deprecated root
+  `Time` and `TimerFuture` stay std-only.
+- **`crux_kv`** is not touched.
+
+This is how cores should wait for time: through `crux_time`'s `NotifyAfter`
+and `ClearTimer`, as effect variants `TimeNotifyAfter` and `TimeClear`, rather
+than an app's own `Delay` operation as in the spike's first firmware. The
+shell serves them the same way it served `Delay`.
+
+### 9. Examples
+
+The spike's first firmware carried its own copy of each app. It now builds the
+counter example's own core instead, and the layout that took is worth
+keeping:
+
+- **`shared` is the app.** It is a plain `lib` with a default `std` feature
+  (`crux_core/std`, `facet/std`, `serde/std`), and builds without `std` when
+  that is off. The firmware depends on it with `default-features = false` and
+  enables `crux_core/critical-section` itself.
+- **The FFI moves to a sibling `ffi` crate** (package `shared_ffi`), with
+  `CoreFfi`, BoltFFI, `boltffi.toml`, the `codegen` binary and the `cdylib`
+  and `staticlib` crate types. Cargo builds every declared crate type of a
+  dependency, so a `staticlib` on `shared` fails for a `thumbv7em` dependent,
+  which has no panic handler or allocator. BoltFFI reads the crate types from
+  `cargo metadata`, so they must stay declared, on the FFI crate. That crate
+  is also the one that enables `crux_core/bridge`; the Rust shells depend on
+  `shared` alone. The native shells' module and package names are unchanged;
+  only the native library files are now named after `shared_ffi`.
+- **The firmware is its own workspace**, beside the other shells
+  (`examples/counter/cpb`) and listed in the example workspace's `exclude`,
+  so feature unification with the std shells cannot pull `std` into it.
+- **Workspace dependencies.** The example's `[workspace.dependencies]` entries
+  for `crux_core`, `facet` and `serde` have `default-features = false`, and
+  `shared`'s `std` feature turns them back on.
+
+The counter's view model gained a numeric `value` beside its display string,
+so the firmware can draw the count. Brightness and the LED flash are
+presentation, kept in the firmware shell, so the counter's core needs no timer
+at all.
+
+The same is planned for `counter_http`, whose firmware would move to
+`examples/counter-http/cpb`. Its core would adopt what the spike's copy had to
+add for a board with nobody to reload a page: an error state in place of a
+`panic!`, and reopening the server-sent-events stream with back-off when it
+ends, timed with `crux_time`, so every shell benefits. The app-agnostic
+Bluetooth protocol and the browser gateway would move to `examples_support/`.
 
 ## Drawbacks
 
@@ -376,6 +473,19 @@ workspace entries enable the crates' default features and a member cannot turn
 them off. The spike spelled out versions in `crux_core`. The proper fix is
 `default-features = false` in `[workspace.dependencies]`, with every member
 that needs `std` opting back in, which touches every crate in the repository.
+Each example workspace needs the same, as section 9 describes.
+
+**The repository root has to exclude the examples.** The root `Cargo.toml`
+needs `exclude = ["examples"]`. When Cargo looks for a crate's workspace root,
+it first checks the roots it has already loaded, for every ancestor
+directory. The firmware depends on `crux_core` by path, which loads the
+repository root, so without the exclude a path dependency on an example's
+`shared` resolves its `workspace = true` keys against the repository root
+rather than the example's.
+
+**Each example gains a crate.** Splitting the FFI out of `shared` adds an
+`ffi` crate to every example that has native shells, and renames their native
+library files.
 
 **A feature that every `no_std` crate has to name.** Cargo cannot express
 "this dependency only when a feature is off", which is why the spike's first
@@ -383,10 +493,11 @@ lock, `spin`, was unconditional and sat in every app's lockfile. The
 `critical-section` feature avoids that, and a plain std app's lockfile no
 longer lists any lock crate. It has its own costs, which the spike found:
 
-- Every `no_std` crate that depends on `crux_core` must enable the feature,
-  including library crates that never link a binary, or that crate fails the
-  `compile_error!` when built on its own. A capability crate such as
-  `crux_http` would need a feature that forwards to it.
+- A `no_std` crate that depends on `crux_core` fails the `compile_error!`
+  when built on its own unless something enables the feature, including
+  library crates that never link a binary. The spike enables it in the
+  firmware, and on the command line when checking a library such as the
+  counter's `shared` for the target, so libraries need no forwarding feature.
 - Feature unification brings the two crates into std builds that share a
   graph with such a library. In the spike, a std-only gateway that depends on
   the `no_std` protocol crate compiles them, harmlessly, because the `std`
@@ -403,6 +514,9 @@ generated items in a `macro_rules!` invocation (design section 6).
 
 **The internal channel is new code on a hot path**, replacing a well-tested
 crate, with its performance under contention not yet measured.
+
+**A capability crate's subset is a second API to keep in step.** Every method
+added to `crux_http`'s std builder needs a decision for the `no_std` twin.
 
 ## Migration
 
@@ -446,8 +560,8 @@ plain state machine.
 ## Evidence
 
 The spike made `crux_core` and the macro output build for
-`thumbv7em-none-eabihf`, then linked a counter app into `embassy-nrf` firmware
-for the Circuit Playground Bluefruit. It was built on a branch close to master;
+`thumbv7em-none-eabihf`, then linked a counter app of its own into
+`embassy-nrf` firmware for the Circuit Playground Bluefruit. It was built on a branch close to master;
 every type, path and feature named in this RFC was checked against master.
 
 **Errors.** With only the `std` feature and `#![no_std]` added, the host build
@@ -490,9 +604,10 @@ these chips would need `portable-atomic` and its `Arc` (which cannot be a
 `self: Arc<Self>` receiver for `Wake`), `futures`' `portable-atomic` feature,
 a lock that does not need compare-and-swap, and a change upstream in facet.
 
-**On hardware.** The firmware was flashed through the board's UF2 bootloader
-and runs as intended. Button and switch interrupts reach the `embassy`
-executor, and each press updates the model and redraws the NeoPixels. The
+**On hardware.** That first firmware, with its own counter app and a `Delay`
+effect, was flashed through the board's UF2 bootloader and runs as intended.
+Button and switch interrupts reach the `embassy` executor, and each press
+updates the model and redraws the NeoPixels. The
 async command that awaits the shell's `Delay` request and then sends a
 follow-up event also completes, so the internal channel, the command executor
 and request resolution all work on the Cortex-M4 with the spike's `spin`-based
@@ -511,8 +626,11 @@ and after on the same day:
 | HTTP-over-BLE firmware text | 327,288 B | 326,432 B (−856 B) |
 | HTTP app peak heap, 32-bit host | 45,435 B | 45,435 B |
 
-The second image is a larger spike firmware that runs the `counter_http`
-example's app and reaches the network through a Web Bluetooth page. Data and
+The second image is a larger spike firmware that runs a copy of the
+`counter_http` example's app, built on `crux_http`'s `no_std` subset (design
+section 8), and reaches the network through a Web Bluetooth page. Its HTTP code
+is the example's, unchanged; the copy differs in its view, events for the link
+and the switch, an error state and the stream back-off. Data and
 bss did not change, and neither did heap use. On a 64-bit host the counter
 probe shows 64 bytes more, which is one-time setup in `critical-section`'s
 `std` implementation, not Crux.
@@ -540,8 +658,8 @@ spike's code. Two things outside the lock were needed to make it run at all:
   shell to call it. The experiment borrowed `Core::with_waker` and a public
   `Core::process` from an unmerged branch: the shell's waker raised an
   embassy signal, and its main loop called `process()`. This RFC does not
-  propose exposing a root waker, because making the timer an effect is
-  enough; see below and open question 9.
+  propose exposing a root waker, because making the timer an effect, such
+  as `crux_time`'s `NotifyAfter`, is enough; see below and open question 9.
 - **A different embassy timer queue.** embassy's default timer queue rejects
   any waker its own executor did not create, and Crux's `CommandWaker` is not
   one of those, so `Timer` panicked inside a `Command`. The `generic-queue-N`
@@ -563,9 +681,12 @@ the switch, with no hang and no panic. That is good evidence but not proof:
 the interleaving cannot be forced, and the same build was not run with `spin`
 for comparison.
 
-**Hardware futures as effects.** Both firmwares await their timers as
-effects. The counter's flash and the HTTP firmware's stream back-off each ask
-the shell for a `Delay`. In the counter, the shell's main loop resolves it.
+**Hardware futures as effects.** Both of the spike's first firmwares await
+their timers as effects. The counter's flash and the HTTP firmware's stream
+back-off each ask the shell for a custom `Delay` operation. That operation was
+a stand-in: the proposed shape is `crux_time`'s `NotifyAfter` (design
+section 8), which a shell resolves in the same way. In the counter, the
+shell's main loop resolves it.
 To check that this works when the timer is awaited away from the main loop,
 the HTTP firmware was changed to resolve `Delay` from a separate embassy
 task. The app was not changed. In the firmware:
@@ -600,10 +721,30 @@ contention. It was short, manual testing.
 
 Release text grew by 1,504 bytes, and data by 64 bytes for the two queues.
 Most of the text is the delay task's own inlined copy of `Core::resolve`.
-For an app with one hardware effect, like the counter, the main loop alone
-is simpler and smaller. A task per peripheral pays off when the main loop
+For an app with one hardware effect, like the first counter, the main loop
+alone is simpler and smaller. A task per peripheral pays off when the main loop
 already has a lot to wait on, as the HTTP firmware's does with the BLE link,
 or when several peripherals each hold pending requests.
+
+**One core for every shell.** The counter firmware has since been rebuilt as a
+shell over the counter example's own `shared` crate, built without `std`, with
+the layout in design section 9. Its LED flash is now an embassy `Timer` in the
+shell, so the core has no `Delay` effect. The core's count is unbounded, so
+the shell draws it as an odometer, each lap of ten pixels in a new colour.
+On the board, the buttons, the brightness switch and the LED flash all work:
+
+| | text | data | bss |
+|---|---|---|---|
+| Own app with a `Delay` effect | 20,728 B | 24 B | 34,036 B |
+| Shell over the counter's `shared`, count clamped to ten | 19,688 B | 24 B | 34,036 B |
+| The same, drawn as an odometer | 19,824 B | 24 B | 34,036 B |
+
+On a 64-bit host, peak heap for a burst of twenty presses fell from 58,480
+bytes to 3,264, because each press now ends with its render and no `Delay`
+command is left in flight. These are not comparable with the 32-bit figures
+above. The counter's `shared` crate is also checked for
+`thumbv7em-none-eabihf` alongside its usual checks, and the spike's examples
+CI job installs that target.
 
 ## Open questions
 
@@ -616,8 +757,8 @@ or when several peripherals each hold pending requests.
      is in `process_event` would need a blocking lock. Across cores that is
      correct, but a blocking lock cannot tell the other core from an
      interrupt on its own core, so it brings back the interrupt deadlock.
-   - Is the `critical-section` feature, which every `no_std` crate in the
-     graph must enable, acceptable? The alternative is an unconditional
+   - Is the `critical-section` feature, which something in every `no_std`
+     build must enable, acceptable? The alternative is an unconditional
      dependency.
    - Is `try-lock` acceptable as a dependency, or should `crux_core` allow
      the one small `unsafe` block it replaces?
@@ -631,7 +772,8 @@ or when several peripherals each hold pending requests.
    possible. A new format would need a byte-for-byte check against the
    facet_generate runtimes.
 4. **Gating `#[effect(facet_typegen)]`.** Silently omit the FFI items without
-   `bridge`, or fail with a clear error?
+   `bridge`, or fail with a clear error? The example layout in design
+   section 9 relies on the omission (see section 6).
 5. **Middleware on microcontrollers.** Port it with the stricter guard, or
    gate it on `std`?
 6. **Heap behaviour.** Allocation per command, and capacity retained in slabs
@@ -639,9 +781,12 @@ or when several peripherals each hold pending requests.
    a real embedded allocator needed before calling this supported?
 7. **CI targets.** Is `thumbv7em-none-eabihf` alone enough, or should a
    RISC-V target such as `riscv32imac-unknown-none-elf` be built too?
-8. **Capability crates.** `crux_time` has no `Instant` or `SystemTime`
-   without `std`. Which of `crux_time`, `crux_kv` and `crux_http` should
-   follow, and how?
+8. **Capability crates.** Is a `no_std` subset with twin types, as in
+   `crux_http`, acceptable, or should each crate make its public types its
+   own so that one API serves both modes? For `crux_http` that is a breaking
+   change and would need its own RFC; it would also become unnecessary if
+   `http` gains a `no_std` mode upstream. Does `crux_kv` need a subset at
+   all?
 9. **Futures that are not effects.** A `Command` task can await any future,
    but when a hardware future, such as an embassy timer or a GPIO edge,
    wakes it, nothing tells the shell to call `Core` again. Exposing a root
@@ -659,10 +804,11 @@ or when several peripherals each hold pending requests.
      loop, never from an interrupt handler, where it could hit the
      try-lock's contention panic.
 
-   Should "hardware futures are effects" be the documented rule? The
-   alternative is to support a `Command` awaiting a hardware future
-   directly, which would need some way for the shell to hear about the
-   wake.
+   For time, the effect is `crux_time`'s `NotifyAfter`, so a core needs no
+   operation of its own (design section 8). Should "hardware futures are
+   effects" be the documented rule? The alternative is to support a
+   `Command` awaiting a hardware future directly, which would need some way
+   for the shell to hear about the wake.
 
 ## Next steps
 
@@ -671,14 +817,22 @@ useful on its own:
 
 1. Fix the `crux_core::macros` gate.
 2. Move workspace dependencies to `default-features = false`, with members
-   opting in.
+   opting in, and exclude `examples` from the root workspace.
 3. Replace `crossbeam-channel` and `futures::channel::mpsc` with the internal
    channel, in std builds too, with a performance comparison.
 4. Add the `sync` shim: closure-based `critical-section` locks for the
    internals, try-locks for `Core`, and the `critical-section` feature.
 5. Add the `bridge` feature and the macro gate.
 6. Add the `no_std` attribute, the prelude and path changes, the middleware
-   changes, a small `no_std` example, and a CI job that builds it for
-   `thumbv7em-none-eabihf`.
-7. Later: the capability crates, and targets without compare-and-swap once
-   facet supports them.
+   changes, and a CI job that builds `crux_core` for `thumbv7em-none-eabihf`.
+7. Split the counter example's FFI into its own crate and gate its `shared`
+   on `std`, with CI checking `shared` for `thumbv7em-none-eabihf`. Add the
+   CPB shell at `examples/counter/cpb`, which the spike already has, and an
+   embedded page in the book.
+8. Add the `no_std` subsets of `crux_http` (done in the spike) and
+   `crux_time` (planned), and fix `facet-generate-attrs`' `facet`
+   dependency.
+9. Do the same for `counter_http`: restart-with-backoff and an error state in
+   its core, its firmware at `examples/counter-http/cpb`, and the Bluetooth
+   protocol and gateway in `examples_support/` (all planned).
+10. Later: targets without compare-and-swap once facet supports them.
