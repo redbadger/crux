@@ -9,12 +9,17 @@ drive := env("CPB_DRIVE", if os() == "macos" { "/Volumes/CPLAYBTBOOT" } else { "
 base := "0x26000"
 uf2_family := "0xADA52840"
 uf2_tools := "target/uf2-tools"
+# heap-probe/.cargo/config.toml pins a host target to override this crate's thumb target;
+# pass the actual host so it runs anywhere.
+host := `rustc -vV | sed -n 's/^host: //p'`
+# The Chrome gateway that performs the firmware's HTTP and SSE (its own workspace).
+gateway := "../../../examples_support/ble_gateway"
 
 # --------------------------------------------------------------------------
 # Development
 # --------------------------------------------------------------------------
 
-# checks required tools are installed
+# checks required tools are installed (here and for the gateway)
 doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-tool cargo "https://rustup.rs"
@@ -22,17 +27,24 @@ doctor:
     @just lib::check-tool cargo-objcopy "rustup component add llvm-tools && cargo install cargo-binutils"
     @just lib::check-tool python3 "https://www.python.org"
     @just lib::check-tool curl "your package manager"
+    @just lib::check-tool node "https://nodejs.org (for just heap-probe-wasm)"
+    @just lib::check-rust-target wasm32-wasip1
+    @echo '{{ style("command") }}gateway:{{ NORMAL }}'
+    @just {{ gateway }}/doctor
 
 # auto-fix formatting issues
 fix:
     @echo '{{ style("command") }}fix:{{ NORMAL }}'
     cargo fmt
+    cd heap-probe && cargo fmt
 
 # validate formatting and lint
 check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     cargo fmt -- --check
     cargo clippy --release --bins -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
+    cd heap-probe && cargo fmt -- --check
+    cd heap-probe && cargo clippy --target {{ host }} -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
 # build all three binaries: cpb-counter-http, link-check, ble-probe
 build:
@@ -43,15 +55,32 @@ build:
 size bin="cpb-counter-http": build
     cargo size --release --bin {{ bin }}
 
-# run tests (the app and protocol are tested on the host: `just test` one level up)
+# run the heap probe on the host (the counter-http core, counting allocations; 64-bit
+# pointers, so an upper bound)
+heap-probe:
+    @echo '{{ style("command") }}heap-probe:{{ NORMAL }}'
+    cd heap-probe && cargo run --release --target {{ host }}
+
+# run the heap probe as 32-bit wasm under Node (4-byte pointers, as on the nRF52840)
+heap-probe-wasm:
+    @echo '{{ style("command") }}heap-probe-wasm:{{ NORMAL }}'
+    cd heap-probe && cargo build --release --target wasm32-wasip1
+    node --no-warnings heap-probe/run-wasi.mjs heap-probe/target/wasm32-wasip1/release/cpb-counter-http-heap-probe.wasm
+
+# serve the gateway (examples_support/ble_gateway) at http://127.0.0.1:8080
+serve:
+    just {{ gateway }}/serve
+
+# run tests (the core is tested in ../shared, the protocol and gateway in examples_support)
 test:
     @echo '{{ style("command") }}test:{{ NORMAL }}'
-    @echo "  No tests configured for the firmware"
+    @echo "  No tests configured for the firmware (try: just heap-probe)"
 
 # clean build artifacts
 clean:
     @echo '{{ style("command") }}clean:{{ NORMAL }}'
     cargo clean
+    cd heap-probe && cargo clean
 
 # local development workflow
 dev: fix check build test
