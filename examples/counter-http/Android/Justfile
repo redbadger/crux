@@ -33,7 +33,7 @@ check: typegen
     ./gradlew --no-daemon :app:lintDebug
 
 # package the shared library and BoltFFI Kotlin bindings
-[working-directory('../shared')]
+[working-directory('../ffi')]
 package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
     boltffi pack android
@@ -42,7 +42,7 @@ package: install-targets
 typegen: package
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
-        --package shared \
+        --package shared_ffi \
         --bin codegen \
         --features codegen,facet_typegen \
         -- \

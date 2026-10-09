@@ -15,6 +15,11 @@ The `shared` directory adds two capabilities on top of the basic counter:
 - Optimistic updates — the UI updates immediately, then reconciles when the
   server responds
 
+The `ffi` directory is a crate (`shared_ffi`) that exports the core to the
+Swift, Kotlin and TypeScript shells through BoltFFI, and holds the `codegen`
+binary that generates their types. The Leptos shell depends on `shared`
+directly.
+
 ## Shells
 
 - SwiftUI (iOS/macOS): `apple/`

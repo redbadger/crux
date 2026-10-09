@@ -5,7 +5,7 @@
 # cover every example x shell combination for that platform.
 #
 # Matrix shape:
-#   shared     — 9 entries (all 7 examples x shared + counter/ffi + counter/tui)
+#   shared     — 10 entries (all 7 examples x shared + counter/ffi + counter-http/ffi + counter/tui)
 #   web-trunk  — 6 entries (5 examples x web-leptos + counter/web-yew)
 #   web-dioxus — 1 entry   (counter only)
 #   web-js     — 8 entries (all 7 examples x web-nextjs + counter/web-react-router)
@@ -49,6 +49,7 @@ jobs:
           - { example: counter, shell: tui }
           - { example: counter-tutorial, shell: shared }
           - { example: counter-http, shell: shared }
+          - { example: counter-http, shell: ffi }
           - { example: counter-middleware, shell: shared }
           - { example: counter-routing, shell: shared }
           - { example: notes, shell: shared }

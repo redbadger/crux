@@ -36,7 +36,7 @@ check:
 typegen:
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
-        --package shared \
+        --package shared_ffi \
         --bin codegen \
         --features codegen,facet_typegen \
         -- \
@@ -44,7 +44,7 @@ typegen:
             --output-dir generated
 
 # builds the shared library as a Swift package using BoltFFI
-[working-directory('../shared')]
+[working-directory('../ffi')]
 package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
     rm -rf ../apple/generated/Shared

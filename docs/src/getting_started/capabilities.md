@@ -28,12 +28,12 @@ How the core uses them is the subject of Part II, from
 
 ## Registering the shipped handler
 
-A capability that ships a shell handler is registered in the codegen, next to
-the app:
+A capability that ships a shell handler is registered in the codegen binary,
+in the `ffi` crate, next to the app:
 
 ```rust,noplayground
-// Rust: shared/src/bin/codegen.rs
-{{#include ../../../examples/counter-http/shared/src/bin/codegen.rs:shell_handler}}
+// Rust: ffi/src/bin/codegen.rs
+{{#include ../../../examples/counter-http/ffi/src/bin/codegen.rs:shell_handler}}
 ```
 
 `crux_http::HTTP` is only there when `crux_http`'s own `facet_typegen` feature
