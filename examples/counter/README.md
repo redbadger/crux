@@ -12,6 +12,10 @@ The `shared` directory is a crate that implements the shared crux core. It conta
 - Tests that ensure events update the `Model` correctly and produce the desired
   effects.
 
+The `ffi` directory is a crate (`shared_ffi`) that exports the core to the
+Swift, Kotlin, TypeScript and C# shells through BoltFFI, and holds the `codegen`
+binary that generates their types. The Rust shells depend on `shared` directly.
+
 ## Shells
 
 - SwiftUI (iOS/macOS) — `apple/`
