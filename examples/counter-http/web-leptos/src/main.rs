@@ -25,6 +25,7 @@ fn root_component() -> impl IntoView {
             </section>
             <section class="container has-text-centered">
                 <p class="is-size-5">{move || view.get().text}</p>
+                <p class="has-text-danger">{move || view.get().error}</p>
                 <div class="buttons section is-centered">
                     <button class="button is-primary is-warning"
                         on:click=move |_| set_event.update(|value| *value = Event::Decrement)
