@@ -12,3 +12,4 @@ You can read about using Crux with:
 - [Dioxus](./platforms/dioxus.md): Rust web framework (WebAssembly)
 - [Tauri](./platforms/tauri.md): Desktop/mobile app with a web frontend and Rust backend
 - [Ratatui](./platforms/ratatui.md): Terminal UI (TUI) app in Rust
+- [Embedded](./platforms/embedded.md): firmware for a microcontroller, in Rust without `std` (experimental)

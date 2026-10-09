@@ -46,6 +46,7 @@
    1. [Rust and Dioxus](./part-3/platforms/dioxus.md)
    1. [Tauri](./part-3/platforms/tauri.md)
    1. [Ratatui](./part-3/platforms/ratatui.md)
+   1. [Embedded (no_std)](./part-3/platforms/embedded.md)
 
 # Part IV - Understanding Internals
 

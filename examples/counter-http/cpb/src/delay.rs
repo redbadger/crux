@@ -104,6 +104,7 @@ pub async fn timers(core: &'static Core<Counter>) {
             }
         }
 
+        // ANCHOR: fire
         let now = Instant::now();
         let mut i = 0;
         while i < pending.len() {
@@ -117,5 +118,6 @@ pub async fn timers(core: &'static Core<Counter>) {
                 i += 1;
             }
         }
+        // ANCHOR_END: fire
     }
 }
