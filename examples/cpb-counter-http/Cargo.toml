@@ -1,9 +1,10 @@
-# Host workspace for the parts that test on the host: the wire protocol and the app.
-# `firmware/` (thumbv7em) and `gateway/` (wasm) are separate workspaces with their own
-# build targets; both use these crates by path.
+# Host workspace for the parts that test on the host: the app and the heap probe.
+# `firmware/` (thumbv7em) is a separate workspace with its own build target, and uses the
+# app by path. The BLE wire protocol and the Chrome gateway are app-agnostic, so they live in
+# `examples_support/ble_protocol` and `examples_support/ble_gateway`.
 [workspace]
-members = ["app", "heap-probe", "protocol"]
-exclude = ["firmware", "gateway"]
+members = ["app", "heap-probe"]
+exclude = ["firmware"]
 resolver = "3"
 
 [workspace.package]
