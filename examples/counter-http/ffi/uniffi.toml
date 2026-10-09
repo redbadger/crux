@@ -1,6 +1,6 @@
 [bindings.kotlin]
 package_name = "com.crux.examples.counter.http"
-cdylib_name = "shared"
+cdylib_name = "shared_ffi"
 
 [bindings.swift]
 cdylib_name = "shared_ffi"
