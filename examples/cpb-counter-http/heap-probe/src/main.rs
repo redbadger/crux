@@ -7,8 +7,8 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use ble_protocol::{SseResponse, ToGateway, encode};
 use cpb_counter_http_app::{Counter, Effect, Event};
-use cpb_protocol::{SseResponse, ToGateway, encode};
 use crux_core::{Core, Request};
 use crux_http::protocol::{HttpRequest, HttpResponse, HttpResult};
 
@@ -34,7 +34,7 @@ static GLOBAL: Tracking = Tracking;
 #[derive(Default)]
 struct Shell {
     http: BTreeMap<u16, Request<HttpRequest>>,
-    sse: Option<Request<cpb_protocol::SseRequest>>,
+    sse: Option<Request<ble_protocol::SseRequest>>,
     next_id: u16,
     renders: usize,
 }

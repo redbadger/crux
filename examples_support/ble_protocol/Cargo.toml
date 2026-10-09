@@ -1,0 +1,18 @@
+[package]
+name = "ble_protocol"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+description = "spike(no_std): the BLE link between a Crux device's firmware and the Chrome gateway"
+
+# A root workspace member, so these are explicit rather than `workspace = true`: the root's
+# `[workspace.dependencies]` entries keep their std defaults, and this crate must build without std.
+[dependencies]
+crux_core = { path = "../../crux_core", default-features = false, features = ["crux_macros", "critical-section"] }
+crux_http = { path = "../../crux_http", default-features = false }
+postcard = { version = "1.1", default-features = false, features = ["alloc"] }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+serde_bytes = { version = "0.11", default-features = false, features = ["alloc"] }
+
+[lints]
+workspace = true

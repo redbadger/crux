@@ -8,7 +8,7 @@ description = "spike: the Leptos shell for the CPB gateway (Web Bluetooth + fetc
 [dependencies]
 console_error_panic_hook = "0.1.7"
 console_log = "1.1.0"
-cpb-protocol.workspace = true
+ble_protocol.workspace = true
 futures-channel = "0.3.33"
 futures-util = "0.3.33"
 gateway-core = { path = "../core" }

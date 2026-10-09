@@ -14,7 +14,7 @@ use super::{
     Count, Counter, Delay, EffectTestExt, Event, Model, PIXELS, Rgb, WATCH_BACKOFF_MAX,
     WATCH_BACKOFF_MIN,
 };
-use cpb_protocol::{SseRequest, SseResponse};
+use ble_protocol::{SseRequest, SseResponse};
 
 /// 2023-01-01T00:00:00Z
 const NEW_YEAR: i64 = 1_672_531_200_000;
