@@ -58,7 +58,9 @@ class CounterHandler(
     /// capability.
     ///
     /// The method is not `suspend` (a stream outlives the call that opens
-    /// it), so the connection runs in a coroutine of its own on `scope`.
+    /// it), so the connection runs in a coroutine of its own on `scope`. If
+    /// the connection fails, the stream still ends with `Done`, so the core
+    /// knows to reopen it.
     override fun serverSentEvents(
         operation: SseRequest,
         sink: EffectSink<SseResponse>,
@@ -70,6 +72,7 @@ class CounterHandler(
                 throw ce
             } catch (error: Exception) {
                 Log.e(TAG, "SSE error", error)
+                sink.send(SseResponse.Done)
             }
         }
     }
