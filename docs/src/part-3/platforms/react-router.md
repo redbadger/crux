@@ -44,11 +44,11 @@ to `wasm-opt`, which older releases don't understand. Check with
 [release from GitHub](https://github.com/WebAssembly/binaryen/releases) if your
 package manager ships something older.
 
-Now that we have `boltffi` installed, we can build our `shared` library to
+Now that we have `boltffi` installed, we can build our core, from its `ffi` crate, to
 WebAssembly for the browser.
 
 ```sh
-(cd shared && boltffi pack wasm)
+(cd ffi && boltffi pack wasm)
 ```
 
 ````admonish tip
@@ -60,7 +60,7 @@ WebAssembly for the browser.
     "scripts": {
       "build": "pnpm run wasm:build && react-router build",
       "dev": "pnpm run wasm:build && react-router dev",
-      "wasm:build": "cd ../shared && boltffi pack wasm"
+      "wasm:build": "cd ../ffi && boltffi pack wasm"
     }
   }
   ```
@@ -86,7 +86,7 @@ To generate the shared types for TypeScript, run the `codegen` binary, telling
 it which language to emit and where to put the output:
 
 ```sh
-cargo run --package shared --bin codegen --features codegen,facet_typegen -- \
+cargo run --package shared_ffi --bin codegen --features codegen,facet_typegen -- \
     --language typescript --output-dir generated/types
 ```
 
