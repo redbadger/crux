@@ -29,6 +29,6 @@ pub async fn request(
     Ok(body.into_stream().map(|chunk| {
         chunk
             .map(|chunk| Uint8Array::from(chunk).to_vec())
-            .map_err(|error| format!("{error:?}"))
+            .map_err(|error| crate::describe(&error))
     }))
 }

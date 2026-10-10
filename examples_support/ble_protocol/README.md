@@ -6,7 +6,7 @@ both. It's `no_std` and builds for thumbv7em (the firmware), wasm (the gateway) 
 counter-http example's firmware shell, [`examples/counter-http/cpb`](../../examples/counter-http/cpb/),
 is its first user.
 
-- The GATT service and characteristic UUIDs, and the advertised name.
+- The GATT service and characteristic UUIDs.
 - `ToGateway` (`Http`, `Sse`, `Cancel`) and `ToDevice` (`Http`, `SseChunk`, `SseDone`). Each
   carries a request id, and the HTTP payloads are crux_http's own protocol types.
 - Framing: postcard bytes with a `u16` length prefix, cut into chunks. The `Reassembler`

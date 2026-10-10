@@ -35,8 +35,6 @@ pub const SERVICE_UUID_U128: u128 = 0x744a_a621_b4b9_4751_91c0_a43b_54bb_1544;
 pub const TX_UUID: &str = "ad229cac-4e64-4208-b76b-ed536a1e47c5";
 /// Gateway → device (write without response).
 pub const RX_UUID: &str = "cb4206ec-fe9c-4fea-ae65-2e7c5b56515b";
-/// The name the device advertises.
-pub const DEVICE_NAME: &str = "CPB Counter";
 
 /// The chunk size the gateway writes with. Chrome does not expose the negotiated ATT
 /// MTU, and 20 bytes (the minimum MTU of 23, less 3) always fits.

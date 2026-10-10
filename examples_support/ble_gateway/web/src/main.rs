@@ -7,6 +7,7 @@ mod http;
 mod sse;
 
 use leptos::prelude::*;
+use wasm_bindgen::{JsCast, JsValue};
 
 use gateway_core::Event;
 
@@ -73,4 +74,14 @@ fn main() {
     leptos::mount::mount_to_body(|| {
         view! { <RootComponent /> }
     });
+}
+
+/// A JS error as a log line: `TypeError: network error` for an `Error` (as `gloo-net`
+/// shows a rejected fetch), the string itself for a thrown string, else its `Debug`.
+fn describe(error: &JsValue) -> String {
+    error
+        .dyn_ref::<js_sys::Error>()
+        .map(|error| format!("{}: {}", error.name(), error.message()))
+        .or_else(|| error.as_string())
+        .unwrap_or_else(|| format!("{error:?}"))
 }
