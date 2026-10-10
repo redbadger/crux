@@ -36,8 +36,8 @@ fn main() -> Result<()> {
     // sends — `Delete`, `Exists`, `ListKeys`, `Now` and `NotifyAt` — are
     // generated too: the shipped source implements the whole capability.
     registry
-        .shell_handler(&crux_kv::KEY_VALUE)?
-        .shell_handler(&crux_time::TIME)?;
+        .shell_extension(&crux_kv::shell::EXTENSION)?
+        .shell_extension(&crux_time::shell::EXTENSION)?;
 
     let typegen_app = registry
         .build()?

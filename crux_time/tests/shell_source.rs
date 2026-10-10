@@ -4,7 +4,7 @@
 //! `cargo test` cannot compile Swift, Kotlin, TypeScript or C#, so a shipped
 //! file that does not build is caught either here or in an example shell — and
 //! only an example that registers the handler covers it. This test registers
-//! `crux_time::TIME` against a small app and hands the generated package to
+//! `crux_time::shell::EXTENSION` against a small app and hands the generated package to
 //! whichever toolchain is on `PATH`: a Rust contributor without the .NET SDK
 //! sees a skip, and CI, which has one, sees a compile.
 #![cfg(feature = "facet_typegen")]
@@ -67,7 +67,7 @@ fn generator() -> CodeGenerator {
     // Registering the handler registers the types its sources name, which for
     // this app includes the operations it never sends.
     registry
-        .shell_handler(&crux_time::TIME)
+        .shell_extension(&crux_time::shell::EXTENSION)
         .expect("should register the shipped handler");
     registry.build().expect("should build the registry")
 }

@@ -1,4 +1,4 @@
-//! The shell handler `crux_kv` ships.
+//! The shell handler `crux_kv` ships, as a shell extension.
 //!
 //! The rules for answering a store operation belong to this crate — that a
 //! missing key is a [`Value::None`] and not an error, that `Set` and `Delete`
@@ -9,7 +9,7 @@
 //! // shared/src/bin/codegen.rs
 //! let typegen = TypeRegistry::new()
 //!     .register_app::<MyApp>()?
-//!     .shell_handler(&crux_kv::KEY_VALUE)?
+//!     .shell_extension(&crux_kv::shell::EXTENSION)?
 //!     .build()?;
 //! ```
 //!
@@ -20,7 +20,7 @@
 
 use crux_core::{
     capability::Operation,
-    type_generation::facet::{ShellHandler, ShellSource, TypeGenError, TypeRegistry},
+    type_generation::facet::{ShellExtension, ShellSource, TypeGenError, TypeRegistry},
 };
 
 use crate::operation::{Delete, Exists, Get, ListKeys, Set};
@@ -29,7 +29,7 @@ use crate::operation::{Delete, Exists, Get, ListKeys, Set};
 ///
 /// The Swift, Kotlin, TypeScript and C# implementations of the crate's
 /// protocol, for an app to register with
-/// [`TypeRegistry::shell_handler`](crux_core::type_generation::facet::TypeRegistry::shell_handler).
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
 ///
 /// Each declares a `KeyValueHandler` protocol (`IKeyValueHandler` in C#) with
 /// one method per operation, and an implementation of it over a store every
@@ -37,8 +37,17 @@ use crate::operation::{Delete, Exists, Get, ListKeys, Set};
 /// the JVM and in C#, and `localStorage` in the browser. Where the store lives
 /// is the shell's choice — each implementation takes it as configuration, and a
 /// shell that wants a different one conforms its own type to the protocol.
-pub static KEY_VALUE: ShellHandler = ShellHandler::new("KeyValue")
+pub static EXTENSION: ShellExtension = ShellExtension::new("KeyValue")
     .types(register_types)
+    // The names the shipped sources declare at module scope, in any language.
+    .declares(&[
+        "KeyValueHandler",
+        "IKeyValueHandler",
+        "UserDefaultsKeyValueHandler",
+        "FileKeyValueHandler",
+        "createLocalStorageKeyValueHandler",
+        "localStorageKeyValueHandler",
+    ])
     .swift(ShellSource::stdlib(include_str!(
         "../shell/swift/KeyValue.swift"
     )))
@@ -52,7 +61,7 @@ pub static KEY_VALUE: ShellHandler = ShellHandler::new("KeyValue")
         "../shell/csharp/KeyValue.cs"
     )));
 
-/// Registers the types [`KEY_VALUE`]'s sources name, for an app that does not
+/// Registers the types [`EXTENSION`]'s sources name, for an app that does not
 /// use every one of them itself.
 ///
 /// A shipped source implements the whole capability, so every type it mentions
