@@ -160,7 +160,3 @@ export function createLocalStorageKeyValueHandler(
     },
   };
 }
-
-/// The plain path: one handler over the global `localStorage`, with no prefix.
-export const localStorageKeyValueHandler: KeyValueHandler =
-  createLocalStorageKeyValueHandler();

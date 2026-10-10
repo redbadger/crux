@@ -4,8 +4,10 @@
 /// holds an instance and delegates in one line:
 ///
 /// ```ts
+/// const http = createFetchHttpHandler();
+///
 /// const handler: EffectHandler = {
-///   http: (operation) => fetchHttpHandler.request(operation),
+///   http: (operation) => http.request(operation),
 /// };
 /// ```
 ///
@@ -84,6 +86,3 @@ export function createFetchHttpHandler(
     },
   };
 }
-
-/// The plain path: one handler over the global `fetch`.
-export const fetchHttpHandler: HttpHandler = createFetchHttpHandler();

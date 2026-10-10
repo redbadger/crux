@@ -12,7 +12,7 @@ import Foundation
 ///
 /// ```swift
 /// struct MyHandler: EffectHandler {
-///     let http = URLSessionHttpHandler.shared
+///     let http = URLSessionHttpHandler()
 ///
 ///     func http(_ operation: HttpRequest) async -> HttpResult {
 ///         await http.request(operation)
@@ -41,15 +41,15 @@ public protocol HttpHandler: Sendable {
 /// - `URLError.timedOut` is `HttpError.timeout`;
 /// - everything else is `HttpError.io`, carrying the error's description.
 public final class URLSessionHttpHandler: HttpHandler {
-    /// The plain path: one handler over `URLSession.shared`.
-    public static let shared = URLSessionHttpHandler()
-
     private let session: URLSession
 
     /// Performs every request on `session`.
     ///
-    /// A pinned session, a session with a proxy configuration, or one with a
-    /// delegate of your own is the shell's business, and this is where it goes.
+    /// With no argument that is `URLSession.shared`, so every handler made this
+    /// way shares one session, and its cookies are kept in the process-wide
+    /// `HTTPCookieStorage.shared`. A pinned session, a session with a proxy
+    /// configuration, or one with a delegate of your own is the shell's
+    /// business, and this is where it goes.
     public init(session: URLSession = .shared) {
         self.session = session
     }

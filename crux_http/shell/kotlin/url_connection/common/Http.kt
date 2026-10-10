@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 ///
 /// ```kotlin
 /// class MyHandler : EffectHandler {
-///     private val http = UrlConnectionHttpHandler.shared
+///     private val http = UrlConnectionHttpHandler()
 ///
 ///     override suspend fun http(operation: HttpRequest): HttpResult = http.request(operation)
 /// }
@@ -279,10 +279,6 @@ class UrlConnectionHttpHandler(
         }
 
     companion object {
-        /// The plain path: one handler, configured by nothing — and so one
-        /// cookie jar, shared by everything that reaches for it.
-        val shared = UrlConnectionHttpHandler()
-
         /// `HttpURLConnection` sends no body unless it is told to, and a
         /// request with one of these methods and an empty body still has a
         /// body — an empty one.

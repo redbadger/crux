@@ -89,7 +89,7 @@ pub mod typescript {
     .platforms(&[Platform::Web])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&["HttpHandler", "createFetchHttpHandler", "fetchHttpHandler"]);
+    .foreign_types(&["HttpHandler", "createFetchHttpHandler"]);
 }
 
 /// The C# handler, for an app to register with

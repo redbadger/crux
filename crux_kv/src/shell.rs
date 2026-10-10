@@ -86,11 +86,7 @@ pub mod typescript {
     .platforms(&[Platform::Web])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&[
-        "KeyValueHandler",
-        "createLocalStorageKeyValueHandler",
-        "localStorageKeyValueHandler",
-    ]);
+    .foreign_types(&["KeyValueHandler", "createLocalStorageKeyValueHandler"]);
 }
 
 /// The C# handler, for an app to register with

@@ -12,13 +12,15 @@ and this project adheres to
 
 - **A shell-side HTTP handler ships with the crate.** `crux_http::shell` has
   a `ShellExtension` for each of Swift, Kotlin, TypeScript and C#, carrying
-  implementations of the protocol — `URLSessionHttpHandler`, `UrlConnectionHttpHandler`,
-  `fetchHttpHandler` and `HttpClientHttpHandler`, each behind an `HttpHandler`
-  protocol with one `request` method. An app registers the ones for its languages in
-  its codegen binary
-  (`registry.shell_extension(&crux_http::shell::swift::URL_SESSION)?`) and its `EffectHandler`
-  delegates `http` in one line; the mapping of platform errors onto
-  `HttpResult` is then the crate's, not the shell's. Each handler that owns
+  implementations of the protocol (`URLSessionHttpHandler`,
+  `UrlConnectionHttpHandler`, `createFetchHttpHandler` and
+  `HttpClientHttpHandler`), each behind an `HttpHandler` protocol with one
+  `request` method. Each is constructed by the shell, with no arguments for the
+  platform's default client or with the configuration it needs. An app
+  registers the ones for its languages in its codegen binary
+  (`registry.shell_extension(&crux_http::shell::swift::URL_SESSION)?`) and its
+  `EffectHandler` delegates `http` in one line; the mapping of platform errors
+  onto `HttpResult` is then the crate's, not the shell's. Each handler that owns
   a client keeps cookies, so a session survives between requests on every
   platform: `URLSession` and `HttpClient` already do, and
   `UrlConnectionHttpHandler` carries an `InMemoryCookieJar` (pass
