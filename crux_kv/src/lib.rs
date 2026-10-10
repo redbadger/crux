@@ -17,8 +17,6 @@ use crux_core::{Command, Request, command::RequestBuilder};
 
 pub use error::*;
 pub use protocol::*;
-#[cfg(feature = "facet_typegen")]
-pub use shell::KEY_VALUE;
 
 #[allow(deprecated)]
 #[deprecated(

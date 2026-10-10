@@ -52,8 +52,6 @@ pub use url::Url;
 pub use http_types;
 
 pub use crate::protocol::{HttpRequest, HttpResponse};
-#[cfg(feature = "facet_typegen")]
-pub use crate::shell::HTTP;
 
 pub use self::{config::Config, error::HttpError, request::Request};
 pub use response::Response;

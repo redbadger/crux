@@ -33,8 +33,6 @@ use futures::{
 };
 
 pub use protocol::*;
-#[cfg(feature = "facet_typegen")]
-pub use shell::TIME;
 
 /// Result of the timer run. Timers can either run to completion or be cleared early.
 #[derive(Debug, PartialEq, Eq, Clone)]

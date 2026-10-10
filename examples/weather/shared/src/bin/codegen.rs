@@ -34,9 +34,9 @@ fn main() -> Result<()> {
     // this app never sends — `KvDelete`, `Now` and the rest — are generated
     // too: the shipped source implements the whole capability.
     registry
-        .shell_handler(&crux_http::HTTP)?
-        .shell_handler(&crux_kv::KEY_VALUE)?
-        .shell_handler(&crux_time::TIME)?;
+        .shell_extension(&crux_http::shell::EXTENSION)?
+        .shell_extension(&crux_kv::shell::EXTENSION)?
+        .shell_extension(&crux_time::shell::EXTENSION)?;
 
     let typegen_app = registry
         .build()?
