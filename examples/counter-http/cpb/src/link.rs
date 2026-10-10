@@ -35,6 +35,10 @@ bind_interrupts!(struct Irqs {
     RTC0 => mpsl::HighPrioInterruptHandler;
 });
 
+/// The name the board advertises. The gateway finds it by service UUID; this is what its
+/// chooser shows.
+const DEVICE_NAME: &str = "CPB Counter";
+
 /// The largest value one ATT write or notification can carry with the default packet pool.
 const VALUE_MAX: usize = 244;
 
@@ -193,7 +197,7 @@ pub async fn run<C: Controller>(controller: C) {
     let mut peripheral = stack.peripheral();
 
     let Ok(server) = Server::new_with_config(GapConfig::Peripheral(PeripheralConfig {
-        name: ble_protocol::DEVICE_NAME,
+        name: DEVICE_NAME,
         appearance: &appearance::UNKNOWN,
     })) else {
         INCOMING.send(LinkEvent::Failed).await;
@@ -238,9 +242,7 @@ async fn advertise<'values, 'server, C: Controller>(
     // in the scan response.
     let mut scan_data = [0; 31];
     let scan_len = AdStructure::encode_slice(
-        &[AdStructure::CompleteLocalName(
-            ble_protocol::DEVICE_NAME.as_bytes(),
-        )],
+        &[AdStructure::CompleteLocalName(DEVICE_NAME.as_bytes())],
         &mut scan_data[..],
     )?;
     let advertiser = peripheral

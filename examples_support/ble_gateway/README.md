@@ -17,7 +17,9 @@ just test     # the core's tests
 just check    # fmt + clippy (pedantic), core and the wasm shell
 ```
 
-Click **Connect** and choose the device, which advertises as `ble_protocol::DEVICE_NAME` ("CPB Counter").
+Click **Connect** and choose the device. The chooser lists devices advertising the gateway
+service (`ble_protocol::SERVICE_UUID`), by the name each firmware gives itself (e.g.
+"CPB Counter").
 Chrome remembers the device, so reconnecting later needs no chooser. Web Bluetooth needs
 Chrome (or another Chromium) and a secure context; `localhost` counts.
 
