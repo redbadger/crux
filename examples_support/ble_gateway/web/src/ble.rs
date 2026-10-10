@@ -15,6 +15,8 @@ use web_sys::{
     RequestDeviceOptions,
 };
 
+use crate::describe;
+
 thread_local! {
     /// The device last connected to, so a reconnect needs no chooser (and no click).
     static DEVICE: RefCell<Option<BluetoothDevice>> = const { RefCell::new(None) };
@@ -127,11 +129,4 @@ pub async fn write(operation: &BleWrite) -> WriteResult {
             .map_err(|error| describe(&error))?;
     }
     Ok(())
-}
-
-fn describe(error: &JsValue) -> String {
-    error.dyn_ref::<js_sys::Error>().map_or_else(
-        || format!("{error:?}"),
-        |error| String::from(error.message()),
-    )
 }

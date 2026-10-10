@@ -405,3 +405,12 @@ answered every end of a stream with `Done`. Fixed in the gateway: it now asks it
 its own `SseStream` operation, which ends with `Closed` or `Failed(reason)` (the fetch
 rejected, a non-2xx status, or a body read error), and logs `SSE failed: <reason>` for the
 latter. The device still gets `SseDone` either way.
+
+Follow-up (2026-10-10): the retry spacing, measured from the timestamped gateway log, with
+Wi-Fi off and then on. Stream #2 failed at 14:30:59.4; the retries opened at +1.0 s (#5),
++2.1 s (#6), +4.0 s (#7) and +8.1 s (#8), so the back-off doubles as designed. #8 succeeded
+and a chunk reached the board. It then failed at 14:31:17.0 while Wi-Fi settled, and #9
+retried after 1.0 s, because that update had reset the back-off. A POST at 14:31:18.7 was
+confirmed over the new stream. There was no BLE reconnect throughout. The gateway's log now
+tells `SSE failed: <reason>` from `SSE closed by the server`, and gives the reason as the JS
+error's name and message (e.g. `TypeError: network error`).
