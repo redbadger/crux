@@ -12,9 +12,11 @@ and this project adheres to
 
 - **A shell-side HTTP handler ships with the crate.**
   `crux_http::shell::EXTENSION` is a `ShellExtension` carrying Swift, Kotlin,
-  TypeScript and C# implementations of the protocol — `URLSessionHttpHandler`,
-  `UrlConnectionHttpHandler`, `fetchHttpHandler` and `HttpClientHttpHandler`,
-  each behind an `HttpHandler` protocol with one `request` method. An app
+  TypeScript and C# implementations of the protocol (`URLSessionHttpHandler`,
+  `UrlConnectionHttpHandler`, `createFetchHttpHandler` and
+  `HttpClientHttpHandler`), each behind an `HttpHandler` protocol with one
+  `request` method. Each is constructed by the shell, with no arguments for the
+  platform's default client or with the configuration it needs. An app
   registers it in its codegen binary
   (`registry.shell_extension(&crux_http::shell::EXTENSION)?`) and its
   `EffectHandler` delegates `http` in one line; the mapping of platform errors

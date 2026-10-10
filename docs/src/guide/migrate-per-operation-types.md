@@ -660,7 +660,7 @@ mechanism; this is the migration.
 
    ```swift
    // Swift
-   let http = URLSessionHttpHandler.shared
+   let http = URLSessionHttpHandler()
    let kv = UserDefaultsKeyValueHandler(suiteName: "com.example.app.store")
    let time = TaskTimeHandler()
 
@@ -684,7 +684,7 @@ mechanism; this is the migration.
 
    ```typescript
    // TypeScript
-   private readonly http = fetchHttpHandler;
+   private readonly http = createFetchHttpHandler();
    private readonly kv = createLocalStorageKeyValueHandler("app.");
    private readonly time = new TimeoutTimeHandler();
 
@@ -695,7 +695,7 @@ mechanism; this is the migration.
 
    ```csharp
    // C#
-   private readonly IHttpHandler http = HttpClientHttpHandler.Shared;
+   private readonly IHttpHandler http = new HttpClientHttpHandler();
    private readonly IKeyValueHandler kv = new FileKeyValueHandler(storeDirectory);
    private readonly ITimeHandler time = new TaskTimeHandler();
 
