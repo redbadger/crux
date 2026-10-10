@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 /// <code>
 /// public sealed class MyHandler : IEffectHandler
 /// {
-///     private readonly IHttpHandler _http = HttpClientHttpHandler.Shared;
+///     private readonly IHttpHandler _http = new HttpClientHttpHandler();
 ///
 ///     public Task&lt;HttpResult&gt; Http(HttpRequest operation) => _http.Request(operation);
 /// }
@@ -48,12 +48,31 @@ public interface IHttpHandler
 public sealed class HttpClientHttpHandler : IHttpHandler
 {
     /// <summary>
-    /// The plain path: one handler over one <c>HttpClient</c>, which is how
-    /// <c>HttpClient</c> wants to be used — one instance, reused.
+    /// The client every handler made with the parameterless constructor sends
+    /// with. <c>HttpClient</c> is meant to be created once and reused, because
+    /// each instance holds its own connection pool, so there is only one. It is
+    /// created on first use, so a shell that always passes its own client never
+    /// creates it.
     /// </summary>
-    public static readonly HttpClientHttpHandler Shared = new(new HttpClient());
+    private static readonly Lazy<HttpClient> DefaultClient = new(() => new HttpClient());
 
     private readonly HttpClient _client;
+
+    /// <summary>
+    /// Sends every request with one <c>HttpClient</c> shared by every handler
+    /// made this way.
+    /// </summary>
+    /// <remarks>
+    /// That client lives for the life of the process, so its connections and
+    /// its cookies are process-wide. A long-running process that needs to see
+    /// DNS changes should pass a client of its own instead, for example, where
+    /// <c>SocketsHttpHandler</c> is available (it is not on Blazor WebAssembly),
+    /// one over <c>new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) }</c>.
+    /// </remarks>
+    public HttpClientHttpHandler()
+        : this(DefaultClient.Value)
+    {
+    }
 
     /// <summary>
     /// Sends every request with <paramref name="client"/>, so that a handler

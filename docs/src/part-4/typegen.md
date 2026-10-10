@@ -644,7 +644,7 @@ per operation, taking the operation and returning what the generated
 ```swift
 // Swift
 struct WeatherHandler: EffectHandler {
-    let http = URLSessionHttpHandler.shared
+    let http = URLSessionHttpHandler()
     let time = TaskTimeHandler()
 
     func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
