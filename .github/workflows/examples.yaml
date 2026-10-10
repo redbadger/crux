@@ -22,6 +22,7 @@ on:
     branches:
       - master
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -38,6 +39,7 @@ jobs:
   # Rust-only shells (shared + tui). Needs: Rust, wasm32 target, clippy, nextest.
   # All examples have a "shared" shell; only counter has "tui".
   shared:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
 
     strategy:
@@ -77,6 +79,7 @@ jobs:
   # WASM shells built with trunk (Leptos, Yew). Needs: Rust, wasm32 target, trunk.
   # All examples have web-leptos; only counter has web-yew.
   web-trunk:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
 
     strategy:
@@ -115,6 +118,7 @@ jobs:
   # Dioxus WASM shell. Needs: Rust, wasm32 target, dioxus-cli.
   # Only counter has this shell, so no matrix needed.
   web-dioxus:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
 
     defaults:
@@ -146,6 +150,7 @@ jobs:
   # JS/TS web shells. Needs: Rust, wasm32 target, BoltFFI, Node.js, pnpm.
   # All examples have web-nextjs; only counter has web-react-router.
   web-js:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
 
     strategy:
@@ -214,6 +219,7 @@ jobs:
   # Tauri desktop shell. Needs: Rust, Node.js, pnpm, GTK/WebKit system libs.
   # Only counter has this shell, so no matrix needed.
   tauri:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
 
     defaults:
@@ -253,6 +259,7 @@ jobs:
   # .NET 10 SDK, just, and Visual Studio (pre-installed on windows-latest,
   # resolved via vswhere). Only counter has this shell, so no matrix needed.
   windows:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: windows-latest
 
     defaults:
@@ -290,6 +297,7 @@ jobs:
   # BoltFFI, cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
   # so the matrix is just the example name — the shell is always "apple".
   apple:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-26
 
     strategy:
@@ -342,6 +350,7 @@ jobs:
   # All examples have an "Android" shell (capital A matches the directory name),
   # so the matrix is just the example name — the shell is always "Android".
   android:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
 
     strategy:
