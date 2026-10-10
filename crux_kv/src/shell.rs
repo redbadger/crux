@@ -46,7 +46,6 @@ pub static EXTENSION: ShellExtension = ShellExtension::new("KeyValue")
         "UserDefaultsKeyValueHandler",
         "FileKeyValueHandler",
         "createLocalStorageKeyValueHandler",
-        "localStorageKeyValueHandler",
     ])
     .swift(ShellSource::stdlib(include_str!(
         "../shell/swift/KeyValue.swift"

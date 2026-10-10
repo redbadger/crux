@@ -48,7 +48,6 @@ pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
         "InMemoryCookieJar",
         "UrlConnectionHttpHandler",
         "createFetchHttpHandler",
-        "fetchHttpHandler",
         "HttpClientHttpHandler",
     ])
     .swift(ShellSource::stdlib(include_str!(

@@ -25,10 +25,10 @@ private nonisolated let logger = Log.core
 /// values across.
 @MainActor
 public final class WeatherHandler {
-    /// The shipped `crux_http` handler, over the shared `URLSession`. A shell
+    /// The shipped `crux_http` handler, over `URLSession.shared`. A shell
     /// that needed a pinned session would write
     /// `URLSessionHttpHandler(session:)` here instead.
-    let httpHandler = URLSessionHttpHandler.shared
+    let httpHandler = URLSessionHttpHandler()
 
     /// The shipped `crux_kv` handler, over a suite of its own so that the
     /// app's favourites do not share a namespace with the standard defaults.

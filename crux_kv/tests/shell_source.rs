@@ -153,7 +153,7 @@ fn the_typescript_source_compiles() {
 
     let declarations = fs::read_to_string(dir.path().join("shared_types.d.ts"))
         .expect("tsc should have emitted declarations");
-    assert!(declarations.contains("localStorageKeyValueHandler"));
+    assert!(declarations.contains("declare function createLocalStorageKeyValueHandler("));
 }
 
 #[test]
