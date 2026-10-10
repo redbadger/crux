@@ -1,17 +1,19 @@
-//! Shell handlers a capability crate ships with its types.
+//! Shell extensions: foreign source a crate ships, emitted into the app's
+//! generated module when the app registers it.
 //!
-//! A capability knows how its protocol works — which `URLError` is a timeout,
-//! what a cleared timer answers with — and today every shell re-derives those
-//! rules from the book. A capability can instead ship the shell side of its
+//! The main use is a capability's shell handler. A capability knows how its
+//! protocol works (which `URLError` is a timeout, what a cleared timer answers
+//! with), and without a shipped handler every shell re-derives those rules
+//! from the book. The capability can instead ship the shell side of its
 //! protocol as source: a Swift, Kotlin, TypeScript and C# implementation,
-//! versioned with the crate, emitted into the app's own generated module when
-//! the app asks for it.
+//! versioned with the crate.
 //!
 //! ```rust,ignore
-//! // In the capability crate
+//! // In the capability crate, in `src/shell.rs`
 //! #[cfg(feature = "facet_typegen")]
-//! pub static HTTP: ShellHandler = ShellHandler::new("Http")
+//! pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
 //!     .types(register_types)
+//!     .declares(&["HttpHandler", "IHttpHandler"])
 //!     .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
 //!     .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")))
 //!     .typescript(ShellSource::stdlib(include_str!("../shell/typescript/http.ts")))
@@ -22,18 +24,19 @@
 //! }
 //! ```
 //!
-//! Nothing is emitted for a capability the app did not name with
-//! [`TypeRegistry::shell_handler`](crate::type_generation::facet::TypeRegistry::shell_handler),
-//! and nothing generated ever calls the shipped code: the app's handler holds
-//! an instance and delegates to it, one line per operation. That keeps both
-//! decisions — whether to use the shipped implementation, and which platform
-//! client to use it with — in the shell, where they belong.
+//! Nothing is emitted for an extension the app did not name with
+//! [`TypeRegistry::shell_extension`](crate::type_generation::facet::TypeRegistry::shell_extension),
+//! and nothing generated ever calls the shipped code. For a capability's
+//! handler, the app's own handler holds an instance and delegates to it, one
+//! line per operation. That keeps both decisions (whether to use the shipped
+//! implementation, and which platform client to use it with) in the shell,
+//! where they belong.
 
 use std::result::Result;
 
 use crate::type_generation::facet::{TypeGenError, TypeRegistry};
 
-/// How a capability registers the types its shipped sources name.
+/// How an extension registers the types its shipped sources name.
 ///
 /// The same shape as
 /// [`Export::register_types`](crate::type_generation::facet::Export::register_types)
@@ -41,37 +44,54 @@ use crate::type_generation::facet::{TypeGenError, TypeRegistry};
 /// operation can name that directly.
 pub type RegisterTypes = fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>;
 
-/// The shell handlers one capability ships, in the languages it ships them
-/// for.
+/// Source a crate ships for the shell, in the languages it ships it for.
 ///
-/// One per capability, not per operation: the operations of a capability share
-/// state — an HTTP client, a key-value store, a timer table — and the
-/// capability is the unit an app would configure or replace.
+/// A capability ships one extension, holding its shell handler: one per
+/// capability, not per operation, because the operations of a capability share
+/// state (an HTTP client, a key-value store, a timer table) and the capability
+/// is the unit an app would configure or replace.
 ///
-/// Built with [`new`](Self::new) and one `const` builder per language, so that
-/// a capability can declare its handler in a `static` and a fifth language is
-/// not a breaking change. A language the capability does not ship simply has
-/// nothing to emit on that platform; the app implements those methods itself,
-/// as it does today.
+/// Built with [`new`](Self::new) and `const` builders, so that a crate can
+/// declare its extension in a `static` and a fifth language is not a breaking
+/// change. A language the extension does not ship has nothing to emit on that
+/// platform. For a capability's handler, the app implements those methods
+/// itself.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub struct ShellHandler {
-    /// `UpperCamelCase`. Names the companion file (`Http.swift`) and the
-    /// protocol the source is expected to declare (`HttpHandler`, and
-    /// `IHttpHandler` in C#).
+pub struct ShellExtension {
+    /// `UpperCamelCase`. Names the companion file the source is written into
+    /// (`Http.swift`, `Http.kt`, `Http.cs`), and nothing else.
     ///
-    /// All three names are checked against the generated shell API and the
-    /// app's own types when the handler is registered, so a clash is a
-    /// generation error rather than a file that fails to compile.
+    /// Checked when the registry is built: it has to start with an ASCII
+    /// letter and contain only ASCII letters, digits and `_`, it cannot be a
+    /// name Windows reserves for a device, two extensions cannot share a name,
+    /// even in different case, and an extension cannot take the name of a
+    /// file the generated shell API writes (`FfiBridge`). A name that matches
+    /// the module's own file is rejected when that language is generated.
     pub name: &'static str,
     /// Registers the types the shipped sources name, run by
-    /// [`TypeRegistry::shell_handler`].
+    /// [`TypeRegistry::shell_extension`].
     ///
-    /// A shipped source implements the whole capability, so every one of its
-    /// operations and outputs has to be generated — including the ones this
-    /// app never sends. The capability knows what those are, so it names the
-    /// function rather than leaving the app to call it.
+    /// A capability's handler implements the whole capability, so every one
+    /// of its operations and outputs has to be generated, including the ones
+    /// this app never sends. The capability knows what those are, so it names
+    /// the function rather than leaving the app to call it. The types are the
+    /// same whichever language is generated, so they belong to the extension
+    /// rather than to each [`ShellSource`].
     pub types: Option<RegisterTypes>,
+    /// The top-level names the shipped sources declare in the generated
+    /// module, in any language: `HttpHandler`, `IHttpHandler`,
+    /// `URLSessionHttpHandler` and so on.
+    ///
+    /// The sources share a module with the app's types and the generated
+    /// shell API, so when the registry is built each name is checked against
+    /// the names the generated shell API reserves, the names the module
+    /// imports from the serialization runtime (`Serializer`, `Bytes` and so
+    /// on), the namespaces the app's types are generated into, the names other
+    /// registered extensions declare, and the types registered in the root
+    /// namespace. A clash is then a generation error rather than a module that
+    /// fails to compile.
+    pub declares: &'static [&'static str],
     pub swift: Option<ShellSource>,
     pub kotlin: Option<ShellSource>,
     pub typescript: Option<ShellSource>,
@@ -95,14 +115,14 @@ pub struct ShellSource {
     /// `.package(…)` entry in Swift, a Gradle `implementation(…)` line in
     /// Kotlin, a `"name": "version"` pair in TypeScript.
     ///
-    /// They reach the manifest only for an app that registers the handler, but
-    /// every one of those apps then pays for the library, so the bar is high —
-    /// most handlers are [`stdlib`](Self::stdlib).
+    /// They reach the manifest only for an app that registers the extension,
+    /// but every one of those apps then pays for the library, so the bar is
+    /// high: most extensions are [`stdlib`](Self::stdlib).
     ///
     /// A Swift package also needs the target's edge to its product, which is
     /// [`target_dependencies`](Self::target_dependencies). One caveat remains,
     /// facet-generate's: C# manifest entries are not written to the `.csproj`
-    /// at all, because its C# installer does not consult plugins. A handler
+    /// at all, because its C# installer does not consult plugins. An extension
     /// needing one has to say so in its documentation until facet-generate
     /// grows the hook.
     pub dependencies: &'static [&'static str],
@@ -119,7 +139,7 @@ pub struct ShellSource {
 
 impl ShellSource {
     /// Source that needs nothing but the platform's standard library, which is
-    /// what a shipped handler should normally be.
+    /// what a shipped extension should normally be.
     #[must_use]
     pub const fn stdlib(source: &'static str) -> Self {
         Self {
@@ -149,15 +169,16 @@ impl ShellSource {
     }
 }
 
-impl ShellHandler {
-    /// A handler that ships no language yet, named for the capability —
-    /// `Http`, `Time`, `KeyValue`. Add the languages it ships with the
+impl ShellExtension {
+    /// An extension that ships no language yet. A capability names it after
+    /// itself: `Http`, `Time`, `KeyValue`. Add the languages it ships with the
     /// builders.
     #[must_use]
     pub const fn new(name: &'static str) -> Self {
         Self {
             name,
             types: None,
+            declares: &[],
             swift: None,
             kotlin: None,
             typescript: None,
@@ -176,43 +197,39 @@ impl ShellHandler {
         self
     }
 
-    /// The Swift source this capability ships.
+    /// The top-level names the shipped sources declare. See
+    /// [`declares`](Self::declares).
+    #[must_use]
+    pub const fn declares(mut self, declares: &'static [&'static str]) -> Self {
+        self.declares = declares;
+        self
+    }
+
+    /// The Swift source this extension ships.
     #[must_use]
     pub const fn swift(mut self, source: ShellSource) -> Self {
         self.swift = Some(source);
         self
     }
 
-    /// The Kotlin source this capability ships.
+    /// The Kotlin source this extension ships.
     #[must_use]
     pub const fn kotlin(mut self, source: ShellSource) -> Self {
         self.kotlin = Some(source);
         self
     }
 
-    /// The TypeScript source this capability ships.
+    /// The TypeScript source this extension ships.
     #[must_use]
     pub const fn typescript(mut self, source: ShellSource) -> Self {
         self.typescript = Some(source);
         self
     }
 
-    /// The C# source this capability ships.
+    /// The C# source this extension ships.
     #[must_use]
     pub const fn csharp(mut self, source: ShellSource) -> Self {
         self.csharp = Some(source);
         self
-    }
-
-    /// The protocol the source is expected to declare, e.g. `HttpHandler`.
-    #[must_use]
-    pub fn protocol_name(&self) -> String {
-        format!("{}Handler", self.name)
-    }
-
-    /// The same, in C#, where an interface is conventionally `I`-prefixed.
-    #[must_use]
-    pub fn csharp_interface_name(&self) -> String {
-        format!("I{}Handler", self.name)
     }
 }
