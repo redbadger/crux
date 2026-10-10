@@ -1,4 +1,4 @@
-//! The shell handler `crux_http` ships.
+//! The shell handler `crux_http` ships, as shell extensions.
 //!
 //! The rules for turning a platform's HTTP client into an [`HttpResult`] belong
 //! to this crate — which `URLError` is a timeout, that a 404 is an answer and
@@ -48,7 +48,9 @@ pub mod swift {
         include_dir!("$CARGO_MANIFEST_DIR/shell/swift/url_session"),
     )
     .platforms(&[Platform::Apple, Platform::Linux])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["HttpHandler", "URLSessionHttpHandler"]);
 }
 
 /// The Kotlin handler, for an app to register with
@@ -63,7 +65,14 @@ pub mod kotlin {
         include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/url_connection"),
     )
     .platforms(&[Platform::Jvm, Platform::Android])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&[
+        "HttpHandler",
+        "CookieJar",
+        "InMemoryCookieJar",
+        "UrlConnectionHttpHandler",
+    ]);
 }
 
 /// The TypeScript handler, for an app to register with
@@ -78,7 +87,9 @@ pub mod typescript {
         include_dir!("$CARGO_MANIFEST_DIR/shell/typescript/fetch"),
     )
     .platforms(&[Platform::Web])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["HttpHandler", "createFetchHttpHandler", "fetchHttpHandler"]);
 }
 
 /// The C# handler, for an app to register with
@@ -93,7 +104,9 @@ pub mod csharp {
         include_dir!("$CARGO_MANIFEST_DIR/shell/csharp/http_client"),
     )
     .platforms(&[Platform::DotNet])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["IHttpHandler", "HttpClientHttpHandler"]);
 }
 
 /// Registers the types the shipped sources name, for an app that does not use

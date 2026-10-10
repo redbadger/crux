@@ -1,4 +1,4 @@
-//! The shell handler `crux_kv` ships.
+//! The shell handler `crux_kv` ships, as shell extensions.
 //!
 //! The rules for answering a store operation belong to this crate — that a
 //! missing key is a [`Value::None`] and not an error, that `Set` and `Delete`
@@ -49,7 +49,9 @@ pub mod swift {
         include_dir!("$CARGO_MANIFEST_DIR/shell/swift/user_defaults"),
     )
     .platforms(&[Platform::Apple, Platform::Linux])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["KeyValueHandler", "UserDefaultsKeyValueHandler"]);
 }
 
 /// The Kotlin handler, for an app to register with
@@ -64,7 +66,9 @@ pub mod kotlin {
         include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/file"),
     )
     .platforms(&[Platform::Jvm, Platform::Android])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["KeyValueHandler", "FileKeyValueHandler"]);
 }
 
 /// The TypeScript handler, for an app to register with
@@ -80,7 +84,13 @@ pub mod typescript {
         include_dir!("$CARGO_MANIFEST_DIR/shell/typescript/local_storage"),
     )
     .platforms(&[Platform::Web])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&[
+        "KeyValueHandler",
+        "createLocalStorageKeyValueHandler",
+        "localStorageKeyValueHandler",
+    ]);
 }
 
 /// The C# handler, for an app to register with
@@ -95,7 +105,9 @@ pub mod csharp {
         include_dir!("$CARGO_MANIFEST_DIR/shell/csharp/file"),
     )
     .platforms(&[Platform::DotNet])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["IKeyValueHandler", "FileKeyValueHandler"]);
 }
 
 /// Registers the types the shipped sources name, for an app that does not use

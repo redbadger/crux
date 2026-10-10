@@ -1,4 +1,4 @@
-//! The shell handler `crux_time` ships.
+//! The shell handler `crux_time` ships, as shell extensions.
 //!
 //! The rules a timer follows belong to this crate — that `NotifyAfter` is
 //! answered with the timer's own id when it fires, that `Clear` cancels it and
@@ -42,12 +42,12 @@ pub mod swift {
     use include_dir::include_dir;
 
     /// `TimeHandler`, and `TaskTimeHandler` over a sleeping `Task`.
-    pub static TASK: ShellExtension = ShellExtension::swift(
-        "Time",
-        include_dir!("$CARGO_MANIFEST_DIR/shell/swift/task"),
-    )
-    .platforms(&[Platform::Apple, Platform::Linux])
-    .rust_types(super::register_types);
+    pub static TASK: ShellExtension =
+        ShellExtension::swift("Time", include_dir!("$CARGO_MANIFEST_DIR/shell/swift/task"))
+            .platforms(&[Platform::Apple, Platform::Linux])
+            .rust_types(super::register_types)
+            // The names the shipped sources declare at module scope.
+            .foreign_types(&["TimeHandler", "TaskTimeHandler"]);
 }
 
 /// The Kotlin handler, for an app to register with
@@ -62,7 +62,9 @@ pub mod kotlin {
         include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/coroutine"),
     )
     .platforms(&[Platform::Jvm, Platform::Android])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["TimeHandler", "CoroutineTimeHandler"]);
 }
 
 /// The TypeScript handler, for an app to register with
@@ -77,7 +79,9 @@ pub mod typescript {
         include_dir!("$CARGO_MANIFEST_DIR/shell/typescript/timeout"),
     )
     .platforms(&[Platform::Web])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["TimeHandler", "MAX_TIMEOUT", "TimeoutTimeHandler"]);
 }
 
 /// The C# handler, for an app to register with
@@ -92,7 +96,9 @@ pub mod csharp {
         include_dir!("$CARGO_MANIFEST_DIR/shell/csharp/task"),
     )
     .platforms(&[Platform::DotNet])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["ITimeHandler", "TaskTimeHandler"]);
 }
 
 /// Registers the types the shipped sources name, for an app that does not use

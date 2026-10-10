@@ -27,7 +27,7 @@ and this project adheres to
   `Max-Age` cookie in RFC 2965 form that servers do not read. The sources are under
   `shell/` and compile against the generated types; `tests/shell_source.rs`
   builds them where a toolchain is present. See
-  [Shipped shell handlers](https://redbadger.github.io/crux/part-4/typegen.html#shipped-shell-handlers).
+  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
 
 - **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
   response into the `Response` an app sees, with the same semantics a `crux_http`

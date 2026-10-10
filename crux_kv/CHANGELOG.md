@@ -28,7 +28,7 @@ and this project adheres to
   this puts `Get`, `Set`, `Delete`, `Exists` and `ListKeys` into the app's
   generated namespace: an app-defined operation with one of those names must
   be renamed. See
-  [Shipped shell handlers](https://redbadger.github.io/crux/part-4/typegen.html#shipped-shell-handlers).
+  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
 
 - **One type per store operation, in the new `crux_kv::operation` module, and a
   `store::KeyValue` capability that sends them.** `KeyValueOperation` has one output

@@ -625,7 +625,7 @@ hand-written match has to keep right by hand, every time an operation is added.
 a Swift, Kotlin, TypeScript and C# implementation of each, embedded in the
 crate. If you adopted the handler API above, the methods you wrote for those
 three capabilities can go. See
-[Shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers) for the
+[Shell extensions](../part-4/typegen.md#shell-extensions) for the
 mechanism; this is the migration.
 
 1. **Register the handlers** in your codegen binary, on the registry, before

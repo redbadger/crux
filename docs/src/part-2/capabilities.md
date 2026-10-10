@@ -196,14 +196,14 @@ In [ports-and-adapters](https://en.wikipedia.org/wiki/Hexagonal_architecture) vo
 
 ## Shipping the shell side too
 
-A published capability can go one step further and carry a reference adapter with it: a Swift, Kotlin, TypeScript and C# implementation of its operations, embedded in the crate as source. `crux_http`, `crux_kv` and `crux_time` all do. An app that registers one in its codegen binary gets the file emitted into its generated package, and its handler delegates to it one line per operation — see [Shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers) for that side of the story. This section is about what the capability author writes.
+A published capability can go one step further and carry a reference adapter with it: a Swift, Kotlin, TypeScript and C# implementation of its operations, embedded in the crate as source. `crux_http`, `crux_kv` and `crux_time` all do. An app that registers one in its codegen binary gets the file emitted into its generated package, and its handler delegates to it one line per operation. See [Shell extensions](../part-4/typegen.md#shell-extensions) for that side of the story. This section is about what the capability author writes.
 
 The rules of a protocol belong to whoever defines it. How a `URLError` maps onto `HttpResult`, what a timer answers with when it fires and what it answers when it is cleared first: these are decisions the capability made, and every shell that re-derives them from documentation can get them subtly wrong. Shipping the implementation puts them in one place, next to the Rust that defines the operations, where a change to one is reviewed with the other. What it does *not* decide is whether a given app uses it — a bank with a hardened HTTP stack keeps its own — so the shipped file is a plain type in the app's module, and nothing generated calls it.
 
 The declaration is a `static` for each language, in a module for that language, behind the crate's `facet_typegen` feature, so the source text is compiled into the app's codegen binary and never into its core:
 
 ```rust,ignore
-// Rust — crux_time/src/shell.rs, a module behind the `facet_typegen` feature
+// Rust: crux_time/src/shell.rs, a module behind the `facet_typegen` feature
 pub mod swift {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
@@ -213,13 +213,14 @@ pub mod swift {
         include_dir!("$CARGO_MANIFEST_DIR/shell/swift/task"),
     )
     .platforms(&[Platform::Apple, Platform::Linux])
-    .rust_types(super::register_types);
+    .rust_types(super::register_types)
+    .foreign_types(&["TimeHandler", "TaskTimeHandler"]);
 }
 
 // `kotlin::COROUTINE`, `typescript::TIMEOUT` and `csharp::TASK` are the same.
 ```
 
-`include_dir!` expands to a path in the `include_dir` crate, so the capability depends on `include_dir` itself, as an optional dependency that its `facet_typegen` feature turns on. `name` is the name of the capability (`Time`). The extensions of all languages share it, and the protocol in the source takes its name from it (`TimeHandler`). The directory holds the source: crux emits each file in its `common/` directory, and each file in the directory of the platform the app generates for, as a file of the same name (`Time.swift`). `platforms` lists the platforms the source runs on. `rust_types` names a function that registers every operation and output the sources mention — the shipped file implements the whole capability, so all of its types have to be generated even for an app whose `Effect` carries only some of them. A language you do not ship an extension for gets nothing; the app implements those methods itself, as it would have without you.
+`include_dir!` expands to a path in the `include_dir` crate, so the capability depends on `include_dir` itself, as an optional dependency that its `facet_typegen` feature turns on. `name` is the name of the capability (`Time`). The extensions of all languages share it, and the protocol in the source takes its name from it (`TimeHandler`). The directory holds the source. Crux emits each file in its `common/` directory, and each file in the directory of the platform for which the app generates code, as a file of the same name (`Time.swift`). `platforms` lists the platforms on which the source runs. `rust_types` names a function that registers every operation and output the sources mention. The shipped file implements the whole capability, so all of its types have to be generated even for an app whose `Effect` carries only some of them. A language for which you ship no extension gets nothing, and the app implements those methods itself, as it would have without you.
 
 Each file declares a protocol called `<Name>Handler` (`I<Name>Handler` in C#) with one method per operation, taking the operation and returning exactly what the generated `EffectHandler` method for that operation returns — the output for a request, nothing for a notification, an `EffectSink` for a stream — and at least one implementation of it. Matching the shapes is what makes the app's delegation a single expression:
 
@@ -237,7 +238,7 @@ public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
 }
 ```
 
-The source refers to the generated types unqualified — `Now`, `Instant`, `TimerId` — because it is emitted into the same module they are. It carries its own imports after the module header type generation prepends, and nothing else at module scope under a name a generated type could take; `<Name>Handler` is reserved for it.
+The source refers to the generated types such as `Now`, `Instant` and `TimerId` unqualified, because it is emitted into the same module they are. It carries its own imports after the module header type generation prepends. `foreign_types` lists every name the extension's sources declare at module scope: the protocols, the implementations, and in TypeScript any top-level helper or constant, exported or not, because the source is appended to the module file. When the app builds its registry, each of those names is checked against the generated shell API, the serialization runtime's imports, the app's root types and namespaces, and the names that extensions of other capabilities declare, so a clash is a generation error rather than a module that fails to compile. Keep the list complete when you add a declaration. A test can check that by scanning the sources for module-scope declarations and comparing them with `foreign_types`, and the bundled crates each have one, in `tests/shell_declares.rs`.
 
 A few constraints keep a shipped file safe to drop into any app:
 

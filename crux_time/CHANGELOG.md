@@ -27,7 +27,7 @@ and this project adheres to
   languages in its codegen binary
   (`registry.shell_extension(&crux_time::shell::swift::TASK)?`) and delegates
   one line per operation. See
-  [Shipped shell handlers](https://redbadger.github.io/crux/part-4/typegen.html#shipped-shell-handlers).
+  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
 
 - **One type per time operation, in the new `crux_time::operation` module, and a
   `clock::Time` capability that sends them.** `TimeRequest` has one output type —
