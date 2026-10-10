@@ -625,7 +625,7 @@ hand-written match has to keep right by hand, every time an operation is added.
 a Swift, Kotlin, TypeScript and C# implementation of each, embedded in the
 crate. If you adopted the handler API above, the methods you wrote for those
 three capabilities can go. See
-[Shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers) for the
+[Shell extensions](../part-4/typegen.md#shell-extensions) for the
 mechanism; this is the migration.
 
 1. **Register the handlers** in your codegen binary, on the registry, before
@@ -636,9 +636,9 @@ mechanism; this is the migration.
    let mut registry = TypeRegistry::new();
    registry.register_app::<App>()?;
    registry
-       .shell_handler(&crux_http::HTTP)?
-       .shell_handler(&crux_kv::KEY_VALUE)?
-       .shell_handler(&crux_time::TIME)?;
+       .shell_extension(&crux_http::shell::EXTENSION)?
+       .shell_extension(&crux_kv::shell::EXTENSION)?
+       .shell_extension(&crux_time::shell::EXTENSION)?;
    let typegen = registry.build()?;
    ```
 

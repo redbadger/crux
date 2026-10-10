@@ -1,4 +1,4 @@
-//! The shell handler `crux_http` ships.
+//! The shell handler `crux_http` ships, as a shell extension.
 //!
 //! The rules for turning a platform's HTTP client into an [`HttpResult`] belong
 //! to this crate — which `URLError` is a timeout, that a 404 is an answer and
@@ -9,7 +9,7 @@
 //! // shared/src/bin/codegen.rs
 //! let typegen = TypeRegistry::new()
 //!     .register_app::<MyApp>()?
-//!     .shell_handler(&crux_http::HTTP)?
+//!     .shell_extension(&crux_http::shell::EXTENSION)?
 //!     .build()?;
 //! ```
 //!
@@ -20,7 +20,7 @@
 
 use crux_core::{
     capability::Operation,
-    type_generation::facet::{ShellHandler, ShellSource, TypeGenError, TypeRegistry},
+    type_generation::facet::{ShellExtension, ShellSource, TypeGenError, TypeRegistry},
 };
 
 use crate::protocol::HttpRequest;
@@ -29,7 +29,7 @@ use crate::protocol::HttpRequest;
 ///
 /// The Swift, Kotlin, TypeScript and C# implementations of the crate's
 /// protocol, for an app to register with
-/// [`TypeRegistry::shell_handler`](crux_core::type_generation::facet::TypeRegistry::shell_handler).
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
 ///
 /// Each declares an `HttpHandler` protocol (`IHttpHandler` in C#) with one
 /// `request` method, and an implementation of it over the platform's own
@@ -37,8 +37,20 @@ use crate::protocol::HttpRequest;
 /// client is the shell's choice — conform your own type to the protocol to make
 /// a different one — and the protocol rules are the same wherever it comes
 /// from.
-pub static HTTP: ShellHandler = ShellHandler::new("Http")
+pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
     .types(register_types)
+    // The names the shipped sources declare at module scope, in any language.
+    .declares(&[
+        "HttpHandler",
+        "IHttpHandler",
+        "URLSessionHttpHandler",
+        "CookieJar",
+        "InMemoryCookieJar",
+        "UrlConnectionHttpHandler",
+        "createFetchHttpHandler",
+        "fetchHttpHandler",
+        "HttpClientHttpHandler",
+    ])
     .swift(ShellSource::stdlib(include_str!(
         "../shell/swift/Http.swift"
     )))
@@ -48,7 +60,7 @@ pub static HTTP: ShellHandler = ShellHandler::new("Http")
     )))
     .csharp(ShellSource::stdlib(include_str!("../shell/csharp/Http.cs")));
 
-/// Registers the types [`HTTP`]'s sources name, for an app that does not use
+/// Registers the types [`EXTENSION`]'s sources name, for an app that does not use
 /// every one of them itself.
 ///
 /// A shipped source implements the whole capability, so every type it mentions

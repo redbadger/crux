@@ -1,4 +1,4 @@
-//! The shell handler `crux_time` ships.
+//! The shell handler `crux_time` ships, as a shell extension.
 //!
 //! The rules a timer follows belong to this crate — that `NotifyAfter` is
 //! answered with the timer's own id when it fires, that `Clear` cancels it and
@@ -11,7 +11,7 @@
 //! // shared/src/bin/codegen.rs
 //! let typegen = TypeRegistry::new()
 //!     .register_app::<MyApp>()?
-//!     .shell_handler(&crux_time::TIME)?
+//!     .shell_extension(&crux_time::shell::EXTENSION)?
 //!     .build()?;
 //! ```
 //!
@@ -20,7 +20,7 @@
 
 use crux_core::{
     capability::Operation,
-    type_generation::facet::{ShellHandler, ShellSource, TypeGenError, TypeRegistry},
+    type_generation::facet::{ShellExtension, ShellSource, TypeGenError, TypeRegistry},
 };
 
 use crate::operation::{Clear, NotifyAfter, NotifyAt, Now};
@@ -29,15 +29,24 @@ use crate::operation::{Clear, NotifyAfter, NotifyAt, Now};
 ///
 /// The Swift, Kotlin, TypeScript and C# implementations of the crate's
 /// protocol, for an app to register with
-/// [`TypeRegistry::shell_handler`](crux_core::type_generation::facet::TypeRegistry::shell_handler).
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
 ///
 /// Each declares a `TimeHandler` protocol (`ITimeHandler` in C#) with one
 /// method per operation, and an implementation of it over the platform's own
 /// timers: a sleeping `Task`, a `delay`ing coroutine, `setTimeout` and
 /// `Task.Delay`. The timer table is state, so the app constructs one where it
 /// constructs its handler.
-pub static TIME: ShellHandler = ShellHandler::new("Time")
+pub static EXTENSION: ShellExtension = ShellExtension::new("Time")
     .types(register_types)
+    // The names the shipped sources declare at module scope, in any language.
+    .declares(&[
+        "TimeHandler",
+        "ITimeHandler",
+        "TaskTimeHandler",
+        "CoroutineTimeHandler",
+        "TimeoutTimeHandler",
+        "MAX_TIMEOUT",
+    ])
     .swift(ShellSource::stdlib(include_str!(
         "../shell/swift/Time.swift"
     )))
@@ -47,7 +56,7 @@ pub static TIME: ShellHandler = ShellHandler::new("Time")
     )))
     .csharp(ShellSource::stdlib(include_str!("../shell/csharp/Time.cs")));
 
-/// Registers the types [`TIME`]'s sources name, for an app that does not use
+/// Registers the types [`EXTENSION`]'s sources name, for an app that does not use
 /// every one of them itself.
 ///
 /// A shipped source implements the whole capability, so every type it mentions
