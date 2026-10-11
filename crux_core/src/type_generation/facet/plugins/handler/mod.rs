@@ -45,8 +45,8 @@ impl EffectHandlerPlugin {
 
     /// The handler API uses fixed names, so it is emitted for the first
     /// registered effect only.
-    fn matched<'a, L: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
-        matched::<L>(&self.effects, ctx).filter(|m| m.primary)
+    fn matched<'a, Language: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
+        matched::<Language>(&self.effects, ctx).filter(|m| m.primary)
     }
 
     /// Whether the handler has an asynchronous method, which is what needs
