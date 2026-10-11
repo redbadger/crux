@@ -5,7 +5,7 @@ This RFC has been **accepted** and implemented, it's kept for future reference
 as additional context for the design choices. It builds on the
 [per-operation types RFC](./per-operation-types.md) and the
 [generated `Core` RFC](./generated-core.md). See
-[Shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers) in the
+[Shell extensions](../part-4/typegen.md#shell-extensions) in the
 type generation chapter and the
 [migration guide](../guide/migrate-per-operation-types.md#adopting-the-shipped-handlers)
 for the practical version. It is written against the compat release of

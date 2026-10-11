@@ -41,7 +41,7 @@ Then check the pins around them:
 
 - [ ] **`facet`** stays at `=0.46.5`.
 - [ ] **`facet_generate`**: `crux_core`'s `facet_typegen` feature now pulls in
-      0.22 (it was 0.19). Change it only if your own crate depends on
+      0.22.1 (it was 0.19). Change it only if your own crate depends on
       `facet_generate`. `facet-generate-attrs` stays at 0.18.
 - [ ] **BoltFFI** moves from 0.29.3 to 0.30.1. Move all three pieces at once:
       the `boltffi` crate (`boltffi = "=0.30.1"`), the CLI
@@ -180,12 +180,13 @@ None of this is required, but it removes most of the code a shell writes.
     `platforms:` floor with `Config::builder(..).platform(".iOS(.v16)")`.
 - [ ] **Shell handlers from the capability crates.** `crux_http`, `crux_kv` and
       `crux_time` come with their shell side in Swift, Kotlin, TypeScript and
-      C#. Register them in your codegen binary with `.shell_handler(&crux_http::HTTP)?` (and
-      `crux_kv::KEY_VALUE`, `crux_time::TIME`), and each of your handler's
-      methods becomes a one-line delegation. See
-      [shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers)
+      C#, as shell extensions. Register them in your codegen binary with
+      `.shell_extension(&crux_http::shell::EXTENSION)?` (and
+      `crux_kv::shell::EXTENSION`, `crux_time::shell::EXTENSION`), and each
+      of your handler's methods becomes a one-line delegation. See
+      [shell extensions](../part-4/typegen.md#shell-extensions)
       and [adopting the shipped handlers](./migrate-per-operation-types.md#adopting-the-shipped-handlers).
-      Registering `crux_kv::KEY_VALUE` puts `GetValue`, `SetValue`,
+      Registering `crux_kv::shell::EXTENSION` puts `GetValue`, `SetValue`,
       `DeleteValue`, `KeyExists` and `ListKeys` into your generated
       namespace, so rename any of your own types with those names.
 - [ ] **The operation kind in middleware.** `resolver.kind()` tells effect
