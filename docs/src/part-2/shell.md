@@ -94,11 +94,11 @@ binding generator other than BoltFFI, or for an app with
 [middleware](../part-3/middleware.md#in-the-shell).
 
 So with the generated `Core`, what a shell writes is the `EffectHandler`.
-`Core` handles `Render` itself and publishes the new
-view in each language's own way (an `@Observable` `view` property in Swift,
-a `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a `View`
-property that raises `INotifyPropertyChanged` in C#), so the handler never
-touches the view at all. See
+`Core` handles `Render` itself and publishes the new view in each language's
+own way (an `@Observable` `view` property in Swift, a `StateFlow` in Kotlin,
+an `onView` callback in TypeScript, and a `View` property that raises
+`INotifyPropertyChanged` in C#), so the handler never touches the view at all.
+See
 [the generated Core](../part-4/typegen.md#the-generated-core) for the exact
 shape in each language, and the [RFC](../rfcs/generated-core.md) for why it
 is built the way it is.
