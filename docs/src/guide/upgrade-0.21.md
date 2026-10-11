@@ -41,7 +41,7 @@ Then check the pins around them:
 
 - [ ] **`facet`** stays at `=0.46.5`.
 - [ ] **`facet_generate`**: `crux_core`'s `facet_typegen` feature now pulls in
-      0.22 (it was 0.19). Change it only if your own crate depends on
+      0.22.3 (it was 0.19). Change it only if your own crate depends on
       `facet_generate`. `facet-generate-attrs` stays at 0.18.
 - [ ] **BoltFFI** moves from 0.29.3 to 0.30.1. Move all three pieces at once:
       the `boltffi` crate (`boltffi = "=0.30.1"`), the CLI
