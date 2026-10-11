@@ -24,11 +24,10 @@ and this project adheres to
   behind a `KeyValueHandler` protocol with `get`, `set`, `delete`, `exists` and
   `listKeys`. An app registers it in its codegen binary
   (`registry.shell_extension(&crux_kv::shell::EXTENSION)?`), which also
-  generates every
-  operation of the capability, and delegates one line per operation. Note that
-  this puts `GetValue`, `SetValue`, `DeleteValue`, `KeyExists` and `ListKeys` into the app's
-  generated namespace: an app-defined operation with one of those names must
-  be renamed. See
+  generates every operation of the capability, and delegates one line per
+  operation. Note that this puts `GetValue`, `SetValue`, `DeleteValue`,
+  `KeyExists` and `ListKeys` into the app's generated namespace: an app-defined
+  operation with one of those names must be renamed. See
   [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
 
 - **One type per store operation, in the new `crux_kv::operation` module, and a
