@@ -96,17 +96,18 @@ impl CorePlugin {
 
     /// `Core` uses fixed names and owns the view loop, so it is emitted for the
     /// first registered effect, and only if that effect has a render variant.
-    fn matched<'a, L: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
-        matched::<L>(&self.effects, ctx).filter(|m| m.primary && m.render_variant().is_some())
+    fn matched<'a, Language: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
+        matched::<Language>(&self.effects, ctx)
+            .filter(|m| m.primary && m.render_variant().is_some())
     }
 
-    /// The app's event and view model in `L`'s spelling. [`AppMeta`] records
+    /// The app's event and view model in `Language`'s spelling. [`AppMeta`] records
     /// them as the registry names them, so this is the one place they are
     /// respelled.
-    fn app<L: Requalify>(&self, config: &CodeGeneratorConfig) -> AppMeta {
+    fn app<Language: Requalify>(&self, config: &CodeGeneratorConfig) -> AppMeta {
         AppMeta {
-            event: L::requalify(config, &self.app.event),
-            view_model: L::requalify(config, &self.app.view_model),
+            event: Language::requalify(config, &self.app.event),
+            view_model: Language::requalify(config, &self.app.view_model),
         }
     }
 
