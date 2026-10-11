@@ -13,9 +13,10 @@ Events:
 ```
 
 The two are different kinds of capability. HTTP comes from `crux_http`, which
-defines the shell side of its protocol along with the core side. Server-Sent
-Events are this app's own: a stream operation declared in `shared/src/sse.rs`,
-which the shell answers with a `Chunk` per batch of bytes it reads, then `Done`:
+defines the shell side of its protocol along with the core side.
+Server-Sent Events are a _local_ capability of this app: a stream operation
+declared in `shared/src/sse.rs`, which the shell answers with a `Chunk` per
+batch of bytes it reads, then `Done`:
 
 ```rust,noplayground
 // Rust: shared/src/sse.rs
@@ -33,8 +34,8 @@ The generated `EffectHandler` has an `http` method for the `Http` effect and a
 
 Here's the Swift handler. HTTP is one line, delegating to
 `SessionHttpHandler`, the shell's own HTTP client. Server-Sent Events are the
-app's own capability, so the shell implements the stream itself, sending each
-event it reads into the `EffectSink` it's given:
+app's own capability, so the shell is the one implementing the stream, sending
+each event it reads into the `EffectSink` it's given:
 
 ```swift
 // Swift: apple/CounterApp/CounterHandler.swift

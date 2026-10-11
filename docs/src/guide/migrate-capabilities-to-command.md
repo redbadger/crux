@@ -6,6 +6,9 @@ capabilities called back into the app with events. The `Command` API replaces
 all of that. `update` returns a `Command`, and the `App` trait has no
 `Capabilities` type or `caps` parameter at all.
 
+If you haven't used a version of Crux before 0.17, this guide isn't relevant
+to you. It is here only for migrating older apps.
+
 The change is a breaking one for any app still on the old API. There are three
 parts to the migration:
 
