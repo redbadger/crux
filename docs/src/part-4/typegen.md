@@ -675,22 +675,25 @@ struct WeatherHandler: EffectHandler {
 }
 ```
 
-Those lines are the whole of what you write for the capability. The
-protocol rules (how a `URLError` maps onto `HttpResult`, what a cleared
-timer answers, whether a session cookie survives between requests) live
-in the shipped file, written once by the capability author. That last one
-is worth knowing about: all three of the HTTP handlers that own a client
-keep cookies by default, because `URLSession` and `HttpClient` do and the
-Kotlin one would otherwise be the odd platform out, losing a session the
-same core keeps everywhere else. `UrlConnectionHttpHandler` carries an
-`InMemoryCookieJar` you can replace or switch off, and read its note
-before reaching for `java.net.CookieManager`, which cannot do this job. Because the delegation is yours, so is the choice: construct the
+Those lines are the whole of what you write for the capability. The protocol
+rules (how a `URLError` maps onto `HttpResult`, what a cleared timer
+answers, whether a session cookie survives between requests) live in the
+shipped file, written once by the capability author.
+
+Cookies deserve a note. All three HTTP handlers that own a client keep
+cookies by default. `URLSession` and `HttpClient` do that anyway, and the
+Kotlin handler does it too, so that a session the core keeps on the other
+platforms isn't lost on Android. `UrlConnectionHttpHandler` keeps them in an
+`InMemoryCookieJar`, which you can replace or switch off. Its documentation
+explains why `java.net.CookieManager` can't take its place.
+
+Because the delegation is yours, so is the choice. You can construct the
 shipped implementation with a pinned `URLSession` or a storage directory,
-write your own conformer of the protocol behind a hardened HTTP stack,
-override one method and delegate the rest, or leave the registration out
-and get a package with nothing extra in it. When a capability gains an
-operation, your handler stops compiling until you add its line, which is
-the right moment to read what the new operation does.
+write your own implementation of the protocol over a hardened HTTP stack,
+override one method and delegate the rest, or leave the registration out and
+get a package with nothing extra in it. When a capability gains an
+operation, your handler stops compiling until you add its line, which is the
+right moment to read what the new operation does.
 
 The other languages follow the same pattern, with each language's own
 conventions for the names (C#, for example, prefixes the interface with

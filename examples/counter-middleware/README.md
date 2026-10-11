@@ -3,8 +3,8 @@
 Builds on [`counter-http`](../counter-http/) by adding a "I'm feeling lucky"
 button that adjusts the counter by a random amount between -5 and 5. The random
 number generation is handled by
-[middleware](../../docs/src/part-3/middleware.md) — Rust code that intercepts
-effects before they reach the shell.
+[middleware](../../docs/src/part-3/middleware.md) (Rust code that intercepts
+effects before they reach the shell).
 
 ## Architecture
 
@@ -22,12 +22,12 @@ This demonstrates:
 
 This example has two FFI bridges that wire up the core differently:
 
-- **BoltFFI native shells** — The `RngMiddleware` intercepts `Random` effects and
+- **BoltFFI native shells**: the `RngMiddleware` intercepts `Random` effects and
   handles them entirely in Rust. The shell never sees them.
-- **Web compatibility shell** — Middleware can't run in the current wasm path (it uses
-  `std::thread::spawn`), so `Random` effects pass through to the shell, which
-  handles them in JavaScript. This demonstrates the app working, but not the
-  middleware feature itself.
+- **Web compatibility shell**: middleware can't run in the current wasm path
+  (it uses `std::thread::spawn`), so `Random` effects pass through to the
+  shell, which handles them in JavaScript. This demonstrates the app working,
+  but not the middleware feature itself.
 
 ## Shells
 
