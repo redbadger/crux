@@ -944,7 +944,7 @@ impl CodeGenerator {
     /// exactly the shell that needs to know whether to resolve each one
     /// never, once, or many times, and the accessor is a plain method on the
     /// effect, as usable from a hand-written `switch` as from the dispatcher.
-    /// Shipped shell handlers stay for the same reason.
+    /// Registered shell extensions stay for the same reason.
     #[must_use]
     pub const fn without_effect_handlers(mut self) -> Self {
         self.handlers = false;
