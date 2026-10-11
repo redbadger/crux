@@ -170,7 +170,7 @@ mod app;
 mod boltffi;
 mod effects;
 mod plugins;
-mod shell_handler;
+mod shell_extension;
 
 use std::{
     fs::{self, File},
@@ -202,8 +202,8 @@ use self::plugins::{
     COMPANION_FILE_STEMS, CorePlugin, EffectHandlerPlugin, FFI_BRIDGE_FILE, OperationKindPlugin,
     ShellExtensionPlugin,
 };
-use self::shell_handler::SourceFile;
-pub use self::shell_handler::{Dir, Language, Platform, RegisterTypes, ShellExtension};
+use self::shell_extension::SourceFile;
+pub use self::shell_extension::{Dir, Language, Platform, RegisterTypes, ShellExtension};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -731,12 +731,12 @@ fn validate_extension_sources(extension: &'static ShellExtension) -> Result<(), 
                 "shell extension `{name}` has the file `{path}` at the root of its source directory. Put each file in `common/` or in the directory of a platform."
             )));
         };
-        let known = path == shell_handler::COMMON
+        let known = path == shell_extension::COMMON
             || platforms
                 .iter()
                 .any(|platform| platform.directory() == path);
         if !known {
-            let expected: Vec<String> = std::iter::once(shell_handler::COMMON)
+            let expected: Vec<String> = std::iter::once(shell_extension::COMMON)
                 .chain(platforms.iter().map(|platform| platform.directory()))
                 .map(|directory| format!("`{directory}/`"))
                 .collect();
@@ -941,7 +941,6 @@ impl CodeGenerator {
         self.check_boltffi()?;
         let shell_extensions = self.shell_extension_plugin(
             platform,
-            &config.package_name,
             Some(&swift_module_file_stem(&config.package_name)),
         )?;
         let path = config.out_dir.join(&config.package_name);
@@ -953,7 +952,7 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin(&config.package_name) {
+            if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
         }
@@ -994,11 +993,8 @@ impl CodeGenerator {
     fn generate_kotlin(&self, platform: Platform, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Kotlin types");
         self.check_boltffi()?;
-        let shell_extensions = self.shell_extension_plugin(
-            platform,
-            &config.package_name,
-            Some(&module_file_stem(&config.package_name)),
-        )?;
+        let shell_extensions =
+            self.shell_extension_plugin(platform, Some(&module_file_stem(&config.package_name)))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -1011,7 +1007,7 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin(&config.package_name) {
+            if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
         }
@@ -1051,11 +1047,8 @@ impl CodeGenerator {
     fn generate_csharp(&self, platform: Platform, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating C# types");
         self.check_boltffi()?;
-        let shell_extensions = self.shell_extension_plugin(
-            platform,
-            &config.package_name,
-            Some(&module_file_stem(&config.package_name)),
-        )?;
+        let shell_extensions =
+            self.shell_extension_plugin(platform, Some(&module_file_stem(&config.package_name)))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -1068,7 +1061,7 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin(&config.package_name) {
+            if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
         }
@@ -1109,7 +1102,7 @@ impl CodeGenerator {
     fn generate_typescript(&self, platform: Platform, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating TypeScript types");
         self.check_boltffi()?;
-        let shell_extensions = self.shell_extension_plugin(platform, &config.package_name, None)?;
+        let shell_extensions = self.shell_extension_plugin(platform, None)?;
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
@@ -1118,7 +1111,7 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin(&config.package_name) {
+            if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
         }
@@ -1266,13 +1259,13 @@ impl CodeGenerator {
     ///
     /// `Core` is built on the dispatcher and names the app's `Event` and
     /// `ViewModel`, so it needs the handler API and a registered app.
-    fn core_plugin(&self, package_name: &str) -> Option<CorePlugin> {
+    fn core_plugin(&self) -> Option<CorePlugin> {
         if !(self.handlers && self.core) {
             return None;
         }
         self.app
             .clone()
-            .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone(), package_name))
+            .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
     }
 
     /// The registered extensions crux emits for `language` on `platform`: for
@@ -1352,7 +1345,7 @@ impl CodeGenerator {
     /// replace. Two source files cannot share a name either. Names are
     /// compared ignoring case, because `Http.swift` overwrites `http.swift` on
     /// APFS and NTFS. TypeScript's module is one file with the sources
-    /// appended to it, so it has no files to overwrite and passes `None`.
+    /// in its footer, so it has no files to overwrite and passes `None`.
     ///
     /// The plugin is installed outside the `handlers` flag. An extension's
     /// source is plain code, and a capability's shipped handler is as usable
@@ -1362,11 +1355,8 @@ impl CodeGenerator {
     fn shell_extension_plugin(
         &self,
         platform: Platform,
-        package_name: &str,
         module_file: Option<&str>,
     ) -> Result<Option<ShellExtensionPlugin>, TypeGenError> {
-        use facet_generate::reflection::format::Namespace;
-
         let language = platform.language();
         let selected = self.select_shell_extensions(language, platform)?;
         if selected.is_empty() {
@@ -1415,17 +1405,10 @@ impl CodeGenerator {
             }
         }
 
-        let last_type = self
-            .registry
-            .keys()
-            .rfind(|name| name.namespace == Namespace::Root)
-            .cloned();
         Ok(Some(ShellExtensionPlugin::new(
             files.into_iter().map(|(_, file)| file).collect(),
             dependencies,
             target_dependencies,
-            package_name,
-            last_type,
         )))
     }
 }

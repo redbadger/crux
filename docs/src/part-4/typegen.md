@@ -670,8 +670,9 @@ that lists the platform. From that extension, it emits every file in
 file of the same name in the generated module (`Http.swift` in the Swift
 target, `WebkitCookieJar.kt` in the Kotlin package, `Http.cs` in the C#
 namespace). Crux puts the module's header first and copies the source
-verbatim. A TypeScript module is a single file, so crux appends the sources
-after the types, as it does for `Core`, in the order of their paths. If you
+verbatim. A TypeScript module is a single file, so crux puts the sources at
+the end of the module, in the order of their paths, after every type (and
+after `Core`, when it is in this module). If you
 register no extension of a language for a capability, that language gets
 nothing, and you implement those methods yourself.
 
