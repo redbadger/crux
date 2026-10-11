@@ -22,7 +22,7 @@ categories = ["gui", "wasm", "development-tools::ffi"]
 [workspace.dependencies]
 anyhow = "1.0"
 facet = "=0.46.5"
-facet_generate = "0.22.0"
+facet_generate = "0.22.1"
 # Must be the same crate instance `facet_generate` itself depends on, so from the
 # same source (crates.io) and a version its requirement accepts. A second copy is
 # an unrelated `Attr` type: the attribute a `#[facet(fg::namespace = …)]` writes is
