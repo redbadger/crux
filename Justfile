@@ -82,8 +82,8 @@ check-versions:
     $(grep -E -A2 -H '"boltffi",[[:space:]]*"boltffi_cli"' renovate.json | grep -E 'allowedVersions' || true)
     PINS
 
-    if [ "$checked" -lt 24 ]; then
-        echo "  {{ style("error") }}✗ only found $checked BoltFFI pins, expected at least 24, has a pin site moved or been renamed?{{ NORMAL }}"
+    if [ "$checked" -lt 28 ]; then
+        echo "  {{ style("error") }}✗ only found $checked BoltFFI pins, expected at least 28, has a pin site moved or been renamed?{{ NORMAL }}"
         status=1
     fi
 
@@ -126,8 +126,8 @@ check-versions:
     $(grep -HoE "^[[:space:]]*coroutines_version=[\"']?[0-9]+\.[0-9]+\.[0-9]+" .github/workflows/build.yaml || true)
     COROUTINES_PINS
 
-    if [ "$coroutines_checked" -lt 8 ]; then
-        echo "  {{ style("error") }}✗ only found $coroutines_checked kotlinx-coroutines pins, expected at least 8 — has a pin site moved or been renamed?{{ NORMAL }}"
+    if [ "$coroutines_checked" -lt 9 ]; then
+        echo "  {{ style("error") }}✗ only found $coroutines_checked kotlinx-coroutines pins, expected at least 9 — has a pin site moved or been renamed?{{ NORMAL }}"
         status=1
     fi
 
