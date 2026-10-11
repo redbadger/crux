@@ -33,7 +33,7 @@ fn main() -> Result<()> {
     // handler it ships and delegate to it. Server-Sent Events are this app's
     // own capability, so there is nothing to ship: each shell implements
     // `serverSentEvents` itself.
-    registry.shell_handler(&crux_http::HTTP)?;
+    registry.shell_extension(&crux_http::shell::EXTENSION)?;
 
     // No `.boltffi(..)` here. `CoreFfi::new` takes the shell's `CruxShell`
     // callback, which the middleware uses to deliver effects after `update`

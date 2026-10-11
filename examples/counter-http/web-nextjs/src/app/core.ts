@@ -7,7 +7,7 @@ import type {
   SseResponse,
   ViewModel,
 } from "shared_types/app";
-import { Core, fetchHttpHandler } from "shared_types/app";
+import { Core, createFetchHttpHandler } from "shared_types/app";
 
 import * as sse from "./sse";
 
@@ -24,7 +24,7 @@ export class CounterHandler implements EffectHandler {
   /// the codegen binary asks for it. The rules for mapping a `fetch` response
   /// belong to that crate, so the only thing this shell writes for HTTP is the
   /// line that delegates.
-  private readonly httpHandler = fetchHttpHandler;
+  private readonly httpHandler = createFetchHttpHandler();
 
   http(operation: HttpRequest): Promise<HttpResult> {
     return this.httpHandler.request(operation);

@@ -11,7 +11,7 @@ import Foundation
 /// before the dispatcher sees it, so the protocol's default no-op stands.
 struct CounterHandler: EffectHandler {
     /// The shipped `crux_http` handler, over the shared `URLSession`.
-    let httpHandler = URLSessionHttpHandler.shared
+    let httpHandler = URLSessionHttpHandler()
 
     /// `Http` is a request: the shell performs it and answers with exactly one
     /// `HttpResult`. HTTP is `crux_http`'s business, so the rules for

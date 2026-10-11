@@ -38,8 +38,9 @@ This demonstrates:
 
 The Swift, Kotlin and TypeScript shells use the `Core` that type generation
 emits, with an `EffectHandler` per shell. The codegen binary asks for the
-handler `crux_http` ships (with `.shell_handler(&crux_http::HTTP)`), so each
-shell's `http` method is one line that delegates to it. Server-Sent Events are
+handler `crux_http` ships (with
+`.shell_extension(&crux_http::shell::EXTENSION)`), so each shell's `http`
+method is one line that delegates to it. Server-Sent Events are
 this app's own capability, so each shell implements the `serverSentEvents`
 stream method itself, sending every chunk it reads into the `EffectSink` it is
 given, and then `Done`.

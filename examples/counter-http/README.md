@@ -26,8 +26,9 @@ The Swift, Kotlin and TypeScript shells use the `Core` that type generation
 emits: the codegen binary is told where `boltffi pack` puts the FFI bindings
 (with `.boltffi(..)`), so each shell constructs `Core` from an
 `EffectHandler` and never touches the FFI itself. The codegen binary also asks
-for the handler `crux_http` ships (with `.shell_handler(&crux_http::HTTP)`), so
-the shells' `http` method is one line that delegates to it.
+for the handler `crux_http` ships (with
+`.shell_extension(&crux_http::shell::EXTENSION)`), so the shells' `http`
+method is one line that delegates to it.
 
 Server-Sent Events are this app's own capability, so nothing ships a handler
 for them: each shell implements the `serverSentEvents` stream method itself,

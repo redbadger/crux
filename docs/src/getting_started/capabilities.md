@@ -33,23 +33,24 @@ the app:
 
 ```rust,noplayground
 // Rust: shared/src/bin/codegen.rs
-{{#include ../../../examples/counter-http/shared/src/bin/codegen.rs:shell_handler}}
+{{#include ../../../examples/counter-http/shared/src/bin/codegen.rs:shell_extension}}
 ```
 
-`crux_http::HTTP` is only there when `crux_http`'s own `facet_typegen` feature
-is on, so the app's `facet_typegen` feature turns it on too:
+`crux_http::shell::EXTENSION` is only there when `crux_http`'s own
+`facet_typegen` feature is on, so the app's `facet_typegen` feature turns it
+on too:
 
 ```toml
 # TOML: shared/Cargo.toml
 {{#include ../../../examples/counter-http/shared/Cargo.toml:facet_typegen}}
 ```
 
-`.shell_handler(&crux_http::HTTP)` copies `crux_http`'s handler for each
-language into the generated package, and that's all it does. The generated
-`EffectHandler` gains an `http` method for the `Http` effect and a
-`serverSentEvents` method for the `ServerSentEvents` one whether you register
-it or not; registering it means you don't have to write the first one
-yourself.
+`.shell_extension(&crux_http::shell::EXTENSION)` copies `crux_http`'s
+handler for each language into the generated package, and that's all it
+does. The generated `EffectHandler` gains an `http` method for the `Http`
+effect and a `serverSentEvents` method for the `ServerSentEvents` one whether
+you register it or not; registering it means you don't have to write the
+first one yourself.
 
 ## Implementing the handler
 
@@ -68,7 +69,7 @@ and [TypeScript](https://github.com/redbadger/crux/blob/master/examples/counter-
 handlers have the same shape. Nothing in any of them calls `resolve`: a
 request's method returns its output, a stream's method sends into its sink, and
 the generated `Core` resolves the request with each.
-[Shipped shell handlers](../part-4/typegen.md#shipped-shell-handlers) covers
+[Shell extensions](../part-4/typegen.md#shell-extensions) covers
 what the shipped handlers do, and how to configure or replace them.
 
 ## Where next

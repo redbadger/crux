@@ -129,6 +129,7 @@ jobs:
   # names a real file and anchor, which mdBook itself only warns about. The
   # tool versions are held to the ones `pages.yaml` deploys with.
   docs:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
 
     steps:

@@ -27,15 +27,15 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    // ANCHOR: shell_handler
+    // ANCHOR: shell_extension
     let mut registry = TypeRegistry::new();
     registry.register_app::<Counter>()?;
     // HTTP is `crux_http`'s business, so the shells hold an instance of the
     // handler it ships and delegate to it. Server-Sent Events are this app's
     // own capability, so there is nothing to ship: each shell implements
     // `serverSentEvents` itself.
-    registry.shell_handler(&crux_http::HTTP)?;
-    // ANCHOR_END: shell_handler
+    registry.shell_extension(&crux_http::shell::EXTENSION)?;
+    // ANCHOR_END: shell_extension
 
     let typegen_app = registry
         .build()?
