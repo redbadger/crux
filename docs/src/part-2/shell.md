@@ -93,8 +93,9 @@ binding generator other than BoltFFI, or for an app with
 [middleware](../part-3/middleware.md#in-the-shell).
 
 So with the generated `Core`, what a shell writes is the `EffectHandler`.
-Register the handlers `crux_http`, `crux_kv` and `crux_time` ship, with
-`.shell_handler(&crux_http::HTTP)` and friends, and most of it becomes
+Register the shell extensions that `crux_http`, `crux_kv` and `crux_time`
+ship, with `.shell_extension(&crux_http::shell::EXTENSION)` and friends,
+and most of it becomes
 one-line delegations. `Core` handles `Render` itself and publishes the new
 view in each language's own way — an `@Observable` `view` property in Swift,
 a `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a `View`
