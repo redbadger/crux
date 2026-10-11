@@ -98,11 +98,11 @@ An app that uses `crux_http`, `crux_kv` or `crux_time` gets the shell
 protocol of each one automatically, because type generation emits it. The
 shell implements each shell protocol with a handler of its own, and the
 `EffectHandler` delegates each operation to that handler in one line. `Core`
-handles `Render` itself and publishes the new
-view in each language's own way (an `@Observable` `view` property in Swift,
-a `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a `View`
-property that raises `INotifyPropertyChanged` in C#), so the handler never
-touches the view at all. See
+handles `Render` itself and publishes the new view in each language's own way
+(an `@Observable` `view` property in Swift, a `StateFlow` in Kotlin, an
+`onView` callback in TypeScript, and a `View` property that raises
+`INotifyPropertyChanged` in C#), so the handler never touches the view at all.
+See
 [the generated Core](../part-4/typegen.md#the-generated-core) for the exact
 shape in each language, and the [RFC](../rfcs/generated-core.md) for why it
 is built the way it is.
