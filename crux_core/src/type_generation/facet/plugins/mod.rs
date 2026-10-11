@@ -165,8 +165,8 @@ pub struct Matched<'a> {
 ///
 /// The container's name is still in registry spelling, as the effect metadata
 /// is, so that is what they are compared in. Each output, recorded during
-/// reflection, is respelled for `L` here, once.
-pub fn matched<'a, L: Requalify>(
+/// reflection, is respelled for `Language` here, once.
+pub fn matched<'a, Language: Requalify>(
     effects: &'a [EffectMeta],
     ctx: &EmitContext<'a>,
 ) -> Option<Matched<'a>> {
@@ -191,7 +191,7 @@ pub fn matched<'a, L: Requalify>(
         variants.push(Variant {
             name: named.name.as_str(),
             kind: meta.kind,
-            output: output_of(meta).map(|format| L::requalify_format(ctx.config, format)),
+            output: output_of(meta).map(|format| Language::requalify_format(ctx.config, format)),
             operation: operation.as_ref(),
             render: meta.render,
         });

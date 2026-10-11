@@ -37,8 +37,8 @@ impl OperationKindPlugin {
         }
     }
 
-    fn matched<'a, L: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
-        matched::<L>(&self.effects, ctx)
+    fn matched<'a, Language: Requalify>(&'a self, ctx: &EmitContext<'a>) -> Option<Matched<'a>> {
+        matched::<Language>(&self.effects, ctx)
     }
 }
 
