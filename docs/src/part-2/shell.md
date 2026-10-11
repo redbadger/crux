@@ -96,12 +96,11 @@ binding generator other than BoltFFI, or for an app with
 So with the generated `Core`, what a shell writes is the `EffectHandler`.
 Register the shell extensions that `crux_http`, `crux_kv` and `crux_time`
 ship, with `.shell_extension(&crux_http::shell::EXTENSION)` and friends,
-and most of it is
-one-line delegations. `Core` handles `Render` itself and publishes the new
-view in each language's own way (an `@Observable` `view` property in Swift,
-a `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a `View`
-property that raises `INotifyPropertyChanged` in C#), so the handler never
-touches the view at all. See
+and most of it is one-line delegations. `Core` handles `Render` itself and
+publishes the new view in each language's own way (an `@Observable` `view`
+property in Swift, a `StateFlow` in Kotlin, an `onView` callback in TypeScript,
+and a `View` property that raises `INotifyPropertyChanged` in C#), so the
+handler never touches the view at all. See
 [the generated Core](../part-4/typegen.md#the-generated-core) for the exact
 shape in each language, and the [RFC](../rfcs/generated-core.md) for why it
 is built the way it is.
