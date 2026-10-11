@@ -95,8 +95,10 @@ binding generator other than BoltFFI, or for an app with
 So with the generated `Core`, what a shell writes is the `EffectHandler`.
 An app that uses `crux_http`, `crux_kv` or `crux_time` gets the shell
 protocol of each one automatically. Register the implementations that they
-ship, with `.shell_extension(&crux_http::shell::swift::URL_SESSION)` and so
-on, and most of it becomes one-line delegations. `Core` handles `Render` itself and publishes the new
+ship as shell extensions, with
+`.shell_extension(&crux_http::shell::swift::URL_SESSION)` and so on, and most
+of it becomes
+one-line delegations. `Core` handles `Render` itself and publishes the new
 view in each language's own way — an `@Observable` `view` property in Swift,
 a `StateFlow` in Kotlin, an `onView` callback in TypeScript, and a `View`
 property that raises `INotifyPropertyChanged` in C# — so the handler never
