@@ -43,6 +43,10 @@ check: check-versions
 # the check holds the generator, its test, the Android shells and the jar CI
 # fetches for the `shell_source` harness to one version, because a harness
 # compiled against one coroutines and run against another fails obscurely.
+#
+# The greps tolerate whitespace and quote style, and each kind of pin has a
+# floor on how many sites it finds, so a format change that stops a grep
+# matching shows up as that floor failing rather than as a silent pass.
 [script('bash')]
 check-versions:
     set -euo pipefail
@@ -70,13 +74,18 @@ check-versions:
             status=1
         fi
     done <<PINS
-    $(grep -HoE '^boltffi = "=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/Cargo.toml || true)
-    $(grep -HoE '"@boltffi/runtime": "[0-9]+\.[0-9]+\.[0-9]+"' examples/*/*/package.json || true)
-    $(grep -rHoE "boltffi_cli --version '=[0-9]+\.[0-9]+\.[0-9]+'" .github/workflows docs/src lib.just || true)
-    $(grep -rHoE '^boltffi = "=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
-    $(grep -HoE '^boltffi_version := "[0-9]+\.[0-9]+\.[0-9]+"' examples/counter/windows/Justfile || true)
-    $(grep -A2 -H '"boltffi", "boltffi_cli"' renovate.json | grep -E 'allowedVersions' || true)
+    $(grep -HoE '^boltffi[[:space:]]*=[[:space:]]*"=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/Cargo.toml || true)
+    $(grep -HoE '"@boltffi/runtime"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' examples/*/*/package.json || true)
+    $(grep -rHoE "boltffi_cli[[:space:]]+--version[[:space:]]+['\"]=[0-9]+\.[0-9]+\.[0-9]+['\"]" .github/workflows docs/src lib.just || true)
+    $(grep -rHoE '^boltffi[[:space:]]*=[[:space:]]*"=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
+    $(grep -HoE '^boltffi_version[[:space:]]*:=[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' examples/counter/windows/Justfile || true)
+    $(grep -E -A2 -H '"boltffi",[[:space:]]*"boltffi_cli"' renovate.json | grep -E 'allowedVersions' || true)
     PINS
+
+    if [ "$checked" -lt 24 ]; then
+        echo "  {{ style("error") }}✗ only found $checked BoltFFI pins, expected at least 24, has a pin site moved or been renamed?{{ NORMAL }}"
+        status=1
+    fi
 
     facet_checked=0
     while IFS= read -r hit; do
@@ -89,11 +98,10 @@ check-versions:
             status=1
         fi
     done <<FACET_PINS
-    $(grep -HoE '^facet = "=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/shared/Cargo.toml || true)
-    $(grep -HoE '^facet = \{ version = "=[0-9]+\.[0-9]+\.[0-9]+"' examples/*/shared/Cargo.toml || true)
-    $(grep -rHoE '^facet = "=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
+    $(grep -HoE '^facet[[:space:]]*=[[:space:]]*(\{[[:space:]]*version[[:space:]]*=[[:space:]]*)?"=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/shared/Cargo.toml || true)
+    $(grep -rHoE '^facet[[:space:]]*=[[:space:]]*"=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
     $(grep -HoE 'Pin facet to [0-9]+\.[0-9]+\.[0-9]+' renovate.json || true)
-    $(grep -F -A3 -H '"matchPackageNames": ["facet"],' renovate.json | grep -E 'allowedVersions' || true)
+    $(grep -E -A3 -H '"matchPackageNames"[[:space:]]*:[[:space:]]*\[[[:space:]]*"facet"[[:space:]]*\],' renovate.json | grep -E 'allowedVersions' || true)
     FACET_PINS
 
     if [ "$facet_checked" -lt 10 ]; then
@@ -112,10 +120,10 @@ check-versions:
             status=1
         fi
     done <<COROUTINES_PINS
-    $(grep -HoE 'KOTLIN_COROUTINES_VERSION: &str = "[0-9]+\.[0-9]+\.[0-9]+"' crux_core/src/type_generation/facet/plugins/core/mod.rs || true)
+    $(grep -HoE 'KOTLIN_COROUTINES_VERSION[[:space:]]*:[[:space:]]*&str[[:space:]]*=[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' crux_core/src/type_generation/facet/plugins/core/mod.rs || true)
     $(grep -HoE 'kotlinx-coroutines-core:[0-9]+\.[0-9]+\.[0-9]+' crux_core/src/type_generation/facet/plugins/tests.rs || true)
-    $(grep -HoE '^kotlinxCoroutines = "[0-9]+\.[0-9]+\.[0-9]+"' examples/*/Android/gradle/libs.versions.toml || true)
-    $(grep -HoE '^ *coroutines_version=[0-9]+\.[0-9]+\.[0-9]+' .github/workflows/build.yaml || true)
+    $(grep -HoE '^kotlinxCoroutines[[:space:]]*=[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' examples/*/Android/gradle/libs.versions.toml || true)
+    $(grep -HoE "^[[:space:]]*coroutines_version=[\"']?[0-9]+\.[0-9]+\.[0-9]+" .github/workflows/build.yaml || true)
     COROUTINES_PINS
 
     if [ "$coroutines_checked" -lt 7 ]; then
@@ -123,13 +131,13 @@ check-versions:
         status=1
     fi
 
-    ci_binaryen=$(sed -nE 's/^ *binaryen_version=([0-9]+).*/\1/p' .github/workflows/examples.yaml | head -n 1)
+    ci_binaryen=$(sed -nE "s/^[[:space:]]*binaryen_version=[\"']?([0-9]+).*/\1/p" .github/workflows/examples.yaml | head -n 1)
     if [ "$ci_binaryen" != "$binaryen" ]; then
         echo "  {{ style("error") }}✗ examples.yaml installs Binaryen $ci_binaryen, expected $binaryen{{ NORMAL }}"
         status=1
     fi
 
-    ci_kotlin=$(sed -nE 's/^ *kotlin_version=([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' .github/workflows/build.yaml | head -n 1)
+    ci_kotlin=$(sed -nE "s/^[[:space:]]*kotlin_version=[\"']?([0-9]+\.[0-9]+\.[0-9]+).*/\1/p" .github/workflows/build.yaml | head -n 1)
     if [ "$ci_kotlin" != "$kotlin" ]; then
         echo "  {{ style("error") }}✗ build.yaml installs the Kotlin compiler $ci_kotlin, expected $kotlin{{ NORMAL }}"
         status=1
