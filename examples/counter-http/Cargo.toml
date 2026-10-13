@@ -46,3 +46,8 @@ inherits = "dev"
 
 [profile.android-dev]
 inherits = "dev"
+
+[patch.crates-io]
+# Temporary. This pins facet-generate#256 (facet-generate-attrs 0.18.1, which builds
+# for no_std). Remove it when 0.18.1 is on crates.io.
+facet-generate-attrs = { git = "https://github.com/redbadger/facet-generate", rev = "79988a1440328085c38c4810ff66b0aa1ee38c8d" }

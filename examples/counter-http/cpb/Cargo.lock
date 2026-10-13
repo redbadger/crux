@@ -316,6 +316,7 @@ dependencies = [
  "crux_core",
  "derive_builder",
  "facet",
+ "facet-generate-attrs",
  "futures-util",
  "serde",
  "serde_bytes",
@@ -759,6 +760,14 @@ dependencies = [
  "autocfg",
  "const-fnv1a-hash",
  "impls",
+]
+
+[[package]]
+name = "facet-generate-attrs"
+version = "0.18.1"
+source = "git+https://github.com/redbadger/facet-generate?rev=79988a1440328085c38c4810ff66b0aa1ee38c8d#79988a1440328085c38c4810ff66b0aa1ee38c8d"
+dependencies = [
+ "facet",
 ]
 
 [[package]]

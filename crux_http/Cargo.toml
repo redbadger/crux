@@ -19,7 +19,6 @@ default = ["std", "encoding"]
 std = [
     "crux_core/std",
     "dep:async-trait",
-    "dep:facet-generate-attrs",
     "dep:http",
     "dep:mime",
     "dep:serde_qs",
@@ -46,9 +45,7 @@ derive_builder = { version = "0.20", default-features = false, features = ["allo
 encoding_rs = { version = "0.8", optional = true }
 # spike(no_std): not `.workspace = true`, whose entries enable std (as in crux_core).
 facet = { version = "=0.46.5", default-features = false, features = ["alloc"] }
-# spike(no_std): facet-generate-attrs 0.18 depends on facet with default features (std),
-# so it is std-only here; the `typegen::bytes` attributes are `cfg_attr`'d on it.
-facet-generate-attrs = { workspace = true, optional = true }
+facet-generate-attrs = { workspace = true }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
 http = { version = "1.5", optional = true }
 http-types = { package = "http-types-red-badger-temporary-fork", version = "6.0", default-features = false, optional = true }

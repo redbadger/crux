@@ -826,9 +826,8 @@ dependencies = [
 
 [[package]]
 name = "facet-generate-attrs"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8759a95863bc332c2cdbdacdbe2595573aa3431ce42609b66a1eccf62f1ee1bb"
+version = "0.18.1"
+source = "git+https://github.com/redbadger/facet-generate?rev=79988a1440328085c38c4810ff66b0aa1ee38c8d#79988a1440328085c38c4810ff66b0aa1ee38c8d"
 dependencies = [
  "facet",
 ]
