@@ -7,7 +7,6 @@
 #[cfg(feature = "std")]
 use async_trait::async_trait;
 use derive_builder::Builder;
-#[cfg(feature = "std")]
 use facet_generate_attrs as typegen;
 use serde::{Deserialize, Serialize};
 
@@ -61,7 +60,7 @@ pub struct HttpRequest {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     #[serde(with = "serde_bytes")]
-    #[cfg_attr(feature = "std", facet(typegen::bytes))]
+    #[facet(typegen::bytes)]
     pub body: Vec<u8>,
 }
 
@@ -217,7 +216,7 @@ pub struct HttpResponse {
     #[builder(setter(custom))]
     pub headers: Vec<HttpHeader>,
     #[serde(with = "serde_bytes")]
-    #[cfg_attr(feature = "std", facet(typegen::bytes))]
+    #[facet(typegen::bytes)]
     pub body: Vec<u8>,
 }
 
