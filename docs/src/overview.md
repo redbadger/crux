@@ -52,7 +52,7 @@ You can also join the friendly conversation on our [Zulip channel](https://crux-
 
 ## Design overview
 
-![Events go from the shell to the core, and effects come back to the shell. The shell resolves each effect with its output.](./command_overview.svg)
+![Events go from the shell to the core, and effects come back to the shell. The shell resolves each effect with its result.](./command_overview.svg)
 
 The architecture is event-driven, with state management based on
 [event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html), similar to Elm or Redux.
