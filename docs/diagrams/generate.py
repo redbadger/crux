@@ -127,13 +127,21 @@ def label(x, y, text, anchor="middle", cls="s"):
 # Shell + Core round trip (command_overview.svg and architecture.svg)
 # ---------------------------------------------------------------------------
 
-def stack(x, y, w, h, kind, title, sub):
-    """A box with two offset cards behind it, the notation for 'many'."""
+def stack(x, y, w, h, kind, title, sub, dashed=False):
+    """A box with two offset cards behind it, the notation for 'many'.
+
+    A dashed outline marks the stack as optional.
+    """
     fill, stroke = COL[kind]
+    dash = ' stroke-dasharray="5 4"' if dashed else ""
     out = ""
-    for d in (12, 6):
-        out += f'<rect x="{x + d}" y="{y + d}" width="{w}" height="{h}" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>\n'
-    return out + box(x, y, w, h, kind, title, sub)
+    for d in (12, 6, 0):
+        out += f'<rect x="{x + d}" y="{y + d}" width="{w}" height="{h}" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}/>\n'
+    if not dashed:
+        return out[: out.rindex("<rect")] + box(x, y, w, h, kind, title, sub)
+    out += f'<text x="{x + w / 2}" y="{y + h / 2 - 3}" text-anchor="middle" class="b">{escape(title)}</text>\n'
+    out += f'<text x="{x + w / 2}" y="{y + h / 2 + 14}" text-anchor="middle" class="s">{escape(sub)}</text>\n'
+    return out
 
 
 def many(x, y, anchor="start"):
@@ -142,18 +150,21 @@ def many(x, y, anchor="start"):
 
 
 def round_trip(detail):
-    W = 960
+    WX = 110 if detail else 0  # extra width for the wide resolve label
+    XS = 60 if detail else 0  # extra gap between the shell and the core
+    XR = 30 if detail else 0  # extra room for the Rust handlers' label
+    W = 960 + WX + XS + XR
     SX, SW = 30, 230  # shell
-    BX = 370  # boundary
-    CX, CW = 480, 450  # core
+    BX = 370 + XS // 2  # boundary
+    CX, CW = 480 + XS, 450 + WX + XR  # core
     TOP = 60
     L = CX + 30  # core left column
     LW = 200
-    MX, MW = 810, 100  # model column
+    MX, MW = 810 + XS, 100  # model column
     R1, R2, R3 = 80, 200, 340  # row tops
     RH = 70
     ux, uw = SX + 20, SW - 50   # shell boxes (room for the stack offset)
-    HY, HH = 425, 64            # effect handlers (front card)
+    HY, HH = (465 if detail else 425), 64  # effect handlers (front card)
     BOT = HY + HH + 12 + 14
     H = BOT + (25 if detail else 30)
 
@@ -162,10 +173,11 @@ def round_trip(detail):
         desc = (
             "The shell calls process_event with an event. App::update changes the "
             "Model and returns a Command. The Command can send follow-up events back "
-            "to update, and it gives zero or more effects to the shell. The shell sends "
-            "a Render effect to the UI, which calls view and draws the ViewModel. The "
-            "shell sends the other effects to their handlers, and it gives each result "
-            "back to the core with resolve."
+            "to update, and it gives zero or more effects to the shell, and each effect carries a request. A Render effect "
+            "goes to the UI, which calls view and draws the ViewModel. The "
+            "Command sends the other effects to the shell's effect handlers, and the shell "
+            "resolves each request with the operation's output. Optionally, the Command sends "
+            "some effects to Rust handlers in the core, which resolve each request the same way."
         )
     else:
         title = "Crux architecture"
@@ -234,7 +246,7 @@ def round_trip(detail):
     mid = (a + b) / 2
     if detail:
         t_view, t_vm, t_ev = "view() on Render", "ViewModel", "process_event(event)"
-        t_eff, t_res = "Vec<Effect>", "resolve(request, result)"
+        t_eff, t_res = "Effect(Request<Op>)", "resolve(request, Op::Output)"
     else:
         t_view, t_vm, t_ev = "on Render", "ViewModel", "Event"
         t_eff, t_res = "Effect", "Output"
@@ -245,22 +257,55 @@ def round_trip(detail):
     s += arrow(f"M{a},{R2 + 35} H{b}")
     s += pill(mid, R2 + 35 - 14, t_ev)
 
-    # effects: Command -> shell, then fan out to the UI (Render) and the handlers
     jx = ux + uw / 2
     ey = R3 + 22
-    fx = jx + 100  # fork point
-    s += f'<path d="M{L - 2},{ey} H{fx}" class="ln"/>\n'
-    s += many(CX - 8, ey + 18, anchor="end")
-    s += pill(mid, ey - 14, t_eff)
-    s += arrow(f"M{fx},{ey} C{rx_},{ey} {rx_},{ey} {rx_},{ey - 45} V{R2 + RH + 2}")
-    s += pill(rx_ - 48, R2 + RH + 28, "Render")
-    s += arrow(f"M{fx},{ey} C{jx},{ey} {jx},{ey} {jx},{ey + 50} V{HY - 2}")
+    if not detail:
+        # effects: Command -> shell, then fan out to the UI (Render) and the handlers
+        fx = jx + 100  # fork point
+        s += f'<path d="M{L - 2},{ey} H{fx}" class="ln"/>\n'
+        s += many(CX - 8, ey + 18, anchor="end")
+        s += pill(mid, ey - 14, t_eff)
+        s += arrow(f"M{fx},{ey} C{rx_},{ey} {rx_},{ey} {rx_},{ey - 45} V{R2 + RH + 2}")
+        s += pill(rx_ - 48, R2 + RH + 28, "Render")
+        s += arrow(f"M{fx},{ey} C{jx},{ey} {jx},{ey} {jx},{ey + 50} V{HY - 2}")
+        # handlers -> Command (Output / resolve)
+        oy, ox = HY + HH / 2 + 4, L + 40
+        s += arrow(f"M{ux + uw + 14},{oy} H{ox - 60} C{ox},{oy} {ox},{oy} {ox},{oy - 40} V{R3 + RH + 2}")
+        s += pill(mid, oy - 14, t_res)
+    else:
+        # Render goes from the Command straight to the UI.
+        s += arrow(f"M{L - 2},{ey} H{rx_ + 45} C{rx_},{ey} {rx_},{ey} {rx_},{ey - 45} V{R2 + RH + 2}")
+        s += pill(mid, ey - 14, "Render")
+        # All handler arrows meet the bottom of the Command. From left to
+        # right: shell effects out, shell result in, Rust result in, Rust
+        # effects out. The two pairs mirror each other, so no lines cross.
+        ly = R3 + RH + 30
+        oy = HY + HH - 4
+        xs, ox = L + 20, L + 70          # shell: effects out, result in
+        xr, xo = L + LW - 80, L + LW - 20  # Rust: result in, effects out
+        s += arrow(
+            f"M{xs},{R3 + RH + 2} V{ly - 20} C{xs},{ly} {xs},{ly} {xs - 20},{ly} "
+            f"H{jx + 30} C{jx},{ly} {jx},{ly} {jx},{ly + 22} V{HY - 2}"
+        )
+        s += many(xs - 12, ly + 18, anchor="end")
+        s += pill(mid, ly - 14, t_eff)
+        s += arrow(f"M{ux + uw + 14},{oy} H{ox - 40} C{ox},{oy} {ox},{oy} {ox},{oy - 30} V{R3 + RH + 2}")
+        s += pill(mid, oy - 14, t_res)
 
-    # handlers -> Command (Output / resolve)
-    oy = HY + HH / 2 + 4
-    ox = L + 40
-    s += arrow(f"M{ux + uw + 14},{oy} H{ox - 60} C{ox},{oy} {ox},{oy} {ox},{oy - 40} V{R3 + RH + 2}")
-    s += pill(mid, oy - 14, t_res)
+        # Optional Rust handlers in the core, level with the shell's handlers.
+        # The dashed outline marks them as optional.
+        RW = 130
+        RX = CX + CW - 12 - 8 - RW
+        rin = RX + 40  # where the effects go into the stack
+        s += arrow(
+            f"M{xo},{R3 + RH + 2} V{ly - 20} C{xo},{ly} {xo},{ly} {xo + 20},{ly} "
+            f"H{rin - 30} C{rin},{ly} {rin},{ly} {rin},{ly + 22} V{HY - 2}"
+        )
+        s += many(xo + 12, ly + 18)  # right of the line, below its turn
+        s += pill((xo + 20 + rin - 30) / 2, ly - 14, t_eff)
+        s += stack(RX, HY, RW, HH, "fn", "Rust handlers", "optional", dashed=True)
+        s += arrow(f"M{RX - 2},{oy} H{xr + 40} C{xr},{oy} {xr},{oy} {xr},{oy - 30} V{R3 + RH + 2}")
+        s += pill((xr + 40 + RX) / 2, oy - 14, t_res)
 
     s += "</svg>\n"
     return s
@@ -271,10 +316,10 @@ def round_trip(detail):
 # ---------------------------------------------------------------------------
 
 def ports():
-    W, H = 960, 640
-    cx, cy = 480, 300
-    RO, RC = 245, 122
-    RM = 205  # radius of the ring labels, outside the tags
+    W, H = 960, 665
+    cx, cy = 480, 318
+    RO, RC = 258, 140
+    RM = 215  # radius of the ring labels, outside the tags
     title = "Crux: the two sides of the shell"
     desc = (
         "The Rust core is in the centre and holds the Model. The shell surrounds the core. Events (blue) cross the "
@@ -384,7 +429,16 @@ def ports():
     # Tags sit across the core boundary, because events and effects cross it.
     # A small arrowhead on the leading edge shows the direction: an event
     # points into the core, and an effect points out to the shell.
-    core_text = (cx - 62, cy - 36, cx + 62, cy + 40)  # Rust Core and Model
+    # Rust Core heading and Model box, centred on cy as one group. The group
+    # runs from the cap top of the heading to the bottom of the Model box.
+    HF, MH = 24, 30
+    cap = 0.72 * HF
+    gap_hm = 12  # baseline of the heading to the top of the Model box
+    gh = cap + gap_hm + MH
+    gtop = cy - gh / 2
+    head_y = gtop + cap
+    model_y = head_y + gap_hm
+    core_text = (cx - 62, gtop - 5, cx + 62, model_y + MH + 2)  # Rust Core and Model
 
     def clear(b):
         return all(b[2] < o[0] or b[0] > o[2] or b[3] < o[1] or b[1] > o[3] for o in placed)
@@ -394,12 +448,14 @@ def ports():
         w = len(text) * size * 0.62 + 18
         h = size + 12
         x, y = pt(RC, deg)
-        tb = (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
-        # the arrowhead sits on the side edge and points left or right,
-        # towards the centre for an event and away from it for an effect
         d = 1 if math.cos(math.radians(deg)) > 0 else -1
         if not outward:
             d = -d
+        # centre the group (tag + 3px gap + 10px pointer) on the boundary point
+        x -= d * (3 + 10) / 2
+        tb = (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
+        # the arrowhead sits on the side edge and points left or right,
+        # towards the centre for an event and away from it for an effect
         bx = x + d * (w / 2 + 3)
         pts = [(bx, y - 6), (bx, y + 6), (bx + d * 10, y)]
         cb = (min(p[0] for p in pts), min(p[1] for p in pts), max(p[0] for p in pts), max(p[1] for p in pts))
@@ -431,16 +487,41 @@ def ports():
         ("iOS", 290), ("macOS", 314), ("Android", 336), ("Web", 12), ("Desktop", 40), ("Terminal", 70),
     ])
     # core contents
-    s += f'<text x="{cx}" y="{cy - 10}" text-anchor="middle" class="h" style="font-size:24px">Rust Core</text>\n'
-    s += box(cx - 40, cy + 4, 80, 30, "model", "Model")
+    s += f'<text x="{cx}" y="{head_y:.2f}" text-anchor="middle" class="h" style="font-size:{HF}px">Rust Core</text>\n'
+    s += box(cx - 40, round(model_y, 2), 80, MH, "model", "Model")
     s += tags
-    # legend
-    lx, ly = 30, 480
-    for i, (kind, txt) in enumerate([("event", "Event that the core receives"), ("effect", "Effect that the core requests")]):
+    # legend: mid-way between the centres of the User label and the Crux
+    # title, moved radially away from the ring centre until it is 12px clear
+    # of the outer ring
+    user_c = (ux, cy + 58 - 0.72 * 18 / 2)
+    title_cy = (cy + RO + ext + 42) - 0.72 * 34 / 2
+    title_left = cx - 4 * 34 * 0.6 / 2
+    lw = 36 + 6 * 13 * 0.6  # swatch, gap and the longer label
+    lh = 48  # rows span ly-11 .. ly+37
+    lcx, lcy = (user_c[0] + cx) / 2, (user_c[1] + title_cy) / 2
+
+    def ring_gap(mx, my):
+        bx = (mx - lw / 2, my - lh / 2, mx + lw / 2, my + lh / 2)
+        nx, ny = min(max(cx, bx[0]), bx[2]), min(max(cy, bx[1]), bx[3])
+        return math.hypot(nx - cx, ny - cy) - RO
+
+    ux_, uy_ = lcx - cx, lcy - cy
+    un = math.hypot(ux_, uy_)
+    ux_, uy_ = ux_ / un, uy_ / un
+    while ring_gap(lcx, lcy) < 12:
+        lcx, lcy = lcx + ux_ * 0.5, lcy + uy_ * 0.5
+    lx = lcx - lw / 2
+    ly = lcy - 13  # rows span ly-11 .. ly+37, so their centre is ly+13
+    lbox = (lx, ly - 11, lx + lw, ly + 37)
+    assert ring_gap(lcx, lcy) >= 12, ring_gap(lcx, lcy)
+    assert lbox[2] < title_left - 12 or lbox[1] > title_cy + 20, lbox
+    assert lbox[0] > 0 and lbox[3] < H, lbox
+    assert lbox[2] < ux - 40 or lbox[1] > cy + 58 + 8 or lbox[0] > ux + 40, lbox
+    for i, (kind, label) in enumerate([("event", "Event"), ("effect", "Effect")]):
         fill, stroke = COL[kind]
         y = ly + i * 30
-        s += f'<rect x="{lx}" y="{y - 11}" width="26" height="18" rx="5" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>\n'
-        s += f'<text x="{lx + 36}" y="{y + 3}" class="s" style="fill:{LINE};font-size:13px;font-weight:600">{txt}</text>\n'
+        s += f'<rect x="{lx:.1f}" y="{y - 11:.1f}" width="26" height="18" rx="5" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>\n'
+        s += f'<text x="{lx + 36:.1f}" y="{y + 3:.1f}" class="s" style="fill:{LINE};font-size:13px;font-weight:600">{label}</text>\n'
     s += "</svg>\n"
     return s
 

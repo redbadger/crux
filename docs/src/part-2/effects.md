@@ -71,7 +71,7 @@ Note that the enum names *operations*, not capabilities. `crux_kv` offers five o
 The Command is a recipe for a side-effects workflow which may perform several
 effects and also send events back to the app.
 
-![The update function returns a Command. The Command sends effects to the shell and follow-up events back to update.](../command_overview.svg)
+![The update function returns a Command. The Command sends follow-up events back to update. It sends effects to the shell, or to optional Rust handlers in the core.](../command_overview.svg)
 
 Crux expects a Command to be returned by the `update` function. A basic Command will result in an effect request to the Shell, and when the request is _resolved_ by the Shell, the Command will pass the output to the app in an Event. The interaction can be more complicated than this, however. You can imagine a command running a set of Effects concurrently (say a few http requests and a timer), then follow some of them with additional effects based on their outputs, and finally send an event with the result of some of the outputs combined. So in principle, Command is a state machine which emits effects (for the Shell) and Events (for the app) according to the internal logic of what needs to be accomplished.
 
