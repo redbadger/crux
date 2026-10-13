@@ -42,7 +42,7 @@ compiles to nothing under std, so it can only run against the no_std code.
 | `serde_bytes` | yes | `features = ["alloc"]` |
 | `derive_builder` 0.20 | **yes, on stable** | `default-features = false, features = ["alloc"]` plus `#[builder(no_std)]`. Its docs say nightly-only, but that is out of date |
 | `thiserror` 2 | yes | |
-| `facet-generate-attrs` 0.18 | **no (our own crate)** | It depends on `facet` with default features, which turns `facet/std` on for the whole build: 2,787 errors in facet-core on thumbv7em. **Upstream ask:** `default-features = false` there |
+| `facet-generate-attrs` 0.18.1 | **yes, from 0.18.1 (our own crate)** | 0.18.0 depends on `facet` with default features, which turns `facet/std` on for the whole build: 2,787 errors in facet-core on thumbv7em. Fixed in 0.18.1, which needed `#![no_std]` and facet's `alloc` as well as `default-features = false` |
 
 `http` and `mime` are not peripheral. They are in crux_http's public API: `Request` is built
 on `HeaderMap`/`Method`, `Response` keeps `StatusCode`/`HeaderMap`/`Version`, `HttpError::Http`
@@ -54,8 +54,8 @@ The options were patching no_std forks of `http`/`mime` in (same API, a fork to 
 replacing them with crux_http-owned types (breaking for every user), or a no_std subset.
 This spike does the subset:
 
-- New `std` feature in `default`, carrying `http`, `mime`, `serde_qs`, `async-trait`,
-  `facet-generate-attrs` and the std features of the rest. `encoding`, `facet_typegen` and
+- New `std` feature in `default`, carrying `http`, `mime`, `serde_qs`, `async-trait`
+  and the std features of the rest. `encoding`, `facet_typegen` and
   `http-types` imply it. crux_core is depended on with `default-features = false`, and its `std`
   comes back through ours.
 - `facet` and `thiserror` spell out versions instead of `.workspace = true`, the same
@@ -64,7 +64,6 @@ This spike does the subset:
   `HttpResponse`, `HttpResult`, `HttpHeader` and their builders), `expect`, and `HttpError`.
   - `HttpRequestBuilder::body_json` now writes `content-type: application/json` as literals
     rather than via `http::header::CONTENT_TYPE` and `mime::APPLICATION_JSON`, which are the same bytes.
-  - `#[facet(typegen::bytes)]` became `#[cfg_attr(feature = "std", facet(typegen::bytes))]`.
   - `HttpError` stays one type. Only the skipped `Http` variant's `headers` field differs:
     `Box<HeaderMap>` under std, `Vec<HttpHeader>` without. So does the accessor:
     `header(&str) -> Option<&str>` and `headers() -> Option<&[HttpHeader]>` without std.
@@ -107,8 +106,10 @@ std-only, and `response.status()` is already a `u16` without std.
    is a breaking change and needs its own RFC.
 2. **`http` may go no_std upstream** (the `compile_error!` says "may be added later"); if it
    does, most of the twin code can go.
-3. **facet-generate-attrs** should depend on `facet` with `default-features = false`. It is
-   ours, and it is a one-line change.
+3. **facet-generate-attrs** was the only blocker in our own code. It is fixed in 0.18.1, which is
+   on crates.io. `default-features = false` alone was not enough: the crate also
+   needed `#![no_std]` and facet's `alloc` feature. With that, `typegen::bytes` is
+   unconditional in crux_http.
 4. `derive_builder`'s no_std mode works on stable, despite its docs.
 5. The no_std builder has no middleware. Whether `crux_http::middleware` (async-trait,
    `Box<dyn>`, `Arc`) is wanted on MCUs is the same question as crux_core's effect

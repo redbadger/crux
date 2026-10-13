@@ -93,6 +93,7 @@ dependencies = [
  "crux_core",
  "derive_builder",
  "facet",
+ "facet-generate-attrs",
  "futures-util",
  "serde",
  "serde_bytes",
@@ -267,6 +268,15 @@ dependencies = [
  "autocfg",
  "const-fnv1a-hash",
  "impls",
+]
+
+[[package]]
+name = "facet-generate-attrs"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9748acb73b45dbcbc3fd9b61cc2e6b678ec6e05d6ada20775851e798764e566e"
+dependencies = [
+ "facet",
 ]
 
 [[package]]
