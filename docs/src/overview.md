@@ -10,7 +10,7 @@ platform native language (Swift, Kotlin, TypeScript), which provides all
 interfaces with the external world, including the human user, and acts as a
 platform on which the core runs.
 
-![Crux](./crux.png)
+![The Crux core sits in the centre, and the shell surrounds it. The user drives the shell from one side, and the shell runs effects against the outside world on the other side.](./crux.svg)
 
 The aim is to separate three kinds of code in a typical app, which have different goals:
 
@@ -52,7 +52,7 @@ You can also join the friendly conversation on our [Zulip channel](https://crux-
 
 ## Design overview
 
-![Logical architecture](./command_overview.png)
+![Events go from the shell to the core, and effects come back to the shell. The shell resolves each effect with its output.](./command_overview.svg)
 
 The architecture is event-driven, with state management based on
 [event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html), similar to Elm or Redux.

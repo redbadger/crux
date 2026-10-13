@@ -132,7 +132,7 @@ The only built-in capability is `Render`. But this repository contains a few
 capabilities at various stages of maturity, and you can easily write your own if
 you want to:
 
-![crux](https://github.com/redbadger/crux/raw/master/docs/src/crux.png)
+![The Crux core and its effects sit inside a shell that serves the user and the outside world](https://github.com/redbadger/crux/raw/master/docs/src/crux.svg)
 
 ### Published capabilities
 

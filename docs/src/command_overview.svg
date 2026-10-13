@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 610" width="960" height="610" role="img" aria-labelledby="title desc">
+<title id="title">Crux: the shell and core round trip</title>
+<desc id="desc">The shell sends an Event to the core with process_event. App::update changes the Model and returns a Command. The Command sends follow-up events back to update and gives effects to the shell. Effect handlers in the shell resolve each request with its output. Render is an effect: the UI then calls view and draws the ViewModel.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<text x="145.0" y="40" text-anchor="middle" class="h">Shell</text>
+<text x="705.0" y="40" text-anchor="middle" class="h">Core</text>
+<text x="370" y="40" text-anchor="middle" class="s" style="fill:#8a8a8a;font-weight:600">FFI + generated types</text>
+<rect x="30" y="55" width="230" height="440" rx="14" fill="#3b82f6" fill-opacity="0.08" stroke="#8a8a8a" stroke-width="1.5"/>
+<rect x="480" y="55" width="450" height="440" rx="14" fill="#22c55e" fill-opacity="0.08" stroke="#8a8a8a" stroke-width="1.5"/>
+<path d="M370,50 V500" class="ln dash" style="stroke-width:1.5"/>
+<rect x="50" y="80" width="190" height="230" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="145.0" y="192.0" text-anchor="middle" class="b">UI</text>
+<text x="145.0" y="210.0" text-anchor="middle" class="s">sends events, draws the view</text>
+<rect x="50" y="390" width="190" height="70" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="145.0" y="422.0" text-anchor="middle" class="b">Effect handlers</text>
+<text x="145.0" y="440.0" text-anchor="middle" class="s">HTTP, storage, time, …</text>
+<rect x="510" y="80" width="185" height="70" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="1.5"/>
+<text x="602.5" y="120.5" text-anchor="middle" class="b m">App::view</text>
+<rect x="510" y="240" width="185" height="70" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="1.5"/>
+<text x="602.5" y="280.5" text-anchor="middle" class="b m">App::update</text>
+<rect x="510" y="390" width="185" height="70" rx="10" fill="#ddd6fe" stroke="#8b5cf6" stroke-width="1.5"/>
+<text x="602.5" y="422.0" text-anchor="middle" class="b">Command</text>
+<text x="602.5" y="440.0" text-anchor="middle" class="s m">&lt;Effect, Event&gt;</text>
+<rect x="810" y="80" width="100" height="230" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="860.0" y="200.5" text-anchor="middle" class="b">Model</text>
+<path d="M810,115 H697" class="ln" marker-end="url(#a)"/>
+<rect x="725.9" y="89.0" width="53.2" height="22.0" rx="11.0" class="pill"/>
+<text x="752.5" y="104.3" text-anchor="middle" class="l">reads</text>
+<path d="M697,275 H808" class="ln" marker-end="url(#a)" marker-start="url(#a)"/>
+<rect x="718.5" y="249.0" width="68.1" height="22.0" rx="11.0" class="pill"/>
+<text x="752.5" y="264.3" text-anchor="middle" class="l">changes</text>
+<path d="M570,312 V388" class="ln" marker-end="url(#a)"/>
+<rect x="492.0" y="339.0" width="68.1" height="22.0" rx="11.0" class="pill"/>
+<text x="526" y="354.3" text-anchor="middle" class="l">returns</text>
+<path d="M635,388 V312" class="ln dash" marker-end="url(#a)"/>
+<rect x="647.2" y="339.0" width="127.6" height="22.0" rx="11.0" class="pill"/>
+<text x="711" y="354.3" text-anchor="middle" class="l">follow-up Event</text>
+<path d="M242,102 H508" class="ln" marker-end="url(#a)"/>
+<rect x="343.8" y="76.8" width="62.5" height="22.5" rx="11.2" class="pill"/>
+<text x="375.0" y="92.5" text-anchor="middle" class="l m">view()</text>
+<path d="M508,130 H242" class="ln" marker-end="url(#a)"/>
+<rect x="332.1" y="132.8" width="85.8" height="22.5" rx="11.2" class="pill"/>
+<text x="375.0" y="148.5" text-anchor="middle" class="l m">ViewModel</text>
+<path d="M242,275 H508" class="ln" marker-end="url(#a)"/>
+<rect x="289.5" y="249.8" width="171.0" height="22.5" rx="11.2" class="pill"/>
+<text x="375.0" y="265.5" text-anchor="middle" class="l m">process_event(Event)</text>
+<path d="M508,410 H242" class="ln" marker-end="url(#a)"/>
+<rect x="324.4" y="384.8" width="101.2" height="22.5" rx="11.2" class="pill"/>
+<text x="375.0" y="400.5" text-anchor="middle" class="l m">Vec&lt;Effect&gt;</text>
+<path d="M242,440 H508" class="ln" marker-end="url(#a)"/>
+<rect x="274.0" y="442.8" width="202.0" height="22.5" rx="11.2" class="pill"/>
+<text x="375.0" y="458.5" text-anchor="middle" class="l m">resolve(request, output)</text>
+<path d="M145.0,388 V312" class="ln" marker-end="url(#a)"/>
+<rect x="113.8" y="338.8" width="62.5" height="22.5" rx="11.2" class="pill"/>
+<text x="145.0" y="354.5" text-anchor="middle" class="l m">Render</text>
+<rect x="30" y="515" width="900" height="68" rx="10" class="pill"/>
+<text x="46" y="542" class="s" style="font-weight:600">Core API</text>
+<text x="130" y="542" class="l m">process_event(Event) -&gt; Vec&lt;Effect&gt;</text>
+<text x="130" y="565" class="l m">resolve(request, output) -&gt; Vec&lt;Effect&gt;</text>
+<text x="510" y="542" class="l m">view() -&gt; ViewModel</text>
+</svg>
