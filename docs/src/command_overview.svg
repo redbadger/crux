@@ -24,8 +24,8 @@ text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans
 <text x="705.0" y="40" text-anchor="middle" class="h">Core</text>
 <text x="370" y="26" text-anchor="middle" class="s" style="fill:#8a8a8a;font-weight:600">FFI + generated types</text>
 <text x="370" y="42" text-anchor="middle" class="s" style="fill:#8a8a8a;font-weight:600">(for non-Rust shells)</text>
-<rect x="30" y="55" width="230" height="465" rx="14" fill="#3b82f6" fill-opacity="0.08" stroke="#8a8a8a" stroke-width="1.5"/>
-<rect x="480" y="55" width="450" height="465" rx="14" fill="#22c55e" fill-opacity="0.08" stroke="#8a8a8a" stroke-width="1.5"/>
+<rect x="30" y="55" width="230" height="465" rx="14" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-width="1.5"/>
+<rect x="480" y="55" width="450" height="465" rx="14" fill="#22c55e" fill-opacity="0.08" stroke="#22c55e" stroke-width="1.5"/>
 <path d="M370,52 V525" class="ln dash" style="stroke-width:1.5"/>
 <rect x="50" y="80" width="180" height="190" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
 <text x="98.0" y="165.0" text-anchor="middle" class="b">UI</text>

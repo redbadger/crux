@@ -71,7 +71,7 @@ def container(x, y, w, h, kind):
     fill, stroke = COL[kind]
     return (
         f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" '
-        f'fill="{stroke}" fill-opacity="0.08" stroke="{LINE}" stroke-width="1.5"/>\n'
+        f'fill="{stroke}" fill-opacity="0.08" stroke="{stroke}" stroke-width="1.5"/>\n'
     )
 
 
@@ -271,14 +271,16 @@ def round_trip(detail):
 # ---------------------------------------------------------------------------
 
 def ports():
-    W, H = 960, 580
+    W, H = 960, 640
     cx, cy = 480, 300
-    RO, RC = 232, 140
-    RM = (RO + RC) / 2
+    RO, RC = 245, 122
+    RM = 205  # radius of the ring labels, outside the tags
     title = "Crux: the two sides of the shell"
     desc = (
-        "The core is in the centre. It receives events (blue) and requests effects (red) "
-        "such as Render, Http, KeyValue and Time. The shell surrounds the core. On the "
+        "The Rust core is in the centre and holds the Model. The shell surrounds the core. Events (blue) cross the "
+        "boundary into the core. Effects (red) such as Render, Http, KeyValue and Time "
+        "cross the boundary out to the shell. An arrowhead on each tag shows the "
+        "direction. On the "
         "driving side, the user works with a UI built in SwiftUI, Jetpack Compose, "
         "React, Leptos, Yew, Dioxus or Ratatui. On the driven side, the shell runs "
         "the effects against APIs, storage and devices on iOS, macOS, Android, the "
@@ -298,18 +300,32 @@ def ports():
     s += f'<text x="{ux}" y="{cy + 58}" text-anchor="middle" class="h">User</text>\n'
 
     # external world
-    wx = 800
+    wx = 830
     for i, name in enumerate(["APIs", "Storage", "Devices"]):
         y = cy - 70 + i * 70
         s += f'<path d="M{cx + RO},{cy} C{cx + RO + 50},{cy} {wx - 110},{y} {wx - 60},{y}" class="ln"/>\n'
         s += box(wx - 60, y - 22, 120, 44, "world", name)
 
-    # shell ring
-    s += f'<circle cx="{cx}" cy="{cy}" r="{RO}" fill="#e5e7eb" stroke="{LINE}" stroke-width="2"/>\n'
-    s += f'<circle cx="{cx}" cy="{cy}" r="{RC}" fill="#bbf7d0" stroke="#22c55e" stroke-width="2"/>\n'
+    # Shell ring and core circle use the container colours of the other
+    # diagrams: a light tint of the kind colour over the page background. The
+    # ring is an annulus (even-odd fill), so the core tint sits directly on the
+    # page and does not mix with the shell tint. Each outline has the colour
+    # of the area that it bounds.
+    shell_tint, core_tint = COL["shell"][1], COL["fn"][1]
+    s += (
+        f'<path d="M{cx - RO},{cy} a{RO},{RO} 0 1,0 {2 * RO},0 a{RO},{RO} 0 1,0 {-2 * RO},0 Z '
+        f'M{cx - RC},{cy} a{RC},{RC} 0 1,0 {2 * RC},0 a{RC},{RC} 0 1,0 {-2 * RC},0 Z" '
+        f'fill="{shell_tint}" fill-opacity="0.08" fill-rule="evenodd"/>\n'
+    )
+    s += f'<circle cx="{cx}" cy="{cy}" r="{RO}" fill="none" stroke="{shell_tint}" stroke-width="1.5"/>\n'
+    s += f'<circle cx="{cx}" cy="{cy}" r="{RC}" fill="{core_tint}" fill-opacity="0.08" stroke="{core_tint}" stroke-width="1.5"/>\n'
     # divider
-    s += f'<line x1="{cx}" y1="55" x2="{cx}" y2="{cy - RC}" class="ln"/>\n'
-    s += f'<line x1="{cx}" y1="{cy + RC}" x2="{cx}" y2="{H - 25}" class="ln"/>\n'
+    # The divider goes the same short distance out of the ring at the top
+    # (between the two side headings) and at the bottom (above the title).
+    ext = 25
+    s += f'<line x1="{cx}" y1="{cy - RO - ext}" x2="{cx}" y2="{cy - RC}" class="ln"/>\n'
+    s += f'<line x1="{cx}" y1="{cy + RC}" x2="{cx}" y2="{cy + RO + ext}" class="ln"/>\n'
+    s += f'<text x="{cx}" y="{cy + RO + ext + 42}" text-anchor="middle" class="h" style="font-size:34px">Crux</text>\n'
 
     def pt(r, deg):
         t = math.radians(deg)
@@ -318,7 +334,7 @@ def ports():
     # Ring labels: horizontal text, centred on the middle of the ring band.
     # Each label is checked so that its box stays inside the band and does not
     # overlap another label. Screen angles: 0 = right, 90 = down.
-    FS = 14.5
+    FS = 13.5
     LH = FS * 1.15
     placed = []
 
@@ -331,18 +347,33 @@ def ports():
         return near >= RC + 4 and far <= RO - 4
 
     def place(items):
+        # Each label sits on a pill, as the arrow labels in the other diagrams
+        # do. The checks use the pill box, not the text box.
         out = ""
         for text, deg in items:
             lines = text.split("\n")
-            w = max(len(t) for t in lines) * FS * 0.6
-            h = LH * len(lines)
-            x, y = pt(RM, deg)
-            box_ = (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
-            assert fits(*box_), (text, deg)
-            for b in placed:
-                assert box_[2] < b[0] or box_[0] > b[2] or box_[3] < b[1] or box_[1] > b[3], (text, deg)
+            w = max(len(t) for t in lines) * FS * 0.6 + 16
+            h = LH * len(lines) + 8
+            # Start at the wanted angle on the label radius. If the pill does
+            # not fit, try small moves in radius and angle, nearest first.
+            for dr, da in sorted(
+                ((dr, da) for dr in range(-20, 11, 5) for da in range(-8, 9, 2)),
+                key=lambda m: (abs(m[1]), abs(m[0])),
+            ):
+                x, y = pt(RM + dr, deg + da)
+                box_ = (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
+                if fits(*box_) and all(
+                    box_[2] < b[0] or box_[0] > b[2] or box_[3] < b[1] or box_[1] > b[3] for b in placed
+                ):
+                    break
+            else:
+                raise AssertionError((text, deg))
             placed.append(box_)
-            y0 = y - h / 2 + LH * 0.78
+            out += (
+                f'<rect x="{box_[0]:.1f}" y="{box_[1]:.1f}" width="{w:.1f}" height="{h:.1f}" '
+                f'rx="{min(h / 2, 11):.1f}" class="pill"/>\n'
+            )
+            y0 = y - h / 2 + 4 + LH * 0.78
             for i, t in enumerate(lines):
                 out += (
                     f'<text x="{x:.1f}" y="{y0 + i * LH:.1f}" text-anchor="middle" '
@@ -350,22 +381,59 @@ def ports():
                 )
         return out
 
+    # Tags sit across the core boundary, because events and effects cross it.
+    # A small arrowhead on the leading edge shows the direction: an event
+    # points into the core, and an effect points out to the shell.
+    core_text = (cx - 62, cy - 36, cx + 62, cy + 40)  # Rust Core and Model
+
+    def clear(b):
+        return all(b[2] < o[0] or b[0] > o[2] or b[3] < o[1] or b[1] > o[3] for o in placed)
+
+    def rtag(text, deg, kind, outward, mono=True):
+        size = 13
+        w = len(text) * size * 0.62 + 18
+        h = size + 12
+        x, y = pt(RC, deg)
+        tb = (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
+        # the arrowhead sits on the side edge and points left or right,
+        # towards the centre for an event and away from it for an effect
+        d = 1 if math.cos(math.radians(deg)) > 0 else -1
+        if not outward:
+            d = -d
+        bx = x + d * (w / 2 + 3)
+        pts = [(bx, y - 6), (bx, y + 6), (bx + d * 10, y)]
+        cb = (min(p[0] for p in pts), min(p[1] for p in pts), max(p[0] for p in pts), max(p[1] for p in pts))
+        pad = 8  # keep a visible gap to the ring labels
+        boxes = [(b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad) for b in (tb, cb)]
+        for b in boxes:
+            assert clear(b) and clear_of(b, core_text), (text, deg)
+        placed.extend(boxes)
+        fill, stroke = COL[kind]
+        poly = " ".join(f"{a:.1f},{b:.1f}" for a, b in pts)
+        return tag(x, y, text, kind, mono=mono) + f'<polygon points="{poly}" fill="{stroke}"/>\n'
+
+    def clear_of(b, o):
+        return b[2] < o[0] or b[0] > o[2] or b[3] < o[1] or b[1] > o[3]
+
+    tags = ""
+    tags += rtag("Event", 212, "event", False)
+    tags += rtag("Render", 148, "effect", True)
+    tags += rtag("Http", -58, "effect", True)
+    tags += rtag("KeyValue", -22, "effect", True)
+    tags += rtag("Time", 14, "effect", True)
+    tags += rtag("Your own", 50, "effect", True, mono=False)
+
     s += place([
-        ("SwiftUI", 254), ("Jetpack\nCompose", 226), ("React", 198), ("Leptos", 170),
+        ("SwiftUI", 254), ("Jetpack\nCompose", 230), ("React", 198), ("Leptos", 170),
         ("Yew", 146), ("Dioxus", 125), ("Ratatui", 103),
     ])
     s += place([
-        ("iOS", 292), ("macOS", 318), ("Android", 345), ("Web", 12), ("Desktop", 40), ("Terminal", 70),
+        ("iOS", 290), ("macOS", 314), ("Android", 336), ("Web", 12), ("Desktop", 40), ("Terminal", 70),
     ])
     # core contents
-    s += f'<text x="{cx}" y="{cy - 4}" text-anchor="middle" style="font-size:24px;font-weight:700">Core</text>\n'
-    s += f'<text x="{cx}" y="{cy + 18}" text-anchor="middle" class="s">Rust</text>\n'
-    s += tag(cx - 78, cy - 34, "Event", "event")
-    s += tag(cx - 78, cy + 34, "Render", "effect")
-    s += tag(cx + 62, cy - 84, "Http", "effect")
-    s += tag(cx + 82, cy - 30, "KeyValue", "effect")
-    s += tag(cx + 82, cy + 24, "Time", "effect")
-    s += tag(cx + 62, cy + 78, "Your own", "effect", mono=False)
+    s += f'<text x="{cx}" y="{cy - 10}" text-anchor="middle" class="h" style="font-size:24px">Rust Core</text>\n'
+    s += box(cx - 40, cy + 4, 80, 30, "model", "Model")
+    s += tags
     # legend
     lx, ly = 30, 480
     for i, (kind, txt) in enumerate([("event", "Event that the core receives"), ("effect", "Effect that the core requests")]):
