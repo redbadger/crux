@@ -30,3 +30,8 @@ ci: build
 serve:
     @echo '{{ style("command") }}serve:{{ NORMAL }}'
     mdbook serve
+
+# regenerate the SVG diagrams in src/ from diagrams/generate.py
+diagrams:
+    @echo '{{ style("command") }}diagrams:{{ NORMAL }}'
+    python3 diagrams/generate.py
