@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 665" width="960" height="665" role="img" aria-labelledby="title desc">
+<title id="title">Crux: the two sides of the shell</title>
+<desc id="desc">The Rust core is in the centre and holds the Model. The shell surrounds the core. Events (blue) cross the boundary into the core. Effects (red) such as Render, Http, KeyValue and Time cross the boundary out to the shell. An arrowhead on each tag shows the direction. On the driving side, the user works with a UI built in SwiftUI, Jetpack Compose, React, Leptos, Yew, Dioxus or Ratatui. On the driven side, the shell runs the effects against APIs, storage and devices on iOS, macOS, Android, the web, the desktop or the terminal.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<text x="460" y="40" text-anchor="end" class="h">Driving (UI)</text>
+<text x="500" y="40" text-anchor="start" class="h">Driven (I/O)</text>
+<line x1="190" y1="318" x2="222" y2="318" class="ln"/>
+<circle cx="150" cy="280" r="16" fill="none" stroke="#8a8a8a" stroke-width="2.5"/>
+<path d="M120,348 C120,303,180,303,180,348 Z" fill="none" stroke="#8a8a8a" stroke-width="2.5"/>
+<text x="150" y="376" text-anchor="middle" class="h">User</text>
+<path d="M738,318 C788,318,720,248,770,248" class="ln"/>
+<rect x="770" y="226" width="120" height="44" rx="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="830" y="253.5" text-anchor="middle" class="b">APIs</text>
+<path d="M738,318 C788,318,720,318,770,318" class="ln"/>
+<rect x="770" y="296" width="120" height="44" rx="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="830" y="323.5" text-anchor="middle" class="b">Storage</text>
+<path d="M738,318 C788,318,720,388,770,388" class="ln"/>
+<rect x="770" y="366" width="120" height="44" rx="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="830" y="393.5" text-anchor="middle" class="b">Devices</text>
+<path d="M222,318 a258,258 0 1,0 516,0 a258,258 0 1,0 -516,0 Z M340,318 a140,140 0 1,0 280,0 a140,140 0 1,0 -280,0 Z" fill="#3b82f6" fill-opacity="0.08" fill-rule="evenodd"/>
+<circle cx="480" cy="318" r="258" fill="none" stroke="#3b82f6" stroke-width="1.5"/>
+<circle cx="480" cy="318" r="140" fill="#22c55e" fill-opacity="0.08" stroke="#22c55e" stroke-width="1.5"/>
+<line x1="480" y1="35" x2="480" y2="178" class="ln"/>
+<line x1="480" y1="458" x2="480" y2="601" class="ln"/>
+<text x="480" y="643" text-anchor="middle" class="h" style="font-size:34px">Crux</text>
+<rect x="384.4" y="99.6" width="72.7" height="23.5" rx="11" class="pill"/>
+<text x="420.7" y="115.7" text-anchor="middle" style="font-size:13.5px;font-weight:600">SwiftUI</text>
+<rect x="305.5" y="133.8" width="72.7" height="39" rx="11" class="pill"/>
+<text x="341.8" y="149.9" text-anchor="middle" style="font-size:13.5px;font-weight:600">Jetpack</text>
+<text x="341.8" y="165.4" text-anchor="middle" style="font-size:13.5px;font-weight:600">Compose</text>
+<rect x="247.3" y="239.8" width="56.5" height="23.5" rx="11" class="pill"/>
+<text x="275.5" y="255.9" text-anchor="middle" style="font-size:13.5px;font-weight:600">React</text>
+<rect x="236" y="343.6" width="64.6" height="23.5" rx="11" class="pill"/>
+<text x="268.3" y="359.7" text-anchor="middle" style="font-size:13.5px;font-weight:600">Leptos</text>
+<rect x="281.6" y="426.5" width="40.3" height="23.5" rx="11" class="pill"/>
+<text x="301.8" y="442.6" text-anchor="middle" style="font-size:13.5px;font-weight:600">Yew</text>
+<rect x="324.4" y="482.4" width="64.6" height="23.5" rx="11" class="pill"/>
+<text x="356.7" y="498.5" text-anchor="middle" style="font-size:13.5px;font-weight:600">Dioxus</text>
+<rect x="395.3" y="515.7" width="72.7" height="23.5" rx="11" class="pill"/>
+<text x="431.6" y="531.8" text-anchor="middle" style="font-size:13.5px;font-weight:600">Ratatui</text>
+<rect x="533.4" y="104.2" width="40.3" height="23.5" rx="11" class="pill"/>
+<text x="553.5" y="120.3" text-anchor="middle" style="font-size:13.5px;font-weight:600">iOS</text>
+<rect x="601.1" y="151.6" width="56.5" height="23.5" rx="11" class="pill"/>
+<text x="629.4" y="167.7" text-anchor="middle" style="font-size:13.5px;font-weight:600">macOS</text>
+<rect x="640.1" y="218.8" width="72.7" height="23.5" rx="11" class="pill"/>
+<text x="676.4" y="234.9" text-anchor="middle" style="font-size:13.5px;font-weight:600">Android</text>
+<rect x="670.2" y="350.9" width="40.3" height="23.5" rx="11" class="pill"/>
+<text x="690.3" y="367" text-anchor="middle" style="font-size:13.5px;font-weight:600">Web</text>
+<rect x="603.4" y="450.1" width="72.7" height="23.5" rx="11" class="pill"/>
+<text x="639.8" y="466.2" text-anchor="middle" style="font-size:13.5px;font-weight:600">Desktop</text>
+<rect x="513.1" y="508.3" width="80.8" height="23.5" rx="11" class="pill"/>
+<text x="553.5" y="524.4" text-anchor="middle" style="font-size:13.5px;font-weight:600">Terminal</text>
+<text x="480" y="305.6" text-anchor="middle" class="h" style="font-size:24px">Rust Core</text>
+<rect x="440" y="317.6" width="80" height="30" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="480" y="338.1" text-anchor="middle" class="b">Model</text>
+<rect x="325.6" y="231.3" width="58.3" height="25" rx="7" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="354.8" y="248.5" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">Event</text>
+<polygon points="386.9,237.8 386.9,249.8 396.9,243.8" fill="#3b82f6"/>
+<rect x="334.6" y="379.7" width="66.4" height="25" rx="7" fill="#fecaca" stroke="#ef4444" stroke-width="1.5"/>
+<text x="367.8" y="396.9" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">Render</text>
+<polygon points="331.6,386.2 331.6,398.2 321.6,392.2" fill="#ef4444"/>
+<rect x="522.6" y="186.8" width="50.2" height="25" rx="7" fill="#fecaca" stroke="#ef4444" stroke-width="1.5"/>
+<text x="547.7" y="204" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">Http</text>
+<polygon points="575.8,193.3 575.8,205.3 585.8,199.3" fill="#ef4444"/>
+<rect x="562.1" y="253.1" width="82.5" height="25" rx="7" fill="#fecaca" stroke="#ef4444" stroke-width="1.5"/>
+<text x="603.3" y="270.2" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">KeyValue</text>
+<polygon points="647.5,259.6 647.5,271.6 657.5,265.6" fill="#ef4444"/>
+<rect x="584.2" y="339.4" width="50.2" height="25" rx="7" fill="#fecaca" stroke="#ef4444" stroke-width="1.5"/>
+<text x="609.3" y="356.5" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">Time</text>
+<polygon points="637.5,345.9 637.5,357.9 647.5,351.9" fill="#ef4444"/>
+<rect x="522.3" y="412.7" width="82.5" height="25" rx="7" fill="#fecaca" stroke="#ef4444" stroke-width="1.5"/>
+<text x="563.5" y="429.9" text-anchor="middle" style="font-size:13px;font-weight:600">Your own</text>
+<polygon points="607.7,419.2 607.7,431.2 617.7,425.2" fill="#ef4444"/>
+<rect x="226.9" y="527.6" width="26" height="18" rx="5" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="262.9" y="541.6" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:13px;font-weight:600">Event</text>
+<rect x="226.9" y="557.6" width="26" height="18" rx="5" fill="#fecaca" stroke="#ef4444" stroke-width="1.5"/>
+<text x="262.9" y="571.6" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:13px;font-weight:600">Effect</text>
+</svg>
