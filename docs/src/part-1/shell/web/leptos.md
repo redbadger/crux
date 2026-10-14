@@ -20,22 +20,7 @@ However, a similar setup would work for other
 frameworks that compile to WebAssembly.
 ```
 
-```mermaid
-flowchart TD
-    subgraph shared["shared/ (Rust crate)"]
-        app_rs["`app.rs
-App · Event · Effect · ViewModel`"]
-    end
-
-    shared -->|"Cargo.toml dependency (no codegen)"| shell
-
-    subgraph shell["Rust web shell crate"]
-        src_rs["uses shared types natively (no FFI or serialization needed)"]
-    end
-
-    shell -->|"trunk build → WASM"| dist["`dist/
-browser-ready app`"]
-```
+![The Leptos shell crate has the shared crate as a Cargo dependency and uses its types directly, with no codegen. The trunk build command compiles the shell to WASM and puts the browser-ready app in dist/.](../../../shell_leptos.svg)
 
 ## Create a Leptos App
 

@@ -3,7 +3,7 @@
 <desc id="desc">The shell calls process_event with an event. App::update changes the Model and returns a Command. The Command can send follow-up events back to update, and it gives zero or more effects to the shell, and each effect carries a request. A Render effect goes to the UI, which calls view and draws the ViewModel. The Command sends the other effects to the shell's effect handlers, and the shell resolves each request with the operation's output. Optionally, the Command sends some effects to Rust handlers in the core, which resolve each request the same way.</desc>
 <style>
 text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
-.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
 .h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
 .b { font-size: 16px; font-weight: 600; }
 .s { font-size: 12px; }
