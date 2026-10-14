@@ -3,7 +3,7 @@
 <desc id="desc">The shell holds the UI and the effect handlers. The core holds the app's update and view functions, the Model and the Commands. The shell sends events to the core. The core gives the shell zero or more effects. The UI asks the core for the view when it receives a Render effect, and it draws the ViewModel. The effect handlers run the other effects and return each Output to the core.</desc>
 <style>
 text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
-.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
 .h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
 .b { font-size: 16px; font-weight: 600; }
 .s { font-size: 12px; }

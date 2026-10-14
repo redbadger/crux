@@ -5,11 +5,14 @@ edition = "2024"
 ---
 //! Generate the Crux book diagrams as hand-written SVG.
 //!
-//! This script writes three files to docs/src:
+//! This script writes these files to docs/src:
 //!
 //! - command_overview.svg, the round trip between the shell and the core
 //! - architecture.svg, the same diagram for the README
 //! - crux.svg, the driving and driven sides of the shell around the core
+//! - shell_apple.svg, shell_android.svg and shell_react.svg, the codegen and
+//!   BoltFFI steps from the shared crate to each app
+//! - shell_leptos.svg, the steps from the shared crate to the Leptos web app
 //!
 //! Do not edit the SVG files directly. Change this script and run it again.
 //! The script needs a nightly Rust toolchain, because cargo runs single-file
@@ -176,7 +179,7 @@ fn head(out: &mut String, w: f64, h: f64, title: &str, desc: &str) {
 <desc id="desc">{desc}</desc>
 <style>
 text {{ font-family: {SANS}; fill: {INK}; }}
-.m {{ font-family: {MONO}; }}
+.m {{ font-family: {MONO}; font-variant-ligatures: none; }}
 .h {{ font-size: 18px; font-weight: 700; fill: {LINE}; }}
 .b {{ font-size: 16px; font-weight: 600; }}
 .s {{ font-size: 12px; }}
@@ -1056,6 +1059,304 @@ fn ports() -> String {
     s
 }
 
+// ---------------------------------------------------------------------------
+// Shell build pipelines (shell_*.svg)
+// ---------------------------------------------------------------------------
+
+/// The estimated width of a line of text, generous like `pill`: 0.62em per char.
+fn text_width(s: &str, size: f64) -> f64 {
+    s.chars().count() as f64 * size * 0.62
+}
+
+/// One line of text in a `lines_card`: its attributes, font size and content.
+type Line<'a> = (&'a str, f64, &'a str);
+
+const LINE_SMALL_CODE: &str = r#"class="s m""#;
+const LINE_CMD: &str = r#"class="m" style="font-size:13px;font-weight:600""#;
+
+/// A card with lines of text, centred as one block. The function panics if a
+/// line does not fit in the card with 12px of space on each side.
+fn lines_card(out: &mut String, r: Rect, kind: Kind, lines: &[Line]) {
+    card(out, r, kind, false);
+    let height = |size: f64| (size * 1.4).round();
+    let total: f64 = lines.iter().map(|&(_, size, _)| height(size)).sum();
+    assert!(total + 12.0 <= r.h, "card is too short for {lines:?}");
+    let mut top = r.cy() - total / 2.0;
+    for &(attrs, size, content) in lines {
+        assert!(
+            text_width(content, size) + 24.0 <= r.w,
+            "{content:?} does not fit in {}px",
+            r.w
+        );
+        let lh = height(size);
+        text(
+            out,
+            r.cx(),
+            top + lh / 2.0 + size * 0.36,
+            "middle",
+            attrs,
+            content,
+        );
+        top += lh;
+    }
+}
+
+/// A vertical arrow from `y0` down to `y1`, with an optional label on a pill
+/// in the middle of the line.
+fn down(out: &mut String, x: f64, y0: f64, y1: f64, label: Option<(&str, bool)>) {
+    arrow(out, Path::new().m(x, y0 + 2.0).v(y1 - 2.0), Arrow::Solid);
+    if let Some((label, mono)) = label {
+        pill(out, x, (y0 + y1) / 2.0, label, mono, 12.5);
+    }
+}
+
+/// The strings for one shell that uses codegen and BoltFFI.
+struct Codegen {
+    file: &'static str,
+    title: &'static str,
+    /// The value of `--language` for the codegen binary.
+    language: &'static str,
+    /// The target of `boltffi pack`.
+    pack: &'static str,
+    /// The generated types.
+    types: &'static str,
+    /// The generated bindings, as a title and a subtitle.
+    bindings: (&'static str, &'static str),
+    /// The lines under `ffi.rs`.
+    ffi: &'static [&'static str],
+    /// The app, as a title and a subtitle.
+    app: (&'static str, &'static str),
+    /// The platform, as the description names it.
+    platform: &'static str,
+}
+
+const CODEGEN: [Codegen; 3] = [
+    Codegen {
+        file: "shell_apple.svg",
+        title: "Crux: build the Apple shell",
+        language: "swift",
+        pack: "apple",
+        types: "Swift types",
+        bindings: ("Swift package", "and xcframework"),
+        ffi: &["CoreFfi", "#[boltffi::export]"],
+        app: ("Apple app", "Swift · SwiftUI"),
+        platform: "Apple",
+    },
+    Codegen {
+        file: "shell_android.svg",
+        title: "Crux: build the Android shell",
+        language: "kotlin",
+        pack: "android",
+        types: "Kotlin types",
+        bindings: ("Kotlin bindings", "and JNI libraries"),
+        ffi: &["CoreFfi", "#[boltffi::export]"],
+        app: ("Android app", "Kotlin · Jetpack Compose"),
+        platform: "Android",
+    },
+    Codegen {
+        file: "shell_react.svg",
+        title: "Crux: build the React web shell",
+        language: "typescript",
+        pack: "wasm",
+        types: "TypeScript types",
+        bindings: ("WASM package", "and JS bindings"),
+        ffi: &["CoreFfi · #[boltffi::export]"],
+        app: ("Web app", "TypeScript · React · Next.js"),
+        platform: "web",
+    },
+];
+
+/// The shared crate at the top, two build steps from it, and the app at the
+/// bottom that uses the output of both steps.
+fn codegen(p: &Codegen) -> String {
+    const W: f64 = 640.0;
+    const H: f64 = 532.0;
+    let (cw, gap) = (270.0, 30.0); // column width and the gap between the columns
+    let (c0, c1) = (35.0, 35.0 + cw + gap); // column lefts
+    let (m0, m1) = (c0 + cw / 2.0, c1 + cw / 2.0); // column centres
+    let (src_y, src_h) = (60.0, 102.0); // source files
+    let (cmd_y, cmd_h, cmd_w) = (222.0, 52.0, 230.0); // build steps
+    let (gen_y, gen_h) = (344.0, 60.0); // generated files
+    let (app_y, app_h) = (450.0, 64.0); // the app
+
+    let (types_title, (bind_title, bind_sub)) = (p.types, p.bindings);
+    let desc = format!(
+        "The shared Rust crate holds app.rs and ffi.rs. In app.rs, the Event, Effect and \
+         ViewModel types derive Facet, and the Effect type has the facet_typegen attribute. \
+         In ffi.rs, the CoreFfi type has the boltffi::export attribute. The command \
+         cargo run --bin codegen --language {lang} reads app.rs, and typegen makes the \
+         {types_title}. The command boltffi pack {pack} reads ffi.rs, and bindgen makes the \
+         {bind_title} {bind_sub}. The {platform} app uses the types and the bindings.",
+        lang = p.language,
+        pack = p.pack,
+        platform = p.platform,
+    );
+    let mut s = String::new();
+    head(&mut s, W, H, p.title, &desc);
+
+    container(
+        &mut s,
+        Rect::new(15.0, 15.0, W - 30.0, src_y + src_h + 18.0 - 15.0),
+        Kind::Fn,
+    );
+    text(&mut s, 35.0, 44.0, "start", HEADING, "shared/ (Rust crate)");
+    lines_card(
+        &mut s,
+        Rect::new(c0, src_y, cw, src_h),
+        Kind::Fn,
+        &[
+            (CODE, 16.0, "app.rs"),
+            (LINE_SMALL_CODE, 12.0, "Event · Effect · ViewModel"),
+            (LINE_SMALL_CODE, 12.0, "#[derive(Facet)]"),
+            (LINE_SMALL_CODE, 12.0, "#[effect(facet_typegen)]"),
+        ],
+    );
+    let mut ffi: Vec<Line> = vec![(CODE, 16.0, "ffi.rs")];
+    ffi.extend(p.ffi.iter().map(|&line| (LINE_SMALL_CODE, 12.0, line)));
+    lines_card(&mut s, Rect::new(c1, src_y, cw, src_h), Kind::Fn, &ffi);
+
+    // build steps
+    let codegen_lang = format!("--language {}", p.language);
+    let boltffi = format!("boltffi pack {}", p.pack);
+    let steps: [&[Line]; 2] = [
+        &[
+            (LINE_CMD, 13.0, "cargo run --bin codegen"),
+            (LINE_CMD, 13.0, &codegen_lang),
+        ],
+        &[(LINE_CMD, 13.0, &boltffi)],
+    ];
+    for (m, lines) in [m0, m1].into_iter().zip(steps) {
+        down(&mut s, m, src_y + src_h, cmd_y, None);
+        let step = Rect::new(m - cmd_w / 2.0, cmd_y, cmd_w, cmd_h);
+        lines_card(&mut s, step, Kind::World, lines);
+    }
+
+    // generated files
+    down(&mut s, m0, cmd_y + cmd_h, gen_y, Some(("typegen", false)));
+    down(&mut s, m1, cmd_y + cmd_h, gen_y, Some(("bindgen", false)));
+    lines_card(
+        &mut s,
+        Rect::new(c0, gen_y, cw, gen_h),
+        Kind::Cmd,
+        &[(TITLE, 16.0, types_title)],
+    );
+    lines_card(
+        &mut s,
+        Rect::new(c1, gen_y, cw, gen_h),
+        Kind::Cmd,
+        &[(TITLE, 16.0, bind_title), (SMALL, 12.0, bind_sub)],
+    );
+
+    // the app
+    for m in [m0, m1] {
+        down(&mut s, m, gen_y + gen_h, app_y, None);
+    }
+    lines_card(
+        &mut s,
+        Rect::new(c0, app_y, c1 + cw - c0, app_h),
+        Kind::Shell,
+        &[(TITLE, 16.0, p.app.0), (SMALL, 12.0, p.app.1)],
+    );
+    assert!(app_y + app_h + 18.0 == H);
+
+    s.push_str("</svg>\n");
+    s
+}
+
+/// The shared crate as a Cargo dependency of the Rust web shell, which trunk
+/// builds into the browser-ready app.
+fn leptos() -> String {
+    const W: f64 = 480.0;
+    const H: f64 = 586.0;
+    let mid = W / 2.0;
+    let (cx, cw) = (45.0, W - 90.0); // cards inside the containers
+    let (shared_y, shell_y) = (15.0, 220.0); // container tops
+    let (card_h, cont_h) = (60.0, 125.0);
+    let (cmd_y, cmd_h, cmd_w) = (cont_h + shell_y + 50.0, 44.0, 200.0);
+    let dist_y = cmd_y + cmd_h + 72.0;
+
+    let title = "Crux: build the Leptos web shell";
+    let desc = "The shared Rust crate holds app.rs with the App, Event, Effect and \
+                ViewModel types. The Rust web shell crate has the shared crate as a \
+                dependency in Cargo.toml, so it needs no codegen. The shell uses the \
+                shared types natively, with no FFI or serialization. The command trunk \
+                build compiles the shell to WASM, and puts the browser-ready app in dist/.";
+    let mut s = String::new();
+    head(&mut s, W, H, title, desc);
+
+    container(
+        &mut s,
+        Rect::new(15.0, shared_y, W - 30.0, cont_h),
+        Kind::Fn,
+    );
+    text(
+        &mut s,
+        35.0,
+        shared_y + 29.0,
+        "start",
+        HEADING,
+        "shared/ (Rust crate)",
+    );
+    lines_card(
+        &mut s,
+        Rect::new(cx, shared_y + 45.0, cw, card_h),
+        Kind::Fn,
+        &[
+            (CODE, 16.0, "app.rs"),
+            (LINE_SMALL_CODE, 12.0, "App · Event · Effect · ViewModel"),
+        ],
+    );
+    down(
+        &mut s,
+        mid,
+        shared_y + cont_h,
+        shell_y,
+        Some(("Cargo.toml dependency (no codegen)", false)),
+    );
+
+    container(
+        &mut s,
+        Rect::new(15.0, shell_y, W - 30.0, cont_h),
+        Kind::Shell,
+    );
+    text(
+        &mut s,
+        35.0,
+        shell_y + 29.0,
+        "start",
+        HEADING,
+        "Rust web shell crate",
+    );
+    lines_card(
+        &mut s,
+        Rect::new(cx, shell_y + 45.0, cw, card_h),
+        Kind::Shell,
+        &[
+            (TITLE, 16.0, "Uses the shared types natively"),
+            (SMALL, 12.0, "no FFI or serialization needed"),
+        ],
+    );
+
+    down(&mut s, mid, shell_y + cont_h, cmd_y, None);
+    lines_card(
+        &mut s,
+        Rect::new(mid - cmd_w / 2.0, cmd_y, cmd_w, cmd_h),
+        Kind::World,
+        &[(LINE_CMD, 13.0, "trunk build")],
+    );
+    down(&mut s, mid, cmd_y + cmd_h, dist_y, Some(("WASM", true)));
+    lines_card(
+        &mut s,
+        Rect::new(cx, dist_y, cw, card_h),
+        Kind::Cmd,
+        &[(CODE, 16.0, "dist/"), (SMALL, 12.0, "browser-ready app")],
+    );
+    assert!(dist_y + card_h + 15.0 == H, "{}", dist_y + card_h + 15.0);
+
+    s.push_str("</svg>\n");
+    s
+}
+
 fn main() -> std::io::Result<()> {
     // Under `-Zscript`, CARGO_MANIFEST_DIR is the directory of this script, so
     // the default output directory does not depend on the current directory.
@@ -1065,5 +1366,9 @@ fn main() -> std::io::Result<()> {
     std::fs::write(format!("{out}/command_overview.svg"), round_trip(true))?;
     std::fs::write(format!("{out}/architecture.svg"), round_trip(false))?;
     std::fs::write(format!("{out}/crux.svg"), ports())?;
+    for p in &CODEGEN {
+        std::fs::write(format!("{out}/{}", p.file), codegen(p))?;
+    }
+    std::fs::write(format!("{out}/shell_leptos.svg"), leptos())?;
     Ok(())
 }
