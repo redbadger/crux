@@ -18,28 +18,7 @@ because it is simple and popular. However, a similar
 setup would work for other frameworks.
 ```
 
-```mermaid
-flowchart TD
-    subgraph shared["shared/ (Rust crate)"]
-        app_rs["`app.rs
-Event · Effect · ViewModel
-#[derive(Facet)]
-#[effect(facet_typegen)]`"]
-
-        ffi_rs["`ffi.rs
-CoreFfi · #[boltffi::export]`"]
-    end
-
-    app_rs --> tg[/"cargo run --bin codegen --language typescript"/]
-    ffi_rs --> bg[/"boltffi pack wasm"/]
-
-    tg -->|typegen| ts_t[TypeScript types]
-    bg -->|bindgen| wasm_b[WASM package and JS bindings]
-
-    ts_t --> webts["Web / TypeScript
-React · Next.js"]
-    wasm_b --> webts
-```
+![The shared crate holds app.rs and ffi.rs. The codegen command makes TypeScript types from app.rs, and boltffi pack wasm makes a WASM package and JS bindings from ffi.rs. The React web app uses both.](../../../shell_react.svg)
 
 ## Create a Next.js App
 
