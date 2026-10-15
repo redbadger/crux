@@ -51,8 +51,8 @@ and this project adheres to
 
   #[effect]
   enum Effect {
-      NotifyAfter(operation::NotifyAfter),
-      Clear(operation::Clear),
+      TimeNotifyAfter(operation::NotifyAfter),
+      TimeClear(operation::ClearTimer),
   }
 
   let (timer, handle) = Time::notify_after(Duration::from_secs(1));
@@ -77,12 +77,12 @@ and this project adheres to
   | `Now` | — | `Instant` | `Request` |
   | `NotifyAt` | `id: TimerId, instant: Instant` | `TimerId` | `Request` |
   | `NotifyAfter` | `id: TimerId, duration: Duration` | `TimerId` | `Request` |
-  | `Clear` | `id: TimerId` | `TimerId` | `Request` |
+  | `ClearTimer` | `id: TimerId` | `TimerId` | `Request` |
 
   Every operation is answered with the bare `TimerId` it was given, which the core
-  still checks against the timer it started. That includes `Clear`, so clearing a
+  still checks against the timer it started. That includes `ClearTimer`, so clearing a
   timer is the same round trip it is with the enum API: `TimerHandle::clear` sends an
-  `operation::Clear` request, and the timer's future resolves with
+  `operation::ClearTimer` request, and the timer's future resolves with
   `TimerOutcome::Cleared` once the shell has answered it. A shell whose timer fires
   after the core has cleared it does no harm: the core has stopped waiting for that
   request and ignores the late answer.
@@ -99,14 +99,14 @@ and this project adheres to
   | Deprecated | Since | Use instead |
   | --- | --- | --- |
   | `Time` | 0.19.0 | `clock::Time` |
-  | `TimeRequest` | 0.19.0 | `operation::{Now, NotifyAt, NotifyAfter, Clear}` |
-  | `TimeResponse` | 0.19.0 | `Instant` (for `Now`), `TimerId` (for `NotifyAt`, `NotifyAfter` and `Clear`) |
+  | `TimeRequest` | 0.19.0 | `operation::{Now, NotifyAt, NotifyAfter, ClearTimer}` |
+  | `TimeResponse` | 0.19.0 | `Instant` (for `Now`), `TimerId` (for `NotifyAt`, `NotifyAfter` and `ClearTimer`) |
   | `TimerFuture` | 0.19.0 | nothing — an implementation detail of `Time`; `clock::Time` needs no equivalent |
 
   `TimerHandle`, `CompletedTimerHandle`, `TimerOutcome`, `TimerId`, `Instant` and
   `Duration` are **not** deprecated: both APIs share them.
 
-  Clearing a timer works as it always has: `Clear` is a request answered with its
+  Clearing a timer works as it always has: `ClearTimer` is a request answered with its
   `TimerId`, as `TimeRequest::Clear` was with `TimeResponse::Cleared`, and the cleared
   outcome arrives once the shell has answered. A shell whose timer fires after the
   core has cleared it does no harm, because the core ignores the late answer. The

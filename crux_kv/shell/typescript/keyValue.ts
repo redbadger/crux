@@ -26,13 +26,13 @@
 /// `keyValueErrorOther`; `set` and `delete` leave that value where it is.
 export interface KeyValueHandler {
   /// Read the bytes stored under `operation.key`.
-  get(operation: Get): Promise<ValueResult>;
+  get(operation: GetValue): Promise<ValueResult>;
   /// Write `operation.value`, answering with the value it replaced.
-  set(operation: Set): Promise<ValueResult>;
+  set(operation: SetValue): Promise<ValueResult>;
   /// Remove `operation.key`, answering with the value it removed.
-  delete(operation: Delete): Promise<ValueResult>;
+  delete(operation: DeleteValue): Promise<ValueResult>;
   /// Whether `operation.key` is in the store.
-  exists(operation: Exists): Promise<BoolResult>;
+  exists(operation: KeyExists): Promise<ExistsResult>;
   /// The keys starting with `operation.prefix`, from `operation.cursor`.
   listKeys(operation: ListKeys): Promise<KeysResult>;
 }
@@ -97,13 +97,13 @@ export function createLocalStorageKeyValueHandler(
   };
 
   return {
-    async get(operation: Get): Promise<ValueResult> {
+    async get(operation: GetValue): Promise<ValueResult> {
       const store = open();
       if (store === undefined) return valueResultErr(unavailable);
       return read(store, operation.key);
     },
 
-    async set(operation: Set): Promise<ValueResult> {
+    async set(operation: SetValue): Promise<ValueResult> {
       const store = open();
       if (store === undefined) return valueResultErr(unavailable);
       const previous = read(store, operation.key);
@@ -122,7 +122,7 @@ export function createLocalStorageKeyValueHandler(
       return previous;
     },
 
-    async delete(operation: Delete): Promise<ValueResult> {
+    async delete(operation: DeleteValue): Promise<ValueResult> {
       const store = open();
       if (store === undefined) return valueResultErr(unavailable);
       const previous = read(store, operation.key);
@@ -131,10 +131,10 @@ export function createLocalStorageKeyValueHandler(
       return previous;
     },
 
-    async exists(operation: Exists): Promise<BoolResult> {
+    async exists(operation: KeyExists): Promise<ExistsResult> {
       const store = open();
-      if (store === undefined) return boolResultErr(unavailable);
-      return boolResultOk(store.getItem(prefix + operation.key) !== null);
+      if (store === undefined) return existsResultErr(unavailable);
+      return existsResultOk(store.getItem(prefix + operation.key) !== null);
     },
 
     /// One page holds every remaining key, so the answer's cursor is always 0:
