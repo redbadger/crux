@@ -153,7 +153,7 @@ mod app;
 mod boltffi;
 mod effects;
 mod plugins;
-mod shell_handler;
+mod shell_extension;
 
 use std::{
     fs::{self, File},
@@ -185,7 +185,7 @@ use self::plugins::{
     COMPANION_FILE_STEMS, CorePlugin, EffectHandlerPlugin, FFI_BRIDGE_FILE, OperationKindPlugin,
     ShellExtensionPlugin,
 };
-pub use self::shell_handler::{RegisterTypes, ShellExtension, ShellSource};
+pub use self::shell_extension::{RegisterTypes, ShellExtension, ShellSource};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -766,11 +766,11 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin(&config.package_name) {
+            if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
         }
-        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+        if let Some(shell_extensions) = self.shell_extension_plugin() {
             installer = installer.plugin(shell_extensions);
         }
         installer
@@ -812,11 +812,11 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin(&config.package_name) {
+            if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
         }
-        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+        if let Some(shell_extensions) = self.shell_extension_plugin() {
             installer = installer.plugin(shell_extensions);
         }
         installer
@@ -857,11 +857,11 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin(&config.package_name) {
+            if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
         }
-        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+        if let Some(shell_extensions) = self.shell_extension_plugin() {
             installer = installer.plugin(shell_extensions);
         }
         installer
@@ -899,11 +899,11 @@ impl CodeGenerator {
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {
             installer = installer.plugin(EffectHandlerPlugin::new(&self.effects));
-            if let Some(core) = self.core_plugin(&config.package_name) {
+            if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
         }
-        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+        if let Some(shell_extensions) = self.shell_extension_plugin() {
             installer = installer.plugin(shell_extensions);
         }
         installer
@@ -1012,7 +1012,7 @@ impl CodeGenerator {
     ///
     /// `module_file` is what the module calls its own source file in this
     /// language, which a companion file beside it must not take. TypeScript's
-    /// module is one file with the sources appended to it, so it has no
+    /// module is one file with the sources in its footer, so it has no
     /// companion files and passes `None`.
     fn check(&self, module_file: Option<&str>) -> Result<(), TypeGenError> {
         self.check_boltffi()?;
@@ -1063,13 +1063,13 @@ impl CodeGenerator {
     ///
     /// `Core` is built on the dispatcher and names the app's `Event` and
     /// `ViewModel`, so it needs the handler API and a registered app.
-    fn core_plugin(&self, package_name: &str) -> Option<CorePlugin> {
+    fn core_plugin(&self) -> Option<CorePlugin> {
         if !(self.handlers && self.core) {
             return None;
         }
         self.app
             .clone()
-            .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone(), package_name))
+            .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
     }
 
     /// An extension's source is written beside the module as `<Name>.swift`,
@@ -1103,21 +1103,10 @@ impl CodeGenerator {
     /// hand-written `switch` on `Effect` as from the generated dispatcher, so
     /// [`without_effect_handlers`](Self::without_effect_handlers) does not
     /// take it away.
-    fn shell_extension_plugin(&self, package_name: &str) -> Option<ShellExtensionPlugin> {
-        use facet_generate::reflection::format::Namespace;
-
+    fn shell_extension_plugin(&self) -> Option<ShellExtensionPlugin> {
         if self.shell_extensions.is_empty() {
             return None;
         }
-        let last_type = self
-            .registry
-            .keys()
-            .rfind(|name| name.namespace == Namespace::Root)
-            .cloned();
-        Some(ShellExtensionPlugin::new(
-            &self.shell_extensions,
-            package_name,
-            last_type,
-        ))
+        Some(ShellExtensionPlugin::new(&self.shell_extensions))
     }
 }

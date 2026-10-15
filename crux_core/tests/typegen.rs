@@ -1584,10 +1584,11 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         );
     }
 
-    /// TypeScript modules are one file, so the source is appended after the
-    /// types rather than written beside them.
+    /// TypeScript modules are one file, so the source goes in the module
+    /// footer rather than beside the module: after every type, and after
+    /// `Core`, as the last thing in the file.
     #[test]
-    fn typescript_appends_the_source_after_the_types() {
+    fn typescript_ends_the_module_with_the_source() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
         generator(&[&STORE])
             .typescript(&Config::builder("shared_types", dir.path()).build())
@@ -1601,9 +1602,12 @@ public sealed class InMemoryStoreHandler : IStoreHandler
             "expected the shipped source verbatim:\n{source}"
         );
         assert!(
-            source.find("export class StoreValue").unwrap()
-                < source.find("export interface StoreHandler").unwrap(),
-            "the shipped source should come after the types it names"
+            source.trim_end().ends_with(TYPESCRIPT_SOURCE.trim_end()),
+            "the shipped source should be the tail of the module:\n{source}"
+        );
+        assert!(
+            source.contains("export class Core"),
+            "expected a generated `Core` ahead of the shipped source:\n{source}"
         );
 
         // `typescript()` runs `tsc` and fails unless it succeeds, so this is a
