@@ -1,6 +1,11 @@
 # [Crux](https://red-badger.com/crux) &middot; [![GitHub license](https://img.shields.io/github/license/redbadger/crux?color=blue)](https://github.com/redbadger/crux/blob/master/LICENSE) [![Crate version](https://img.shields.io/crates/v/crux_core.svg)](https://crates.io/crates/crux_core) [![Docs](https://img.shields.io/badge/docs.rs-crux_core-green)](https://docs.rs/crux_core/) [![Build status](https://img.shields.io/github/actions/workflow/status/redbadger/crux/build.yaml)](https://github.com/redbadger/crux/actions)
 
-<a href="https://red-badger.com/crux"><img src="https://raw.githubusercontent.com/redbadger/crux/master/docs/src/images/crux_logo.svg" height="100" /></a>
+<a href="https://red-badger.com/crux">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/redbadger/crux/master/docs/src/images/crux_logo_dark.svg">
+    <img src="https://raw.githubusercontent.com/redbadger/crux/master/docs/src/images/crux_logo.svg" height="87" alt="Crux">
+  </picture>
+</a>
 
 **[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g) | [Read the book](https://redbadger.github.io/crux) | [Read API docs](https://docs.rs/crux_core/latest/crux_core/) | [Join Zulip community](https://crux-community.zulipchat.com)**
 
