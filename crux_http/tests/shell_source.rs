@@ -11,7 +11,11 @@
 // `#[derive(Facet)]` generates `unsafe` methods.
 #![allow(clippy::unsafe_derive_deserialize)]
 
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::{Command, Output},
+};
 
 use crux_core::{
     Command as CruxCommand,
@@ -163,4 +167,166 @@ fn the_csharp_source_compiles() {
     assert!(shipped.contains("public interface IHttpHandler"));
 
     dotnet_build(dir.path());
+}
+
+// Compiling a handler says only that it type-checks against the module it is
+// emitted beside, and the Kotlin handler's cookie jar is all behaviour: which
+// cookies go back to which request, and in what syntax. None of that is a
+// compile error, and the syntax in particular is the failure this jar exists
+// to avoid — `java.net.CookieManager` writes a `Max-Age` cookie in RFC 2965
+// form, which a server reads as no cookie at all, so the session is simply
+// lost and the app looks as though it were never signed in.
+//
+// So this test generates the package, writes a harness project of its own
+// beside it — checked in under `tests/harness/`, and not something type
+// generation emits — and runs it. The harness drives `InMemoryCookieJar`
+// through RFC 6265's rules and prints `HARNESS OK` when every answer was the
+// one a server would expect.
+// ---------------------------------------------------------------------------
+
+/// Writes the harness files this crate ships into `dir`.
+fn write_harness(dir: &Path, files: &[(&str, &str)]) {
+    for (name, contents) in files {
+        let path = dir.join(name);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("should create the harness directory");
+        }
+        fs::write(&path, contents).expect("should write the harness file");
+    }
+}
+
+/// Runs `program` in `dir`, or says why it did not.
+///
+/// A missing toolchain is a skip, exactly as the compile tests above skip, so
+/// that a contributor without a Swift, .NET, Kotlin or Node install still gets
+/// a green run.
+fn run(program: &str, args: &[&str], dir: &Path) -> Option<Output> {
+    match Command::new(program).current_dir(dir).args(args).output() {
+        Ok(output) => Some(output),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            println!("skipping: `{program}` is not on PATH, so the shipped source is not run");
+            None
+        }
+        Err(e) => panic!("could not run `{program}`: {e}"),
+    }
+}
+
+/// Asserts that a build step succeeded, with everything it printed.
+fn succeeded(program: &str, output: &Output) {
+    assert!(
+        output.status.success(),
+        "`{program}` failed:\n{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// Asserts that a harness ran and passed, with the line it printed for every
+/// answer that was not the one the protocol promises.
+///
+/// The last line has to be `HARNESS OK`: an exit code of zero is not enough
+/// when a runtime can drop an unsettled promise and exit zero with nothing to
+/// show for it.
+fn passed(program: &str, output: &Output) {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success() && stdout.contains("HARNESS OK"),
+        "the `{program}` harness did not pass:\n{stdout}{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// The `kotlinx-coroutines-core` jar the generated module needs, from wherever
+/// a build tool has already put one.
+///
+/// `kotlinc` ships the standard library and nothing else, while the generated
+/// module imports `kotlinx.coroutines`, so the harness needs the jar on its
+/// classpath. Gradle and Maven each keep one under the home directory once
+/// anything has built against it — the weather example's Android shell has —
+/// and fetching one here would mean a build tool and a network. Set
+/// `KOTLINX_COROUTINES_JAR` to point at one elsewhere.
+fn coroutines_jar() -> Option<PathBuf> {
+    if let Ok(jar) = std::env::var("KOTLINX_COROUTINES_JAR") {
+        return Some(PathBuf::from(jar));
+    }
+
+    let home = PathBuf::from(std::env::var("HOME").ok()?);
+    [
+        home.join(
+            ".gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm",
+        ),
+        home.join(".m2/repository/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm"),
+    ]
+    .iter()
+    .find_map(|root| find_jar(root, 4))
+}
+
+/// The first jar under `dir`, no deeper than `depth`, ignoring the `-sources`
+/// jars that sit beside the real ones.
+fn find_jar(dir: &Path, depth: usize) -> Option<PathBuf> {
+    if depth == 0 {
+        return None;
+    }
+
+    let mut entries: Vec<_> = fs::read_dir(dir)
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .collect();
+    entries.sort();
+
+    entries.iter().find_map(|path| {
+        if path.is_dir() {
+            return find_jar(path, depth - 1);
+        }
+
+        let is_jar = path.extension().is_some_and(|extension| extension == "jar");
+        let is_sources = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .is_some_and(|stem| stem.ends_with("-sources"));
+
+        (is_jar && !is_sources).then(|| path.clone())
+    })
+}
+
+#[test]
+fn the_kotlin_cookie_jar_behaves() {
+    let dir = tempfile::tempdir().expect("should create a temp dir");
+    generator()
+        .kotlin(&Config::builder("com.example.shared", dir.path().join("generated")).build())
+        .expect("kotlin type generation should succeed");
+
+    let harness = dir.path().join("harness");
+    write_harness(&harness, &[("Main.kt", include_str!("harness/Main.kt"))]);
+
+    let Some(coroutines) = coroutines_jar() else {
+        println!(
+            "skipping: no kotlinx-coroutines-core jar under ~/.gradle or ~/.m2, and `kotlinc` \
+             ships only the standard library, so the shipped Kotlin is not run"
+        );
+        return;
+    };
+
+    let classpath = coroutines.to_string_lossy().into_owned();
+    // The generated package's own directory, not its root, because `kotlinc`
+    // would otherwise try to compile the `build.gradle.kts` beside it.
+    let compile = [
+        "../generated/com",
+        "Main.kt",
+        "-classpath",
+        &classpath,
+        "-d",
+        "harness.jar",
+    ];
+    let Some(compiled) = run("kotlinc", &compile, &harness) else {
+        return;
+    };
+    succeeded("kotlinc", &compiled);
+
+    let separator = if cfg!(windows) { ';' } else { ':' };
+    let classpath = format!("harness.jar{separator}{classpath}");
+    if let Some(output) = run("kotlin", &["-classpath", &classpath, "MainKt"], &harness) {
+        passed("kotlin", &output);
+    }
 }
