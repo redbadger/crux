@@ -26,11 +26,13 @@ use crate::{EffectFFI, EffectVariant, OperationKind, ResolveError};
 /// core will never wait on, so every notification carries that same id, and
 /// resolving one is a [`ResolveError::Never`] rather than a lookup miss.
 ///
-/// The bit layout is an implementation detail and may change. Read the pieces
-/// through [`effect_index`](Self::effect_index), [`kind`](Self::kind) and
-/// [`sequence`](Self::sequence) — and, on the shell side, through the
-/// generated `RequestId` decoder rather than by picking the integer apart by
-/// hand.
+/// The bit layout is the bridge's own business and may change. On the Rust
+/// side, read the pieces through [`effect_index`](Self::effect_index),
+/// [`kind`](Self::kind) and [`sequence`](Self::sequence) rather than by
+/// picking the integer apart. Nothing is generated for the shell to read them
+/// with: a shell resolves with the id exactly as it arrived, and how many
+/// times to do so is answered by the `OperationKind` accessor on the effect,
+/// not by anything in the id.
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Facet, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -615,11 +617,9 @@ mod tests {
             ),
             "{error}"
         );
-        assert!(
-            error
-                .to_string()
-                .ends_with("names variant 9 of `my_app::Effect`, which has only 3 variants."),
-            "{error}"
+        assert_eq!(
+            error.to_string(),
+            "`my_app::Effect` has only 3 variants, but response id 0x09000001 carries variant 9."
         );
     }
 
@@ -655,11 +655,9 @@ mod tests {
             ),
             "{error}"
         );
-        assert!(
-            error.to_string().ends_with(
-                "names `KeyValue` (variant 2), but request 1 was issued for `Http` (variant 1)."
-            ),
-            "{error}"
+        assert_eq!(
+            error.to_string(),
+            "Request 1 expects `Http` (variant 1), but response id 0x02000001 carries `KeyValue` (variant 2)."
         );
     }
 
@@ -684,11 +682,9 @@ mod tests {
             .err()
             .expect("an id naming another effect should be rejected");
 
-        assert!(
-            error
-                .to_string()
-                .ends_with("names variant 2, but request 1 was issued for variant 1."),
-            "{error}"
+        assert_eq!(
+            error.to_string(),
+            "Request 1 expects variant 1, but response id 0x02000001 carries variant 2."
         );
     }
 
@@ -709,7 +705,7 @@ mod tests {
             .expect("an id naming another effect should be rejected");
 
         assert!(
-            error.to_string().starts_with("Request id 0x02000001 "),
+            error.to_string().contains("response id 0x02000001 "),
             "{error}"
         );
     }
