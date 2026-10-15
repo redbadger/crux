@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 210" width="720" height="210" role="img" aria-labelledby="title desc">
+<title id="title">Crux: the bits of a request id</title>
+<desc id="desc">A request id is a 32-bit unsigned integer with three fields. Bits 31 to 24 hold the effect's variant index, in 8 bits. Bit 23 is the kind bit: 0 for a request that the shell resolves once, and 1 for a stream that it resolves many times. Bits 22 to 0 hold the sequence number, in 23 bits, starting from 1. Id 0 is reserved for notifications. For example, 0x01000002 is variant 1, a request, with sequence number 2.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<rect x="20" y="50" width="230" height="80" rx="10" fill="#fecaca" stroke="#ef4444" stroke-width="1.5"/>
+<text x="135" y="87.3" text-anchor="middle" class="b">effect variant index</text>
+<text x="135" y="105.3" text-anchor="middle" class="s">8 bits</text>
+<text x="28" y="40" text-anchor="start" class="s m" style="fill:#8a8a8a;font-size:12px;font-weight:600">31</text>
+<text x="242" y="40" text-anchor="end" class="s m" style="fill:#8a8a8a;font-size:12px;font-weight:600">24</text>
+<rect x="250" y="50" width="150" height="80" rx="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="325" y="78.8" text-anchor="middle" class="b">kind</text>
+<text x="325" y="96.8" text-anchor="middle" class="s">1 bit</text>
+<text x="325" y="113.8" text-anchor="middle" class="s">0 once, 1 many</text>
+<text x="325" y="40" text-anchor="middle" class="s m" style="fill:#8a8a8a;font-size:12px;font-weight:600">23</text>
+<rect x="400" y="50" width="300" height="80" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="550" y="87.3" text-anchor="middle" class="b">sequence number</text>
+<text x="550" y="105.3" text-anchor="middle" class="s">23 bits, from 1</text>
+<text x="408" y="40" text-anchor="start" class="s m" style="fill:#8a8a8a;font-size:12px;font-weight:600">22</text>
+<text x="692" y="40" text-anchor="end" class="s m" style="fill:#8a8a8a;font-size:12px;font-weight:600">0</text>
+<text x="20" y="162" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:13px;font-weight:600">Id 0 is reserved for notifications, on which the core never waits.</text>
+<text x="20" y="186" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:13px;font-weight:600">Example: 0x01000002 is variant 1, a request (resolved once), with sequence number 2.</text>
+</svg>

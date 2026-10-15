@@ -378,13 +378,20 @@ public sealed class EffectDispatcher
 
 ### The generated Core
 
-With the dispatcher doing the resolving, the loop a shell still has to
-write around it is the same in every Crux app: serialize the `Event`,
-call the core's `update`, deserialize the `Requests`, re-read the view
-when a `Render` arrives, dispatch everything else, and when a request
-is resolved call the core's `resolve` and process the requests that
-come back. Type generation knows every type in that loop, so it emits
-it as a `Core` class, next to the handler API.
+The dispatcher resolves each request, but the shell still needs a loop
+around it. That loop is the same in every Crux app:
+
+1. Serialize the `Event` and call the core's `update`.
+2. Deserialize the `Requests` that come back.
+3. If a request is `Render`, read the view again. Send every other
+   request to the dispatcher.
+4. When the dispatcher resolves a request, call the core's `resolve`
+   and process the new requests that it returns.
+
+Type generation knows every type in this loop, so it generates the
+loop as a `Core` class, next to the handler API.
+
+![The layers of a shell that uses the generated Core. The UI reads the view from Core and sends events to it. Core sends the serialized event through FfiBridge and the CoreFfi bindings from BoltFFI to the Rust core, and gets the requests back. Core handles Render itself and gives the other requests to the generated EffectDispatcher. The dispatcher calls the shell's own EffectHandler, and resolves each request through the bridge. A legend shows which boxes are generated.](./generated_core.svg)
 
 `Core` talks to the Rust core through a `CoreBridge` protocol (Swift,
 Kotlin, TypeScript) or `ICoreBridge` interface (C#) with three
@@ -581,7 +588,9 @@ rather than silently ignored.
 The `id` on a `Request` is not a bare counter. It packs, from the top,
 the effect's variant index, one bit saying whether the shell resolves
 the request once or many times, and an ascending sequence number. Id `0`
-is reserved for notifications, which the core never waits on.
+is reserved for notifications, on which the core never waits.
+
+![A request id is 32 bits. The top 8 bits hold the effect's variant index. The next bit is 0 if the shell resolves the request once, and 1 if it resolves the request many times. The low 23 bits hold the sequence number, which starts from 1. Id 0 is reserved for notifications.](./request_id.svg)
 
 You still resolve with the id exactly as it arrived — the decoder is for
 logging, tracing and assertions, so that a stray id in a crash report
