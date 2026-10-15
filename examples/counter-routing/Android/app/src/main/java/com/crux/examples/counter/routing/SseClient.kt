@@ -1,0 +1,45 @@
+package com.crux.examples.counter.routing
+
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.logging.DEFAULT
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.utils.io.readLine
+
+/// Reads a Server-Sent Events stream and hands each line to `callback` as an
+/// `SseResponse.Chunk`, then one `SseResponse.Done` when the server closes
+/// the connection. `CounterHandler` calls it for the `ServerSentEvents`
+/// operation.
+class SseClient {
+    private val httpClient = HttpClient(OkHttp) {
+        install(Logging) {
+            logger = Logger.DEFAULT
+            level = LogLevel.ALL
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = Long.MAX_VALUE
+            connectTimeoutMillis = 15000
+            socketTimeoutMillis = Long.MAX_VALUE
+        }
+    }
+
+    @OptIn(ExperimentalUnsignedTypes::class)
+    suspend fun request(
+        request: SseRequest, callback: suspend (SseResponse) -> Unit
+    ) {
+        httpClient.prepareGet(request.url).execute { response ->
+            val channel = response.bodyAsChannel()
+            while (!channel.isClosedForRead) {
+                var chunk = channel.readLine() ?: break
+                chunk += "\n\n"
+                callback(SseResponse.Chunk(chunk.toByteArray().toUByteArray().toList()))
+            }
+            callback(SseResponse.Done)
+        }
+    }
+}

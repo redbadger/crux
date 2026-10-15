@@ -1,4 +1,4 @@
-# Android — Kotlin and Jetpack Compose
+# Android: Kotlin and Jetpack Compose
 
 When we use Crux to build Android apps, the Core API bindings and native
 library assets are generated with [BoltFFI](https://www.boltffi.dev/).
@@ -107,7 +107,7 @@ Edit the **app**'s `build.gradle.kts` (`/Android/app/build.gradle.kts`) to look 
 this:
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/app/build.gradle.kts}}
+{{#include ../../../../../examples/counter-tutorial/Android/app/build.gradle.kts}}
 ```
 
 ````admonish
@@ -117,7 +117,7 @@ will need to ensure this is kept up to date.
 Our catalog (`Android/gradle/libs.versions.toml`) will end up looking like this:
 
 ```toml
-{{#include ../../../../../examples/counter/Android/gradle/libs.versions.toml}}
+{{#include ../../../../../examples/counter-tutorial/Android/gradle/libs.versions.toml}}
 ```
 ````
 
@@ -147,14 +147,14 @@ Edit the **project**'s `build.gradle.kts` (`/Android/build.gradle.kts`) to look 
 this:
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/build.gradle.kts}}
+{{#include ../../../../../examples/counter-tutorial/Android/build.gradle.kts}}
 ```
 
 Edit the **library**'s `build.gradle.kts` (`/Android/shared/build.gradle.kts`) to look
 like this:
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/shared/build.gradle.kts}}
+{{#include ../../../../../examples/counter-tutorial/Android/shared/build.gradle.kts}}
 ```
 
 ```admonish warning title="Sharp edge"
@@ -243,7 +243,7 @@ effects that it produces. For this example, we only need to support the
 Let's create a file "**File, New, Kotlin Class/File, File**" called `CoreWrapper`.
 
 ```admonish
-This code that wraps the core only needs to be written once — it only grows when
+This code that wraps the core only needs to be written once. It only grows when
 we need to support additional effects.
 ```
 
@@ -255,16 +255,15 @@ so we just handle this render effect by updating the published view model from
 the core.
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/CoreWrapper.kt}}
+{{#include ../../../../../examples/counter-tutorial/Android/app/src/main/java/com/crux/examples/counter/CoreWrapper.kt}}
 ```
 
-```admonish note title="Why write this by hand?"
-The codegen also generates a ready-made `Core` class, in `Counter.kt`, which
-runs this loop for you. We write the loop by hand in this chapter on purpose,
-because it shows how the shell and the core talk to each other. Ours is called
-`CoreWrapper` because the generated `Core` is in the same Kotlin package, and
-two classes called `Core` would clash. We pick up the generated `Core` in
-[Part II](../../../part-2/shell.md#who-drives-the-loop).
+```admonish note title="Why CoreWrapper?"
+This loop is what the `Core` class generated in `Counter.kt` runs for you.
+Ours is called `CoreWrapper` because the generated `Core` is in the same Kotlin
+package, and two classes called `Core` would clash. To see the counter use the
+generated `Core` instead, see
+[Getting started](../../../getting_started/shell.md#android).
 ```
 
 ```admonish tip
@@ -277,7 +276,7 @@ Edit `/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt` to
 look like the following:
 
 ```kotlin
-{{#include ../../../../../examples/counter/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt}}
+{{#include ../../../../../examples/counter-tutorial/Android/app/src/main/java/com/crux/examples/counter/MainActivity.kt}}
 ```
 
 ```admonish success

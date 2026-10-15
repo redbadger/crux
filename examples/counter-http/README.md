@@ -12,15 +12,28 @@ The `shared` directory adds two capabilities on top of the basic counter:
 - `crux_http` for GET/POST requests to the shared counter API
 - A custom [SSE capability](./shared/src/sse.rs) that streams
   updates from the server
-- Optimistic updates — the UI updates immediately, then reconciles when the
+- Optimistic updates: the UI updates immediately, then reconciles when the
   server responds
 
 ## Shells
 
-- SwiftUI (iOS/macOS) — `apple/`
-- Android/Kotlin — `android/`
-- Leptos — `web-leptos/`
-- NextJS — `web-nextjs/`
+- SwiftUI (iOS/macOS): `apple/`
+- Android/Kotlin: `Android/`
+- Leptos: `web-leptos/`
+- NextJS: `web-nextjs/`
+
+The Swift, Kotlin and TypeScript shells use the `Core` that type generation
+emits: the codegen binary is told where `boltffi pack` puts the FFI bindings
+(with `.boltffi(..)`), so each shell constructs `Core` from an
+`EffectHandler` and never touches the FFI itself. The codegen binary also asks
+for the handler `crux_http` ships (with
+`.shell_extension(&crux_http::shell::EXTENSION)`), so the shells' `http`
+method is one line that delegates to it.
+
+Server-Sent Events are this app's own capability, so nothing ships a handler
+for them: each shell implements the `serverSentEvents` stream method itself,
+sending every chunk it reads into the `EffectSink` it is given, and then
+`Done`. That is the pattern for any custom capability.
 
 ## Running
 

@@ -3,9 +3,15 @@
 [Overview](./overview.md)
 [Motivation](./motivation.md)
 
-# Part I - Basics
+# Getting started
 
-1. [Getting started](./part-1/getting_started.md)
+1. [Setting up](./getting_started/index.md)
+1. [The core](./getting_started/core.md)
+1. [The shell](./getting_started/shell.md)
+1. [Adding a capability](./getting_started/capabilities.md)
+
+# Part I - How Crux works (a counter by hand)
+
 1. [A very basic app](./part-1/basic_app.md)
 1. [Testing](./part-1/testing.md)
 1. [The shell](./part-1/shell.md)
@@ -32,6 +38,7 @@
 
 # Part III - Advanced topics
 
+1. [Effect router](./part-3/effect-router.md)
 1. [Middleware](./part-3/middleware.md)
 1. [Other platforms](./part-3/platforms.md)
    1. [TypeScript and React Router](./part-3/platforms/react-router.md)
@@ -51,6 +58,7 @@
 1. [Migrating crux_http to native http types](./guide/migrate-crux-http.md)
 1. [Handling crux_http rejections](./guide/http-rejections.md)
 1. [Migrating to per-operation types](./guide/migrate-per-operation-types.md)
+1. [Migrating from Capabilities to Command](./guide/migrate-capabilities-to-command.md)
 
 # RFCs
 

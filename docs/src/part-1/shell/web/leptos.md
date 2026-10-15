@@ -1,4 +1,4 @@
-# Web — Rust and Leptos
+# Web: Rust and Leptos
 
 These are the steps to set up and run a simple Rust
 Web app that calls into a shared core.
@@ -113,7 +113,7 @@ which triggers a render of the UI.
 
 ```admonish
 This code that wraps the core only needs to be written
-once — it only grows when we need to support additional
+once. It only grows when we need to support additional
 effects.
 ```
 
@@ -146,7 +146,7 @@ in the Crux repository.
 ```
 
 Edit `src/main.rs` to look like the following. This
-code creates two signals — one to update the view
+code creates two signals: one to update the view
 (which starts off with the core's current view), and
 the other to capture events from the UI (which starts
 off by sending the reset event). We also create an
