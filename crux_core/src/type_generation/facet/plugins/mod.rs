@@ -10,6 +10,9 @@
 //!   structured request id the core issues.
 //! * [`CorePlugin`] emits `CoreBridge` and `Core` — the loop that carries
 //!   events into the core, requests out of it, and the view back to the shell.
+//! * [`ShellExtensionPlugin`] emits the shell extensions the app registered,
+//!   such as a capability's shipped handler. It writes source the extension's
+//!   author wrote, not source we generate.
 //!
 //! They act only when the container being emitted is a registered effect enum
 //! (see [`Matched`]), and they write everything through the `after_type` hook,
@@ -22,6 +25,7 @@ mod core;
 mod handler;
 mod operation_kind;
 mod request_id;
+mod shell_handler;
 #[cfg(test)]
 mod tests;
 
@@ -31,10 +35,11 @@ use facet_generate::{
 };
 use heck::ToLowerCamelCase;
 
-pub(super) use core::CorePlugin;
+pub(super) use core::{COMPANION_FILE_STEMS, CorePlugin, FFI_BRIDGE_FILE};
 pub(super) use handler::EffectHandlerPlugin;
 pub(super) use operation_kind::OperationKindPlugin;
 pub(super) use request_id::RequestIdPlugin;
+pub(super) use shell_handler::ShellExtensionPlugin;
 
 use super::{EffectMeta, EffectVariantMeta};
 use crate::OperationKind;

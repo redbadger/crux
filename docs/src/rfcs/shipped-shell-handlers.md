@@ -40,11 +40,12 @@ inherits.
 The capability declares what it ships:
 
 ```rust
-// Rust — crux_http/src/lib.rs
+// Rust: crux_http/src/shell.rs
 
 #[cfg(feature = "facet_typegen")]
-pub static HTTP: ShellHandler = ShellHandler::new("Http")
-    .types(shell::register_types)
+pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
+    .types(register_types)
+    .declares(&["HttpHandler", "IHttpHandler", "URLSessionHttpHandler", /* … */])
     .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
     .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")))
     .typescript(ShellSource::stdlib(include_str!("../shell/typescript/http.ts")))
@@ -58,8 +59,8 @@ The app asks for it where it configures type generation:
 
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
-    .shell_handler(&crux_http::HTTP)?
-    .shell_handler(&crux_time::TIME)?
+    .shell_extension(&crux_http::shell::EXTENSION)?
+    .shell_extension(&crux_time::shell::EXTENSION)?
     .build()?;
 ```
 
@@ -177,29 +178,39 @@ declaration away from the plain path.
 
 ### Declaring a shipped handler
 
-A capability declares one `ShellHandler` per capability, not per operation.
-The unit of implementation on the shell side is the capability — an HTTP
-client, a key-value store, a timer table — because its operations share
+The mechanism is not specific to handlers. Type generation emits a **shell
+extension**: foreign source that any crate can ship, together with the types
+that source names. Nothing about it changes the generated `EffectHandler`. A
+capability's shell handler is the main use, and the one this RFC is about,
+but a crate with other shell-side code to deliver would use the same type.
+
+A capability declares one `ShellExtension` per capability, not per operation.
+The unit of implementation on the shell side is the capability (an HTTP
+client, a key-value store, a timer table), because its operations share
 state, and because that is the unit an app would want to configure or replace.
+By convention the static is `shell::EXTENSION` in the capability crate.
 
 ```rust
 // Rust
 #[non_exhaustive]
-pub struct ShellHandler {
-    /// UpperCamelCase. Names the companion file (`Http.swift`) and the
-    /// protocol the source declares (`HttpHandler`, `IHttpHandler` in C#).
+pub struct ShellExtension {
+    /// UpperCamelCase. Names the companion file (`Http.swift`).
     pub name: &'static str,
     /// Registers every operation and output the shipped sources name.
     pub types: Option<fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>>,
+    /// The top-level names the shipped sources declare, in any language
+    /// (`HttpHandler`, `IHttpHandler`, `URLSessionHttpHandler`, …).
+    pub declares: &'static [&'static str],
     pub swift: Option<ShellSource>,
     pub kotlin: Option<ShellSource>,
     pub typescript: Option<ShellSource>,
     pub csharp: Option<ShellSource>,
 }
 
-impl ShellHandler {
-    pub const fn new(name: &'static str) -> Self { /* every language None */ }
+impl ShellExtension {
+    pub const fn new(name: &'static str) -> Self { /* nothing declared, every language None */ }
     pub const fn types(self, register: fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>) -> Self { /* … */ }
+    pub const fn declares(self, names: &'static [&'static str]) -> Self { /* … */ }
     pub const fn swift(self, source: ShellSource) -> Self { /* … */ }
     // kotlin, typescript, csharp likewise
 }
@@ -229,6 +240,11 @@ Both types are `#[non_exhaustive]` and built through `const fn` builders,
 which a `static` initialiser can call, so a fifth language or another kind
 of dependency can be added later without breaking every capability crate.
 
+`declares` lists the names the sources put into the generated module, so that
+type generation can check them without parsing the source. The name of the
+extension only names its file, and the protocol a handler declares is listed
+like any other name.
+
 That is the whole declaration. The `Operation` derive and trait are
 untouched, and the breaking release's move to `Notify`, `Request` and
 `Stream` does not affect it.
@@ -239,7 +255,7 @@ app never sends `Exists` or `Now`, so left to itself type generation would
 not emit them, and `KeyValue.swift` would not compile. The function the
 static names registers every operation and output the sources mention —
 `HttpRequest::register_types_facet` and its siblings — so that they are
-generated whenever the handler is.
+generated whenever the extension is.
 
 A language a capability does not ship (`kotlin: None`) simply has nothing to
 emit on that platform: the app implements the methods as it does today.
@@ -251,34 +267,55 @@ which is the existing convention.
 
 ### Registering it
 
-The app names the shipped handlers it wants on the `TypeRegistry`, before
+The app names the shell extensions it wants on the `TypeRegistry`, before
 it builds, because registering one also registers types:
 
 ```rust
 // Rust — shared/src/bin/codegen.rs
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
-    .shell_handler(&crux_http::HTTP)?
-    .shell_handler(&crux_time::TIME)?
+    .shell_extension(&crux_http::shell::EXTENSION)?
+    .shell_extension(&crux_time::shell::EXTENSION)?
     .build()?
     .boltffi(BoltFfi::new().swift("Shared").kotlin());
 ```
 
 This is the one place the app has to know a shipped handler exists, and it
 is where the capability's documentation and the book's typegen chapter point.
-It is also what keeps the dependency story simple: a handler's
-`dependencies` reach the manifest only when the handler is registered, so no
-app pays for a library it did not ask for.
+It is also what keeps the dependency story simple: an extension's
+`dependencies` reach the manifest only when the extension is registered, so
+no app pays for a library it did not ask for.
 
-Registration is checked: two handlers with the same `name`, or a `name` that
-collides with a registered type or a reserved name, is an error at `build`.
-A `name` equal to the last segment of the module being generated — an `Http`
-handler in a `Crux.Http` namespace — would overwrite the module's own file,
-and is an error when that language is generated.
+Registration is checked at `build`, so that a clash is an error rather than a
+generated package that does not compile:
+
+- The `name` is a file stem that works in every language and on every file
+  system: an ASCII letter, then ASCII letters, digits or `_`, and not a name
+  Windows reserves for a device (`CON`, `NUL`, `COM1` and so on).
+- No two registered extensions have the same `name`, ignoring case, because
+  `Http.swift` overwrites `http.swift` on a case-insensitive file system. Two
+  crates may ship extensions with the same name, and only one of them can be
+  registered. Renaming the file on registration would not help, because the
+  names the source declares stay the same.
+- The `name` is not the name of a file crux generates beside the module
+  (`FfiBridge`), ignoring case. It only names files, so it may match a type
+  name.
+- No name in `declares` is a reserved name of the generated shell API, a
+  name the module imports from the serialization runtime (`Serializer`,
+  `Bytes` and so on), the name of a namespace the app's types are generated
+  into, a name another registered extension declares, or the name of a type
+  registered in the app's root namespace.
+
+A `name` equal to the name of the module's own file, ignoring case, would
+overwrite it, and is an error when that language is generated. Kotlin and C#
+name that file after the last segment of the package or namespace (an `Http`
+extension in a `Crux.Http` namespace), and Swift after the whole package
+name in `UpperCamelCase` (a `SharedTypes` extension in a `shared_types`
+package).
 
 ### What is emitted
 
-For each registered handler with source for the target language, the plugin
+For each registered extension with source for the target language, the plugin
 emits one companion file in the generated module — Swift
 `Sources/App/Http.swift`, Kotlin `com/crux/example/weather/Http.kt`, C#
 `Company/Shared/Http.cs` — containing the shipped source verbatim, after the
@@ -286,9 +323,9 @@ module header the language needs (the `package` line in Kotlin, the
 file-scoped `namespace` in C#). In TypeScript, whose modules are one file, the
 source is appended to the module after the types, the way `Core` is today.
 
-The source declares a protocol named after the handler and one or more
-implementations of it, and refers to `HttpRequest` and `HttpResult`
-unqualified, as any file in that module would:
+A capability's source declares a protocol, `HttpHandler` for `crux_http`, and
+one or more implementations of it, and refers to `HttpRequest` and
+`HttpResult` unqualified, as any file in that module would:
 
 ```swift
 // Swift — shipped source, emitted as Sources/App/Http.swift
@@ -439,8 +476,10 @@ every app that registers it.
   generated `EffectHandler` method returns, and at least one implementation
   of it. Exposes configuration through the implementation's initialiser, not
   through globals.
-- Declares nothing else at module scope under a name a generated type could
-  take. `<Name>Handler` joins the reserved names.
+- Lists every name it declares at module scope, in every language, in
+  `declares`, so that type generation can reject a clash with the app's
+  types and namespaces, the generated shell API, the serialization runtime or
+  another extension.
 - Does not log through an app-specific logger. A shipped handler either stays
   quiet or exposes a hook on its protocol.
 - Is compiled by an example shell on every change. The weather example covers
@@ -609,7 +648,7 @@ evolves.
 
 1. Release the facet-generate that carries the companion-file hook; the
    per-operation types stack already depends on it.
-2. Add `ShellHandler`, `ShellSource` and `TypeRegistry::shell_handler` to
+2. Add `ShellExtension`, `ShellSource` and `TypeRegistry::shell_extension` to
    `crux_core`, with the plugin and its checks.
 3. Ship handlers for `crux_http`, `crux_kv` and `crux_time` in all four
    languages, and migrate the notes and weather shells to them, so CI compiles

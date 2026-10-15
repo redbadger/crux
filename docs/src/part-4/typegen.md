@@ -576,6 +576,95 @@ Setting `boltffi(..)` when there is no `Core` to bridge — no registered
 app, no `Render` variant, or `without_core()` — is reported as an error
 rather than silently ignored.
 
+### Shell extensions
+
+A crate can ship source for the shell, in Swift, Kotlin, TypeScript and C#,
+embedded in the crate and versioned with it. This is a shell extension, and
+type generation copies its source into your generated package when you ask
+for it. It does nothing else: the generated `EffectHandler`,
+`EffectDispatcher` and `Core` are exactly as described above.
+
+The main use is a capability's shell handler, the shell side of its
+protocol. `crux_http`, `crux_kv` and `crux_time` each ship one, as an
+implementation of their operations in all four languages.
+
+You ask in the codegen binary, per extension, on the registry before you
+build it:
+
+```rust,ignore
+let typegen = TypeRegistry::new()
+    .register_app::<Weather>()?
+    .shell_extension(&crux_http::shell::EXTENSION)?
+    .shell_extension(&crux_kv::shell::EXTENSION)?
+    .shell_extension(&crux_time::shell::EXTENSION)?
+    .build()?;
+```
+
+Each `ShellExtension` is a `static` the crate exports behind its
+`facet_typegen` feature. Registering a capability's extension also
+registers every operation and output its sources name, including operations
+your `Effect` never carries, because the shipped file implements the whole
+capability and so all of its types have to exist. For every extension you
+register, and every language it has source for, the generated module gains
+one file named after the extension (`Http.swift` in the Swift target,
+`Http.kt` in the Kotlin package, `Http.cs` in the C# namespace), with the
+module's header prepended and the source otherwise verbatim. TypeScript
+modules are a single file, so there the source is appended after the types,
+as `Core` is. A language the extension does not ship gets nothing, and you
+implement those methods as you would have anyway.
+
+In Swift, `Http.swift` declares an `HttpHandler` protocol with one method
+per operation, taking the operation and returning what the generated
+`EffectHandler` method for it returns, and an implementation of it,
+`URLSessionHttpHandler`. Your handler holds an instance and delegates:
+
+```swift
+struct WeatherHandler: EffectHandler {
+    let http = URLSessionHttpHandler.shared
+    let time = TaskTimeHandler()
+
+    func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
+    func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
+    func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
+    // the app's own operations…
+}
+```
+
+Those lines are the whole of what you write for the capability. The
+protocol rules — how a `URLError` maps onto `HttpResult`, what a cleared
+timer answers — live in the shipped file, written once by the capability
+author. Because the delegation is yours, so is the choice: construct the
+shipped implementation with a pinned `URLSession` or a storage directory,
+write your own conformer of the protocol behind a hardened HTTP stack,
+override one method and delegate the rest, or leave the registration out
+and get a package with nothing extra in it. When a capability gains an
+operation, your handler stops compiling until you add its line, which is
+the right moment to read what the new operation does.
+
+The other languages follow the same pattern, with each language's own
+conventions for the names (C#, for example, prefixes the interface with
+`I`).
+
+Registration is where an extension's manifest dependencies, if it declares
+any, reach your `Package.swift`, `build.gradle.kts` or `package.json`. The
+bundled capabilities depend on nothing beyond the platform standard
+library. An extension lists the top-level names its sources declare
+(`HttpHandler`, `IHttpHandler`, `URLSessionHttpHandler` and so on), and
+the build fails if one of those is a name the generated shell API uses, a
+name the generated module imports from the serialization runtime (such as
+`Serializer`), the name of one of your namespaces, a name another
+registered extension declares, or the name of a type registered in the
+root namespace. The same goes for a type a capability registers: `crux_kv`
+brings its `Delete` with it, and an app with a `Delete` of its own renames
+one of them with `#[facet(rename = "...")]`. The extension's own name only
+names its files, so it has to work as a file name (an ASCII letter, then
+ASCII letters, digits or `_`), and two extensions with the same name,
+ignoring case, cannot both be registered, because their files would
+overwrite each other.
+
+[Building capabilities](../part-2/capabilities.md) covers the other side:
+how a capability declares what it ships.
+
 ### Reading a request id
 
 The `id` on a `Request` is not a bare counter. It packs, from the top,
@@ -646,7 +735,8 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   only on an adapter of your own.
 - `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`,
   `EffectHandler`, `EffectDispatcher`, `Core`, `CoreBridge` and
-  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names.
+  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names, and
+  so is every name a registered shell extension declares.
   `TypeRegistry::build` fails if one of your shared types or effect
   variants claims one.
 - `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`, and
