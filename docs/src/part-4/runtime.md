@@ -129,6 +129,8 @@ So, step by step, our strategy for commands to handle effects is:
    execution of the original task until a further await or until
    completion.
 
+![A sequence diagram with lanes for the executor, the task, the effects channel, the core and the shell. The numbers match the steps above. The task sends its effect on the channel and returns Pending, and the core returns the effect to the shell. When the shell calls resolve, the callback sends the output to the task. The waker puts the task on the ready queue, and the executor polls the task again.](./effect_life_cycle.svg)
+
 The cycle may repeat a few times, depending on the command
 implementation, but eventually the original task completes and is
 removed.
@@ -228,21 +230,26 @@ they are wrapped in each other.
 The basic inner piece of the effect request is an _operation_. This
 is the intent which the command is submitting to the shell. Each
 operation has an associated _output_ value, with which the operation
-request can be resolved. There are multiple capabilities in each
-app, and in order for the shell to easily tell which capability's
-effect it needs to handle, we wrap the operation in an _effect_. The
-`Effect` type is a generated enum based on the app's set of
-capabilities, with one variant per capability. It allows us to
-multiplex (or type erase) the different typed operations into a
-single type, which can be `match`ed on to process the operations.
+request can be resolved.
 
-Finally, the effect is wrapped in a _request_ which carries the
-effect, and an associated _resolve_ callback to which the output
+The operation is wrapped in a _request_, which carries the
+operation and an associated _resolve_ callback to which the output
 will eventually be given. We discussed this callback in the previous
-section — its job is to send the result through an internal channel,
-waking up the paused future. The request is the value passed to the
-shell, and used as both the description of the effect intent, and
-the "token" used to resolve it.
+section. Its job is to send the result through an internal channel,
+waking up the paused future.
+
+There are multiple operations in each app, and in order for the
+shell to easily tell which effect it needs to handle, we wrap the
+request in an _effect_. The `Effect` type is an enum with one
+variant per operation, and the `#[effect]` macro wraps each
+operation type in a `Request`. It allows us to multiplex (or type
+erase) the different typed operations into a single type, which can
+be `match`ed on to process the operations. The effect is the value
+passed to the shell. The request inside it is used as both the
+description of the effect intent, and the "token" used to resolve
+it.
+
+![An Effect variant, Effect::Http, holds a Request for an HttpRequest operation. The Request holds two fields. The operation field holds the HttpRequest, whose Output type is HttpResult. The handle field holds a RequestHandle for an HttpResult, which is Never, Once or Many.](./request_nesting.svg)
 
 Each task in a command has access to a `CommandContext`, which holds
 the sending ends of channels for effects and events. When a task

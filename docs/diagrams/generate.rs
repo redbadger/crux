@@ -13,6 +13,13 @@ edition = "2024"
 //! - shell_apple.svg, shell_android.svg and shell_react.svg, the codegen and
 //!   BoltFFI steps from the shared crate to each app
 //! - shell_leptos.svg, the steps from the shared crate to the Leptos web app
+//! - part-4/effect_life_cycle.svg, the round trip of one effect through the
+//!   executor, the task, the effects channel, the core and the shell
+//! - part-4/request_nesting.svg, an operation inside a `Request` inside an
+//!   `Effect` variant
+//! - part-4/generated_core.svg, the layers of a shell that uses the generated
+//!   `Core`, from the UI down to the Rust core
+//! - part-4/request_id.svg, the bit fields of a request id
 //!
 //! Do not edit the SVG files directly. Change this script and run it again.
 //! The script needs a nightly Rust toolchain, because cargo runs single-file
@@ -1357,6 +1364,630 @@ fn leptos() -> String {
     s
 }
 
+// ---------------------------------------------------------------------------
+// Command runtime and type generation internals (part-4/*.svg)
+// ---------------------------------------------------------------------------
+
+/// The attributes of text in the line colour, which shows on light and dark
+/// backgrounds. Use it for text that is not on a card or a pill.
+fn faint(size: f64, mono: bool) -> String {
+    let class = if mono { "s m" } else { "s" };
+    format!(
+        r#"class="{class}" style="fill:{LINE};font-size:{}px;font-weight:600""#,
+        n(size)
+    )
+}
+
+/// A legend: a swatch and a label on each row, from the top at `y`.
+fn legend(out: &mut String, x: f64, y: f64, rows: &[(Kind, &str)]) {
+    for (i, &(kind, label)) in rows.iter().enumerate() {
+        let (fill, stroke) = kind.colours();
+        let y = y + i as f64 * 30.0;
+        emit!(
+            out,
+            r#"<rect x="{}" y="{}" width="26" height="18" rx="5" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>"#,
+            n(x),
+            n(y - 11.0)
+        );
+        text(out, x + 36.0, y + 3.0, "start", &faint(13.0, false), label);
+    }
+}
+
+/// A participant in a sequence diagram, with a lifeline down from its card.
+struct Lane {
+    title: &'static str,
+    sub: &'static str,
+    /// The x of the lifeline.
+    x: f64,
+    kind: Kind,
+}
+
+/// One row of a sequence diagram.
+enum Step {
+    /// A message from one lane to another, with a label on a pill above the
+    /// line. A dashed line is a value that a call returns.
+    Msg {
+        from: usize,
+        to: usize,
+        label: &'static str,
+        mono: bool,
+        dashed: bool,
+    },
+    /// A note on one lifeline: what that participant does.
+    Note {
+        lane: usize,
+        lines: &'static [&'static str],
+    },
+}
+
+/// A number in a circle in the left margin, which refers to a numbered step
+/// in the text.
+fn badge(out: &mut String, x: f64, y: f64, number: u8) {
+    emit!(
+        out,
+        r##"<circle cx="{}" cy="{}" r="11" fill="#f2f2f2" stroke="#c4c4c4" stroke-width="1"/>"##,
+        n(x),
+        n(y)
+    );
+    let attrs = r#"class="s" style="font-weight:700""#;
+    text(out, x, y + 4.3, "middle", attrs, &number.to_string());
+}
+
+/// A sequence diagram: the lanes across the top, and the steps from the top
+/// down. A step with a number gets a badge in the left margin.
+///
+/// The function panics if a label does not fit between the ends of its
+/// message, or if a note reaches a lifeline next to its own.
+fn sequence(out: &mut String, lanes: &[Lane], steps: &[(Option<u8>, Step)], top: f64) -> f64 {
+    const HEAD_H: f64 = 56.0;
+    const HEAD_W: f64 = 165.0;
+    const MSG_H: f64 = 40.0; // from the top of the pill to the line, and a gap below
+    const NOTE_LINE: f64 = 17.0;
+    let badge_x = 22.0;
+
+    // First pass: the y of each row, so that the lifelines can go behind.
+    let mut ys = Vec::new();
+    let mut y = top + HEAD_H + 16.0;
+    for (_, step) in steps {
+        match step {
+            Step::Msg { .. } => {
+                y += 30.0;
+                ys.push(y);
+                y += MSG_H - 30.0;
+            }
+            Step::Note { lines, .. } => {
+                let h = lines.len() as f64 * NOTE_LINE + 12.0;
+                ys.push(y + 6.0 + h / 2.0);
+                y += h + 12.0;
+            }
+        }
+    }
+    let bottom = y + 8.0;
+
+    for lane in lanes {
+        thin_dash(out, Path::new().m(lane.x, top + HEAD_H).v(bottom));
+        let head = Rect::new(lane.x - HEAD_W / 2.0, top, HEAD_W, HEAD_H);
+        let sub_attrs = if lane.sub.contains('_') {
+            LINE_SMALL_CODE
+        } else {
+            SMALL
+        };
+        lines_card(
+            out,
+            head,
+            lane.kind,
+            &[(TITLE, 16.0, lane.title), (sub_attrs, 12.0, lane.sub)],
+        );
+    }
+
+    for ((number, step), &y) in steps.iter().zip(&ys) {
+        if let Some(number) = number {
+            badge(out, badge_x, y, *number);
+        }
+        match *step {
+            Step::Msg {
+                from,
+                to,
+                label,
+                mono,
+                dashed,
+            } => {
+                let (x0, x1) = (lanes[from].x, lanes[to].x);
+                let dir = (x1 - x0).signum();
+                let kind = if dashed { Arrow::Dashed } else { Arrow::Solid };
+                arrow(out, Path::new().m(x0, y).h(x1 - dir * 2.0), kind);
+                let w = text_width(label, 12.5) + 16.0;
+                assert!(
+                    w + 12.0 <= (x1 - x0).abs(),
+                    "{label:?} does not fit between its lanes"
+                );
+                pill(out, (x0 + x1) / 2.0, y - 14.0, label, mono, 12.5);
+            }
+            Step::Note { lane, lines } => {
+                let x = lanes[lane].x;
+                let longest = lines.iter().map(|l| text_width(l, 12.0)).fold(0.0, f64::max);
+                let w = longest + 24.0;
+                let h = lines.len() as f64 * NOTE_LINE + 12.0;
+                for other in lanes {
+                    assert!(
+                        other.x == x || (other.x - x).abs() > w / 2.0 + 6.0,
+                        "{lines:?} reaches the next lifeline"
+                    );
+                }
+                let r = Rect::new(x - w / 2.0, y - h / 2.0, w, h);
+                let rows: Vec<Line> = lines.iter().map(|&l| (SMALL, 12.0, l)).collect();
+                lines_card(out, r, lanes[lane].kind, &rows);
+            }
+        }
+    }
+    bottom
+}
+
+/// The life cycle of one effect: from the task that requests it, to the shell
+/// that resolves it, and back to the task. The numbers match the steps in
+/// part-4/runtime.md.
+fn effect_life_cycle() -> String {
+    const W: f64 = 980.0;
+    let lanes = [
+        Lane {
+            title: "Executor",
+            sub: "run_until_settled",
+            x: 135.0,
+            kind: Kind::Cmd,
+        },
+        Lane {
+            title: "Task",
+            sub: "command future",
+            x: 310.0,
+            kind: Kind::Cmd,
+        },
+        Lane {
+            title: "Effects",
+            sub: "channel",
+            x: 485.0,
+            kind: Kind::Effect,
+        },
+        Lane {
+            title: "Core",
+            sub: "crux_core::Core",
+            x: 660.0,
+            kind: Kind::Fn,
+        },
+        Lane {
+            title: "Shell",
+            sub: "effect handlers",
+            x: 880.0,
+            kind: Kind::Shell,
+        },
+    ];
+    let (exec, task, chan, core, shell) = (0, 1, 2, 3, 4);
+    let msg = |from, to, label, mono| Step::Msg {
+        from,
+        to,
+        label,
+        mono,
+        dashed: false,
+    };
+    let ret = |from, to, label, mono| Step::Msg {
+        from,
+        to,
+        label,
+        mono,
+        dashed: true,
+    };
+    let note = |lane, lines| Step::Note { lane, lines };
+    let steps = [
+        (None, msg(shell, core, "process_event(event)", true)),
+        (None, note(core, &["update returns a Command"])),
+        (Some(1), msg(core, exec, "spawn a task", false)),
+        (Some(2), msg(core, exec, "run_until_settled()", true)),
+        (None, note(exec, &["TaskId to ready queue"])),
+        (Some(3), msg(exec, task, "poll", true)),
+        (Some(4), note(task, &["runs to the first .await"])),
+        (
+            Some(5),
+            note(task, &["creates the Request and", "its resolve callback"]),
+        ),
+        (Some(6), msg(task, chan, "send(Effect)", true)),
+        (None, ret(task, exec, "Pending", true)),
+        (Some(7), msg(chan, core, "Effect", true)),
+        (None, ret(core, shell, "Vec<Effect>", true)),
+        (None, note(shell, &["runs the effect"])),
+        (Some(8), msg(shell, core, "resolve(request, output)", true)),
+        (
+            Some(9),
+            msg(core, task, "callback sends the output", false),
+        ),
+        (None, msg(task, exec, "wake", false)),
+        (None, note(exec, &["TaskId to ready queue"])),
+        (Some(10), msg(core, exec, "run_until_settled()", true)),
+        (None, msg(exec, task, "poll", true)),
+        (
+            Some(11),
+            note(task, &["the output is ready, so the", "task continues to the next .await"]),
+        ),
+        (None, ret(task, exec, "Ready or Pending", false)),
+        (None, ret(core, shell, "Vec<Effect>", true)),
+    ];
+
+    let title = "Crux: one effect's life cycle";
+    let desc = "A sequence diagram with five lanes: the executor, the task, the effects \
+                channel, the core and the shell. Solid arrows are calls and messages, and \
+                dashed arrows are return values. The shell calls process_event, and update \
+                returns a Command. The core spawns the Command's task and calls \
+                run_until_settled, which puts the task on the ready queue and polls it. The \
+                task runs to its first .await, where it creates a Request with a resolve \
+                callback. The task sends the Effect on the effects channel and returns \
+                Pending. The core takes the Effect from the channel and returns it to the \
+                shell. The shell runs the effect and calls resolve with the output. The \
+                resolve callback sends the output to the task, and the waker puts the task \
+                on the ready queue again. The core calls run_until_settled, the executor \
+                polls the task, and the task continues to its next .await or to its end. \
+                The core returns any new effects to the shell.";
+
+    let mut body = String::new();
+    let bottom = sequence(&mut body, &lanes, &steps, 20.0);
+    let mut s = String::new();
+    head(&mut s, W, bottom + 15.0, title, desc);
+    s.push_str(&body);
+    s.push_str("</svg>\n");
+    s
+}
+
+/// A tinted area with a heading in its top-left corner.
+fn group(out: &mut String, r: Rect, kind: Kind, heading: &str, mono: bool) {
+    container(out, r, kind);
+    text(
+        out,
+        r.x + 18.0,
+        r.y + 27.0,
+        "start",
+        &faint(15.0, mono),
+        heading,
+    );
+}
+
+/// How an operation is wrapped on its way to the shell: the operation and its
+/// resolve handle make a `Request`, and a variant of the `Effect` enum holds
+/// the `Request`.
+fn request_nesting() -> String {
+    const W: f64 = 700.0;
+    const H: f64 = 290.0;
+    let title = "Crux: an effect wraps a request, which wraps an operation";
+    let desc = "Three nested boxes. The outer box is the Effect variant \
+                Effect::Http, which holds a Request<HttpRequest>. The Request holds two \
+                fields. The operation field holds the HttpRequest, which implements \
+                Operation with an Output type of HttpResult. The handle field holds a \
+                RequestHandle<HttpResult>, which is Never for a notification, Once for a \
+                request and Many for a stream.";
+    let mut s = String::new();
+    head(&mut s, W, H, title, desc);
+
+    group(
+        &mut s,
+        Rect::new(15.0, 15.0, W - 30.0, H - 30.0),
+        Kind::Effect,
+        "Effect::Http(Request<HttpRequest>)",
+        true,
+    );
+    text(
+        &mut s,
+        W - 33.0,
+        42.0,
+        "end",
+        &faint(12.0, false),
+        "one variant per operation",
+    );
+    let req = Rect::new(35.0, 62.0, W - 70.0, H - 62.0 - 35.0);
+    group(&mut s, req, Kind::Shell, "Request<HttpRequest>", true);
+
+    let (cy, ch) = (req.y + 46.0, 130.0); // the field cards
+    let op = Rect::new(req.x + 20.0, cy, 250.0, ch);
+    lines_card(
+        &mut s,
+        op,
+        Kind::Model,
+        &[
+            (CODE, 16.0, "operation"),
+            (LINE_SMALL_CODE, 12.0, "HttpRequest"),
+            (SMALL, 12.0, "implements Operation"),
+            (LINE_SMALL_CODE, 12.0, "type Output = HttpResult"),
+        ],
+    );
+    let hd = Rect::new(op.x + op.w + 20.0, cy, req.x + req.w - 20.0 - (op.x + op.w + 20.0), ch);
+    card(&mut s, hd, Kind::World, false);
+    text(&mut s, hd.cx(), hd.y + 28.0, "middle", CODE, "handle");
+    text(
+        &mut s,
+        hd.cx(),
+        hd.y + 48.0,
+        "middle",
+        LINE_SMALL_CODE,
+        "RequestHandle<HttpResult>",
+    );
+    for (i, (variant, kind)) in [("Never", "notify"), ("Once", "request"), ("Many", "stream")]
+        .into_iter()
+        .enumerate()
+    {
+        let x = hd.cx() + (i as f64 - 1.0) * 92.0;
+        pill(&mut s, x, hd.y + 80.0, variant, true, 12.5);
+        text(&mut s, x, hd.y + 112.0, "middle", SMALL, kind);
+    }
+    assert!(req.y + req.h - (cy + ch) >= 15.0);
+
+    s.push_str("</svg>\n");
+    s
+}
+
+/// The layers of a shell that uses the generated `Core`, from the UI down to
+/// the Rust core. Purple boxes are generated and blue boxes are the shell's
+/// own code.
+fn generated_core() -> String {
+    const W: f64 = 950.0;
+    const H: f64 = 675.0;
+    let (ax, aw) = (40.0, 210.0); // column A: UI, Core
+    let (bx, bw) = (360.0, 210.0); // column B: EffectDispatcher
+    let (cx, cw) = (710.0, 200.0); // column C: EffectHandler, legend
+    let (r1, r1h) = (64.0, 60.0); // UI
+    let (r2, r2h) = (184.0, 70.0); // Core, EffectDispatcher, EffectHandler
+    let (r3, r3h) = (314.0, 60.0); // FfiBridge
+    let (r4, r4h) = (424.0, 60.0); // CoreFfi bindings
+    let shell_bottom = r4 + r4h + 20.0;
+    let rust_top = shell_bottom + 30.0;
+    let (r5, r5h) = (rust_top + 46.0, 60.0); // the Rust core
+    let wide = bx + bw - ax; // the bridge rows span columns A and B
+
+    let title = "Crux: the generated Core";
+    let desc = "The layers of a shell that uses the generated Core, from the UI at the top \
+                to the Rust core at the bottom. Purple boxes are generated, blue boxes are \
+                the shell's own code, and green boxes are the Rust shared crate. The UI \
+                reads the view from Core and calls update with an event. Core serializes \
+                the event and calls update on the bridge. The bridge is FfiBridge, which \
+                implements CoreBridge over the CoreFfi bindings that BoltFFI generates. \
+                Without a BoltFFI config, the shell writes its own CoreBridge. The bytes \
+                cross the FFI to CoreFfi in ffi.rs, which wraps Bridge<App> and Core<App>. \
+                The requests come back up to Core. Core handles Render itself and gives \
+                the other requests to EffectDispatcher. The dispatcher calls a method of \
+                the shell's EffectHandler, which returns the output. The dispatcher \
+                resolves the request through the bridge, and the new requests come back \
+                up to Core.";
+    let mut s = String::new();
+    head(&mut s, W, H, title, desc);
+
+    container(
+        &mut s,
+        Rect::new(15.0, 15.0, W - 30.0, shell_bottom - 15.0),
+        Kind::Shell,
+    );
+    text(&mut s, 35.0, 44.0, "start", HEADING, "Shell");
+    // The heading is on the right, clear of the FFI arrow on the left.
+    let rust_area = Rect::new(15.0, rust_top, wide + 50.0, H - 15.0 - rust_top);
+    container(&mut s, rust_area, Kind::Fn);
+    text(
+        &mut s,
+        rust_area.x + rust_area.w - 18.0,
+        rust_area.y + 27.0,
+        "end",
+        &faint(15.0, false),
+        "Rust core (shared crate)",
+    );
+
+    // shell layers
+    let ui = Rect::new(ax, r1, aw, r1h);
+    lines_card(
+        &mut s,
+        ui,
+        Kind::Shell,
+        &[(TITLE, 16.0, "UI"), (SMALL, 12.0, "bound to core.view")],
+    );
+    let core = Rect::new(ax, r2, aw, r2h);
+    lines_card(
+        &mut s,
+        core,
+        Kind::Cmd,
+        &[
+            (CODE, 16.0, "Core"),
+            (SMALL, 12.0, "holds the view and"),
+            (SMALL, 12.0, "handles Render"),
+        ],
+    );
+    let disp = Rect::new(bx, r2, bw, r2h);
+    lines_card(
+        &mut s,
+        disp,
+        Kind::Cmd,
+        &[
+            (CODE, 16.0, "EffectDispatcher"),
+            (SMALL, 12.0, "resolves each request"),
+        ],
+    );
+    let handler = Rect::new(cx, r2, cw, r2h);
+    lines_card(
+        &mut s,
+        handler,
+        Kind::Shell,
+        &[
+            (CODE, 16.0, "EffectHandler"),
+            (SMALL, 12.0, "one method per variant"),
+        ],
+    );
+    let bridge = Rect::new(ax, r3, wide, r3h);
+    lines_card(
+        &mut s,
+        bridge,
+        Kind::Cmd,
+        &[
+            (CODE, 16.0, "FfiBridge"),
+            (
+                SMALL,
+                12.0,
+                "implements CoreBridge (generated with a BoltFFI config)",
+            ),
+        ],
+    );
+    let bindings = Rect::new(ax, r4, wide, r4h);
+    lines_card(
+        &mut s,
+        bindings,
+        Kind::Cmd,
+        &[
+            (CODE, 16.0, "CoreFfi"),
+            (SMALL, 12.0, "bindings that BoltFFI generates"),
+        ],
+    );
+
+    // the Rust core: CoreFfi -> Bridge<App> -> Core<App>
+    let rust_w = 150.0;
+    let rust_gap = (wide - 3.0 * rust_w) / 2.0;
+    let rust: Vec<Rect> = (0..3)
+        .map(|i| Rect::new(ax + i as f64 * (rust_w + rust_gap), r5, rust_w, r5h))
+        .collect();
+    for (r, (name, sub)) in rust.iter().zip([
+        ("CoreFfi", "ffi.rs"),
+        ("Bridge<App>", "bytes to types"),
+        ("Core<App>", "your App"),
+    ]) {
+        lines_card(
+            &mut s,
+            *r,
+            Kind::Fn,
+            &[(CODE, 16.0, name), (SMALL, 12.0, sub)],
+        );
+    }
+    for pair in rust.windows(2) {
+        h_arrow(&mut s, pair[0].x + pair[0].w + 2.0, r5 + r5h / 2.0, pair[1].x - 2.0);
+    }
+
+    // UI <-> Core
+    let (xe, xv) = (ax + 55.0, ax + aw - 45.0);
+    down(&mut s, xe, r1 + r1h, r2, Some(("update(event)", true)));
+    arrow(
+        &mut s,
+        Path::new().m(xv, r2 - 2.0).v(r1 + r1h + 2.0),
+        Arrow::Solid,
+    );
+    pill(&mut s, xv, (r1 + r1h + r2) / 2.0, "view", true, 12.5);
+
+    // Core <-> bridge
+    let (xu, xr) = (ax + 55.0, ax + aw - 45.0);
+    down(&mut s, xu, r2 + r2h, r3, Some(("update(bytes)", true)));
+    arrow(
+        &mut s,
+        Path::new().m(xr, r3 - 2.0).v(r2 + r2h + 2.0),
+        Arrow::Solid,
+    );
+    pill(&mut s, xr, (r2 + r2h + r3) / 2.0, "requests", false, 12.5);
+
+    // Core -> dispatcher -> handler, and back
+    let mid = r2 + r2h / 2.0;
+    h_arrow(&mut s, ax + aw + 2.0, mid, bx - 2.0);
+    pill(&mut s, (ax + aw + bx) / 2.0, mid - 14.0, "dispatch", true, 12.5);
+    h_arrow(&mut s, bx + bw + 2.0, mid - 12.0, cx - 2.0);
+    pill(&mut s, (bx + bw + cx) / 2.0, mid - 26.0, "handler call", false, 12.5);
+    h_arrow(&mut s, cx - 2.0, mid + 12.0, bx + bw + 2.0);
+    pill(&mut s, (bx + bw + cx) / 2.0, mid + 26.0, "output", false, 12.5);
+
+    // dispatcher -> bridge: resolve
+    down(
+        &mut s,
+        bx + bw / 2.0,
+        r2 + r2h,
+        r3,
+        Some(("resolve(id, bytes)", true)),
+    );
+
+    // bridge <-> bindings <-> Rust
+    let xb = rust[0].cx();
+    arrow(
+        &mut s,
+        Path::new().m(xb, r3 + r3h + 2.0).v(r4 - 2.0),
+        Arrow::Both,
+    );
+    pill(&mut s, xb, (r3 + r3h + r4) / 2.0, "bytes", false, 12.5);
+    arrow(
+        &mut s,
+        Path::new().m(xb, r4 + r4h + 2.0).v(r5 - 2.0),
+        Arrow::Both,
+    );
+    pill(&mut s, xb, (shell_bottom + rust_top) / 2.0, "FFI", false, 12.5);
+
+    legend(
+        &mut s,
+        cx,
+        rust_top + 30.0,
+        &[
+            (Kind::Cmd, "generated"),
+            (Kind::Shell, "the shell's own code"),
+            (Kind::Fn, "the Rust shared crate"),
+        ],
+    );
+
+    assert!(r5 + r5h + 18.0 + 15.0 <= H, "{}", r5 + r5h + 33.0);
+    s.push_str("</svg>\n");
+    s
+}
+
+/// The bit fields of a request id, from the most significant bit.
+fn request_id() -> String {
+    const W: f64 = 720.0;
+    const H: f64 = 210.0;
+    let title = "Crux: the bits of a request id";
+    let desc = "A request id is a 32-bit unsigned integer with three fields. Bits 31 to 24 \
+                hold the effect's variant index, in 8 bits. Bit 23 is the kind bit: 0 for a \
+                request that the shell resolves once, and 1 for a stream that it resolves \
+                many times. Bits 22 to 0 hold the sequence number, in 23 bits, starting \
+                from 1. Id 0 is reserved for notifications. For example, 0x01000002 is \
+                variant 1, a request, with sequence number 2.";
+    let mut s = String::new();
+    head(&mut s, W, H, title, desc);
+
+    let (y, h) = (50.0, 80.0);
+    let fields = [
+        (230.0, Kind::Effect, "effect variant index", "8 bits", 31, 24),
+        (150.0, Kind::World, "kind", "1 bit", 23, 23),
+        (300.0, Kind::Model, "sequence number", "23 bits, from 1", 22, 0),
+    ];
+    let mut x = 20.0;
+    let bit = faint(12.0, true);
+    for (w, kind, name, bits, hi, lo) in fields {
+        let r = Rect::new(x, y, w, h);
+        let mut lines: Vec<Line> = vec![(TITLE, 16.0, name), (SMALL, 12.0, bits)];
+        if name == "kind" {
+            lines.push((SMALL, 12.0, "0 once, 1 many"));
+        }
+        lines_card(&mut s, r, kind, &lines);
+        if hi == lo {
+            text(&mut s, r.cx(), y - 10.0, "middle", &bit, &hi.to_string());
+        } else {
+            text(&mut s, x + 8.0, y - 10.0, "start", &bit, &hi.to_string());
+            text(&mut s, x + w - 8.0, y - 10.0, "end", &bit, &lo.to_string());
+        }
+        x += w;
+    }
+    assert!(x + 20.0 == W, "{x}");
+
+    let note = faint(13.0, false);
+    text(
+        &mut s,
+        20.0,
+        y + h + 32.0,
+        "start",
+        &note,
+        "Id 0 is reserved for notifications, on which the core never waits.",
+    );
+    text(
+        &mut s,
+        20.0,
+        y + h + 56.0,
+        "start",
+        &note,
+        "Example: 0x01000002 is variant 1, a request (resolved once), with sequence number 2.",
+    );
+
+    s.push_str("</svg>\n");
+    s
+}
+
 fn main() -> std::io::Result<()> {
     // Under `-Zscript`, CARGO_MANIFEST_DIR is the directory of this script, so
     // the default output directory does not depend on the current directory.
@@ -1370,5 +2001,15 @@ fn main() -> std::io::Result<()> {
         std::fs::write(format!("{out}/{}", p.file), codegen(p))?;
     }
     std::fs::write(format!("{out}/shell_leptos.svg"), leptos())?;
+    std::fs::write(
+        format!("{out}/part-4/effect_life_cycle.svg"),
+        effect_life_cycle(),
+    )?;
+    std::fs::write(
+        format!("{out}/part-4/request_nesting.svg"),
+        request_nesting(),
+    )?;
+    std::fs::write(format!("{out}/part-4/generated_core.svg"), generated_core())?;
+    std::fs::write(format!("{out}/part-4/request_id.svg"), request_id())?;
     Ok(())
 }
