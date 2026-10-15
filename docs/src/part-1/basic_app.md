@@ -31,10 +31,11 @@ impl App for Counter {
 ```
 
 If you're following along, the compiler is now screaming at you that you're
-missing four associated types for the trait — `Event`, `Model`, `ViewModel`,
-and `Effect`.
+missing the trait's four associated types — `Event`, `Model`, `ViewModel`,
+and `Effect` — and its two methods, `update` and `view`.
 
-Let's add them and talk about them one by one.
+Let's add the types first and talk about them one by one, then we'll come back
+to the methods.
 
 ## Event
 
@@ -142,8 +143,15 @@ That's enough about effects for now, we will spend a lot more time with them lat
 
 ## Implementing the `App` trait
 
-We now have all the building blocks to implement the `App` trait. Here is
-where we end up (straight from the actual [example code](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)):
+We now have all the building blocks to implement the `App` trait. The
+implementation also needs `Command` and `render` from `crux_core`, so replace
+the separate `crux_core` imports we've added so far with this one:
+
+```rust,noplayground
+{{#include ../../../examples/counter/shared/src/app.rs:crux_imports}}
+```
+
+Here is where we end up (straight from the actual [example code](https://github.com/redbadger/crux/blob/master/examples/counter/shared/src/app.rs)):
 
 ```rust,noplayground
 {{#include ../../../examples/counter/shared/src/app.rs:impl_app}}
@@ -163,9 +171,10 @@ so let's do a quick recap:
 
 ```admonish question title="Why so much layering?"
 In real apps, we typically use a few kinds of effects over and over,
-and so it's necessary to allow reuse. That's what the `Effect` enum does, it
-bundles together effects of the same type, defined by the same module or crate (We
-call those modules Capabilities, but lets not worry about those yet).
+and so it's necessary to allow reuse. That's what the `Effect` enum does: it
+lists everything the app can ask the shell to do, with one variant per
+operation. The operations usually come from a reusable module or crate (we
+call those modules Capabilities, but let's not worry about those yet).
 
 The other thing
 that happens in real apps is mixing different kinds of effects in workflows, chaining

@@ -14,7 +14,7 @@ const wasmInitialized = (
   sharedWasm as unknown as { initialized: Promise<void> }
 ).initialized;
 
-export class Core {
+export class CoreWrapper {
   core: CoreFfi | null = null;
   initializing: Promise<void> | null = null;
   setState: Dispatch<SetStateAction<ViewModel>>;
