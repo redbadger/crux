@@ -20,9 +20,10 @@ use facet_generate::{
         swift::Swift,
         typescript::TypeScript,
     },
+    reflection::format::{Format, FormatHolder as _},
 };
 
-use super::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin};
+use super::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, Requalify};
 use crate::{
     OperationKind,
     capability::Operation,
@@ -146,8 +147,37 @@ fn app_meta(registry: &Registry) -> AppMeta {
     }
 }
 
-/// Run one plugin hook over the fixture effect and return what it wrote.
-fn emit<F>(hook: F) -> String
+/// What the generator does to a module's registry before it emits it: every
+/// reference is respelled for `Language`, and the enum names the config looks up are
+/// respelled with them. The keys stay in registry spelling.
+fn respell<Language: Requalify>(registry: &Registry, config: &mut CodeGeneratorConfig) -> Registry {
+    let respell = |set: &std::collections::BTreeSet<_>| {
+        set.iter()
+            .map(|name| Language::requalify(config, name))
+            .collect()
+    };
+    let enums = respell(&config.enum_type_names);
+    let unit_enums = respell(&config.unit_variant_enums);
+    config.enum_type_names = enums;
+    config.unit_variant_enums = unit_enums;
+
+    let mut registry = registry.clone();
+    for format in registry.values_mut() {
+        format
+            .visit_mut(&mut |format| {
+                if let Format::TypeName(name) = format {
+                    *name = Language::requalify(config, name);
+                }
+                Ok(())
+            })
+            .expect("should respell the registry");
+    }
+    registry
+}
+
+/// Run one plugin hook over the fixture effect, as `Language`'s generator would call
+/// it, and return what it wrote.
+fn emit<Language: Requalify, F>(hook: F) -> String
 where
     F: FnOnce(
         &mut IndentedWriter<&mut Vec<u8>>,
@@ -160,6 +190,7 @@ where
     let mut config = CodeGeneratorConfig::new("Shared".to_string());
     config.update_from(&registry);
     let app = app_meta(&registry);
+    let registry = respell::<Language>(&registry, &mut config);
 
     let (name, format) = registry
         .iter()
@@ -176,34 +207,34 @@ where
     String::from_utf8(buffer).expect("the plugin should write valid UTF-8")
 }
 
-fn operation_kind<L>() -> String
+fn operation_kind<Language: Requalify>() -> String
 where
-    OperationKindPlugin: EmitterPlugin<L>,
+    OperationKindPlugin: EmitterPlugin<Language>,
 {
-    emit(|w, ctx, effects, _app| {
+    emit::<Language, _>(|w, ctx, effects, _app| {
         let plugin = OperationKindPlugin::new(&effects.to_vec().into());
-        EmitterPlugin::<L>::type_body(&plugin, w, ctx)?;
-        EmitterPlugin::<L>::after_type(&plugin, w, ctx)
+        EmitterPlugin::<Language>::type_body(&plugin, w, ctx)?;
+        EmitterPlugin::<Language>::after_type(&plugin, w, ctx)
     })
 }
 
-fn handler<L>() -> String
+fn handler<Language: Requalify>() -> String
 where
-    EffectHandlerPlugin: EmitterPlugin<L>,
+    EffectHandlerPlugin: EmitterPlugin<Language>,
 {
-    emit(|w, ctx, effects, _app| {
+    emit::<Language, _>(|w, ctx, effects, _app| {
         let plugin = EffectHandlerPlugin::new(&effects.to_vec().into());
-        EmitterPlugin::<L>::after_type(&plugin, w, ctx)
+        EmitterPlugin::<Language>::after_type(&plugin, w, ctx)
     })
 }
 
-fn core<L>() -> String
+fn core<Language: Requalify>() -> String
 where
-    CorePlugin: EmitterPlugin<L>,
+    CorePlugin: EmitterPlugin<Language>,
 {
-    emit(|w, ctx, effects, app| {
+    emit::<Language, _>(|w, ctx, effects, app| {
         let plugin = CorePlugin::new(&effects.to_vec().into(), app.clone(), None, "Shared");
-        EmitterPlugin::<L>::after_type(&plugin, w, ctx)
+        EmitterPlugin::<Language>::after_type(&plugin, w, ctx)
     })
 }
 
@@ -217,27 +248,27 @@ fn boltffi() -> BoltFfi {
         .csharp()
 }
 
-fn core_with_boltffi<L>() -> String
+fn core_with_boltffi<Language: Requalify>() -> String
 where
-    CorePlugin: EmitterPlugin<L>,
+    CorePlugin: EmitterPlugin<Language>,
 {
-    emit(|w, ctx, effects, app| {
+    emit::<Language, _>(|w, ctx, effects, app| {
         let plugin = CorePlugin::new(
             &effects.to_vec().into(),
             app.clone(),
             Some(boltffi()),
             "Shared",
         );
-        EmitterPlugin::<L>::after_type(&plugin, w, ctx)
+        EmitterPlugin::<Language>::after_type(&plugin, w, ctx)
     })
 }
 
 /// The one companion file the plugin asks for, as the plugin writes it — the
 /// module header the generator prepends is facet-generate's business, and has
 /// its own tests there.
-fn companion<L>(ffi: BoltFfi) -> CompanionFile
+fn companion<Language>(ffi: BoltFfi) -> CompanionFile
 where
-    CorePlugin: EmitterPlugin<L>,
+    CorePlugin: EmitterPlugin<Language>,
 {
     let (registry, effects) = fixture();
     let mut config = CodeGeneratorConfig::new("Shared".to_string());
@@ -245,7 +276,7 @@ where
     let app = app_meta(&registry);
 
     let plugin = CorePlugin::new(&effects.into(), app, Some(ffi), "Shared");
-    let mut files = EmitterPlugin::<L>::companion_files(&plugin, &config);
+    let mut files = EmitterPlugin::<Language>::companion_files(&plugin, &config);
 
     assert_eq!(files.len(), 1, "expected exactly one companion file");
     files.remove(0)
@@ -556,7 +587,7 @@ fn boltffi_class_can_be_renamed() {
     );
 
     // TypeScript has no companion, so read it out of the module instead.
-    let typescript = emit(|w, ctx, effects, app| {
+    let typescript = emit::<TypeScript, _>(|w, ctx, effects, app| {
         let plugin = CorePlugin::new(&effects.to_vec().into(), app.clone(), Some(ffi), "Shared");
         EmitterPlugin::<TypeScript>::after_type(&plugin, w, ctx)
     });

@@ -14,6 +14,8 @@ use facet_generate::{
 
 use super::{super::Matched, AppMeta, BoltFfi, render};
 
+/// `app` names the event and view model in the emitter's spelling, as the
+/// formats in `m` are.
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
@@ -123,7 +125,7 @@ fn emit_core(
     let view_model = render_type(&Format::TypeName(app.view_model.clone()), config);
     // A C-style enum keeps its bincode entry points in a companion static
     // class, exactly as the bincode emitter spells it.
-    let view_model_bincode = if config.unit_variant_enums.contains(&app.view_model.name) {
+    let view_model_bincode = if config.is_unit_enum(&app.view_model) {
         format!("{view_model}Bincode")
     } else {
         view_model.clone()
