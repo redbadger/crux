@@ -7,6 +7,8 @@ members = [
     "web-leptos",
     "web-yew",
 ]
+# `flutter/rust` is its own workspace for flutter_rust_bridge — exclude from this workspace.
+exclude = ["flutter/rust"]
 resolver = "3"
 
 [workspace.package]
