@@ -94,14 +94,6 @@ so the handler never touches the view at all. See
 shape in each language, and the [RFC](../rfcs/generated-core.md) for why it
 is built the way it is.
 
-If you do resolve by hand, the `id` you pass back is the one that arrived,
-untouched. It is not a bare
-counter, though: it names the effect, says whether the request is resolved once
-or many times, and carries a sequence number, and type generation emits an
-`EffectKind` enum and a `RequestId` decoder for reading it — useful in a log
-line, never needed to resolve. See
-[reading a request id](../part-4/typegen.md#reading-a-request-id).
-
 Three of the shells that follow hand the loop to the generated `Core`. The
 Leptos shell doesn't:
 core and shell are both Rust there, so it matches on the `Effect` enum

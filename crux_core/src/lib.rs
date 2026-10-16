@@ -165,7 +165,7 @@
 //!     pub fn resolve(&self, id: u32, output: &[u8]) -> Vec<u8> {
 //!         let mut requests = vec![];
 //!         self.core
-//!             .resolve(EffectId(id), output, &mut requests)
+//!             .resolve(EffectId::from(id), output, &mut requests)
 //!             .expect("output should deserialize");
 //!
 //!         requests

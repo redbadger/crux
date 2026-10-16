@@ -47,7 +47,7 @@ impl CoreFfi {
     #[must_use]
     pub fn resolve(&self, id: u32, data: &[u8]) -> Vec<u8> {
         let mut effects = Vec::new();
-        match self.core.resolve(EffectId(id), data, &mut effects) {
+        match self.core.resolve(EffectId::from(id), data, &mut effects) {
             Ok(()) => effects,
             Err(e) => panic!("{e}"),
         }

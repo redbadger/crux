@@ -257,10 +257,7 @@ Next to the generated `Effect`, you get:
   `(operation, requestId, resolve)` exactly as before;
 - an `EffectDispatcher(handler, resolve)` that calls the right method
   and resolves the request never, once, or once per sink item,
-  serializing each output with the generated bincode serializers;
-- an `EffectKind` enum and a `RequestId` decoder, for reading the id a
-  request arrived with — see [reading a request
-  id](#reading-a-request-id).
+  serializing each output with the generated bincode serializers.
 
 The `resolve` you hand the dispatcher is your own
 `(requestId, bytes) -> ()` callback around the core's `resolve` FFI —
@@ -576,48 +573,86 @@ Setting `boltffi(..)` when there is no `Core` to bridge — no registered
 app, no `Render` variant, or `without_core()` — is reported as an error
 rather than silently ignored.
 
-### Reading a request id
+### Resolve errors
 
-The `id` on a `Request` is not a bare counter. It packs, from the top,
-the effect's variant index, one bit saying whether the shell resolves
-the request once or many times, and an ascending sequence number. Id `0`
-is reserved for notifications, which the core never waits on.
+The bridge encodes some key properties of the effect into each request
+id (which variant of the `Effect` enum the request carries, and whether
+the shell resolves it once or many times), so it can catch common
+mistakes early. When the shell calls `resolve`, the bridge checks the
+id before it deserializes the response, and reports a mismatch as a
+`ResolveError` that says what the outstanding request expects and what
+the id carries. The bridge's `BridgeError` wraps it, so the message
+the shell sees starts with `could not process response:`.
 
-You still resolve with the id exactly as it arrived — the decoder is for
-logging, tracing and assertions, so that a stray id in a crash report
-says *which* effect and *which* request it belonged to. The layout is an
-implementation detail of the bridge, which is why the decoder is
-generated from the same effect metadata the core builds ids from rather
-than written by hand in each shell:
+The id is opaque to the shell, so resolve with it exactly as it
+arrived. The examples below are for an app whose `Effect` enum is
+`Http` followed by `Render`.
 
-```swift
-public enum EffectKind: UInt8, Hashable, Sendable { case render = 0, http = 1 /* ... */ }
+#### Resolving a notification
 
-public struct RequestId: Hashable, Sendable {
-    public init(_ rawValue: UInt32)
-    public var rawValue: UInt32 { get }
-    public var isNotification: Bool { get }
-    public var effectKind: EffectKind? { get }   // nil for a notification
-    public var operationKind: OperationKind { get }
-    public var sequence: UInt32 { get }
-}
+```text
+Attempted to resolve a request that is not expected to be resolved.
 ```
 
-Kotlin gets `enum class EffectKind(val index: UByte)` with an
-`EffectKind.fromIndex(..)` companion and a `data class RequestId(val
-rawValue: UInt)` carrying the same four properties. C# gets
-`enum EffectKind : byte` and
-`public sealed record RequestId(uint RawValue)`. TypeScript, whose
-effect union already discriminates on the variant name, gets
-`export type EffectKind = "Render" | "Http" | ...` and a
-`decodeRequestId(rawValue: number): RequestId` function.
+This is `ResolveError::Never`. The request was a notification, such as
+`Render`, whose operation kind is `Notify`, and the core does not wait
+for a response to a notification. It usually means a hand-written
+dispatcher resolves every effect it handles, whatever its kind. Check
+the `OperationKind` accessor on the effect, and resolve a `Request`
+once and a `Stream` once per item.
 
-The bridge checks the same structure on the way back in: resolving a
-notification's id is reported as "not expected to be resolved", and an
-id naming an effect the enum does not have, or disagreeing with the
-request its sequence belongs to, is rejected as that rather than as an
-unknown id. An effect enum is limited to 256 variants, because the
-variant index is eight bits — `#[effect]` rejects a larger one.
+#### Resolving with an id for a different effect
+
+```text
+Request 1 expects `Http` (variant 0), but response id 0x01000001 carries `Render` (variant 1).
+```
+
+This is `ResolveError::WrongEffect`. The core has a request outstanding
+under that sequence number, but it was issued for a different variant
+of the `Effect` enum from the one the id names. Either the id was
+altered on its way back to the core, or it was issued by an earlier
+instance of the core and happens to share a sequence number with a
+request the current one is waiting on. An effect whose `EffectFFI`
+implementation is hand-written may not know its variant names, and
+then the message numbers the variants instead of naming them.
+
+#### Resolving with an id of a different kind
+
+```text
+Request 1 expects the Request kind, but response id 0x00800001 carries the Stream kind.
+```
+
+This is `ResolveError::WrongKind`. The outstanding request expects to
+be resolved once and the id says it is a stream, or the other way
+round. The effect matches, so the id was most likely altered on its way
+back to the core, or it was issued by an earlier instance of the core.
+
+#### Resolving with an effect variant the enum does not have
+
+```text
+`shared::Effect` has only 2 variants, but response id 0x09000001 carries variant 9.
+```
+
+This is `ResolveError::NoSuchEffect`. The id names a variant beyond the
+end of the `Effect` enum, so this core cannot have issued it. It
+typically comes from an id altered on its way back to the core, or from
+one kept from a build of the core whose `Effect` enum had more
+variants.
+
+#### Resolving a request that has finished
+
+```text
+Request with id 1 not found.
+```
+
+This is `ResolveError::NotFound`, with the id in decimal. Nothing is
+outstanding under that id: the request was resolved already (a
+`Request` is resolved exactly once), or the id was never issued.
+Sequence numbers are not reused when a request completes, so resolving
+twice reports this rather than reaching an unrelated later request.
+
+An effect enum can have at most 256 variants, and `#[effect]` rejects a
+larger one.
 
 ### Notes and escape hatches
 
@@ -644,16 +679,17 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   which is sound because the Rust bridge guards its state with mutexes.
   The generated `FfiBridge` carries that declaration; write it yourself
   only on an adapter of your own.
-- `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`,
-  `EffectHandler`, `EffectDispatcher`, `Core`, `CoreBridge` and
-  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names.
+- `OperationKind`, `EffectSink`, `EffectHandler`, `EffectDispatcher`,
+  `Core`, `CoreBridge` and `FfiBridge` (and their C# `I`-prefixed forms)
+  are reserved names.
   `TypeRegistry::build` fails if one of your shared types or effect
   variants claims one.
 - `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`, and
   with them the BoltFFI bridge, which is an error to configure alongside
   it; `CodeGenerator::without_effect_handlers()` turns off those and the
-  handler API, the kind accessor and the request-id decoder, leaving
-  only the types you registered.
+  handler API too, leaving the types you registered and the
+  operation-kind accessor, because a shell that dispatches by hand still
+  has to know how many times to resolve.
 - The generated Kotlin module declares a dependency on
   `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
   `StateFlow` and coroutine launches need.
