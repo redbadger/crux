@@ -71,40 +71,21 @@ That's the whole test. `update` is a pure function, so there's nothing to set up
 
 ## More integrated tests and deterministic simulation testing
 
-We could test the key-value storage in a more integrated fashion too - instead of asserting
-on the key value operation, we can provide a very basic implementation of a key value store
-to use in tests, using a `HashMap` as storage for example. Then we could simply forward the
-key-value effects to it and make sure the storage is managed correctly. Similarly, we could
-build a predictable replica of an API service we need to test against, etc.
+The tests above resolve each effect with a canned response. We can also test the app in a more integrated way. Instead of a canned response for each HTTP request, the test can forward the request to a small fake of the weather API. The fake keeps its own data and answers each request as the real API does. In the same way, the test can forward the key-value effects to a key-value store that keeps its data in a `HashMap`. The Weather app stores its favourites with these effects, so a test can make sure that the app saves and loads them correctly.
 
-While that's all starting to sound a lot like mocking, remember that we're not implementing
-Redis or building an actual HTTP server. It's all very simple code. And if we do that for all
-the different effects our app needs and provide a realistic _enough_ implementation to mimic
-the real things, a very interesting thing happens - we get the entire app stack, with the
-nitty gritty technical details taken out, running in a unit test.
+This can sound like mocking, but it is different. We do not implement Redis or build a real HTTP server. Each fake is a small amount of simple code. If we write a fake for each effect that the app uses, and each fake is realistic _enough_, an interesting thing happens. The whole app stack runs in a unit test, without the technical details of the transport.
 
-![Mocking with Crux](mocking.png)
+![Two columns of layers. At runtime, from the top: the app core, the shell's effect handler, the transport (an HTTP client, the network and an HTTP server) and the server logic. In tests: the same app core, an effect handler for the test, and a simplified version of the server logic that runs in the test process. The transport layers are not in tests.](mocking_layers.svg)
 
-With that, we can create an app instance and send it completely random (but deterministic)
-events, and make sure "nothing bad happens". The definition of what that means is specific
-to each app, but just to illustrate some options:
+With these fakes, we can create an app instance and send it random events. A seed controls the random events, so each run is deterministic. Then we make sure that "nothing bad happens". What that means is specific to each app, but here are some options:
 
-- Introduce randomised errors to your fake API and see they are handled correctly
-- Randomly lose data in storage and make sure the app recovers
-- Make sure timeouts work correctly by randomly firing them first
-- Check that any other invariants hold, e.g. anything time-related only moves forward
-  (counters count up), storage remains referentially consistent, logically impossible states
-  do not happen (ideally they would be impossible to represent, but sometimes that's too hard)
+- Add random errors to the fake API, and make sure that the app handles them correctly.
+- Lose random data in storage, and make sure that the app recovers.
+- Fire timeouts early at random, and make sure that the app handles them correctly.
+- Check that other invariants hold. For example, values that relate to time only move forward (counters count up), storage stays referentially consistent, and logically impossible states do not occur. (Ideally, the types make these states impossible to represent, but sometimes that is too difficult.)
 
-When we do that, we can then run this pseudo random process, for hours if we like, and let it
-find any bugs for us. To reproduce them, all we need is the random seed used for the specific
-test run.
+We can then run this pseudo-random process for hours, and let it find bugs for us. To reproduce a bug, we need only the random seed of that test run.
 
-In practice, Crux apps will mostly be able to run at thousands of events a second, and these
-tests will explore more of the state space than we ever could with manual unit tests.
+In practice, most Crux apps can process thousands of events each second. These tests explore more of the state space than we ever could with manual unit tests.
 
-This type of testing is usually reserved to consensus algorithms and network protocols (where
-anything that can happen _will_ happen and they have to be rock solid), because setting up the
-test harness is just too much work. But with managed effects it is a few hundred lines of
-additional code. For a modestly sized app, a testing harness like that will only take a few
-days to write. We may even ship building blocks of such test harness with Crux in the future.
+This type of testing is usually only for consensus algorithms and network protocols. In those systems, anything that can happen _will_ happen, so they must be completely reliable. For other software, the test harness is usually too much work. With managed effects, the harness is a few hundred lines of additional code. For an app of moderate size, it takes a few days to write. Future versions of Crux might include building blocks for such a test harness.
