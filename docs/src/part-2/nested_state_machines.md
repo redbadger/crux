@@ -4,6 +4,10 @@ In the previous chapter we saw the top-level `Model` behave as a lifecycle state
 
 This chapter zooms in on that nesting: the `Outcome` protocol itself, a worked example of a small state machine, and how transitions from deep inside the hierarchy can bubble all the way back up to the lifecycle.
 
+The diagram shows the branch of the model tree that this chapter uses as its example. Events go down from each parent to its child, and transitions come back up to the parent.
+
+![A tree of state machines in the Active state of the Model. Active holds an ActiveModel, and the screen of the ActiveModel is Screen::Home. Screen::Home holds a HomeScreen, which has two children: LocalWeather and Vec\<FavoriteWeather\>. Solid arrows take events down from each parent to its child: Event::Active, ActiveEvent::Home, HomeEvent::Local and HomeEvent::FavoritesWeather. Dashed arrows take transitions back up in the Outcome that update returns. HomeScreen lifts LocalWeatherTransition::Unauthorized and FavoriteWeatherTransition::Unauthorized to HomeTransition::ApiKeyRejected. ActiveModel lifts that transition to ActiveTransition::Unauthorized. Then update_active changes the Model from Active back to Onboard. Each parent uses map_event to wrap the events of its child in its own variant.](nested_state_machines.svg)
+
 ## The Outcome pattern
 
 Three types do all the work. First, the result of any sub-state-machine step:
