@@ -19,6 +19,8 @@ edition = "2024"
 //!   `Effect` variant
 //! - part-4/generated_core.svg, the layers of a shell that uses the generated
 //!   `Core`, from the UI down to the Rust core
+//! - part-2/mocking_layers.svg, the layers of the app at run time and in a
+//!   test that uses fakes
 //!
 //! Do not edit the SVG files directly. Change this script and run it again.
 //! The script needs a nightly Rust toolchain, because cargo runs single-file
@@ -235,6 +237,17 @@ fn card(out: &mut String, r: Rect, kind: Kind, dashed: bool) {
     emit!(
         out,
         r#"<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}/>"#
+    );
+}
+
+/// A dashed grey card with a darker, heavier outline than `card`, so that the
+/// dashes show on a dark page as well as a white one.
+fn bold_dashed_card(out: &mut String, r: Rect) {
+    let (fill, _) = Kind::World.colours();
+    let (x, y, w, h) = (n(r.x), n(r.y), n(r.w), n(r.h));
+    emit!(
+        out,
+        r##"<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{fill}" stroke="#6b7280" stroke-width="2" stroke-dasharray="8 5"/>"##
     );
 }
 
@@ -1926,6 +1939,126 @@ fn generated_core() -> String {
     s
 }
 
+// ---------------------------------------------------------------------------
+// Testing with fakes (part-2/mocking_layers.svg)
+// ---------------------------------------------------------------------------
+
+/// The layers of an app at run time, next to the layers in a test that uses
+/// fakes. The core is the same in both columns. The transport layers are not
+/// in the test, and a simplified version of the server logic runs in the test
+/// process.
+fn mocking_layers() -> String {
+    const W: f64 = 800.0;
+    let (lx, rx, cw) = (30.0, 500.0, 270.0); // column lefts and the column width
+    let (rh, gap) = (56.0, 14.0); // card height and the gap between cards
+    let top = 64.0;
+    let row = |i: usize| top + i as f64 * (rh + gap);
+    let gx = (lx + cw + rx) / 2.0; // the middle of the gap between the columns
+
+    // The transport group: a heading above three dashed cards.
+    let pad = 12.0;
+    let group_top = row(2);
+    let heading_room = 36.0;
+    let transport_y = |i: usize| group_top + heading_room + i as f64 * (rh + gap);
+    let group_h = heading_room + 3.0 * rh + 2.0 * gap + pad;
+    let server_y = group_top + group_h + gap;
+    let h = server_y + rh + 20.0;
+
+    let title = "Crux: the app layers at run time and in a test";
+    let desc = "Two columns of layers. At runtime, from the top: the app core, the \
+                shell's effect handler, an HTTP client, the network, an HTTP server \
+                and the server logic. In a test, from the top: the same app core, an \
+                effect handler for the test, and a simplified version of the server \
+                logic. An arrow labelled unchanged goes from the app core at run time \
+                to the app core in the test. An arrow labelled test version goes from \
+                the shell's effect handler to the test's effect handler. The HTTP \
+                client, the network and the HTTP server have dashed outlines, in a \
+                group labelled not in tests. An arrow labelled in-process fake goes \
+                from the server logic to the simplified server logic, which runs in \
+                the test process.";
+    let mut s = String::new();
+    head(&mut s, W, h, title, desc);
+
+    text(&mut s, lx + cw / 2.0, 40.0, "middle", HEADING, "At runtime");
+    text(&mut s, rx + cw / 2.0, 40.0, "middle", HEADING, "In tests");
+
+    // At run time
+    let core = Rect::new(lx, row(0), cw, rh);
+    lines_card(&mut s, core, Kind::Fn, &[(TITLE, 16.0, "App core")]);
+    let handler = Rect::new(lx, row(1), cw, rh);
+    lines_card(
+        &mut s,
+        handler,
+        Kind::Shell,
+        &[(TITLE, 16.0, "Effect handler (shell)")],
+    );
+    group(
+        &mut s,
+        Rect::new(lx - pad, group_top, cw + 2.0 * pad, group_h),
+        Kind::World,
+        "Transport (not in tests)",
+        false,
+    );
+    for (i, name) in ["HTTP client", "Network", "HTTP server"].into_iter().enumerate() {
+        let r = Rect::new(lx, transport_y(i), cw, rh);
+        bold_dashed_card(&mut s, r);
+        text(&mut s, r.cx(), r.cy() + 5.5, "middle", TITLE, name);
+    }
+    let server = Rect::new(lx, server_y, cw, rh);
+    lines_card(&mut s, server, Kind::Model, &[(TITLE, 16.0, "Server logic")]);
+
+    // In tests: the same rows as the core and the handler, and the fake
+    // directly under the handler.
+    let test_core = Rect::new(rx, row(0), cw, rh);
+    lines_card(&mut s, test_core, Kind::Fn, &[(TITLE, 16.0, "App core")]);
+    let test_handler = Rect::new(rx, row(1), cw, rh);
+    lines_card(
+        &mut s,
+        test_handler,
+        Kind::Shell,
+        &[(TITLE, 16.0, "Effect handler (test)")],
+    );
+    let fake = Rect::new(rx, row(2), cw, rh);
+    lines_card(
+        &mut s,
+        fake,
+        Kind::Model,
+        &[(TITLE, 16.0, "Simplified server logic")],
+    );
+
+    // Each arrow has a label that fits in the gap between the columns.
+    let fits = |label: &str| {
+        assert!(
+            text_width(label, 12.5) + 16.0 + 12.0 <= rx - (lx + cw),
+            "{label:?} does not fit between the columns"
+        );
+    };
+    for (r, label) in [(core, "unchanged"), (handler, "test version")] {
+        fits(label);
+        h_arrow(&mut s, lx + cw + 2.0, r.cy(), rx - 2.0);
+        pill(&mut s, gx, r.cy() - 14.0, label, false, 12.5);
+    }
+    // Server logic -> simplified server logic: right, up the gap, then right.
+    let label = "in-process fake";
+    fits(label);
+    let (y0, y1, rad) = (server.cy(), fake.cy(), 16.0);
+    arrow(
+        &mut s,
+        Path::new()
+            .m(lx + cw + 2.0, y0)
+            .h(gx - rad)
+            .q(gx, y0, gx, y0 - rad)
+            .v(y1 + rad)
+            .q(gx, y1, gx + rad, y1)
+            .h(rx - 2.0),
+        Arrow::Solid,
+    );
+    pill(&mut s, gx, (y0 + y1) / 2.0, label, false, 12.5);
+
+    s.push_str("</svg>\n");
+    s
+}
+
 fn main() -> std::io::Result<()> {
     // Under `-Zscript`, CARGO_MANIFEST_DIR is the directory of this script, so
     // the default output directory does not depend on the current directory.
@@ -1948,5 +2081,6 @@ fn main() -> std::io::Result<()> {
         request_nesting(),
     )?;
     std::fs::write(format!("{out}/part-4/generated_core.svg"), generated_core())?;
+    std::fs::write(format!("{out}/part-2/mocking_layers.svg"), mocking_layers())?;
     Ok(())
 }
