@@ -50,6 +50,12 @@ example to see how this works in practice. This example is a counter app that ha
 button: when pressed, the counter changes by a random amount. The random number generation
 is handled by a middleware, rather than by the shell.
 
+The diagram shows the layers of the example on native targets. Each effect
+goes out from the core through the layers, and each output comes back in
+through the same layers.
+
+![The middleware layers in the counter on native targets. In the Rust shared crate, the Bridge with BincodeFfiFormat is the outer layer. It holds the MapEffectLayer, which holds the HandleEffectLayer. The HandleEffectLayer holds the Core of the Counter app and the RngMiddleware, which runs on its own thread. The Core sends Random to the RngMiddleware, and the RngMiddleware sends a RandomNumber back to the Core. Every other effect goes out through the MapEffectLayer, which converts it to an ffi::Effect, and then through the Bridge, which serializes it. The bytes go to the EffectHandler in the Swift or Kotlin shell. The bridge returns them from update or resolve, or sends them through the CruxShell callback. The shell sends the serialized output back in through the layers to the Core.](middleware.svg)
+
 ## Defining the operation
 
 First, we need an `Operation` type that describes the request and its output. This is the
