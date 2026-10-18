@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 669" width="960" height="669" role="img" aria-labelledby="title desc">
+<title id="title">Crux: the weather app's lifecycle</title>
+<desc id="desc">The five states of the weather app's Model, with an arrow for each transition. Event::Start moves the app from Uninitialized to Initializing. Initializing goes to Onboard with InitializingTransition::Onboard if no API key is stored, and to Active with InitializingTransition::Active if the key is stored. Onboard goes to Active with OnboardTransition::Active, and to Failed with OnboardTransition::Failed. Active goes back to Onboard with ActiveTransition::Unauthorized or ActiveTransition::ResetApiKey. Failed holds the message of an unrecoverable error, and the app stays in Failed.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<rect x="15" y="15" width="930" height="639" rx="14" fill="#d97706" fill-opacity="0.08" stroke="#d97706" stroke-width="1.5"/>
+<text x="33" y="42" text-anchor="start" class="s m" style="fill:#8a8a8a;font-size:15px;font-weight:600">Model</text>
+<rect x="360" y="60" width="240" height="56" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="480" y="85.3" text-anchor="middle" class="b m">Uninitialized</text>
+<text x="480" y="103.3" text-anchor="middle" class="s">waits for the shell</text>
+<rect x="360" y="238" width="240" height="56" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="480" y="263.3" text-anchor="middle" class="b m">Initializing</text>
+<text x="480" y="281.3" text-anchor="middle" class="s">loads the key and favourites</text>
+<rect x="80" y="402" width="240" height="56" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="200" y="427.3" text-anchor="middle" class="b m">Onboard</text>
+<text x="200" y="445.3" text-anchor="middle" class="s">asks for an API key</text>
+<rect x="640" y="402" width="240" height="56" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="760" y="427.3" text-anchor="middle" class="b m">Active</text>
+<text x="760" y="445.3" text-anchor="middle" class="s">home and favourites</text>
+<rect x="80" y="580" width="240" height="56" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="200" y="605.3" text-anchor="middle" class="b m">Failed</text>
+<text x="200" y="623.3" text-anchor="middle" class="s">an unrecoverable error</text>
+<path d="M480,118 V236" class="ln" marker-end="url(#a)"/>
+<rect x="425.5" y="165.8" width="109" height="22.5" rx="11" class="pill"/>
+<text x="480" y="181.5" text-anchor="middle" class="l m">Event::Start</text>
+<path d="M358,266 H216 Q200,266,200,282 V400" class="ln" marker-end="url(#a)"/>
+<rect x="99" y="322" width="202" height="38" rx="11" class="pill"/>
+<text x="200" y="338" text-anchor="middle" class="l m">InitializingTransition::</text>
+<text x="200" y="353" text-anchor="middle" class="l m">Onboard</text>
+<path d="M602,266 H744 Q760,266,760,282 V400" class="ln" marker-end="url(#a)"/>
+<rect x="659" y="322" width="202" height="38" rx="11" class="pill"/>
+<text x="760" y="338" text-anchor="middle" class="l m">InitializingTransition::</text>
+<text x="760" y="353" text-anchor="middle" class="l m">Active</text>
+<path d="M322,418 H638" class="ln" marker-end="url(#a)"/>
+<rect x="375.1" y="391.5" width="209.8" height="22.5" rx="11" class="pill"/>
+<text x="480" y="407.2" text-anchor="middle" class="l m">OnboardTransition::Active</text>
+<path d="M638,442 H322" class="ln" marker-end="url(#a)"/>
+<rect x="402.2" y="446" width="155.5" height="53" rx="11" class="pill"/>
+<text x="480" y="462" text-anchor="middle" class="l m">ActiveTransition::</text>
+<text x="480" y="477" text-anchor="middle" class="l m">Unauthorized</text>
+<text x="480" y="492" text-anchor="middle" class="l m">ResetApiKey</text>
+<path d="M200,460 V578" class="ln" marker-end="url(#a)"/>
+<rect x="95.1" y="507.8" width="209.8" height="22.5" rx="11" class="pill"/>
+<text x="200" y="523.5" text-anchor="middle" class="l m">OnboardTransition::Failed</text>
+</svg>
