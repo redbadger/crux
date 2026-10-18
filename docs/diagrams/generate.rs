@@ -30,6 +30,8 @@ edition = "2024"
 //!   shell and a custom FFI
 //! - part-3/effect_router_counter.svg, the same diagram for the
 //!   counter-routing example
+//! - part-3/middleware.svg, the middleware layers around the core in the
+//!   counter-middleware example, and the path of each effect through them
 //!
 //! Do not edit the SVG files directly. Change this script and run it again.
 //! The script needs a nightly Rust toolchain, because cargo runs single-file
@@ -2862,6 +2864,222 @@ const EFFECT_ROUTER_COUNTER: Router = Router {
         },
     ],
 };
+// ---------------------------------------------------------------------------
+// Middleware (part-3/middleware.svg)
+// ---------------------------------------------------------------------------
+
+/// The middleware layers in the counter-middleware example, in the visual
+/// language of `effect_router`. The layers nest: the `Bridge` holds the
+/// `MapEffectLayer`, which holds the `HandleEffectLayer`, which holds the
+/// core and the `RngMiddleware`. Effects go out through the layers to the
+/// shell, and every output comes back in along one line on the left.
+fn middleware() -> String {
+    const W: f64 = 860.0;
+    let bus = 120.0; // the x of the line that takes the outputs back to the core
+    let rad = 16.0;
+    let card_h = 64.0;
+    let pad = 20.0; // between a group and the group or card inside it
+    let bridge_y = 58.0;
+    let map_y = bridge_y + 42.0;
+    let handle_y = map_y + 42.0;
+    let top = handle_y + 42.0; // the core
+    // A pill centred on the line from the core, with a clear run on each side.
+    let rng_y = top + card_h + 2.0 + 2.0 * (CLEAR + HEAD) + PILL_H + 2.0;
+    let handle_bottom = rng_y + card_h + pad;
+    let map_bottom = handle_bottom + 46.0; // room for a pill under the inner group
+    let bridge_bottom = map_bottom + pad;
+    let rust_bottom = bridge_bottom + pad;
+    let shell_y = rust_bottom + 40.0;
+    let dest_y = shell_y + 60.0; // the EffectHandler
+    let bus_y = dest_y + card_h + 54.0;
+    let h = bus_y + 20.0 + 15.0;
+
+    let title = "Crux: middleware in the counter";
+    let desc = "The Rust shared crate holds three nested layers. The Bridge, with \
+                BincodeFfiFormat, is on the outside. It holds the MapEffectLayer, which \
+                holds the HandleEffectLayer. The HandleEffectLayer holds the Core of the \
+                Counter app and the RngMiddleware, which runs on its own thread. The Core \
+                sends Random to the RngMiddleware, which sends a RandomNumber back to the \
+                Core. Every other effect goes out through the MapEffectLayer, which converts \
+                it to an ffi::Effect, and through the Bridge, which serializes it. The bytes go \
+                to the EffectHandler in the Swift or Kotlin shell. The bridge returns \
+                them from update or resolve, or sends them through the CruxShell callback. \
+                The shell sends the serialized output back in through the layers to the \
+                Core.";
+    let mut s = String::new();
+    head(&mut s, W, h, title, desc);
+    let heading = faint(15.0, false);
+
+    // The layers, from the outside in
+    container(
+        &mut s,
+        Rect::new(15.0, 15.0, W - 30.0, rust_bottom - 15.0),
+        Kind::Fn,
+    );
+    text(&mut s, 35.0, 42.0, "start", &heading, "Rust (shared crate)");
+    let layers: [(f64, f64, Kind, &[Label]); 3] = [
+        (
+            bridge_y,
+            bridge_bottom,
+            Kind::Cmd,
+            &[
+                ("Bridge", true),
+                (" with ", false),
+                ("BincodeFfiFormat", true),
+            ],
+        ),
+        (map_y, map_bottom, Kind::World, &[("MapEffectLayer", true)]),
+        (
+            handle_y,
+            handle_bottom,
+            Kind::Model,
+            &[("HandleEffectLayer", true)],
+        ),
+    ];
+    for (i, &(y, bottom, kind, parts)) in layers.iter().enumerate() {
+        let inset = 35.0 + i as f64 * pad;
+        container(
+            &mut s,
+            Rect::new(inset, y, W - 2.0 * inset, bottom - y),
+            kind,
+        );
+        mixed_text(&mut s, inset + 18.0, y + 27.0, &heading, parts);
+    }
+    let core = Rect::new(95.0, top, 360.0, card_h);
+    lines_card(
+        &mut s,
+        core,
+        Kind::Fn,
+        &[(CODE, 16.0, "Core<Counter>"), (SMALL, 12.0, "runs the app")],
+    );
+    let rng = Rect::new(280.0, rng_y, 240.0, card_h);
+    lines_card(
+        &mut s,
+        rng,
+        Kind::Model,
+        &[
+            (CODE, 16.0, "RngMiddleware"),
+            (SMALL, 12.0, "runs on its own thread"),
+        ],
+    );
+
+    // Random: from the core to the middleware, and back along the shared line
+    let core_bottom = core.y + core.h + 2.0;
+    let x = rng.cx();
+    down(&mut s, x, core.y + core.h, rng.y, None);
+    let y = (core_bottom + rng.y - 2.0) / 2.0;
+    assert_clear_run(y, core_bottom, rng.y - 2.0);
+    pill(&mut s, x, y, "Random", true, 12.5);
+    arrow(
+        &mut s,
+        Path::new()
+            .m(rng.x - 2.0, rng.cy())
+            .h(bus + rad)
+            .q(bus, rng.cy(), bus, rng.cy() - rad)
+            .v(core_bottom),
+        Arrow::Solid,
+    );
+    let label = "RandomNumber";
+    assert!(text_width(label, 12.5) + 16.0 + 12.0 <= rng.x - (bus + rad));
+    pill(
+        &mut s,
+        (bus + rad + rng.x) / 2.0,
+        rng.cy(),
+        label,
+        true,
+        12.5,
+    );
+    // The arrowhead into the core is clear of the line that joins it.
+    assert!(rng.cy() - rad - HEAD - core_bottom >= CLEAR);
+
+    // Everything else: out through the layers to the shell
+    let xe = 650.0;
+    let dest = Rect::new(xe - 125.0, dest_y, 250.0, card_h);
+    assert!(rng.x + rng.w + 40.0 < xe && core.x + core.w + 2.0 * rad < xe);
+    arrow(
+        &mut s,
+        Path::new()
+            .m(core.x + core.w + 2.0, core.cy())
+            .h(xe - rad)
+            .q(xe, core.cy(), xe, core.cy() + rad)
+            .v(dest_y - 2.0),
+        Arrow::Solid,
+    );
+    pill(
+        &mut s,
+        (core.x + core.w + xe - rad) / 2.0,
+        core.cy(),
+        "everything else",
+        false,
+        12.5,
+    );
+    pill(
+        &mut s,
+        xe,
+        (handle_bottom + map_bottom) / 2.0,
+        "ffi::Effect",
+        true,
+        12.5,
+    );
+    let y = (rust_bottom + shell_y) / 2.0;
+    pill(
+        &mut s,
+        xe,
+        y,
+        "bytes, returned or by CruxShell callback",
+        false,
+        12.5,
+    );
+    // The last pill and the top of the shell are clear of the arrowhead.
+    assert!(dest_y - 2.0 - HEAD - (y + PILL_H / 2.0) >= CLEAR);
+    assert!(dest_y - 2.0 - HEAD - shell_y >= CLEAR);
+
+    // The shell
+    container(
+        &mut s,
+        Rect::new(15.0, shell_y, W - 30.0, h - 15.0 - shell_y),
+        Kind::Shell,
+    );
+    text(
+        &mut s,
+        bus + 30.0,
+        shell_y + 27.0,
+        "start",
+        &heading,
+        "Shell (Swift, Kotlin)",
+    );
+    lines_card(
+        &mut s,
+        dest,
+        Kind::Shell,
+        &[
+            (CODE, 16.0, "EffectHandler"),
+            (SMALL, 12.0, "the serialized interface"),
+        ],
+    );
+    arrow(
+        &mut s,
+        Path::new()
+            .m(xe, dest_y + card_h + 2.0)
+            .v(bus_y - rad)
+            .q(xe, bus_y, xe - rad, bus_y)
+            .h(bus + rad)
+            .q(bus, bus_y, bus, bus_y - rad)
+            .v(core_bottom),
+        Arrow::Solid,
+    );
+    pill(
+        &mut s,
+        xe,
+        (dest_y + card_h + bus_y) / 2.0,
+        "serialized output",
+        false,
+        12.5,
+    );
+
+    s.push_str("</svg>\n");
+    s
+}
 
 fn main() -> std::io::Result<()> {
     // Under `-Zscript`, CARGO_MANIFEST_DIR is the directory of this script, so
@@ -2899,5 +3117,6 @@ fn main() -> std::io::Result<()> {
         format!("{out}/part-3/effect_router_counter.svg"),
         effect_router(&EFFECT_ROUTER_COUNTER),
     )?;
+    std::fs::write(format!("{out}/part-3/middleware.svg"), middleware())?;
     Ok(())
 }
