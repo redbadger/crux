@@ -3,7 +3,7 @@
 <desc id="desc">The Rust core is in the centre and holds the Model. The shell surrounds the core. Events (blue) cross the boundary into the core. Effects (red) such as Render, Http, KeyValue and Time cross the boundary out to the shell. An arrowhead on each tag shows the direction. On the driving side, the user works with a UI built in SwiftUI, Jetpack Compose, React, Leptos, Yew, Dioxus or Ratatui. On the driven side, the shell runs the effects against APIs, storage and devices on iOS, macOS, Android, the web, the desktop or the terminal.</desc>
 <style>
 text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
-.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
 .h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
 .b { font-size: 16px; font-weight: 600; }
 .s { font-size: 12px; }
