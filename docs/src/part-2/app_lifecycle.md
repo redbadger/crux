@@ -10,6 +10,10 @@ As we think about the weather app, there's an overall workflow it moves through:
 
 These phases are mutually exclusive — the app is always in exactly one of them — which makes a Rust enum the natural fit. Each variant holds the state for its phase, and we can focus on one at a time with its own events and transitions.
 
+The diagram shows the phases and the transitions between them.
+
+![A state diagram of the five phases of the weather app's Model. Event::Start moves the app from Uninitialized to Initializing. Initializing goes to Onboard with InitializingTransition::Onboard if no API key is stored, and to Active with InitializingTransition::Active if the key is stored. Onboard goes to Active with OnboardTransition::Active, and to Failed with OnboardTransition::Failed. Active goes back to Onboard with ActiveTransition::Unauthorized or ActiveTransition::ResetApiKey. Failed holds the message of an unrecoverable error, and the app stays in Failed.](app_lifecycle.svg)
+
 ## The shape of the lifecycle
 
 ```rust
