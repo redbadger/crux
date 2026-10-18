@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 290" width="700" height="290" role="img" aria-labelledby="title desc">
+<title id="title">Crux: an effect wraps a request, which wraps an operation</title>
+<desc id="desc">Three nested boxes. The outer box is the Effect variant Effect::Http, which holds a Request&lt;HttpRequest&gt;. The Request holds two fields. The operation field holds the HttpRequest, which implements Operation with an Output type of HttpResult. The handle field holds a RequestHandle&lt;HttpResult&gt;, which is Never for a notification, Once for a request and Many for a stream.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<rect x="15" y="15" width="670" height="260" rx="14" fill="#ef4444" fill-opacity="0.08" stroke="#ef4444" stroke-width="1.5"/>
+<text x="33" y="42" text-anchor="start" class="s m" style="fill:#8a8a8a;font-size:15px;font-weight:600">Effect::Http(Request&lt;HttpRequest&gt;)</text>
+<text x="667" y="42" text-anchor="end" class="s" style="fill:#8a8a8a;font-size:12px;font-weight:600">one variant per operation</text>
+<rect x="35" y="62" width="630" height="193" rx="14" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="53" y="89" text-anchor="start" class="s m" style="fill:#8a8a8a;font-size:15px;font-weight:600">Request&lt;HttpRequest&gt;</text>
+<rect x="55" y="108" width="250" height="130" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="180" y="153.3" text-anchor="middle" class="b m">operation</text>
+<text x="180" y="171.3" text-anchor="middle" class="s m">HttpRequest</text>
+<text x="180" y="188.3" text-anchor="middle" class="s">implements Operation</text>
+<text x="180" y="205.3" text-anchor="middle" class="s m">type Output = HttpResult</text>
+<rect x="325" y="108" width="320" height="130" rx="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="485" y="136" text-anchor="middle" class="b m">handle</text>
+<text x="485" y="156" text-anchor="middle" class="s m">RequestHandle&lt;HttpResult&gt;</text>
+<rect x="365.6" y="176.8" width="54.8" height="22.5" rx="11.2" class="pill"/>
+<text x="393" y="192.5" text-anchor="middle" class="l m">Never</text>
+<text x="393" y="220" text-anchor="middle" class="s">notify</text>
+<rect x="461.5" y="176.8" width="47" height="22.5" rx="11.2" class="pill"/>
+<text x="485" y="192.5" text-anchor="middle" class="l m">Once</text>
+<text x="485" y="220" text-anchor="middle" class="s">request</text>
+<rect x="553.5" y="176.8" width="47" height="22.5" rx="11.2" class="pill"/>
+<text x="577" y="192.5" text-anchor="middle" class="l m">Many</text>
+<text x="577" y="220" text-anchor="middle" class="s">stream</text>
+</svg>
