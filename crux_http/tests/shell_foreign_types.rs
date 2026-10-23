@@ -1,4 +1,4 @@
-//! The `foreign_types` of each extension in `crux_time::shell` against its
+//! The `foreign_types` of each extension in `crux_http::shell` against its
 //! shipped sources.
 //!
 //! Type generation checks every name in `foreign_types` for a clash with the
@@ -15,10 +15,10 @@ use crux_core::type_generation::facet::{Dir, ShellExtension};
 /// Every extension the crate ships, with the name of its language.
 fn extensions() -> [(&'static str, &'static ShellExtension); 4] {
     [
-        ("swift", &crux_time::shell::swift::TASK),
-        ("kotlin", &crux_time::shell::kotlin::COROUTINE),
-        ("typescript", &crux_time::shell::typescript::TIMEOUT),
-        ("csharp", &crux_time::shell::csharp::TASK),
+        ("swift", &crux_http::shell::swift::URL_SESSION),
+        ("kotlin", &crux_http::shell::kotlin::URL_CONNECTION),
+        ("typescript", &crux_http::shell::typescript::FETCH),
+        ("csharp", &crux_http::shell::csharp::HTTP_CLIENT),
     ]
 }
 
@@ -126,7 +126,7 @@ fn module_scope_names(language: &str, source: &str) -> Vec<String> {
 }
 
 #[test]
-fn declares_lists_every_module_scope_name_the_sources_declare() {
+fn foreign_types_lists_every_module_scope_name_the_sources_declare() {
     for (language, extension) in extensions() {
         let declared: BTreeSet<&str> = extension.foreign_types.iter().copied().collect();
         let found: BTreeSet<String> = sources(extension)
