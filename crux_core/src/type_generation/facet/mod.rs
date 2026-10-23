@@ -1,20 +1,26 @@
 //! Generation of foreign language types (currently Swift, Kotlin, C#, TypeScript) for Crux
 //!
-//! To use this module, you can add a separate crate from your shared library, possibly
-//! called `shared_types`, which will allow you to reference types from your shared library
-//! during the build process (e.g. in `shared_types/build.rs`).
+//! Type generation runs from your core crate itself — the one usually called
+//! `shared` — which carries a small binary to drive it. There is no separate
+//! crate for it: the examples put the binary in `shared/src/bin/codegen.rs`
+//! and gate it on a feature, so an ordinary build of the core never compiles
+//! it.
 //!
-//! This module is behind the feature called `facet_typegen`, and is not compiled into the default crate.
+//! ```toml
+//! [[bin]]
+//! name = "codegen"
+//! required-features = ["codegen"]
 //!
-//! Ensure that you have the following line in the `Cargo.toml` of your `shared_types` library.
-//!
-//! ```rust,ignore
-//! [build-dependencies]
-//! crux_core = { version = "0.20", features = ["facet_typegen"] }
+//! [features]
+//! facet_typegen = ["crux_core/facet_typegen"]
+//! codegen = ["facet_typegen", "dep:anyhow", "dep:clap"]
 //! ```
 //!
-//! * Your `shared_types` library, will have an empty `lib.rs`, since we only use it for generating foreign language type declarations.
-//! * Create a `build.rs` in your `shared_types` library, that looks something like this:
+//! This module is behind the `facet_typegen` feature, so it is never compiled
+//! into the core you ship.
+//!
+//! The binary takes the language and the output directory from its arguments
+//! and generates into them; stripped of that plumbing, it does this:
 //!
 //! ```rust
 //! # mod shared {
@@ -59,12 +65,12 @@
 //! let typegen = TypeRegistry::new().register_app::<App>()?.build()?;
 //!
 //! typegen.swift(
-//!     &Config::builder("SharedTypes", &output_root.join("swift"))
+//!     &Config::builder("App", &output_root.join("swift"))
 //!     .build()
 //! )?;
 //!
 //! typegen.kotlin(
-//!     &Config::builder("com.crux.example.counter.shared", output_root.join("kotlin"))
+//!     &Config::builder("com.crux.examples.counter", output_root.join("kotlin"))
 //!     .build()
 //! )?;
 //!
@@ -74,7 +80,7 @@
 //! )?;
 //!
 //! typegen.typescript(
-//!     &Config::builder("shared_types", output_root.join("typescript"))
+//!     &Config::builder("app", output_root.join("typescript"))
 //!     .build()
 //! )?;
 //! # Ok(())
@@ -105,10 +111,49 @@
 //! `Core(handler, scope)` in Kotlin, `await Core.create(handler, onView)` in
 //! TypeScript and `new Core(handler)` in C#. A language you do not name is
 //! generated exactly as before.
+//!
+//! ## Shell extensions
+//!
+//! A crate can ship source for the shell, in any of the four languages, as a
+//! [`ShellExtension`]. Name the ones you want with
+//! [`TypeRegistry::shell_extension`] and they are emitted into the generated
+//! module. The main example is a capability's shell handler: the shell side of
+//! its protocol, with the rules for turning a platform response into its
+//! operation's output.
+//!
+//! ```rust
+//! use crux_core::type_generation::facet::{
+//!     ShellExtension, ShellSource, TypeGenError, TypeRegistry,
+//! };
+//!
+//! // Normally `crux_http::shell::EXTENSION`, declared by the capability crate,
+//! // whose source is `include_str!` from the crate rather than written inline.
+//! static EXTENSION: ShellExtension = ShellExtension::new("Http")
+//!     .rust_types(register_types)
+//!     .foreign_types(&["HttpHandler", "IHttpHandler"])
+//!     .swift(ShellSource::stdlib("public protocol HttpHandler: Sendable {}"));
+//!
+//! // A real capability registers each of its operations here, so that the
+//! // types its sources name exist even when the app never sends them:
+//! // `HttpRequest::register_types_facet(registry)`.
+//! fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+//!     Ok(registry)
+//! }
+//!
+//! let typegen = TypeRegistry::new().shell_extension(&EXTENSION)?.build()?;
+//! # let _ = typegen;
+//! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+//! ```
+//!
+//! Registering the extension also registers the types its sources name, so the
+//! whole capability is generated even when the app's `Effect` uses a subset of
+//! it. Nothing generated calls the shipped implementation: your handler holds
+//! an instance and delegates to it, one line per operation.
 mod app;
 mod boltffi;
 mod effects;
 mod plugins;
+mod shell_handler;
 
 use std::{
     fs::{self, File},
@@ -135,7 +180,11 @@ use thiserror::Error;
 pub use self::app::AppMeta;
 pub use self::boltffi::{BoltFfi, CSharpFfi, KotlinFfi, SwiftFfi, TypeScriptFfi};
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
-use self::plugins::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin};
+use self::plugins::{
+    COMPANION_FILE_STEMS, CorePlugin, EffectHandlerPlugin, FFI_BRIDGE_FILE, OperationKindPlugin,
+    RequestIdPlugin, ShellExtensionPlugin,
+};
+pub use self::shell_handler::{RegisterTypes, ShellExtension, ShellSource};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -186,14 +235,43 @@ const RESERVED_TYPE_NAMES: &[&str] = &[
     "ICoreBridge",
     // Only emitted when `boltffi` is configured, but reserved unconditionally:
     // whether a shared type clashes should not depend on how the shell is
-    // wired up.
-    "FfiBridge",
+    // wired up. The type is named like the file it is written into.
+    FFI_BRIDGE_FILE,
+];
+
+/// Names the generated root module imports from the serialization runtime, in
+/// at least one language: the Swift `Serde` module and what it exports, the
+/// Kotlin imports from `com.novi.serde` and `com.novi.bincode`, the
+/// TypeScript `Serializer` and `Deserializer`, and the C# runtime interfaces.
+/// A shell extension declaring one of these would shadow the import or clash
+/// with it.
+const RUNTIME_IMPORT_NAMES: &[&str] = &[
+    "Serde",
+    "Serializer",
+    "Deserializer",
+    "ISerializer",
+    "IDeserializer",
+    "BincodeSerializer",
+    "BincodeDeserializer",
+    "SerializationError",
+    "DeserializationError",
+    "Bytes",
+    "Int128",
+    "UInt128",
+];
+
+/// File names Windows reserves for devices, whatever the extension, so a
+/// companion file cannot be called one of them.
+const WINDOWS_DEVICE_NAMES: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+    "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 ];
 
 pub struct TypeRegistry {
     builder: RegistryBuilder,
     effects: Vec<EffectMeta>,
     app: Option<AppMeta>,
+    shell_extensions: Vec<&'static ShellExtension>,
 }
 
 pub struct CodeGenerator {
@@ -203,6 +281,7 @@ pub struct CodeGenerator {
     handlers: bool,
     core: bool,
     boltffi: Option<BoltFfi>,
+    shell_extensions: Vec<&'static ShellExtension>,
 }
 
 /// The `TypeRegistry` struct stores the registered types so that they can be generated for foreign languages
@@ -215,7 +294,63 @@ impl TypeRegistry {
             builder: RegistryBuilder::new(),
             effects: Vec::new(),
             app: None,
+            shell_extensions: Vec::new(),
         }
+    }
+
+    /// Registers a shell extension, and the types its sources name.
+    ///
+    /// The source is the extension's own, in each language it ships, and it is
+    /// emitted verbatim: into a companion file named after the extension
+    /// (`Http.swift`, `Http.kt` and `Http.cs`) beside the module, and after
+    /// the types in TypeScript. A capability's shell handler is the main
+    /// example: a `HttpHandler` protocol and an implementation of it. Nothing
+    /// generated calls it. The shell's handler holds an instance and delegates
+    /// to it, one line per operation.
+    ///
+    /// ```rust,ignore
+    /// let typegen = TypeRegistry::new()
+    ///     .register_app::<Weather>()?
+    ///     .shell_extension(&crux_http::shell::EXTENSION)?
+    ///     .shell_extension(&crux_time::shell::EXTENSION)?
+    ///     .build()?;
+    /// ```
+    ///
+    /// A capability's handler implements the whole capability, so registering
+    /// it registers every type it names, including the operations this app
+    /// never sends. The extension says which those are, with
+    /// [`ShellExtension::types`].
+    ///
+    /// The crate declares the extension with [`ShellExtension::new`], the
+    /// names its sources declare, and one builder per language it ships:
+    ///
+    /// ```rust,ignore
+    /// pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
+    ///     .rust_types(register_types)
+    ///     .foreign_types(&["HttpHandler", "IHttpHandler"])
+    ///     .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
+    ///     .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")));
+    /// ```
+    ///
+    /// # Errors
+    /// Returns a [`TypeGenError`] if one of the extension's own types cannot
+    /// be registered. An extension name that cannot be used as a file name or
+    /// clashes with another extension's, and a declared name that clashes
+    /// with the generated shell API, another extension or a type of yours,
+    /// are reported by [`build`](Self::build). An extension named after the
+    /// module it is written beside is reported when that language is
+    /// generated.
+    pub fn shell_extension(
+        &mut self,
+        extension: &'static ShellExtension,
+    ) -> Result<&mut Self, TypeGenError> {
+        self.shell_extensions.push(extension);
+
+        if let Some(register) = extension.rust_types {
+            register(self)?;
+        }
+
+        Ok(self)
     }
 
     /// Register all the types used in app `A` to be shared with the Shell.
@@ -352,11 +487,12 @@ impl TypeRegistry {
     /// Builds the type registry and returns a [`CodeGenerator`] instance.
     /// # Errors
     /// Returns a [`TypeGenError`] if the type registration fails, or if a
-    /// registered type or effect variant claims one of the names the generated
-    /// effect handler API uses.
+    /// registered type, effect variant or shell extension claims a name that
+    /// is already taken.
     pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
         let builder = std::mem::take(&mut self.builder);
         let effects: Arc<[EffectMeta]> = std::mem::take(&mut self.effects).into();
+        let shell_extensions = std::mem::take(&mut self.shell_extensions);
         let registry = builder
             .build()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -364,6 +500,7 @@ impl TypeRegistry {
         if !effects.is_empty() {
             validate_names(&registry, &effects)?;
         }
+        validate_shell_extensions(&registry, &shell_extensions)?;
 
         Ok(CodeGenerator {
             registry,
@@ -372,6 +509,7 @@ impl TypeRegistry {
             handlers: true,
             core: true,
             boltffi: None,
+            shell_extensions,
         })
     }
 }
@@ -404,6 +542,163 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
     Ok(())
 }
 
+/// Rejects registered shell extensions whose names cannot be used.
+///
+/// An extension's `name` only names its companion files, so it is checked as
+/// a file name: its shape, and that it does not overwrite another
+/// extension's file or one crux generates. The names in `foreign_types` go into
+/// the generated module, so they are checked against the generated shell
+/// API, the serialization runtime's imports, the app's namespaces, the other
+/// extensions' declarations, and the types registered in the root namespace.
+///
+/// The names are checked whatever language is generated and whether or not
+/// that language has source, because whether a shared type clashes should not
+/// depend on which shell you build today.
+fn validate_shell_extensions(
+    registry: &Registry,
+    extensions: &[&'static ShellExtension],
+) -> Result<(), TypeGenError> {
+    use facet_generate::reflection::format::Namespace;
+    use heck::ToUpperCamelCase as _;
+
+    let namespaces: Vec<&str> = registry
+        .keys()
+        .filter_map(|registered| match &registered.namespace {
+            Namespace::Named(namespace) => Some(namespace.as_str()),
+            Namespace::Root => None,
+        })
+        .collect();
+
+    for (index, extension) in extensions.iter().enumerate() {
+        let name = extension.name;
+
+        validate_extension_name(name)?;
+
+        // Compared ignoring case, because `Http.swift` overwrites
+        // `http.swift` on APFS and NTFS.
+        if let Some(earlier) = extensions[..index]
+            .iter()
+            .find(|earlier| earlier.name.eq_ignore_ascii_case(name))
+        {
+            return Err(TypeGenError::Generation(format!(
+                "shell extension `{name}` is registered after shell extension `{}`, and the two names are the same, ignoring case, so their files would overwrite each other. Two crates may ship an extension with that name, but only one of them can be registered.",
+                earlier.name
+            )));
+        }
+
+        if let Some(file) = COMPANION_FILE_STEMS
+            .iter()
+            .find(|file| file.eq_ignore_ascii_case(name))
+        {
+            return Err(TypeGenError::Generation(format!(
+                "shell extension `{name}` would be written over the generated `{file}` file, which is reserved for other use in the shell API. Please choose a different name for the extension."
+            )));
+        }
+
+        for declared in extension.foreign_types {
+            if RESERVED_TYPE_NAMES.contains(declared) {
+                return Err(TypeGenError::Generation(format!(
+                    "shell extension `{name}` needs the name `{declared}`, which is reserved for other use in the shell API. Please choose a different name for the extension's type."
+                )));
+            }
+
+            if RUNTIME_IMPORT_NAMES.contains(declared) {
+                return Err(TypeGenError::Generation(format!(
+                    "shell extension `{name}` needs the name `{declared}`, which the generated module imports from the serialization runtime. Please choose a different name for the extension's type."
+                )));
+            }
+
+            if namespaces.iter().any(|namespace| {
+                namespace == declared || namespace.to_upper_camel_case() == *declared
+            }) {
+                return Err(TypeGenError::Generation(format!(
+                    "shell extension `{name}` needs the name `{declared}`, which is the name of a namespace the app's types are generated into. Please choose a different name for the extension's type, or rename the namespace."
+                )));
+            }
+
+            if let Some(earlier) = extensions[..index]
+                .iter()
+                .find(|earlier| earlier.foreign_types.contains(declared))
+            {
+                return Err(TypeGenError::Generation(format!(
+                    "shell extensions `{}` and `{name}` both declare `{declared}`, so the generated module would declare it twice. Only one of them can be registered.",
+                    earlier.name
+                )));
+            }
+        }
+    }
+
+    for registered in registry.keys() {
+        if registered.namespace != Namespace::Root {
+            continue;
+        }
+        for extension in extensions {
+            if extension.foreign_types.contains(&registered.name.as_str()) {
+                return Err(TypeGenError::Generation(format!(
+                    "`{}` is declared by the `{}` shell extension, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
+                    registered.name, extension.name
+                )));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Rejects an extension name that cannot be used as a file stem in every
+/// language and on every file system: it has to look like an identifier
+/// (an ASCII letter, then ASCII letters, digits or `_`), and it cannot be a
+/// name Windows reserves for a device.
+fn validate_extension_name(name: &str) -> Result<(), TypeGenError> {
+    let mut chars = name.chars();
+    let identifier = chars
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic())
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_');
+    if !identifier {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` has a name that cannot be used as a file name. The name is written as `{name}.swift`, `{name}.kt` and `{name}.cs`, so it has to start with an ASCII letter and contain only ASCII letters, digits and `_`."
+        )));
+    }
+
+    if WINDOWS_DEVICE_NAMES
+        .iter()
+        .any(|device| device.eq_ignore_ascii_case(name))
+    {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` has a name Windows reserves for a device, so its files could not be written there. Please choose a different name for the extension."
+        )));
+    }
+
+    Ok(())
+}
+
+/// The base name of the file a package or namespace writes its own module
+/// into, for the languages that derive it from the last dotted segment
+/// (Kotlin and C#).
+///
+/// Swift does not: see [`swift_module_file_stem`].
+fn module_file_stem(package_name: &str) -> String {
+    use heck::ToUpperCamelCase as _;
+
+    package_name
+        .rsplit('.')
+        .next()
+        .unwrap_or(package_name)
+        .to_upper_camel_case()
+}
+
+/// The base name of the file the Swift package writes its own module into.
+///
+/// facet-generate's Swift installer names the module's directory and its
+/// file after the whole package name in `UpperCamelCase`, so a package called
+/// `shared_types` writes `Sources/SharedTypes/SharedTypes.swift`.
+fn swift_module_file_stem(package_name: &str) -> String {
+    use heck::ToUpperCamelCase as _;
+
+    package_name.to_upper_camel_case()
+}
+
 impl Default for TypeRegistry {
     fn default() -> Self {
         Self::new()
@@ -419,7 +714,7 @@ impl CodeGenerator {
     /// # let mut typegen = TypeRegistry::new().build()?;
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.swift(
-    ///     &Config::builder("SharedTypes", output_root.join("swift"))
+    ///     &Config::builder("App", output_root.join("swift"))
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -429,7 +724,9 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn swift(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Swift types");
-        self.check_boltffi()?;
+        // Swift's module is a directory named for the package, holding a file
+        // of the same name, both in `UpperCamelCase`.
+        self.check(Some(&swift_module_file_stem(&config.package_name)))?;
         let path = config.out_dir.join(&config.package_name);
 
         fs::create_dir_all(&path)?;
@@ -444,6 +741,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+            installer = installer.plugin(shell_extensions);
         }
         installer
             .external_packages(&config.external_packages)
@@ -471,7 +771,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn kotlin(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Kotlin types");
-        self.check_boltffi()?;
+        self.check(Some(&module_file_stem(&config.package_name)))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -489,6 +789,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+            installer = installer.plugin(shell_extensions);
         }
         installer
             .external_packages(&config.external_packages)
@@ -515,7 +818,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn csharp(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating C# types");
-        self.check_boltffi()?;
+        self.check(Some(&module_file_stem(&config.package_name)))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -534,6 +837,9 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
+        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+            installer = installer.plugin(shell_extensions);
+        }
         installer
             .external_packages(&config.external_packages)
             .generate(&self.registry)?;
@@ -549,7 +855,7 @@ impl CodeGenerator {
     /// # let mut typegen = TypeRegistry::new().build()?;
     /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
     /// typegen.typescript(
-    ///     &Config::builder("shared_types", output_root.join("typescript"))
+    ///     &Config::builder("app", output_root.join("typescript"))
     ///     .build()
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
@@ -558,7 +864,7 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn typescript(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating TypeScript types");
-        self.check_boltffi()?;
+        self.check(None)?;
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
@@ -572,6 +878,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+            installer = installer.plugin(shell_extensions);
         }
         installer
             .external_packages(&config.external_packages)
@@ -682,6 +991,22 @@ impl CodeGenerator {
         self
     }
 
+    /// Everything the configuration is checked for before a language is
+    /// generated. The builder methods are infallible, so this is where a
+    /// configuration that cannot work is reported.
+    ///
+    /// `module_file` is what the module calls its own source file in this
+    /// language, which a companion file beside it must not take. TypeScript's
+    /// module is one file with the sources appended to it, so it has no
+    /// companion files and passes `None`.
+    fn check(&self, module_file: Option<&str>) -> Result<(), TypeGenError> {
+        self.check_boltffi()?;
+        if let Some(module_file) = module_file {
+            self.check_shell_extension_files(module_file)?;
+        }
+        Ok(())
+    }
+
     /// The bridge is generated as part of `Core`, so asking for one without a
     /// `Core` to put it in is a mistake worth saying out loud — silently
     /// generating nothing would leave the shell with a missing constructor and
@@ -730,5 +1055,54 @@ impl CodeGenerator {
         self.app
             .clone()
             .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
+    }
+
+    /// An extension's source is written beside the module as `<Name>.swift`,
+    /// `<Name>.kt` or `<Name>.cs`, and the module names its own file after the
+    /// last segment of the package or namespace. A package called `Crux.Http`
+    /// would therefore have the `Http` extension overwrite `Crux/Http/Http.cs`
+    /// (the types themselves), so it is rejected while both files still
+    /// exist. Names are compared ignoring case, because `Http.swift`
+    /// overwrites `http.swift` on APFS and NTFS.
+    ///
+    /// This is the one check that needs the [`Config`], so it is made here and
+    /// not in [`validate_shell_extensions`].
+    fn check_shell_extension_files(&self, module_file: &str) -> Result<(), TypeGenError> {
+        for extension in &self.shell_extensions {
+            if extension.name.eq_ignore_ascii_case(module_file) {
+                return Err(TypeGenError::Generation(format!(
+                    "the `{name}` shell extension is written beside the generated module, which names its own file `{module_file}`. That is the same name, ignoring case, and one file overwrites the other on a case-insensitive file system. The package or namespace ends in `{module_file}`. Generate into a package of another name, or register an extension that is named differently.",
+                    name = extension.name
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// The plugin that emits the registered shell extensions, if any were
+    /// registered.
+    ///
+    /// It is installed outside the `handlers` flag: an extension's source is
+    /// plain code, and a capability's shipped handler is as usable from a
+    /// hand-written `switch` on `Effect` as from the generated dispatcher, so
+    /// [`without_effect_handlers`](Self::without_effect_handlers) does not
+    /// take it away.
+    fn shell_extension_plugin(&self, package_name: &str) -> Option<ShellExtensionPlugin> {
+        use facet_generate::reflection::format::Namespace;
+
+        if self.shell_extensions.is_empty() {
+            return None;
+        }
+        let last_type = self
+            .registry
+            .keys()
+            .rfind(|name| name.namespace == Namespace::Root)
+            .cloned();
+        Some(ShellExtensionPlugin::new(
+            &self.shell_extensions,
+            package_name,
+            last_type,
+        ))
     }
 }

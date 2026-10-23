@@ -43,6 +43,15 @@ use crate::type_generation::facet::{AppMeta, BoltFfi, EffectMeta};
 /// are in the standard library.
 const KOTLIN_COROUTINES_VERSION: &str = "1.10.2";
 
+/// The stem of the companion file the bridge is written into, beside the
+/// module: `FfiBridge.swift`, `FfiBridge.kt` and `FfiBridge.cs`.
+pub const FFI_BRIDGE_FILE: &str = "FfiBridge";
+
+/// The stems of every companion file this plugin can write beside the module,
+/// whether or not it writes them for this configuration. A shell extension's
+/// file must not take one of these names.
+pub const COMPANION_FILE_STEMS: &[&str] = &[FFI_BRIDGE_FILE];
+
 /// Emits `CoreBridge` and `Core`, and — when the FFI bindings are named —
 /// `FfiBridge`.
 #[derive(Debug, Clone)]
@@ -127,7 +136,7 @@ impl EmitterPlugin<Swift> for CorePlugin {
             |_| vec![],
             |contents| {
                 vec![CompanionFile {
-                    file_name: "FfiBridge.swift".to_string(),
+                    file_name: format!("{FFI_BRIDGE_FILE}.swift"),
                     // `Data` is Foundation's; `CoreFfi` is the FFI module's.
                     imports: vec!["Foundation".to_string(), swift.module.clone()],
                     contents,
@@ -212,7 +221,7 @@ impl EmitterPlugin<Kotlin> for CorePlugin {
                     .collect();
 
                 vec![CompanionFile {
-                    file_name: "FfiBridge.kt".to_string(),
+                    file_name: format!("{FFI_BRIDGE_FILE}.kt"),
                     imports,
                     contents,
                 }]
@@ -299,7 +308,7 @@ impl EmitterPlugin<CSharp> for CorePlugin {
                     .collect();
 
                 vec![CompanionFile {
-                    file_name: "FfiBridge.cs".to_string(),
+                    file_name: format!("{FFI_BRIDGE_FILE}.cs"),
                     imports,
                     contents,
                 }]
