@@ -147,7 +147,7 @@ jobs:
         env:
           RUSTC_WRAPPER: ""
 
-  # JS/TS web shells. Needs: Rust, wasm32 target, BoltFFI, Node.js, pnpm.
+  # JS/TS web shells. Needs: Rust, wasm32 target, BoltFFI, Node.js, TypeScript, pnpm.
   # All examples have web-nextjs; only counter has web-react-router.
   web-js:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -208,6 +208,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: lts/*
+
+      - name: Install TypeScript
+        # `boltffi pack wasm` runs `tsc` from PATH. The ubuntu-26.04 image has no
+        # global `tsc`, so install one.
+        run: npm install --global typescript@5.9
 
       - uses: pnpm/action-setup@v4
         with:
