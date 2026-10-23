@@ -112,6 +112,12 @@ Expect("Clear of a timer beyond Task.Delay's limit answers with its id", farClea
 var farAnswer = await far;
 Expect("a cleared timer beyond Task.Delay's limit settles with its id", farAnswer.Value, 5UL);
 
+// `FromElapsed` uses whole ticks. A `double` of the total seconds rounds the
+// last tick before a whole second up to that second.
+var almost = TaskTimeHandler.FromElapsed(TimeSpan.FromTicks(1_700_000_000L * TimeSpan.TicksPerSecond - 1));
+Expect("FromElapsed does not round up to the next second", almost.Seconds, 1_699_999_999UL);
+Expect("FromElapsed keeps the last tick of the second", almost.Nanos, 999_999_900U);
+
 if (failures.Count == 0)
 {
     Console.WriteLine("HARNESS OK");
