@@ -90,16 +90,19 @@ const main = async () => {
   expect("clear of an unknown timer answers with the id it was given", unknown.value, 99n);
 
   // A timer past `setTimeout`'s limit of 2^31 - 1 ms (about 24.8 days), which
-  // treats a longer delay as 0 and would fire it at once. The clock and the
+  // treats a longer delay as 0 and would fire it at once. The clocks and the
   // timers are stubbed so that no real time is spent: a stubbed timer only
-  // fires when the harness fires it.
+  // fires when the harness fires it. The handler measures a delay with
+  // `performance.now()`, and `Date.now()` moves with it.
   const realNow = Date.now;
+  const realPerformanceNow = performance.now;
   const realSetTimeout = globalThis.setTimeout;
   const realClearTimeout = globalThis.clearTimeout;
   const limit = 2 ** 31 - 1;
   let offset = 0;
   let scheduled = [];
   Date.now = () => realNow() + offset;
+  performance.now = () => realPerformanceNow.call(performance) + offset;
   globalThis.setTimeout = (callback, delay) => {
     const timer = { callback, delay, cleared: false };
     scheduled.push(timer);
@@ -144,6 +147,7 @@ const main = async () => {
     expect("a cleared long timer settles with its id", cancelled?.value, 6n);
   } finally {
     Date.now = realNow;
+    performance.now = realPerformanceNow;
     globalThis.setTimeout = realSetTimeout;
     globalThis.clearTimeout = realClearTimeout;
   }
