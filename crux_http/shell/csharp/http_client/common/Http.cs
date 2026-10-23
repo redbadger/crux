@@ -44,6 +44,19 @@ public interface IHttpHandler
 /// not parse is <c>HttpError.Url</c>, a cancellation or timeout is
 /// <c>HttpError.Timeout</c>, and everything else is <c>HttpError.Io</c>.
 /// </para>
+/// <para>
+/// The core builds <c>operation.Url</c> with <c>url::Url</c>, so the URL is
+/// absolute. A relative URL, or a URL whose scheme is not <c>http</c> or
+/// <c>https</c>, is <c>HttpError.Url</c>. A <c>GET</c> or <c>HEAD</c> with a
+/// body is <c>HttpError.Io</c>, and the handler does not send it.
+/// </para>
+/// <para>
+/// The client follows redirects by the rules of its handler, and the core gets
+/// the last response. <c>SocketsHttpHandler</c>, the default on most
+/// platforms, follows at most 50 redirects and does not follow a redirect from
+/// <c>https</c> to <c>http</c>. To change this, pass a client of your own with
+/// <c>AllowAutoRedirect</c> set on its handler.
+/// </para>
 /// </remarks>
 public sealed class HttpClientHttpHandler : IHttpHandler
 {
@@ -91,6 +104,12 @@ public sealed class HttpClientHttpHandler : IHttpHandler
             || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
             return new HttpResult.Err(new HttpError.Url($"could not parse URL: {operation.Url}"));
+        }
+
+        var name = operation.Method.ToUpperInvariant();
+        if (operation.Body.Length > 0 && (name is "GET" or "HEAD"))
+        {
+            return new HttpResult.Err(new HttpError.Io($"{name} request cannot carry a body"));
         }
 
         HttpMethod method;

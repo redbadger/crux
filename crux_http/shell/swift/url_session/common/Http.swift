@@ -40,6 +40,15 @@ public protocol HttpHandler: Sendable {
 ///   `.unsupportedURL`, are `HttpError.url`;
 /// - `URLError.timedOut` is `HttpError.timeout`;
 /// - everything else is `HttpError.io`, carrying the error's description.
+///
+/// The core builds `operation.url` with `url::Url`, so the URL is absolute. A
+/// relative URL is `HttpError.url`. A `GET` or `HEAD` with a body is
+/// `HttpError.io`, and the handler does not send it.
+///
+/// ## Redirects
+///
+/// The session follows redirects by its own rules, and the core gets the last
+/// response. A session delegate can change those rules.
 public final class URLSessionHttpHandler: HttpHandler {
     private let session: URLSession
 
@@ -57,6 +66,11 @@ public final class URLSessionHttpHandler: HttpHandler {
     public func request(_ operation: HttpRequest) async -> HttpResult {
         guard let url = URL(string: operation.url) else {
             return .err(.url("could not parse URL: \(operation.url)"))
+        }
+
+        let method = operation.method.uppercased()
+        if !operation.body.isEmpty, method == "GET" || method == "HEAD" {
+            return .err(.io("\(method) request cannot carry a body"))
         }
 
         var urlRequest = URLRequest(url: url)
