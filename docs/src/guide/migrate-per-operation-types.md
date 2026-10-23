@@ -247,7 +247,7 @@ The operations and their outputs:
 // Rust
 pub enum ValueResult { Ok(Value), Err(KeyValueError) }
 pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
-pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
+pub enum KeysResult  { Ok(KeyPage), Err(KeyValueError) }
 
 pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
 ```
@@ -660,48 +660,48 @@ mechanism; this is the migration.
 
    ```swift
    // Swift
-   let http = URLSessionHttpHandler()
-   let kv = UserDefaultsKeyValueHandler(suiteName: "com.example.app.store")
-   let time = TaskTimeHandler()
+   let httpHandler = URLSessionHttpHandler()
+   let kvHandler = UserDefaultsKeyValueHandler(suiteName: "com.example.app.store")
+   let timeHandler = TaskTimeHandler()
 
-   func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
-   func kvGet(_ operation: Get) async -> ValueResult { await kv.get(operation) }
-   func kvSet(_ operation: Set) async -> ValueResult { await kv.set(operation) }
-   func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
-   func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
+   func http(_ operation: HttpRequest) async -> HttpResult { await httpHandler.request(operation) }
+   func kvGet(_ operation: Get) async -> ValueResult { await kvHandler.get(operation) }
+   func kvSet(_ operation: Set) async -> ValueResult { await kvHandler.set(operation) }
+   func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await timeHandler.notifyAfter(operation) }
+   func timeClear(_ operation: Clear) async -> TimerId { await timeHandler.clear(operation) }
    ```
 
    ```kotlin
    // Kotlin
-   private val http = UrlConnectionHttpHandler { it.connectTimeout = 15_000 }
-   private val kv = FileKeyValueHandler(File(context.filesDir, "key_value_store"))
-   private val time = CoroutineTimeHandler()
+   private val httpHandler = UrlConnectionHttpHandler { it.connectTimeout = 15_000 }
+   private val kvHandler = FileKeyValueHandler(File(context.filesDir, "key_value_store"))
+   private val timeHandler = CoroutineTimeHandler()
 
-   override suspend fun http(operation: HttpRequest) = http.request(operation)
-   override suspend fun kvGet(operation: Get) = kv.get(operation)
-   override suspend fun timeClear(operation: Clear) = time.clear(operation)
+   override suspend fun http(operation: HttpRequest) = httpHandler.request(operation)
+   override suspend fun kvGet(operation: Get) = kvHandler.get(operation)
+   override suspend fun timeClear(operation: Clear) = timeHandler.clear(operation)
    ```
 
    ```typescript
    // TypeScript
-   private readonly http = createFetchHttpHandler();
-   private readonly kv = createLocalStorageKeyValueHandler("app.");
-   private readonly time = new TimeoutTimeHandler();
+   private readonly httpHandler = createFetchHttpHandler();
+   private readonly kvHandler = createLocalStorageKeyValueHandler("app.");
+   private readonly timeHandler = new TimeoutTimeHandler();
 
-   http(operation: HttpRequest) { return this.http.request(operation); }
-   kvGet(operation: Get) { return this.kv.get(operation); }
-   timeClear(operation: Clear) { return this.time.clear(operation); }
+   http(operation: HttpRequest) { return this.httpHandler.request(operation); }
+   kvGet(operation: Get) { return this.kvHandler.get(operation); }
+   timeClear(operation: Clear) { return this.timeHandler.clear(operation); }
    ```
 
    ```csharp
    // C#
-   private readonly IHttpHandler http = new HttpClientHttpHandler();
-   private readonly IKeyValueHandler kv = new FileKeyValueHandler(storeDirectory);
-   private readonly ITimeHandler time = new TaskTimeHandler();
+   private readonly IHttpHandler httpHandler = new HttpClientHttpHandler();
+   private readonly IKeyValueHandler kvHandler = new FileKeyValueHandler(storeDirectory);
+   private readonly ITimeHandler timeHandler = new TaskTimeHandler();
 
-   public Task<HttpResult> Http(HttpRequest operation) => http.Request(operation);
-   public Task<ValueResult> KvGet(Get operation) => kv.Get(operation);
-   public Task<TimerId> TimeClear(Clear operation) => time.Clear(operation);
+   public Task<HttpResult> Http(HttpRequest operation) => httpHandler.Request(operation);
+   public Task<ValueResult> KvGet(Get operation) => kvHandler.Get(operation);
+   public Task<TimerId> TimeClear(Clear operation) => timeHandler.Clear(operation);
    ```
 
    The timer table is state, so construct one `TaskTimeHandler` (or its
@@ -766,8 +766,16 @@ where it touches main-actor state:
 ```swift
 // Swift
 nonisolated extension WeatherHandler: EffectHandler {
-    public func kvGet(_ operation: Get) async -> ValueResult {
-        await MainActor.run { keyValueStore.get(operation.key) }
+    public func getLocation(_: GetLocation) async -> Location? {
+        guard let coordinate = await currentCoordinate() else { return nil }
+        return Location(lat: coordinate.latitude, lon: coordinate.longitude)
+    }
+
+    // CoreLocation's delegate runs on the main actor. Only the coordinates,
+    // which are `Sendable`, come back.
+    @MainActor
+    private func currentCoordinate() async -> (latitude: Double, longitude: Double)? {
+        // …
     }
 }
 ```
