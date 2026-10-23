@@ -28,6 +28,16 @@ export interface HttpHandler {
 /// `httpErrorUrl`, an abort or timeout is `httpErrorTimeout`, and everything
 /// else is `httpErrorIo`.
 ///
+/// The core builds `operation.url` with `url::Url`, so the URL is absolute. A
+/// relative URL is `httpErrorUrl`. A `GET` or `HEAD` with a body is
+/// `httpErrorIo`, and the handler does not send it.
+///
+/// ## Redirects
+///
+/// `fetch` follows redirects by the platform's rules, and the core gets the
+/// last response. The Fetch standard follows at most 20 redirects, and removes
+/// the `Authorization` header when a redirect leaves the origin.
+///
 /// @param fetchImpl the `fetch` to use; the global one when omitted, read at
 ///   call time so that a test can install its own first.
 export function createFetchHttpHandler(
@@ -47,6 +57,12 @@ export function createFetchHttpHandler(
       }
 
       const method = operation.method.toUpperCase();
+      if (operation.body.length > 0 && (method === "GET" || method === "HEAD")) {
+        return httpResultErr(
+          httpErrorIo(`${method} request cannot carry a body`),
+        );
+      }
+
       const init: RequestInit = {
         method,
         // Header names and values cross the boundary as plain strings, with no
@@ -54,10 +70,9 @@ export function createFetchHttpHandler(
         headers: operation.headers.map(
           (header) => [header.name, header.value] as [string, string],
         ),
-        // `fetch` rejects a GET or HEAD that carries a body, and an empty body
-        // is no body.
+        // An empty body is no body.
         body:
-          operation.body.length > 0 && method !== "GET" && method !== "HEAD"
+          operation.body.length > 0
             ? // Copy, because the request may outlive the operation's buffer.
               new Uint8Array(operation.body)
             : null,
