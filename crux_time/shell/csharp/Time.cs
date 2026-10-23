@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -64,20 +66,39 @@ public sealed class TaskTimeHandler : ITimeHandler
     /// <summary>The timers that have not fired or been cleared, by id.</summary>
     private readonly ConcurrentDictionary<ulong, CancellationTokenSource> _timers = new();
 
-    public Task<Instant> Now(Now operation)
+    /// <summary>The largest whole number of seconds that fits in a <c>TimeSpan</c>, less one.</summary>
+    private const ulong MaxSeconds = (ulong)(long.MaxValue / TimeSpan.TicksPerSecond) - 1;
+
+    public Task<Instant> Now(Now operation) => Task.FromResult(FromElapsed(DateTime.UtcNow - Epoch));
+
+    /// <summary>
+    /// The <c>Instant</c> that is <paramref name="elapsed"/> after the Unix
+    /// epoch, or the epoch itself if <paramref name="elapsed"/> is negative.
+    /// </summary>
+    /// <remarks>
+    /// The calculation uses whole ticks, not <c>TotalSeconds</c>. A
+    /// <c>double</c> can round up to the next second, which would put the
+    /// answer one second ahead.
+    /// </remarks>
+    public static Instant FromElapsed(TimeSpan elapsed)
     {
-        var elapsed = DateTime.UtcNow - Epoch;
-        var seconds = (ulong)elapsed.TotalSeconds;
-        var nanos = (uint)((elapsed.Ticks % TimeSpan.TicksPerSecond) * 100);
-        return Task.FromResult(new Instant { Seconds = seconds, Nanos = nanos });
+        var ticks = Math.Max(elapsed.Ticks, 0);
+        return new Instant
+        {
+            Seconds = (ulong)(ticks / TimeSpan.TicksPerSecond),
+            Nanos = (uint)(ticks % TimeSpan.TicksPerSecond * 100),
+        };
     }
 
     public Task<TimerId> NotifyAt(NotifyAt operation)
     {
-        var target = Epoch
-            + TimeSpan.FromSeconds(operation.Instant.Seconds)
-            + TimeSpan.FromTicks(operation.Instant.Nanos / 100);
-        return Sleep(operation.Id, target - DateTime.UtcNow);
+        // The wall clock gives the delay once. After that, the delay is
+        // measured on a clock that does not jump when the wall clock is set.
+        // An instant too far ahead for a `TimeSpan` waits for as long as one
+        // can hold.
+        var target = (long)Math.Min(operation.Instant.Seconds, MaxSeconds) * TimeSpan.TicksPerSecond
+            + operation.Instant.Nanos / 100;
+        return Sleep(operation.Id, TimeSpan.FromTicks(target - (DateTime.UtcNow - Epoch).Ticks));
     }
 
     public Task<TimerId> NotifyAfter(NotifyAfter operation) =>
@@ -87,11 +108,18 @@ public sealed class TaskTimeHandler : ITimeHandler
     public Task<TimerId> Clear(Clear operation)
     {
         // Cancelling wakes the delay, so the task waiting on it completes and
-        // answers too. Nothing acts on that answer.
-        if (_timers.TryRemove(operation.Id.Value, out var cancellation))
+        // answers too. Nothing acts on that answer. The sleeping task takes the
+        // timer out of the table and disposes of it.
+        if (_timers.TryGetValue(operation.Id.Value, out var cancellation))
         {
-            cancellation.Cancel();
-            cancellation.Dispose();
+            try
+            {
+                cancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The timer fired and was disposed of after the lookup.
+            }
         }
         return Task.FromResult(operation.Id);
     }
@@ -99,16 +127,23 @@ public sealed class TaskTimeHandler : ITimeHandler
     private async Task<TimerId> Sleep(TimerId id, TimeSpan delay)
     {
         var cancellation = new CancellationTokenSource();
+        var token = cancellation.Token;
         _timers[id.Value] = cancellation;
         try
         {
-            // `Task.Delay` throws for a delay above `uint.MaxValue - 1` ms
-            // (about 49.7 days), so wait in chunks no longer than that.
-            var deadline = DateTime.UtcNow + delay;
-            while (deadline - DateTime.UtcNow is var remaining && remaining > TimeSpan.Zero)
+            // `Stopwatch` measures the delay, because it does not jump when the
+            // wall clock is set. `Task.Delay` throws for a delay above
+            // `uint.MaxValue - 1` ms (about 49.7 days), so wait in chunks no
+            // longer than that. It also truncates to whole milliseconds, so
+            // round up: a timer must not fire early, and a delay of 0 ms would
+            // make this loop spin.
+            var start = Stopwatch.GetTimestamp();
+            while (delay - Stopwatch.GetElapsedTime(start) is var remaining && remaining > TimeSpan.Zero)
             {
-                await Task.Delay(remaining < MaxDelay ? remaining : MaxDelay, cancellation.Token)
-                    .ConfigureAwait(false);
+                var chunk = remaining < MaxDelay
+                    ? TimeSpan.FromMilliseconds(Math.Ceiling(remaining.TotalMilliseconds))
+                    : MaxDelay;
+                await Task.Delay(chunk, token).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -117,10 +152,9 @@ public sealed class TaskTimeHandler : ITimeHandler
         }
         finally
         {
-            if (_timers.TryRemove(id.Value, out var fired))
-            {
-                fired.Dispose();
-            }
+            // Only this timer's own entry: a later timer can have the same id.
+            _timers.TryRemove(new KeyValuePair<ulong, CancellationTokenSource>(id.Value, cancellation));
+            cancellation.Dispose();
         }
 
         return id;

@@ -1,3 +1,4 @@
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -6,6 +7,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.nanoseconds
+import kotlin.time.Duration.Companion.seconds
 
 /// The shell side of `crux_time`, as one method per operation.
 ///
@@ -53,7 +57,11 @@ interface TimeHandler {
 /// `CoroutineScope` is written out in full, and `async` used where `launch`
 /// would read better, because the generated module's header already imports
 /// both of those names above this file's own imports, and Kotlin rejects the
-/// same name twice.
+/// same name twice. `kotlin.time.Duration` is written out in full because the
+/// generated module has a `Duration` of its own.
+///
+/// If [scope] is cancelled, each pending `notifyAt` and `notifyAfter` throws
+/// the `CancellationException`, and does not answer.
 ///
 /// @param scope the scope the timers run in. The default one outlives every
 ///   request, which is what a timer has to do; pass a scope of your own — an
@@ -71,14 +79,12 @@ class CoroutineTimeHandler(
     }
 
     override suspend fun notifyAt(operation: NotifyAt): TimerId {
-        val target =
-            (operation.instant.seconds * 1_000uL).toLong() +
-                (operation.instant.nanos / 1_000_000u).toLong()
-        return sleep(operation.id, target - System.currentTimeMillis())
+        val target = clamp(operation.instant.seconds).seconds + operation.instant.nanos.toLong().nanoseconds
+        return sleep(operation.id, target - System.currentTimeMillis().milliseconds)
     }
 
     override suspend fun notifyAfter(operation: NotifyAfter): TimerId =
-        sleep(operation.id, (operation.duration.nanos / 1_000_000uL).toLong())
+        sleep(operation.id, clamp(operation.duration.nanos).nanoseconds)
 
     override suspend fun clear(operation: Clear): TimerId {
         // Cancelling completes the timer's job, which settles the call waiting
@@ -87,21 +93,34 @@ class CoroutineTimeHandler(
         return operation.id
     }
 
+    /// `delay` rounds a part of a millisecond up, so a timer never fires
+    /// early.
     private suspend fun sleep(
         id: TimerId,
-        millis: Long,
+        duration: kotlin.time.Duration,
     ): TimerId {
         val fired = CompletableDeferred<TimerId>()
         // Lazy, so that the timer is in the table before it can complete and
         // ask to be taken out again.
-        val timer = scope.async(start = CoroutineStart.LAZY) { if (millis > 0) delay(millis) }
+        val timer = scope.async(start = CoroutineStart.LAZY) { delay(duration) }
         timers[id.value] = timer
-        timer.invokeOnCompletion {
-            timers.remove(id.value)
-            fired.complete(id)
+        timer.invokeOnCompletion { cause ->
+            // `clear` takes the timer out of the table before it cancels it, so
+            // a timer that is still listed was cancelled by its scope.
+            val listed = timers.remove(id.value, timer)
+            if (cause is CancellationException && listed) {
+                fired.cancel(cause)
+            } else {
+                fired.complete(id)
+            }
         }
         timer.start()
 
         return fired.await()
     }
+
+    /// [count] as a `Long`, or `Long.MAX_VALUE` if it does not fit. Even in
+    /// nanoseconds, that is more than 292 years, so the timer does not fire
+    /// while the process runs.
+    private fun clamp(count: ULong): Long = count.coerceAtMost(Long.MAX_VALUE.toULong()).toLong()
 }
