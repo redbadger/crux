@@ -205,8 +205,8 @@ The declaration is a `ShellExtension` in a `static` called `EXTENSION`, in a `sh
 ```rust,ignore
 // Rust: crux_time/src/shell.rs
 pub static EXTENSION: ShellExtension = ShellExtension::new("Time")
-    .types(register_types)
-    .declares(&[
+    .rust_types(register_types)
+    .foreign_types(&[
         "TimeHandler",
         "ITimeHandler",
         "TaskTimeHandler",
@@ -220,7 +220,7 @@ pub static EXTENSION: ShellExtension = ShellExtension::new("Time")
     .csharp(ShellSource::stdlib(include_str!("../shell/csharp/Time.cs")));
 ```
 
-`name` names the file the app receives (`Time.swift`). `types` names a function that registers every operation and output the sources mention. The shipped file implements the whole capability, so all of its types have to be generated even for an app whose `Effect` carries only some of them. A language you do not name is not shipped; the app implements those methods itself, as it would have without you.
+`name` names the file the app receives (`Time.swift`). `rust_types` names a function that registers every operation and output the sources mention. The shipped file implements the whole capability, so all of its types have to be generated even for an app whose `Effect` carries only some of them. A language you do not name is not shipped; the app implements those methods itself, as it would have without you.
 
 Each file declares a protocol called `<Name>Handler` (`I<Name>Handler` in C#) with one method per operation, taking the operation and returning exactly what the generated `EffectHandler` method for that operation returns — the output for a request, nothing for a notification, an `EffectSink` for a stream — and at least one implementation of it. Matching the shapes is what makes the app's delegation a single expression:
 
@@ -238,7 +238,7 @@ public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
 }
 ```
 
-The source refers to the generated types such as `Now`, `Instant` and `TimerId` unqualified, because it is emitted into the same module they are. It carries its own imports after the module header type generation prepends. `declares` lists every name the sources declare at module scope, in any of the four languages: the protocols, the implementations, and in TypeScript any top-level helper or constant, exported or not, because the source is appended to the module file. When the app builds its registry, each of those names is checked against the generated shell API, the serialization runtime's imports, the app's root types and namespaces, and the names other registered extensions declare, so a clash is a generation error rather than a module that fails to compile. Keep the list complete when you add a declaration. A test can check that by scanning the sources for module-scope declarations and comparing them with `declares`, and the bundled crates each have one, in `tests/shell_declares.rs`.
+The source refers to the generated types such as `Now`, `Instant` and `TimerId` unqualified, because it is emitted into the same module they are. It carries its own imports after the module header type generation prepends. `foreign_types` lists every name the sources declare at module scope, in any of the four languages: the protocols, the implementations, and in TypeScript any top-level helper or constant, exported or not, because the source is appended to the module file. When the app builds its registry, each of those names is checked against the generated shell API, the serialization runtime's imports, the app's root types and namespaces, and the names other registered extensions declare, so a clash is a generation error rather than a module that fails to compile. Keep the list complete when you add a declaration. A test can check that by scanning the sources for module-scope declarations and comparing them with `foreign_types`, and the bundled crates each have one, in `tests/shell_foreign_types.rs`.
 
 A few constraints keep a shipped file safe to drop into any app:
 

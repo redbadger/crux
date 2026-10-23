@@ -38,9 +38,9 @@ use crate::protocol::HttpRequest;
 /// a different one — and the protocol rules are the same wherever it comes
 /// from.
 pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
-    .types(register_types)
+    .rust_types(register_types)
     // The names the shipped sources declare at module scope, in any language.
-    .declares(&[
+    .foreign_types(&[
         "HttpHandler",
         "IHttpHandler",
         "URLSessionHttpHandler",

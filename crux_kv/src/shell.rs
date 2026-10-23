@@ -38,9 +38,9 @@ use crate::operation::{Delete, Exists, Get, ListKeys, Set};
 /// is the shell's choice — each implementation takes it as configuration, and a
 /// shell that wants a different one conforms its own type to the protocol.
 pub static EXTENSION: ShellExtension = ShellExtension::new("KeyValue")
-    .types(register_types)
+    .rust_types(register_types)
     // The names the shipped sources declare at module scope, in any language.
-    .declares(&[
+    .foreign_types(&[
         "KeyValueHandler",
         "IKeyValueHandler",
         "UserDefaultsKeyValueHandler",
