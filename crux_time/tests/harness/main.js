@@ -100,8 +100,10 @@ const main = async () => {
   const realClearTimeout = globalThis.clearTimeout;
   const limit = 2 ** 31 - 1;
   let offset = 0;
+  // A change to the wall clock alone, as when the user sets the time.
+  let jump = 0;
   let scheduled = [];
-  Date.now = () => realNow() + offset;
+  Date.now = () => realNow() + offset + jump;
   performance.now = () => realPerformanceNow.call(performance) + offset;
   globalThis.setTimeout = (callback, delay) => {
     const timer = { callback, delay, cleared: false };
@@ -145,6 +147,18 @@ const main = async () => {
     expect("clear cancels the chunk that is pending", chunk?.cleared, true);
     await far;
     expect("a cleared long timer settles with its id", cancelled?.value, 6n);
+
+    // The wall clock goes back an hour while a one-second timer waits. The
+    // timer answers after one second, not after one hour and one second.
+    let unmoved;
+    time
+      .notifyAfter(new shared.NotifyAfter(new shared.TimerId(7n), new shared.Duration(1_000_000_000n)))
+      .then((id) => (unmoved = id));
+    jump = -3_600_000;
+    fireNext("a one-second timer schedules its wait");
+    await Promise.resolve();
+    expect("a timer is not extended when the wall clock goes back", unmoved?.value, 7n);
+    jump = 0;
   } finally {
     Date.now = realNow;
     performance.now = realPerformanceNow;

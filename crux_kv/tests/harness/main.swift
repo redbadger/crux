@@ -138,6 +138,11 @@ expect(
 defaults.set("a preference, not a stored value", forKey: "zeta")
 expect("get of a key whose value is not Data is Value.none", bytes(await kv.get(Get(key: "zeta"))) == nil)
 expect("exists agrees with get about a key whose value is not Data", present(await kv.exists(Exists(key: "zeta"))), false)
+expect(
+    "listKeys agrees with get about a key whose value is not Data",
+    keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
+    ["alpha", awkward, "beta"]
+)
 
 UserDefaults.standard.removePersistentDomain(forName: suiteName)
 

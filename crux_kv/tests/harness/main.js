@@ -175,6 +175,7 @@ const main = async () => {
     storage.setItem("foreign", foreign);
     const unreadable = (result) => result.kind === "Err" && result.value.kind === "Other";
     expect(`get of ${foreign} answers with an error`, unreadable(await bare.get(new shared.Get("foreign"))), true);
+    expect(`exists is false for ${foreign}`, present(await bare.exists(new shared.Exists("foreign"))), false);
     expect(`set over ${foreign} answers with an error`, unreadable(await bare.set(new shared.Set("foreign", [1]))), true);
     expect(`delete of ${foreign} answers with an error`, unreadable(await bare.delete(new shared.Delete("foreign"))), true);
     expect(`${foreign} is left as it was`, storage.getItem("foreign"), foreign);

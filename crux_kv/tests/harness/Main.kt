@@ -182,6 +182,21 @@ fun main() =
         expect("delete of foo answers with foo's value", bytes(names.delete(Delete("foo"))), value("foo"))
         expect("Foo is still there once foo is deleted", bytes(names.get(Get("Foo"))), value("Foo"))
 
+        // A delete that the filesystem refuses is an error, not a value. The
+        // case is skipped as root, who can write to a read-only directory, and
+        // on Windows, where a read-only directory does not protect its files.
+        val windows = System.getProperty("os.name").startsWith("Windows")
+        val asRoot = System.getProperty("user.name") == "root"
+        if (!windows && !asRoot) {
+            val locked = File(root, "locked")
+            val readOnly = FileKeyValueHandler(locked)
+            readOnly.set(Set("kept", value("kept")))
+            locked.setWritable(false)
+            expect("delete in a read-only directory answers with Err", readOnly.delete(Delete("kept")) is ValueResult.Err)
+            locked.setWritable(true)
+            expect("a delete that failed leaves the value", bytes(readOnly.get(Get("kept"))), value("kept"))
+        }
+
         root.deleteRecursively()
 
         if (failures.isEmpty()) {

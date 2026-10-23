@@ -180,7 +180,9 @@ fn the_csharp_source_compiles() {
 // So this test generates the package, writes a harness project of its own
 // beside it — checked in under `tests/harness/`, and not something type
 // generation emits — and runs it. The harness drives `InMemoryCookieJar`
-// through RFC 6265's rules and prints `HARNESS OK` when every answer was the
+// through RFC 6265's rules. Then it sends requests through
+// `UrlConnectionHttpHandler` to a server in its own process, to check how the
+// handler follows redirects. It prints `HARNESS OK` when every answer was the
 // one a server would expect.
 // ---------------------------------------------------------------------------
 
