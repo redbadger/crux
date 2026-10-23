@@ -670,7 +670,8 @@ keep cookies by default, because `URLSession` and `HttpClient` do and the
 Kotlin one would otherwise be the odd platform out, losing a session the
 same core keeps everywhere else. `UrlConnectionHttpHandler` carries an
 `InMemoryCookieJar` you can replace or switch off — and read its note
-before reaching for `java.net.CookieManager`, which cannot do this job. Because the delegation is yours, so is the choice: construct the
+before reaching for `java.net.CookieManager`, which cannot do this job.
+Because the delegation is yours, so is the choice: construct the
 shipped implementation with a pinned `URLSession` or a storage directory,
 write your own conformer of the protocol behind a hardened HTTP stack,
 override one method and delegate the rest, or leave the registration out
