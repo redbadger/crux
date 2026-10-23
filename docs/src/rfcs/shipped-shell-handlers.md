@@ -3,10 +3,10 @@
 ```admonish
 This RFC is **proposed**. It builds on the
 [per-operation types RFC](./per-operation-types.md) and the
-[generated `Core` RFC](./generated-core.md), and is not yet implemented. It is
-written against the compat release of per-operation types, but nothing in it
-depends on the `Operation` trait, which the breaking release replaces with
-`Notify`, `Request` and `Stream`.
+[generated `Core` RFC](./generated-core.md). It is written against the
+compat release of per-operation types, but nothing in it depends on the
+`Operation` trait, which the breaking release replaces with `Notify`,
+`Request` and `Stream`.
 ```
 
 This RFC proposes that a capability crate can ship the shell side of its

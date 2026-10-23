@@ -26,9 +26,11 @@ and this project adheres to
   `UrlConnectionHttpHandler` carries an `InMemoryCookieJar` (pass
   `cookies = null` to opt out, or a `CookieJar` of your own to persist
   them). `java.net.CookieManager` is deliberately *not* used — it writes a
-  `Max-Age` cookie in RFC 2965 form that servers do not read. The sources are under
-  `shell/` and compile against the generated types; `tests/shell_source.rs`
-  builds them where a toolchain is present. See
+  `Max-Age` cookie in RFC 2965 form that servers do not read. Each handler
+  follows redirects, and answers `HttpError::Io` for a `GET` or `HEAD` with a
+  body. The sources are under `shell/` and compile against the generated types;
+  `tests/shell_source.rs` builds the Swift, TypeScript and C# sources where a
+  toolchain is present. See
   [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
 
 - **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level

@@ -87,7 +87,7 @@ and this project adheres to
   ```rust
   pub enum ValueResult { Ok(Value), Err(KeyValueError) }
   pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
-  pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
+  pub enum KeysResult  { Ok(KeyPage), Err(KeyValueError) }
 
   pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
   ```
@@ -120,6 +120,7 @@ and this project adheres to
   enum and in the shells that serve it. The
   [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html)
   walks through it, including the shell side.
+
 ## [0.14.0](https://github.com/redbadger/crux/compare/crux_kv-v0.13.0...crux_kv-v0.14.0) - 2026-08-06
 
 ### ⚙️ Miscellaneous Tasks
