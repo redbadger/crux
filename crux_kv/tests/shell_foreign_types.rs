@@ -1,19 +1,22 @@
-//! `shell::EXTENSION.declares` against the shipped sources.
+//! `shell::EXTENSION.foreign_types` against the shipped sources.
 //!
-//! Type generation checks every name in `declares` for a clash with the
+//! Type generation checks every name in `foreign_types` for a clash with the
 //! generated module, so a declaration missing from the list would go
 //! unchecked. This test is what keeps the list honest: it reads each shipped
 //! source's module-scope declarations and asserts that they are exactly the
-//! names `declares` lists.
+//! names `foreign_types` lists.
 #![cfg(feature = "facet_typegen")]
 
 use std::collections::BTreeSet;
 
 const SOURCES: &[(&str, &str)] = &[
-    ("swift", include_str!("../shell/swift/Time.swift")),
-    ("kotlin", include_str!("../shell/kotlin/Time.kt")),
-    ("typescript", include_str!("../shell/typescript/time.ts")),
-    ("csharp", include_str!("../shell/csharp/Time.cs")),
+    ("swift", include_str!("../shell/swift/KeyValue.swift")),
+    ("kotlin", include_str!("../shell/kotlin/KeyValue.kt")),
+    (
+        "typescript",
+        include_str!("../shell/typescript/keyValue.ts"),
+    ),
+    ("csharp", include_str!("../shell/csharp/KeyValue.cs")),
 ];
 
 /// Words that can come before the declaring keyword.
@@ -106,9 +109,9 @@ fn module_scope_names(language: &str, source: &str) -> Vec<String> {
 }
 
 #[test]
-fn declares_lists_every_module_scope_name_the_sources_declare() {
-    let declared: BTreeSet<&str> = crux_time::shell::EXTENSION
-        .declares
+fn foreign_types_lists_every_module_scope_name_the_sources_declare() {
+    let declared: BTreeSet<&str> = crux_kv::shell::EXTENSION
+        .foreign_types
         .iter()
         .copied()
         .collect();
@@ -120,7 +123,7 @@ fn declares_lists_every_module_scope_name_the_sources_declare() {
 
     assert_eq!(
         found, declared,
-        "`shell::EXTENSION.declares` should list exactly the names the shipped sources \
+        "`shell::EXTENSION.foreign_types` should list exactly the names the shipped sources \
          declare at module scope"
     );
 }

@@ -37,9 +37,9 @@ use crate::operation::{Clear, NotifyAfter, NotifyAt, Now};
 /// `Task.Delay`. The timer table is state, so the app constructs one where it
 /// constructs its handler.
 pub static EXTENSION: ShellExtension = ShellExtension::new("Time")
-    .types(register_types)
+    .rust_types(register_types)
     // The names the shipped sources declare at module scope, in any language.
-    .declares(&[
+    .foreign_types(&[
         "TimeHandler",
         "ITimeHandler",
         "TaskTimeHandler",
