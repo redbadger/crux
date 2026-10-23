@@ -59,8 +59,7 @@ public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
             timeIntervalSince1970: Double(operation.instant.seconds)
                 + Double(operation.instant.nanos) / 1_000_000_000
         )
-        let seconds = target.timeIntervalSinceNow
-        let nanoseconds = seconds <= 0 ? 0 : UInt64(seconds * 1_000_000_000)
+        let nanoseconds = Self.nanoseconds(target.timeIntervalSinceNow)
         return await sleep(id: operation.id, nanoseconds: nanoseconds)
     }
 
@@ -102,6 +101,18 @@ public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return timers.removeValue(forKey: id)
+    }
+
+    /// `seconds` as whole nanoseconds, from 0 to `UInt64.max`.
+    ///
+    /// The conversion to `UInt64` traps for a value it cannot hold, which an
+    /// instant more than about 584 years ahead gives. `Double(UInt64.max)` is
+    /// 2^64 exactly, so a product below it converts.
+    private static func nanoseconds(_ seconds: TimeInterval) -> UInt64 {
+        let nanoseconds = seconds * 1_000_000_000
+        if nanoseconds <= 0 { return 0 }
+        if nanoseconds >= Double(UInt64.max) { return UInt64.max }
+        return UInt64(nanoseconds)
     }
 
     /// `Date` counts seconds from the same epoch `Instant` does, so this is

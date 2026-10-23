@@ -88,7 +88,9 @@ class FileKeyValueHandler(
         withContext(Dispatchers.IO) {
             io {
                 val previous = read(operation.key)
-                file(operation.key).delete()
+                // `File.delete` answers `false` when it fails, and
+                // `deleteIfExists` throws, so a failed delete is an `Err`.
+                java.nio.file.Files.deleteIfExists(file(operation.key).toPath())
                 ValueResult.Ok(previous)
             }
         }

@@ -56,6 +56,8 @@ export class TimeoutTimeHandler implements TimeHandler {
     );
   }
 
+  /// The wall clock gives the delay once. After that, `performance.now()`
+  /// measures it, because that clock does not jump when the wall clock is set.
   notifyAt(operation: NotifyAt): Promise<TimerId> {
     const target =
       Number(operation.instant.seconds) * 1000 +
@@ -81,7 +83,7 @@ export class TimeoutTimeHandler implements TimeHandler {
 
   private sleep(id: TimerId, millis: number): Promise<TimerId> {
     return new Promise((resolve) => {
-      const deadline = Date.now() + millis;
+      const deadline = performance.now() + millis;
       const timer = {
         handle: undefined as unknown as ReturnType<typeof setTimeout>,
         resolve,
@@ -90,9 +92,9 @@ export class TimeoutTimeHandler implements TimeHandler {
       // so wait in chunks no longer than that until the deadline. `clear`
       // clears whichever chunk is pending.
       const wait = () => {
-        const remaining = Math.max(deadline - Date.now(), 0);
+        const remaining = Math.max(deadline - performance.now(), 0);
         timer.handle = setTimeout(() => {
-          if (deadline - Date.now() > 0) {
+          if (deadline - performance.now() > 0) {
             wait();
           } else {
             this.timers.delete(id.value);
