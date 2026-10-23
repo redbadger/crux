@@ -127,8 +127,10 @@ public final class UserDefaultsKeyValueHandler: KeyValueHandler, @unchecked Send
             )
         }
 
-        let keys = (defaults.persistentDomain(forName: domain) ?? [:]).keys
-            .filter { $0.hasPrefix(operation.prefix) }
+        // Only `Data` values, so that a listed key is one `get` answers for.
+        let keys = (defaults.persistentDomain(forName: domain) ?? [:])
+            .filter { $0.value is Data && $0.key.hasPrefix(operation.prefix) }
+            .keys
             .sorted()
 
         guard operation.cursor <= UInt64(keys.count) else {

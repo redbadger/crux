@@ -134,7 +134,10 @@ export function createLocalStorageKeyValueHandler(
     async exists(operation: Exists): Promise<BoolResult> {
       const store = open();
       if (store === undefined) return boolResultErr(unavailable);
-      return boolResultOk(store.getItem(prefix + operation.key) !== null);
+      // Through `read`, so that a key exists only if `get` answers with bytes
+      // for it.
+      const value = read(store, operation.key);
+      return boolResultOk(value.kind === "Ok" && value.value.kind === "Bytes");
     },
 
     /// One page holds every remaining key, so the answer's cursor is always 0:
