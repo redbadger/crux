@@ -7,6 +7,7 @@ import java.net.MalformedURLException
 import java.net.SocketTimeoutException
 import java.net.URI
 import java.net.URISyntaxException
+import java.net.URL
 import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
 
@@ -52,6 +53,15 @@ interface CookieJar {
 /// only over `https`. A cookie that has expired — including the `Max-Age=0` a
 /// server deletes one with — is dropped rather than replayed.
 ///
+/// ## Which `Domain` a server can set
+///
+/// The jar refuses a cookie whose `Domain` does not domain-match the host that
+/// set it (RFC 6265, section 5.3). It also refuses a `Domain` with one label,
+/// such as `com`, and a `Domain` that is not the IP address that set it. The
+/// jar has no public suffix list, so it accepts `Domain=co.uk` from
+/// `example.co.uk`. If that is a risk for your app, implement [CookieJar] over
+/// a library that has the list.
+///
 /// ## Why this is not `java.net.CookieManager`
 ///
 /// Because that one does not work here, and fails in a way that reads as a
@@ -70,17 +80,23 @@ interface CookieJar {
 /// `HttpCookie`'s *parser* is fine, which is why [absorb] still uses it; only
 /// the writing is done here.
 class InMemoryCookieJar : CookieJar {
-    /// `hostOnly` is carried because it changes what [domainMatches] means: a
-    /// cookie set without `Domain` belongs to exactly the host that set it, and
-    /// must not reach a subdomain.
+    /// RFC 6265 identifies a cookie by its name, domain and path. A new cookie
+    /// with the same three replaces the old one, with or without `Domain`.
     private data class Key(
         val name: String,
         val domain: String,
         val path: String,
+    )
+
+    /// `hostOnly` is kept because it changes what [domainMatches] means: a
+    /// cookie set without `Domain` belongs to exactly the host that set it, and
+    /// must not reach a subdomain.
+    private class Stored(
+        val cookie: HttpCookie,
         val hostOnly: Boolean,
     )
 
-    private val cookies = ConcurrentHashMap<Key, HttpCookie>()
+    private val cookies = ConcurrentHashMap<Key, Stored>()
 
     override fun headerFor(url: URI): String? {
         val host = url.host ?: return null
@@ -88,17 +104,17 @@ class InMemoryCookieJar : CookieJar {
         val path = url.path.ifEmpty { "/" }
         val matching =
             cookies.entries
-                .filter { (key, cookie) ->
-                    !cookie.hasExpired() &&
-                        (!cookie.secure || secure) &&
-                        domainMatches(key.domain, host, key.hostOnly) &&
+                .filter { (key, stored) ->
+                    !stored.cookie.hasExpired() &&
+                        (!stored.cookie.secure || secure) &&
+                        domainMatches(key.domain, host, stored.hostOnly) &&
                         pathMatches(key.path, path)
                 }
                 // RFC 6265 orders by descending path length, so the most
                 // specific cookie is the one a server reading only the first
                 // sees.
                 .sortedByDescending { (key, _) -> key.path.length }
-                .map { (key, cookie) -> "${key.name}=${cookie.value}" }
+                .map { (key, stored) -> "${key.name}=${stored.cookie.value}" }
         return matching.takeIf { it.isNotEmpty() }?.joinToString("; ")
     }
 
@@ -106,7 +122,7 @@ class InMemoryCookieJar : CookieJar {
         url: URI,
         setCookie: List<String>,
     ) {
-        val host = url.host ?: return
+        val host = url.host?.lowercase() ?: return
         for (header in setCookie) {
             // A malformed `Set-Cookie` is the server's problem, and dropping
             // the exchange over it would be worse than ignoring the cookie.
@@ -117,19 +133,35 @@ class InMemoryCookieJar : CookieJar {
                     continue
                 }
             for (cookie in parsed) {
+                val declared = cookie.domain?.removePrefix(".")?.lowercase()?.takeIf { it.isNotEmpty() }
+                if (declared != null && !mayDeclare(declared, host)) continue
                 // No `Domain` means host-only: the cookie goes back to exactly
                 // the host that set it and no subdomain of it.
-                val key =
-                    Key(
-                        cookie.name,
-                        cookie.domain?.removePrefix(".")?.takeIf { it.isNotEmpty() } ?: host,
-                        cookie.path ?: defaultPath(url),
-                        hostOnly = cookie.domain.isNullOrEmpty(),
-                    )
-                if (cookie.hasExpired()) cookies.remove(key) else cookies[key] = cookie
+                val key = Key(cookie.name, declared ?: host, cookie.path ?: defaultPath(url))
+                if (cookie.hasExpired()) {
+                    cookies.remove(key)
+                } else {
+                    cookies[key] = Stored(cookie, hostOnly = declared == null)
+                }
             }
         }
     }
+
+    /// Whether [host] can set a cookie with `Domain=`[domain].
+    private fun mayDeclare(
+        domain: String,
+        host: String,
+    ): Boolean =
+        when {
+            !domainMatches(domain, host, hostOnly = false) -> false
+            // A domain with one label is a top-level domain, which no host owns.
+            '.' !in domain -> false
+            // `1.2.3.4` ends with `.2.3.4`, but an address is not a domain.
+            isIpLiteral(host) -> host == domain
+            else -> true
+        }
+
+    private fun isIpLiteral(host: String): Boolean = host.startsWith("[") || IPV4.matches(host)
 
     private fun domainMatches(
         domain: String,
@@ -154,6 +186,10 @@ class InMemoryCookieJar : CookieJar {
         val lastSlash = path.lastIndexOf('/')
         return if (lastSlash <= 0) "/" else path.substring(0, lastSlash)
     }
+
+    private companion object {
+        val IPV4 = Regex("""\d{1,3}(\.\d{1,3}){3}""")
+    }
 }
 
 /// An `HttpHandler` over the JDK's `HttpURLConnection`.
@@ -171,11 +207,32 @@ class InMemoryCookieJar : CookieJar {
 /// parse is `HttpError.Url`, a `SocketTimeoutException` is `HttpError.Timeout`,
 /// and everything else is `HttpError.Io`.
 ///
+/// The core builds `operation.url` with `url::Url`, so the URL is absolute. A
+/// relative URL, or a URL whose scheme is not `http` or `https`, is
+/// `HttpError.Url`. A `GET` or `HEAD` with a body is `HttpError.Io`, and the
+/// handler does not send it.
+///
 /// ## Methods
 ///
-/// `HttpURLConnection` knows GET, POST, HEAD, OPTIONS, PUT, DELETE and TRACE,
-/// and nothing else: a `PATCH` is answered with `HttpError.Io`. That is the
-/// clearest reason to bring your own client.
+/// On the desktop JDK, `HttpURLConnection` knows GET, POST, HEAD, OPTIONS,
+/// PUT, DELETE and TRACE, and answers any other method, `PATCH` included, with
+/// `HttpError.Io`. Android's implementation also knows `PATCH`. If your app
+/// needs another method, bring your own client.
+///
+/// ## Redirects
+///
+/// The handler follows redirects itself, so that the cookie jar sees each
+/// response on the way. It sets `instanceFollowRedirects` to `false` after
+/// `configure` runs. The rules are these:
+///
+/// - It follows at most 20 redirects. After that, the answer is
+///   `HttpError.Io`.
+/// - A 301, 302 or 303 becomes a `GET` without a body, unless the request is
+///   a `HEAD`. A 307 or 308 keeps the method and the body.
+/// - It does not follow a redirect from `https` to `http`, or a redirect
+///   without a usable `Location`. The core gets that 3xx response.
+/// - When a redirect leaves the origin of the request, the handler removes
+///   the operation's own `Cookie` and `Authorization` headers.
 ///
 /// ## Cookies
 ///
@@ -196,6 +253,15 @@ class UrlConnectionHttpHandler(
     private val cookies: CookieJar? = InMemoryCookieJar(),
     private val configure: (HttpURLConnection) -> Unit = {},
 ) : HttpHandler {
+    /// One request of the exchange: the first, or one a redirect asked for.
+    private class Hop(
+        val uri: URI,
+        val url: URL,
+        val method: String,
+        val headers: List<HttpHeader>,
+        val body: ByteArray,
+    )
+
     override suspend fun request(operation: HttpRequest): HttpResult =
         withContext(Dispatchers.IO) {
             val uri =
@@ -207,35 +273,41 @@ class UrlConnectionHttpHandler(
                     return@withContext HttpResult.Err(HttpError.Url(e.message ?: "could not parse URL"))
                 }
             val url =
-                try {
-                    uri.toURL()
-                } catch (e: URISyntaxException) {
-                    return@withContext HttpResult.Err(HttpError.Url(e.message ?: "could not parse URL"))
-                } catch (e: MalformedURLException) {
-                    return@withContext HttpResult.Err(HttpError.Url(e.message ?: "could not parse URL"))
-                } catch (e: IllegalArgumentException) {
-                    return@withContext HttpResult.Err(HttpError.Url(e.message ?: "could not parse URL"))
-                }
+                urlOf(uri)
+                    ?: return@withContext HttpResult.Err(HttpError.Url("could not parse URL: ${operation.url}"))
 
-            var connection: HttpURLConnection? = null
+            val method = operation.method.uppercase()
+            val body = operation.body.content
+            // `HttpURLConnection` silently turns a GET with a body into a POST.
+            if (body.isNotEmpty() && method in BODILESS_METHODS) {
+                return@withContext HttpResult.Err(HttpError.Io("$method request cannot carry a body"))
+            }
+
             try {
-                connection = (url.openConnection() as HttpURLConnection).apply(configure)
-                connection.requestMethod = operation.method.uppercase()
-                // Header names and values cross the boundary as plain strings,
-                // with no validation — the connection applies its own rules.
-                for (header in operation.headers) {
-                    connection.addRequestProperty(header.name, header.value)
-                }
-                if (operation.headers.none { it.name.equals("cookie", ignoreCase = true) }) {
-                    cookies?.headerFor(uri)?.let { connection.addRequestProperty("Cookie", it) }
-                }
+                exchange(Hop(uri, url, method, operation.headers, body))
+            } catch (e: SocketTimeoutException) {
+                HttpResult.Err(HttpError.Timeout)
+            } catch (e: UnknownHostException) {
+                HttpResult.Err(HttpError.Io("unknown host: ${e.message}"))
+            } catch (e: IOException) {
+                HttpResult.Err(HttpError.Io(e.message ?: "IO error"))
+            } catch (e: IllegalArgumentException) {
+                // A header name or value that the connection refuses, for
+                // example one with a line break in it.
+                HttpResult.Err(HttpError.Io(e.message ?: "invalid request"))
+            }
+        }
 
-                val body = operation.body.content
-                if (body.isNotEmpty() || connection.requestMethod in BODY_REQUIRED_METHODS) {
-                    connection.doOutput = true
-                    connection.setFixedLengthStreamingMode(body.size)
-                    connection.outputStream.use { it.write(body) }
-                }
+    /// Sends [first], then each request a redirect asks for, and answers with
+    /// the response that is not followed.
+    private fun exchange(first: Hop): HttpResult {
+        var hop = first
+        repeat(MAX_REDIRECTS + 1) {
+            val connection =
+                hop.url.openConnection() as? HttpURLConnection
+                    ?: throw IOException("not an HTTP connection: ${hop.url}")
+            try {
+                send(connection, hop)
 
                 val status = connection.responseCode
                 val headers = mutableListOf<HttpHeader>()
@@ -249,39 +321,164 @@ class UrlConnectionHttpHandler(
                     if (name.equals("set-cookie", ignoreCase = true)) setCookie.addAll(values)
                 }
                 // Before the body is read, so that a cookie is kept even if
-                // reading the response then fails.
-                if (setCookie.isNotEmpty()) cookies?.absorb(uri, setCookie)
-                // Below 400 the body is on the input stream, at or above it on
-                // the error stream — and either may be absent.
-                val stream =
-                    if (status < HttpURLConnection.HTTP_BAD_REQUEST) {
-                        connection.inputStream
-                    } else {
-                        connection.errorStream
-                    }
-                val responseBody = stream?.use { it.readBytes() } ?: ByteArray(0)
+                // reading the response then fails. Each hop's cookies belong
+                // to that hop's URI.
+                if (setCookie.isNotEmpty()) cookies?.absorb(hop.uri, setCookie)
 
-                // `com.novi.serde.Bytes` by its full name, and not imported:
-                // the generated module's header already imports it above this
-                // file's own imports, and Kotlin rejects the name twice.
-                HttpResult.Ok(
-                    HttpResponse(status.toUShort(), headers, com.novi.serde.Bytes(responseBody)),
-                )
-            } catch (e: SocketTimeoutException) {
-                HttpResult.Err(HttpError.Timeout)
-            } catch (e: UnknownHostException) {
-                HttpResult.Err(HttpError.Io("unknown host: ${e.message}"))
-            } catch (e: IOException) {
-                HttpResult.Err(HttpError.Io(e.message ?: "IO error"))
+                val next =
+                    if (status in REDIRECT_STATUSES) {
+                        redirect(hop, status, connection.getHeaderField("Location"), first.uri)
+                    } else {
+                        null
+                    }
+                if (next == null) {
+                    // `com.novi.serde.Bytes` by its full name, and not
+                    // imported: the generated module's header already imports
+                    // it above this file's own imports, and Kotlin rejects the
+                    // name twice.
+                    return HttpResult.Ok(
+                        HttpResponse(status.toUShort(), headers, com.novi.serde.Bytes(readBody(connection, status))),
+                    )
+                }
+                hop = next
             } finally {
-                connection?.disconnect()
+                connection.disconnect()
             }
         }
+        return HttpResult.Err(HttpError.Io("too many redirects"))
+    }
+
+    private fun send(
+        connection: HttpURLConnection,
+        hop: Hop,
+    ) {
+        connection.apply(configure)
+        connection.instanceFollowRedirects = false
+        connection.requestMethod = hop.method
+        // Header names and values cross the boundary as plain strings,
+        // with no validation — the connection applies its own rules.
+        for (header in hop.headers) {
+            connection.addRequestProperty(header.name, header.value)
+        }
+        if (hop.headers.none { it.name.equals("cookie", ignoreCase = true) }) {
+            cookies?.headerFor(hop.uri)?.let { connection.addRequestProperty("Cookie", it) }
+        }
+
+        if (hop.body.isNotEmpty() || hop.method in BODY_REQUIRED_METHODS) {
+            connection.doOutput = true
+            connection.setFixedLengthStreamingMode(hop.body.size)
+            connection.outputStream.use { it.write(hop.body) }
+        }
+    }
+
+    /// The request a redirect from [from] asks for, or `null` if the handler
+    /// does not follow it.
+    private fun redirect(
+        from: Hop,
+        status: Int,
+        location: String?,
+        origin: URI,
+    ): Hop? {
+        if (location == null) return null
+        val target = resolve(from.uri, location) ?: return null
+        // Browsers do not follow a redirect to a less secure scheme.
+        if (from.uri.scheme.equals("https", ignoreCase = true) && target.scheme.equals("http", ignoreCase = true)) {
+            return null
+        }
+        val url = urlOf(target) ?: return null
+
+        val asGet = status in GET_AFTER_STATUSES && from.method != "HEAD"
+        val leavesOrigin = !sameOrigin(origin, target)
+        val headers =
+            from.headers.filterNot { header ->
+                val name = header.name.lowercase()
+                (asGet && name in CONTENT_HEADERS) || (leavesOrigin && name in CREDENTIAL_HEADERS)
+            }
+        return if (asGet) {
+            Hop(target, url, "GET", headers, ByteArray(0))
+        } else {
+            Hop(target, url, from.method, headers, from.body)
+        }
+    }
+
+    private fun readBody(
+        connection: HttpURLConnection,
+        status: Int,
+    ): ByteArray {
+        // Below 400 the body is on the input stream, at or above it on
+        // the error stream — and either may be absent.
+        val stream =
+            if (status < HttpURLConnection.HTTP_BAD_REQUEST) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+            }
+        return stream?.use { it.readBytes() } ?: ByteArray(0)
+    }
 
     companion object {
         /// `HttpURLConnection` sends no body unless it is told to, and a
         /// request with one of these methods and an empty body still has a
         /// body — an empty one.
         private val BODY_REQUIRED_METHODS = setOf("POST", "PUT", "PATCH")
+
+        /// The methods that cannot carry a body.
+        private val BODILESS_METHODS = setOf("GET", "HEAD")
+
+        /// The most redirects one request follows, as in Chromium and Firefox.
+        private const val MAX_REDIRECTS = 20
+
+        private val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
+
+        /// The redirects after which a request becomes a `GET` without a body.
+        private val GET_AFTER_STATUSES = setOf(301, 302, 303)
+
+        /// The headers that describe a body, removed when the body is.
+        private val CONTENT_HEADERS =
+            setOf("content-type", "content-length", "content-encoding", "content-language", "content-location")
+
+        /// The headers that only the origin of the request receives.
+        private val CREDENTIAL_HEADERS = setOf("cookie", "authorization")
+
+        private fun urlOf(uri: URI): URL? {
+            val scheme = uri.scheme?.lowercase()
+            if (scheme != "http" && scheme != "https") return null
+            return try {
+                uri.toURL()
+            } catch (e: MalformedURLException) {
+                null
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        }
+
+        /// [location] resolved against [base], or `null` if it does not parse.
+        private fun resolve(
+            base: URI,
+            location: String,
+        ): URI? =
+            try {
+                // `URI.resolve` drops the slash between an empty path and a
+                // relative reference, so give the base a path first.
+                val directory = if (base.rawPath.isNullOrEmpty()) base.resolve("/") else base
+                directory.resolve(location)
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+
+        private fun sameOrigin(
+            a: URI,
+            b: URI,
+        ): Boolean =
+            a.scheme.equals(b.scheme, ignoreCase = true) &&
+                (a.host ?: a.rawAuthority).equals(b.host ?: b.rawAuthority, ignoreCase = true) &&
+                portOf(a) == portOf(b)
+
+        private fun portOf(uri: URI): Int =
+            when {
+                uri.port != -1 -> uri.port
+                uri.scheme.equals("https", ignoreCase = true) -> 443
+                else -> 80
+            }
     }
 }
