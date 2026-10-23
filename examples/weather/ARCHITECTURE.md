@@ -95,7 +95,7 @@ shared/src/
     │   ├── mod.rs                  # Location, IsLocationEnabled, GetLocation operations
     │   └── command.rs              # is_location_enabled(), get_location() builders
     └── secret/
-        ├── mod.rs                  # Fetch/Store/Delete operations + their responses, API_KEY_NAME
+        ├── mod.rs                  # FetchSecret/StoreSecret/DeleteSecret + their responses, API_KEY_NAME
         └── command.rs              # fetch(), store(), delete() command builders
 ```
 
@@ -112,16 +112,10 @@ apple/
 └── WeatherKit/                     # Swift package with all views + effect handlers
     └── Sources/WeatherKit/
         ├── Core/
-        │   ├── core.swift          # Core class — processes events, feeds EffectDispatcher
-        │   ├── handler.swift       # `extension Core: EffectHandler` — one method per operation
-        │   ├── bridge.swift        # CoreBridge protocol
-        │   ├── update.swift        # CoreUpdater — environment object for sending events
-        │   ├── http.swift          # HTTP (URLSession)
-        │   ├── keyValue.swift      # KeyValue operations
-        │   ├── KeyValueStore.swift # Core Data–backed KV store
+        │   ├── WeatherHandler.swift # EffectHandler: delegates HTTP, KV and timers to the shipped handlers
+        │   ├── update.swift        # CoreUpdater: environment object for sending events
         │   ├── location.swift      # Location operations (CoreLocation)
         │   ├── secret.swift        # Secret operations (Keychain)
-        │   ├── time.swift          # Timers
         │   └── logging.swift       # os.log categories
         ├── OnboardView.swift       # API key input screen
         ├── ActiveView.swift        # Dispatches to Home or Favorites
@@ -142,7 +136,8 @@ apple/
         │   ├── AddFavoriteView.swift
         │   └── FavoriteCard.swift
         └── Preview/
-            └── PreviewData.swift   # Preview helpers + FakeBridge
+            ├── PreviewCore.swift   # PreviewBridge + PreviewHandler: a real Core without the FFI
+            └── PreviewData.swift   # Preview helpers
 ```
 
 ## State Machine
@@ -267,9 +262,9 @@ pub enum Effect {
     TimeClear(time::Clear),
     IsLocationEnabled(IsLocationEnabled),
     GetLocation(GetLocation),
-    FetchSecret(Fetch),
-    StoreSecret(Store),
-    DeleteSecret(Delete),
+    FetchSecret(FetchSecret),
+    StoreSecret(StoreSecret),
+    DeleteSecret(DeleteSecret),
 }
 ```
 
@@ -277,8 +272,8 @@ pub enum Effect {
 |---------------------|------------------------|----------|------------------------------------------|-----------------------------------|
 | `Render`            | —                      | notify   | Trigger UI refresh with new ViewModel    | Calls `bridge.currentView()`      |
 | `Http`              | `HttpResult`           | request  | Weather + geocoding API calls            | `URLSession`                      |
-| `KvGet`             | `ValueResult`          | request  | Restore favorites                        | Core Data                         |
-| `KvSet`             | `ValueResult`          | request  | Persist favorites                        | Core Data                         |
+| `KvGet`             | `ValueResult`          | request  | Restore favorites                        | `UserDefaults`                    |
+| `KvSet`             | `ValueResult`          | request  | Persist favorites                        | `UserDefaults`                    |
 | `TimeNotifyAfter`   | `TimerId`              | request  | Debounce timers for search input         | `Task.sleep` on a stored `Task`   |
 | `TimeClear`         | `TimerId`              | request  | Cancel a debounce timer                  | `Task.cancel()`                   |
 | `IsLocationEnabled` | `bool`                 | request  | Check location permission                | `CLLocationManager`               |
