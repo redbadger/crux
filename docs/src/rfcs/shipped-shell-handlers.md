@@ -44,8 +44,8 @@ The capability declares what it ships:
 
 #[cfg(feature = "facet_typegen")]
 pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
-    .types(register_types)
-    .declares(&["HttpHandler", "IHttpHandler", "URLSessionHttpHandler", /* … */])
+    .rust_types(register_types)
+    .foreign_types(&["HttpHandler", "IHttpHandler", "URLSessionHttpHandler", /* … */])
     .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
     .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")))
     .typescript(ShellSource::stdlib(include_str!("../shell/typescript/http.ts")))
@@ -197,10 +197,10 @@ pub struct ShellExtension {
     /// UpperCamelCase. Names the companion file (`Http.swift`).
     pub name: &'static str,
     /// Registers every operation and output the shipped sources name.
-    pub types: Option<fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>>,
+    pub rust_types: Option<fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>>,
     /// The top-level names the shipped sources declare, in any language
     /// (`HttpHandler`, `IHttpHandler`, `URLSessionHttpHandler`, …).
-    pub declares: &'static [&'static str],
+    pub foreign_types: &'static [&'static str],
     pub swift: Option<ShellSource>,
     pub kotlin: Option<ShellSource>,
     pub typescript: Option<ShellSource>,
@@ -209,8 +209,8 @@ pub struct ShellExtension {
 
 impl ShellExtension {
     pub const fn new(name: &'static str) -> Self { /* nothing declared, every language None */ }
-    pub const fn types(self, register: fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>) -> Self { /* … */ }
-    pub const fn declares(self, names: &'static [&'static str]) -> Self { /* … */ }
+    pub const fn rust_types(self, register: fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>) -> Self { /* … */ }
+    pub const fn foreign_types(self, names: &'static [&'static str]) -> Self { /* … */ }
     pub const fn swift(self, source: ShellSource) -> Self { /* … */ }
     // kotlin, typescript, csharp likewise
 }
@@ -240,8 +240,8 @@ Both types are `#[non_exhaustive]` and built through `const fn` builders,
 which a `static` initialiser can call, so a fifth language or another kind
 of dependency can be added later without breaking every capability crate.
 
-`declares` lists the names the sources put into the generated module, so that
-type generation can check them without parsing the source. The name of the
+`foreign_types` lists the names the sources put into the generated module, so
+that type generation can check them without parsing the source. The name of the
 extension only names its file, and the protocol a handler declares is listed
 like any other name.
 
@@ -249,7 +249,7 @@ That is the whole declaration. The `Operation` derive and trait are
 untouched, and the breaking release's move to `Notify`, `Request` and
 `Stream` does not affect it.
 
-`types` is there because a shipped source implements the whole capability,
+`rust_types` is there because a shipped source implements the whole capability,
 while an app's `Effect` may carry only some of its operations. The weather
 app never sends `Exists` or `Now`, so left to itself type generation would
 not emit them, and `KeyValue.swift` would not compile. The function the
@@ -300,7 +300,7 @@ generated package that does not compile:
 - The `name` is not the name of a file crux generates beside the module
   (`FfiBridge`), ignoring case. It only names files, so it may match a type
   name.
-- No name in `declares` is a reserved name of the generated shell API, a
+- No name in `foreign_types` is a reserved name of the generated shell API, a
   name the module imports from the serialization runtime (`Serializer`,
   `Bytes` and so on), the name of a namespace the app's types are generated
   into, a name another registered extension declares, or the name of a type
@@ -477,7 +477,7 @@ every app that registers it.
   of it. Exposes configuration through the implementation's initialiser, not
   through globals.
 - Lists every name it declares at module scope, in every language, in
-  `declares`, so that type generation can reject a clash with the app's
+  `foreign_types`, so that type generation can reject a clash with the app's
   types and namespaces, the generated shell API, the serialization runtime or
   another extension.
 - Does not log through an app-specific logger. A shipped handler either stays

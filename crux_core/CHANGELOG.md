@@ -321,7 +321,7 @@ and this project adheres to
   is the constructor for the expected case of none, and a Swift source that
   adds a package names the target's product with `target_dependencies(..)`.
   Both types are `#[non_exhaustive]` and built with `const fn` builders
-  (`ShellExtension::new("Http").declares(..).swift(..)`), so a language can
+  (`ShellExtension::new("Http").foreign_types(..).swift(..)`), so a language can
   be added later without breaking the crates that ship them. The build
   rejects an extension name that is not an identifier-shaped file stem or is
   a Windows device name, that matches another extension's ignoring case, or

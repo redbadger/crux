@@ -129,8 +129,8 @@
 //! // Normally `crux_http::shell::EXTENSION`, declared by the capability crate,
 //! // whose source is `include_str!` from the crate rather than written inline.
 //! static EXTENSION: ShellExtension = ShellExtension::new("Http")
-//!     .types(register_types)
-//!     .declares(&["HttpHandler", "IHttpHandler"])
+//!     .rust_types(register_types)
+//!     .foreign_types(&["HttpHandler", "IHttpHandler"])
 //!     .swift(ShellSource::stdlib("public protocol HttpHandler: Sendable {}"));
 //!
 //! // A real capability registers each of its operations here, so that the
@@ -326,8 +326,8 @@ impl TypeRegistry {
     ///
     /// ```rust,ignore
     /// pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
-    ///     .types(register_types)
-    ///     .declares(&["HttpHandler", "IHttpHandler"])
+    ///     .rust_types(register_types)
+    ///     .foreign_types(&["HttpHandler", "IHttpHandler"])
     ///     .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
     ///     .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")));
     /// ```
@@ -346,7 +346,7 @@ impl TypeRegistry {
     ) -> Result<&mut Self, TypeGenError> {
         self.shell_extensions.push(extension);
 
-        if let Some(register) = extension.types {
+        if let Some(register) = extension.rust_types {
             register(self)?;
         }
 
@@ -546,7 +546,7 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
 ///
 /// An extension's `name` only names its companion files, so it is checked as
 /// a file name: its shape, and that it does not overwrite another
-/// extension's file or one crux generates. The names in `declares` go into
+/// extension's file or one crux generates. The names in `foreign_types` go into
 /// the generated module, so they are checked against the generated shell
 /// API, the serialization runtime's imports, the app's namespaces, the other
 /// extensions' declarations, and the types registered in the root namespace.
@@ -595,7 +595,7 @@ fn validate_shell_extensions(
             )));
         }
 
-        for declared in extension.declares {
+        for declared in extension.foreign_types {
             if RESERVED_TYPE_NAMES.contains(declared) {
                 return Err(TypeGenError::Generation(format!(
                     "shell extension `{name}` needs the name `{declared}`, which is reserved for other use in the shell API. Please choose a different name for the extension's type."
@@ -618,7 +618,7 @@ fn validate_shell_extensions(
 
             if let Some(earlier) = extensions[..index]
                 .iter()
-                .find(|earlier| earlier.declares.contains(declared))
+                .find(|earlier| earlier.foreign_types.contains(declared))
             {
                 return Err(TypeGenError::Generation(format!(
                     "shell extensions `{}` and `{name}` both declare `{declared}`, so the generated module would declare it twice. Only one of them can be registered.",
@@ -633,7 +633,7 @@ fn validate_shell_extensions(
             continue;
         }
         for extension in extensions {
-            if extension.declares.contains(&registered.name.as_str()) {
+            if extension.foreign_types.contains(&registered.name.as_str()) {
                 return Err(TypeGenError::Generation(format!(
                     "`{}` is declared by the `{}` shell extension, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
                     registered.name, extension.name

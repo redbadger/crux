@@ -12,8 +12,8 @@
 //! // In the capability crate, in `src/shell.rs`
 //! #[cfg(feature = "facet_typegen")]
 //! pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
-//!     .types(register_types)
-//!     .declares(&["HttpHandler", "IHttpHandler"])
+//!     .rust_types(register_types)
+//!     .foreign_types(&["HttpHandler", "IHttpHandler"])
 //!     .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
 //!     .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")))
 //!     .typescript(ShellSource::stdlib(include_str!("../shell/typescript/http.ts")))
@@ -69,18 +69,20 @@ pub struct ShellExtension {
     /// file the generated shell API writes (`FfiBridge`). A name that matches
     /// the module's own file is rejected when that language is generated.
     pub name: &'static str,
-    /// Registers the types the shipped sources name, run by
+    /// Registers the Rust types the shipped sources name, run by
     /// [`TypeRegistry::shell_extension`].
     ///
-    /// A capability's handler implements the whole capability, so every one
-    /// of its operations and outputs has to be generated, including the ones
-    /// this app never sends. The capability knows what those are, so it names
-    /// the function rather than leaving the app to call it. The types are the
-    /// same whichever language is generated, so they belong to the extension
-    /// rather than to each [`ShellSource`].
-    pub types: Option<RegisterTypes>,
-    /// The top-level names the shipped sources declare in the generated
-    /// module, in any language: `HttpHandler`, `IHttpHandler`,
+    /// A capability's handler implements the whole capability, so crux must
+    /// generate every operation and output, including the ones this app
+    /// never sends. The capability registers them through this function, so
+    /// the app does not have to know which types they are. The types are the
+    /// same whichever language crux generates, so they belong to the
+    /// extension and not to each [`ShellSource`].
+    pub rust_types: Option<RegisterTypes>,
+    /// The names the shipped sources declare in the generated foreign code
+    /// (Swift, Kotlin, TypeScript and C#), as opposed to the Rust types in
+    /// [`rust_types`](Self::rust_types). The names are the top-level names in
+    /// the generated module, in any language: `HttpHandler`, `IHttpHandler`,
     /// `URLSessionHttpHandler` and so on.
     ///
     /// The sources share a module with the app's types and the generated
@@ -91,7 +93,7 @@ pub struct ShellExtension {
     /// registered extensions declare, and the types registered in the root
     /// namespace. A clash is then a generation error rather than a module that
     /// fails to compile.
-    pub declares: &'static [&'static str],
+    pub foreign_types: &'static [&'static str],
     pub swift: Option<ShellSource>,
     pub kotlin: Option<ShellSource>,
     pub typescript: Option<ShellSource>,
@@ -177,8 +179,8 @@ impl ShellExtension {
     pub const fn new(name: &'static str) -> Self {
         Self {
             name,
-            types: None,
-            declares: &[],
+            rust_types: None,
+            foreign_types: &[],
             swift: None,
             kotlin: None,
             typescript: None,
@@ -187,21 +189,21 @@ impl ShellExtension {
     }
 
     /// The function that registers the types the shipped sources name. See
-    /// [`types`](Self::types).
+    /// [`rust_types`](Self::rust_types).
     ///
     /// A plain `fn` item, or a closure that captures nothing, so that the
     /// whole declaration is still a `static`.
     #[must_use]
-    pub const fn types(mut self, types: RegisterTypes) -> Self {
-        self.types = Some(types);
+    pub const fn rust_types(mut self, rust_types: RegisterTypes) -> Self {
+        self.rust_types = Some(rust_types);
         self
     }
 
     /// The top-level names the shipped sources declare. See
-    /// [`declares`](Self::declares).
+    /// [`foreign_types`](Self::foreign_types).
     #[must_use]
-    pub const fn declares(mut self, declares: &'static [&'static str]) -> Self {
-        self.declares = declares;
+    pub const fn foreign_types(mut self, foreign_types: &'static [&'static str]) -> Self {
+        self.foreign_types = foreign_types;
         self
     }
 

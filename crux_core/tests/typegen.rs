@@ -1132,7 +1132,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
 ";
 
     static STORE: ShellExtension = ShellExtension::new("Store")
-        .declares(&[
+        .foreign_types(&[
             "StoreHandler",
             "IStoreHandler",
             "InMemoryStoreHandler",
@@ -1148,20 +1148,20 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     /// too. One operation is an operation's own `register_types_facet`; a
     /// capability with several names a `fn` in its own `shell` module.
     static SHIPS_TYPES: ShellExtension = ShellExtension::new("Peeker")
-        .types(Peek::register_types_facet)
-        .declares(&["PeekerHandler"])
+        .rust_types(Peek::register_types_facet)
+        .foreign_types(&["PeekerHandler"])
         .swift(ShellSource::stdlib("public protocol PeekerHandler {}\n"));
 
     /// A capability that ships Swift only. The other languages implement the
     /// methods themselves.
     static SWIFT_ONLY: ShellExtension = ShellExtension::new("Clock")
-        .declares(&["ClockHandler"])
+        .foreign_types(&["ClockHandler"])
         .swift(ShellSource::stdlib("public protocol ClockHandler {}\n"));
 
     /// A capability whose source needs a library, which is the rare case the
     /// manifest entries are for.
     static DEPENDENT: ShellExtension = ShellExtension::new("Fetcher")
-        .declares(&["FetcherHandler"])
+        .foreign_types(&["FetcherHandler"])
         .kotlin(
             ShellSource::stdlib("interface FetcherHandler\n")
                 .dependencies(&[r#"    implementation("com.squareup.okhttp3:okhttp:4.12.0")"#]),
@@ -1170,7 +1170,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     /// A capability whose Swift source needs a package, which in Swift means
     /// two entries: the package, and the target's edge to its product.
     static SWIFT_DEPENDENT: ShellExtension = ShellExtension::new("Uploader")
-        .declares(&["UploaderHandler"])
+        .foreign_types(&["UploaderHandler"])
         .swift(
             ShellSource::stdlib("public protocol UploaderHandler {}\n")
                 .dependencies(&[
@@ -1671,7 +1671,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn an_extension_cannot_declare_a_runtime_name() {
         static CLASH: ShellExtension = ShellExtension::new("Codec")
-            .declares(&["Serializer"])
+            .foreign_types(&["Serializer"])
             .swift(ShellSource::stdlib("public protocol Serializer {}\n"));
 
         let message = rejection(&[&CLASH]);
@@ -1688,7 +1688,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn an_extension_cannot_declare_a_namespace_name() {
         static CLASH: ShellExtension = ShellExtension::new("Kits")
-            .declares(&["Kit"])
+            .foreign_types(&["Kit"])
             .swift(ShellSource::stdlib("public struct Kit {}\n"));
 
         let mut registry = TypeRegistry::new();
@@ -1717,7 +1717,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn an_extension_cannot_declare_a_registered_type_name() {
         static CLASH: ShellExtension = ShellExtension::new("Getter")
-            .declares(&["Get"])
+            .foreign_types(&["Get"])
             .swift(ShellSource::stdlib("public struct Get {}\n"));
 
         let message = rejection(&[&CLASH]);
@@ -1759,7 +1759,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn two_extensions_cannot_declare_the_same_name() {
         static OTHER_STORE: ShellExtension = ShellExtension::new("OtherStore")
-            .declares(&["StoreHandler"])
+            .foreign_types(&["StoreHandler"])
             .swift(ShellSource::stdlib("public protocol StoreHandler {}\n"));
 
         let message = rejection(&[&STORE, &OTHER_STORE]);
@@ -1775,7 +1775,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn an_extension_cannot_declare_a_reserved_name() {
         static CLASH: ShellExtension = ShellExtension::new("Effect")
-            .declares(&["EffectHandler"])
+            .foreign_types(&["EffectHandler"])
             .swift(ShellSource::stdlib("public protocol EffectHandler {}\n"));
 
         let message = rejection(&[&CLASH]);
