@@ -4,7 +4,12 @@ import com.example.shared.Duration
 import com.example.shared.NotifyAfter
 import com.example.shared.Now
 import com.example.shared.TimerId
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
@@ -96,6 +101,32 @@ fun main() =
         // Clearing a timer that is not there is not an error: the shell need
         // not race a timer that has already fired.
         expect("clear of an unknown timer answers with the id it was given", time.clear(Clear(TimerId(99uL))).value, 99uL)
+
+        // A timer of less than a millisecond waits for its duration. `delay`
+        // takes whole milliseconds, so the handler must round up, not down to 0.
+        val short = System.nanoTime()
+        time.notifyAfter(NotifyAfter(TimerId(6uL), Duration(900_000uL)))
+        val shortElapsed = System.nanoTime() - short
+        expect("a 900 µs timer does not fire before its duration, ${shortElapsed}ns", shortElapsed >= 900_000L)
+
+        // When the scope that the timers run in is cancelled, a pending timer
+        // throws the cancellation and does not answer with its id. A timer
+        // that starts after the cancel throws too.
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val scoped = CoroutineTimeHandler(scope)
+        val orphan = async { runCatching { scoped.notifyAfter(NotifyAfter(TimerId(7uL), Duration(10_000_000_000uL))) } }
+        delay(50)
+        scope.cancel()
+        val orphaned = orphan.await()
+        expect(
+            "a pending timer throws CancellationException when its scope is cancelled, got $orphaned",
+            orphaned.exceptionOrNull() is CancellationException,
+        )
+        val afterCancel = runCatching { scoped.notifyAfter(NotifyAfter(TimerId(8uL), Duration(10_000_000uL))) }
+        expect(
+            "a timer started after its scope is cancelled throws CancellationException, got $afterCancel",
+            afterCancel.exceptionOrNull() is CancellationException,
+        )
 
         if (failures.isEmpty()) {
             println("HARNESS OK")
