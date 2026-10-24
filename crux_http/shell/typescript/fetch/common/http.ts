@@ -1,45 +1,49 @@
-/// The shell side of `crux_http`, as one method per operation.
-///
-/// The method's shape is the generated `EffectHandler`'s, so an app's handler
-/// holds an instance and delegates in one line:
-///
-/// ```ts
-/// const http = createFetchHttpHandler();
-///
-/// const handler: EffectHandler = {
-///   http: (operation) => http.request(operation),
-/// };
-/// ```
-///
-/// Write an object of your own shape to replace the implementation wholesale.
+/**
+ * The shell side of `crux_http`, as one method per operation.
+ *
+ * The method's shape is the generated `EffectHandler`'s, so an app's handler
+ * holds an instance and delegates in one line:
+ *
+ * ```ts
+ * const http = createFetchHttpHandler();
+ *
+ * const handler: EffectHandler = {
+ *   http: (operation) => http.request(operation),
+ * };
+ * ```
+ *
+ * Write an object of your own shape to replace the implementation wholesale.
+ */
 export interface HttpHandler {
-  /// Perform `operation` and answer with its result, exactly once.
+  /** Perform `operation` and answer with its result, exactly once. */
   request(operation: HttpRequest): Promise<HttpResult>;
 }
 
-/// An `HttpHandler` over `fetch`.
-///
-/// ## What is a failure
-///
-/// Every exchange `fetch` completes is an `HttpResult` of kind `Ok`, whatever
-/// the status: 4xx and 5xx are answers, and the core decides what to make of
-/// them. Only a transport failure — the request never reached a server, or no
-/// response came back — is an `Err`, and then a URL that will not parse is
-/// `httpErrorUrl`, an abort or timeout is `httpErrorTimeout`, and everything
-/// else is `httpErrorIo`.
-///
-/// The core builds `operation.url` with `url::Url`, so the URL is absolute. A
-/// relative URL is `httpErrorUrl`. A `GET` or `HEAD` with a body is
-/// `httpErrorIo`, and the handler does not send it.
-///
-/// ## Redirects
-///
-/// `fetch` follows redirects by the platform's rules, and the core gets the
-/// last response. The Fetch standard follows at most 20 redirects, and removes
-/// the `Authorization` header when a redirect leaves the origin.
-///
-/// @param fetchImpl the `fetch` to use; the global one when omitted, read at
-///   call time so that a test can install its own first.
+/**
+ * An `HttpHandler` over `fetch`.
+ *
+ * ## What is a failure
+ *
+ * Every exchange `fetch` completes is an `HttpResult` of kind `Ok`, whatever
+ * the status: 4xx and 5xx are answers, and the core decides what to make of
+ * them. Only a transport failure — the request never reached a server, or no
+ * response came back — is an `Err`, and then a URL that will not parse is
+ * `httpErrorUrl`, an abort or timeout is `httpErrorTimeout`, and everything
+ * else is `httpErrorIo`.
+ *
+ * The core builds `operation.url` with `url::Url`, so the URL is absolute. A
+ * relative URL is `httpErrorUrl`. A `GET` or `HEAD` with a body is
+ * `httpErrorIo`, and the handler does not send it.
+ *
+ * ## Redirects
+ *
+ * `fetch` follows redirects by the platform's rules, and the core gets the
+ * last response. The Fetch standard follows at most 20 redirects, and removes
+ * the `Authorization` header when a redirect leaves the origin.
+ *
+ * @param fetchImpl the `fetch` to use; the global one when omitted, read at
+ *   call time so that a test can install its own first.
+ */
 export function createFetchHttpHandler(
   fetchImpl?: typeof globalThis.fetch,
 ): HttpHandler {

@@ -11,86 +11,96 @@ import java.net.URL
 import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
 
-/// The shell side of `crux_http`, as one method per operation.
-///
-/// The method's shape is the generated `EffectHandler`'s, so an app's handler
-/// holds an instance and delegates in one line:
-///
-/// ```kotlin
-/// class MyHandler : EffectHandler {
-///     private val http = UrlConnectionHttpHandler()
-///
-///     override suspend fun http(operation: HttpRequest): HttpResult = http.request(operation)
-/// }
-/// ```
-///
-/// Implement it yourself — over OkHttp, Ktor, or whatever your app already
-/// uses — to replace the implementation wholesale.
+/**
+ * The shell side of `crux_http`, as one method per operation.
+ *
+ * The method's shape is the generated `EffectHandler`'s, so an app's handler
+ * holds an instance and delegates in one line:
+ *
+ * ```kotlin
+ * class MyHandler : EffectHandler {
+ *     private val http = UrlConnectionHttpHandler()
+ *
+ *     override suspend fun http(operation: HttpRequest): HttpResult = http.request(operation)
+ * }
+ * ```
+ *
+ * Implement it yourself — over OkHttp, Ktor, or whatever your app already
+ * uses — to replace the implementation wholesale.
+ */
 interface HttpHandler {
-    /// Perform `operation` and answer with its result, exactly once.
+    /** Perform `operation` and answer with its result, exactly once. */
     suspend fun request(operation: HttpRequest): HttpResult
 }
 
-/// The cookies a handler carries from one request to the next.
-///
-/// Implement it to persist them — to a file, a database, a platform store —
-/// or to scope them more narrowly than [InMemoryCookieJar] does.
+/**
+ * The cookies a handler carries from one request to the next.
+ *
+ * Implement it to persist them — to a file, a database, a platform store —
+ * or to scope them more narrowly than [InMemoryCookieJar] does.
+ */
 interface CookieJar {
-    /// The `Cookie` header value for a request to [url], or `null` to send none.
+    /** The `Cookie` header value for a request to [url], or `null` to send none. */
     fun headerFor(url: URI): String?
 
-    /// Take in the `Set-Cookie` values a response from [url] carried.
+    /** Take in the `Set-Cookie` values a response from [url] carried. */
     fun absorb(
         url: URI,
         setCookie: List<String>,
     )
 }
 
-/// A [CookieJar] in memory, for as long as the handler lives.
-///
-/// Enough for a session cookie, which is what most apps want one for. Cookies
-/// are matched the way RFC 6265 says: host or domain, path prefix, and `Secure`
-/// only over `https`. A cookie that has expired — including the `Max-Age=0` a
-/// server deletes one with — is dropped rather than replayed.
-///
-/// ## Which `Domain` a server can set
-///
-/// The jar refuses a cookie whose `Domain` does not domain-match the host that
-/// set it (RFC 6265, section 5.3). It also refuses a `Domain` with one label,
-/// such as `com`, and a `Domain` that is not the IP address that set it. The
-/// jar has no public suffix list, so it accepts `Domain=co.uk` from
-/// `example.co.uk`. If that is a risk for your app, implement [CookieJar] over
-/// a library that has the list.
-///
-/// ## Why this is not `java.net.CookieManager`
-///
-/// Because that one does not work here, and fails in a way that reads as a
-/// login bug rather than a transport one. `HttpURLConnection` consults the
-/// process-wide `CookieHandler`, so installing the JDK's `CookieManager` as the
-/// default is the obvious move — but a cookie carrying `Max-Age` is parsed as
-/// RFC 2965 version 1, and `CookieManager` then *writes* it back that way:
-///
-/// ```text
-/// Cookie: $Version="1"; sid="abc";$Path="/";$Domain="example.com"
-/// ```
-///
-/// The value is quoted and the `$` pseudo-attributes are junk, so a server
-/// following RFC 6265 — which is all of them — reads no cookie at all. Almost
-/// every server sets `Max-Age`, so this is the common case rather than a corner.
-/// `HttpCookie`'s *parser* is fine, which is why [absorb] still uses it; only
-/// the writing is done here.
+/**
+ * A [CookieJar] in memory, for as long as the handler lives.
+ *
+ * Enough for a session cookie, which is what most apps want one for. Cookies
+ * are matched the way RFC 6265 says: host or domain, path prefix, and `Secure`
+ * only over `https`. A cookie that has expired — including the `Max-Age=0` a
+ * server deletes one with — is dropped rather than replayed.
+ *
+ * ## Which `Domain` a server can set
+ *
+ * The jar refuses a cookie whose `Domain` does not domain-match the host that
+ * set it (RFC 6265, section 5.3). It also refuses a `Domain` with one label,
+ * such as `com`, and a `Domain` that is not the IP address that set it. The
+ * jar has no public suffix list, so it accepts `Domain=co.uk` from
+ * `example.co.uk`. If that is a risk for your app, implement [CookieJar] over
+ * a library that has the list.
+ *
+ * ## Why this is not `java.net.CookieManager`
+ *
+ * Because that one does not work here, and fails in a way that reads as a
+ * login bug rather than a transport one. `HttpURLConnection` consults the
+ * process-wide `CookieHandler`, so installing the JDK's `CookieManager` as the
+ * default is the obvious move — but a cookie carrying `Max-Age` is parsed as
+ * RFC 2965 version 1, and `CookieManager` then *writes* it back that way:
+ *
+ * ```text
+ * Cookie: $Version="1"; sid="abc";$Path="/";$Domain="example.com"
+ * ```
+ *
+ * The value is quoted and the `$` pseudo-attributes are junk, so a server
+ * following RFC 6265 — which is all of them — reads no cookie at all. Almost
+ * every server sets `Max-Age`, so this is the common case rather than a corner.
+ * `HttpCookie`'s *parser* is fine, which is why [absorb] still uses it; only
+ * the writing is done here.
+ */
 class InMemoryCookieJar : CookieJar {
-    /// RFC 6265 identifies a cookie by its name, domain and path. A new cookie
-    /// with the same three replaces the old one, with or without `Domain`.
+    /**
+     * RFC 6265 identifies a cookie by its name, domain and path. A new cookie
+     * with the same three replaces the old one, with or without `Domain`.
+     */
     private data class Key(
         val name: String,
         val domain: String,
         val path: String,
     )
 
-    /// `hostOnly` is kept because it changes what [domainMatches] means: a
-    /// cookie set without `Domain` belongs to exactly the host that set it, and
-    /// must not reach a subdomain.
+    /**
+     * `hostOnly` is kept because it changes what [domainMatches] means: a
+     * cookie set without `Domain` belongs to exactly the host that set it, and
+     * must not reach a subdomain.
+     */
     private class Stored(
         val cookie: HttpCookie,
         val hostOnly: Boolean,
@@ -147,7 +157,7 @@ class InMemoryCookieJar : CookieJar {
         }
     }
 
-    /// Whether [host] can set a cookie with `Domain=`[domain].
+    /** Whether [host] can set a cookie with `Domain=`[domain]. */
     private fun mayDeclare(
         domain: String,
         host: String,
@@ -179,7 +189,7 @@ class InMemoryCookieJar : CookieJar {
         path: String,
     ): Boolean = path == scope || path.startsWith(if (scope.endsWith("/")) scope else "$scope/")
 
-    /// RFC 6265's default-path: the directory the request was made in.
+    /** RFC 6265's default-path: the directory the request was made in. */
     private fun defaultPath(url: URI): String {
         val path = url.path
         if (path.isNullOrEmpty() || !path.startsWith("/")) return "/"
@@ -192,68 +202,70 @@ class InMemoryCookieJar : CookieJar {
     }
 }
 
-/// An `HttpHandler` over the JDK's `HttpURLConnection`.
-///
-/// It is the client every JVM already has, which is why it is the one shipped;
-/// a shell with an HTTP stack of its own implements [HttpHandler] over that
-/// instead.
-///
-/// ## What is a failure
-///
-/// Every exchange the connection completes is an `HttpResult.Ok`, whatever the
-/// status: 4xx and 5xx are answers, and the core decides what to make of them.
-/// Only a transport failure — the request never reached a server, or no
-/// response came back — is an `HttpResult.Err`, and then a URL that will not
-/// parse is `HttpError.Url`, a `SocketTimeoutException` is `HttpError.Timeout`,
-/// and everything else is `HttpError.Io`.
-///
-/// The core builds `operation.url` with `url::Url`, so the URL is absolute. A
-/// relative URL, or a URL whose scheme is not `http` or `https`, is
-/// `HttpError.Url`. A `GET` or `HEAD` with a body is `HttpError.Io`, and the
-/// handler does not send it.
-///
-/// ## Methods
-///
-/// On the desktop JDK, `HttpURLConnection` knows GET, POST, HEAD, OPTIONS,
-/// PUT, DELETE and TRACE, and answers any other method, `PATCH` included, with
-/// `HttpError.Io`. Android's implementation also knows `PATCH`. If your app
-/// needs another method, bring your own client.
-///
-/// ## Redirects
-///
-/// The handler follows redirects itself, so that the cookie jar sees each
-/// response on the way. It sets `instanceFollowRedirects` to `false` after
-/// `configure` runs. The rules are these:
-///
-/// - It follows at most 20 redirects. After that, the answer is
-///   `HttpError.Io`.
-/// - A 301, 302 or 303 becomes a `GET` without a body, unless the request is
-///   a `HEAD`. A 307 or 308 keeps the method and the body.
-/// - It does not follow a redirect from `https` to `http`, or a redirect
-///   without a usable `Location`. The core gets that 3xx response.
-/// - When a redirect leaves the origin of the request, the handler removes
-///   the operation's own `Cookie` and `Authorization` headers.
-///
-/// ## Cookies
-///
-/// Kept, by default, in a jar of this handler's own — so a session survives
-/// between requests, as it does under `URLSession` on Apple and `HttpClient`
-/// on .NET. One handler is one jar: share the instance to share the session.
-/// Pass `cookies = null` for a handler that keeps none, or a [CookieJar] of
-/// your own to persist them. **Do not reach for `java.net.CookieManager`** —
-/// [InMemoryCookieJar] documents why it cannot work.
-///
-/// A `Cookie` header the operation already carries is left alone: a core that
-/// has said what it wants is not asking for help.
-///
-/// @param cookies the jar carried between requests, or `null` to keep none.
-/// @param configure runs against every connection before the request is sent,
-///   for a timeout, a proxy, or anything else `HttpURLConnection` exposes.
+/**
+ * An `HttpHandler` over the JDK's `HttpURLConnection`.
+ *
+ * It is the client every JVM already has, which is why it is the one shipped;
+ * a shell with an HTTP stack of its own implements [HttpHandler] over that
+ * instead.
+ *
+ * ## What is a failure
+ *
+ * Every exchange the connection completes is an `HttpResult.Ok`, whatever the
+ * status: 4xx and 5xx are answers, and the core decides what to make of them.
+ * Only a transport failure — the request never reached a server, or no
+ * response came back — is an `HttpResult.Err`, and then a URL that will not
+ * parse is `HttpError.Url`, a `SocketTimeoutException` is `HttpError.Timeout`,
+ * and everything else is `HttpError.Io`.
+ *
+ * The core builds `operation.url` with `url::Url`, so the URL is absolute. A
+ * relative URL, or a URL whose scheme is not `http` or `https`, is
+ * `HttpError.Url`. A `GET` or `HEAD` with a body is `HttpError.Io`, and the
+ * handler does not send it.
+ *
+ * ## Methods
+ *
+ * On the desktop JDK, `HttpURLConnection` knows GET, POST, HEAD, OPTIONS,
+ * PUT, DELETE and TRACE, and answers any other method, `PATCH` included, with
+ * `HttpError.Io`. Android's implementation also knows `PATCH`. If your app
+ * needs another method, bring your own client.
+ *
+ * ## Redirects
+ *
+ * The handler follows redirects itself, so that the cookie jar sees each
+ * response on the way. It sets `instanceFollowRedirects` to `false` after
+ * `configure` runs. The rules are these:
+ *
+ * - It follows at most 20 redirects. After that, the answer is
+ *   `HttpError.Io`.
+ * - A 301, 302 or 303 becomes a `GET` without a body, unless the request is
+ *   a `HEAD`. A 307 or 308 keeps the method and the body.
+ * - It does not follow a redirect from `https` to `http`, or a redirect
+ *   without a usable `Location`. The core gets that 3xx response.
+ * - When a redirect leaves the origin of the request, the handler removes
+ *   the operation's own `Cookie` and `Authorization` headers.
+ *
+ * ## Cookies
+ *
+ * Kept, by default, in a jar of this handler's own — so a session survives
+ * between requests, as it does under `URLSession` on Apple and `HttpClient`
+ * on .NET. One handler is one jar: share the instance to share the session.
+ * Pass `cookies = null` for a handler that keeps none, or a [CookieJar] of
+ * your own to persist them. **Do not reach for `java.net.CookieManager`** —
+ * [InMemoryCookieJar] documents why it cannot work.
+ *
+ * A `Cookie` header the operation already carries is left alone: a core that
+ * has said what it wants is not asking for help.
+ *
+ * @param cookies the jar carried between requests, or `null` to keep none.
+ * @param configure runs against every connection before the request is sent,
+ *   for a timeout, a proxy, or anything else `HttpURLConnection` exposes.
+ */
 class UrlConnectionHttpHandler(
     private val cookies: CookieJar? = InMemoryCookieJar(),
     private val configure: (HttpURLConnection) -> Unit = {},
 ) : HttpHandler {
-    /// One request of the exchange: the first, or one a redirect asked for.
+    /** One request of the exchange: the first, or one a redirect asked for. */
     private class Hop(
         val uri: URI,
         val url: URL,
@@ -298,8 +310,10 @@ class UrlConnectionHttpHandler(
             }
         }
 
-    /// Sends [first], then each request a redirect asks for, and answers with
-    /// the response that is not followed.
+    /**
+     * Sends [first], then each request a redirect asks for, and answers with
+     * the response that is not followed.
+     */
     private fun exchange(first: Hop): HttpResult {
         var hop = first
         repeat(MAX_REDIRECTS + 1) {
@@ -371,8 +385,10 @@ class UrlConnectionHttpHandler(
         }
     }
 
-    /// The request a redirect from [from] asks for, or `null` if the handler
-    /// does not follow it.
+    /**
+     * The request a redirect from [from] asks for, or `null` if the handler
+     * does not follow it.
+     */
     private fun redirect(
         from: Hop,
         status: Int,
@@ -417,27 +433,29 @@ class UrlConnectionHttpHandler(
     }
 
     companion object {
-        /// `HttpURLConnection` sends no body unless it is told to, and a
-        /// request with one of these methods and an empty body still has a
-        /// body — an empty one.
+        /**
+         * `HttpURLConnection` sends no body unless it is told to, and a
+         * request with one of these methods and an empty body still has a
+         * body — an empty one.
+         */
         private val BODY_REQUIRED_METHODS = setOf("POST", "PUT", "PATCH")
 
-        /// The methods that cannot carry a body.
+        /** The methods that cannot carry a body. */
         private val BODILESS_METHODS = setOf("GET", "HEAD")
 
-        /// The most redirects one request follows, as in Chromium and Firefox.
+        /** The most redirects one request follows, as in Chromium and Firefox. */
         private const val MAX_REDIRECTS = 20
 
         private val REDIRECT_STATUSES = setOf(301, 302, 303, 307, 308)
 
-        /// The redirects after which a request becomes a `GET` without a body.
+        /** The redirects after which a request becomes a `GET` without a body. */
         private val GET_AFTER_STATUSES = setOf(301, 302, 303)
 
-        /// The headers that describe a body, removed when the body is.
+        /** The headers that describe a body, removed when the body is. */
         private val CONTENT_HEADERS =
             setOf("content-type", "content-length", "content-encoding", "content-language", "content-location")
 
-        /// The headers that only the origin of the request receives.
+        /** The headers that only the origin of the request receives. */
         private val CREDENTIAL_HEADERS = setOf("cookie", "authorization")
 
         private fun urlOf(uri: URI): URL? {
@@ -452,7 +470,7 @@ class UrlConnectionHttpHandler(
             }
         }
 
-        /// [location] resolved against [base], or `null` if it does not parse.
+        /** [location] resolved against [base], or `null` if it does not parse. */
         private fun resolve(
             base: URI,
             location: String,

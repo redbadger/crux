@@ -11,7 +11,7 @@ use facet_generate::{
     reflection::format::Format,
 };
 
-use super::{super::Matched, AppMeta, BoltFfi, render};
+use super::{super::Matched, super::write_doc, AppMeta, BoltFfi, render};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
@@ -31,25 +31,18 @@ pub(super) fn emit(
 /// generated package.
 pub(super) fn ffi_bridge(class: &str, config: &CodeGeneratorConfig) -> io::Result<String> {
     render(config, |w| {
-        writeln!(
+        write_doc(
             w,
-            "/// The generated `CoreBridge`, implemented over BoltFFI's `{class}`: bytes"
+            &[
+                &format!("The generated `CoreBridge`, implemented over BoltFFI's `{class}`: bytes"),
+                "in, bytes out, nothing else. It is the only generated type that knows",
+                "the Rust core exists — pass a fake to `Core(bridge, handler, scope)`",
+                "instead for tests.",
+                "",
+                &format!("`{class}` holds a handle to the Rust side, so closing an `FfiBridge`"),
+                "releases the core it wraps.",
+            ],
         )?;
-        writeln!(
-            w,
-            "/// in, bytes out, nothing else. It is the only generated type that knows"
-        )?;
-        writeln!(
-            w,
-            "/// the Rust core exists — pass a fake to `Core(bridge, handler, scope)`"
-        )?;
-        writeln!(w, "/// instead for tests.")?;
-        writeln!(w, "///")?;
-        writeln!(
-            w,
-            "/// `{class}` holds a handle to the Rust side, so closing an `FfiBridge`"
-        )?;
-        writeln!(w, "/// releases the core it wraps.")?;
         writeln!(
             w,
             "class FfiBridge(private val ffi: {class} = {class}()) : CoreBridge, AutoCloseable {{"
@@ -75,11 +68,13 @@ pub(super) fn ffi_bridge(class: &str, config: &CodeGeneratorConfig) -> io::Resul
 
 fn emit_bridge(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The core's FFI surface, as bytes. Implement it around the `CoreFfi` your"
+        &[
+            "The core's FFI surface, as bytes. Implement it around the `CoreFfi` your",
+            "Rust crate exports, or with a fake for tests.",
+        ],
     )?;
-    writeln!(w, "/// Rust crate exports, or with a fake for tests.")?;
     writeln!(w, "interface CoreBridge {{")?;
     w.indent();
     writeln!(w, "fun update(event: ByteArray): ByteArray")?;
@@ -95,11 +90,13 @@ fn emit_bridge(w: &mut dyn IndentWrite) -> io::Result<()> {
 /// that uses the `BoltFFI` bindings never names a bridge at all.
 fn emit_ffi_constructor(w: &mut dyn IndentWrite, class: &str) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Build a `Core` over the `{class}` the Rust crate exports — the shell"
+        &[
+            &format!("Build a `Core` over the `{class}` the Rust crate exports — the shell"),
+            "writes the handler and never sees the bridge.",
+        ],
     )?;
-    writeln!(w, "/// writes the handler and never sees the bridge.")?;
     writeln!(
         w,
         "constructor(handler: EffectHandler, scope: CoroutineScope) : this(FfiBridge(), handler, scope)"
@@ -122,23 +119,18 @@ fn emit_core(
     let view_model = render_type(&Format::TypeName(app.view_model.clone()), config);
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The shell's side of the core: it serializes events, dispatches the"
-    )?;
-    writeln!(
-        w,
-        "/// requests that come back, and resolves them through the bridge."
-    )?;
-    writeln!(w, "///")?;
-    writeln!(
-        w,
-        "/// `{}` is handled here, so an `EffectHandler` need not implement it.",
-        render.name
-    )?;
-    writeln!(
-        w,
-        "/// Each request is dispatched in its own coroutine on `scope`."
+        &[
+            "The shell's side of the core: it serializes events, dispatches the",
+            "requests that come back, and resolves them through the bridge.",
+            "",
+            &format!(
+                "`{}` is handled here, so an `EffectHandler` need not implement it.",
+                render.name
+            ),
+            "Each request is dispatched in its own coroutine on `scope`.",
+        ],
     )?;
     writeln!(w, "class Core(")?;
     w.indent();
@@ -152,7 +144,10 @@ fn emit_core(
         w,
         "private val _view = MutableStateFlow({view_model}.bincodeDeserialize(bridge.view()))"
     )?;
-    writeln!(w, "/// The view model as of the last `{}`.", render.name)?;
+    write_doc(
+        w,
+        &[&format!("The view model as of the last `{}`.", render.name)],
+    )?;
     writeln!(w, "val view: StateFlow<{view_model}> = _view.asStateFlow()")?;
     writeln!(
         w,
@@ -168,9 +163,9 @@ fn emit_core(
     }
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Send an event to the core and run the loop it starts."
+        &["Send an event to the core and run the loop it starts."],
     )?;
     writeln!(w, "fun update(event: {event}) {{")?;
     w.indent();
@@ -178,9 +173,9 @@ fn emit_core(
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Serialized requests, as returned by the bridge or pushed by middleware."
+        &["Serialized requests, as returned by the bridge or pushed by middleware."],
     )?;
     writeln!(w, "fun process(bytes: ByteArray) {{")?;
     w.indent();

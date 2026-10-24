@@ -24,20 +24,22 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.crux.example.weather.Set as KeyValueSet
 
-/// The shell's side of the effect protocol: one method per operation the app
-/// declares, each returning the single output that operation is answered with.
-/// Nothing here calls `resolve` — the generated `EffectDispatcher` does that,
-/// exactly as often as the operation's kind says.
-///
-/// There is no `render` override: the generated `Core` intercepts `Render`
-/// before the dispatcher sees it and refreshes its `view` flow, so the
-/// interface's default no-op stands.
-///
-/// `HttpHandler`, `KeyValueHandler` and `TimeHandler` are the handlers
-/// `crux_http`, `crux_kv` and `crux_time` ship, generated into this module and
-/// injected by `AppModule`: the rules for mapping a response, answering a
-/// store operation or answering a timer belong to those crates, so the only
-/// thing this shell writes for them is the line that delegates.
+/**
+ * The shell's side of the effect protocol: one method per operation the app
+ * declares, each returning the single output that operation is answered with.
+ * Nothing here calls `resolve` — the generated `EffectDispatcher` does that,
+ * exactly as often as the operation's kind says.
+ *
+ * There is no `render` override: the generated `Core` intercepts `Render`
+ * before the dispatcher sees it and refreshes its `view` flow, so the
+ * interface's default no-op stands.
+ *
+ * `HttpHandler`, `KeyValueHandler` and `TimeHandler` are the handlers
+ * `crux_http`, `crux_kv` and `crux_time` ship, generated into this module and
+ * injected by `AppModule`: the rules for mapping a response, answering a
+ * store operation or answering a timer belong to those crates, so the only
+ * thing this shell writes for them is the line that delegates.
+ */
 @Singleton
 class WeatherHandler
     @Inject

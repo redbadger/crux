@@ -1,48 +1,54 @@
-/// The shell side of `crux_time`, as one method per operation.
-///
-/// Each method's shape is the generated `EffectHandler`'s, so an app's handler
-/// holds an instance and delegates in one line:
-///
-/// ```ts
-/// const time = new TimeoutTimeHandler();
-///
-/// const handler: EffectHandler = {
-///   timeNotifyAfter: (operation) => time.notifyAfter(operation),
-///   timeClear: (operation) => time.clear(operation),
-/// };
-/// ```
-///
-/// ## What a timer answers with, and when
-///
-/// `notifyAt` and `notifyAfter` are answered exactly once, with the timer's own
-/// id, when it fires. `clear` cancels the timer it names and is answered with
-/// the same id.
-///
-/// A cleared timer's `notifyAt` or `notifyAfter` may still answer — a shell
-/// need not race the two. By then the core has stopped listening for that
-/// answer and ignores it, which is why the implementation below settles the
-/// pending promise rather than leaving it unresolved for the page's lifetime.
+/**
+ * The shell side of `crux_time`, as one method per operation.
+ *
+ * Each method's shape is the generated `EffectHandler`'s, so an app's handler
+ * holds an instance and delegates in one line:
+ *
+ * ```ts
+ * const time = new TimeoutTimeHandler();
+ *
+ * const handler: EffectHandler = {
+ *   timeNotifyAfter: (operation) => time.notifyAfter(operation),
+ *   timeClear: (operation) => time.clear(operation),
+ * };
+ * ```
+ *
+ * ## What a timer answers with, and when
+ *
+ * `notifyAt` and `notifyAfter` are answered exactly once, with the timer's own
+ * id, when it fires. `clear` cancels the timer it names and is answered with
+ * the same id.
+ *
+ * A cleared timer's `notifyAt` or `notifyAfter` may still answer — a shell
+ * need not race the two. By then the core has stopped listening for that
+ * answer and ignores it, which is why the implementation below settles the
+ * pending promise rather than leaving it unresolved for the page's lifetime.
+ */
 export interface TimeHandler {
-  /// The current wall-clock time.
+  /** The current wall-clock time. */
   now(operation: Now): Promise<Instant>;
-  /// Answer with `operation.id` once `operation.instant` has arrived.
+  /** Answer with `operation.id` once `operation.instant` has arrived. */
   notifyAt(operation: NotifyAt): Promise<TimerId>;
-  /// Answer with `operation.id` once `operation.duration` has elapsed.
+  /** Answer with `operation.id` once `operation.duration` has elapsed. */
   notifyAfter(operation: NotifyAfter): Promise<TimerId>;
-  /// Cancel the timer `operation.id` names, and answer with it.
+  /** Cancel the timer `operation.id` names, and answer with it. */
   clear(operation: Clear): Promise<TimerId>;
 }
 
-/// The longest delay `setTimeout` honours, in milliseconds.
+/** The longest delay `setTimeout` honours, in milliseconds. */
 const MAX_TIMEOUT = 2 ** 31 - 1;
 
-/// A `TimeHandler` whose timers are `setTimeout`s.
-///
-/// The timer table is state, so the app constructs one handler where it
-/// constructs its own.
+/**
+ * A `TimeHandler` whose timers are `setTimeout`s.
+ *
+ * The timer table is state, so the app constructs one handler where it
+ * constructs its own.
+ */
 export class TimeoutTimeHandler implements TimeHandler {
-  /// The timers that have not fired or been cleared, each paired with the
-  /// `resolve` of the promise waiting on it.
+  /**
+   * The timers that have not fired or been cleared, each paired with the
+   * `resolve` of the promise waiting on it.
+   */
   private readonly timers = new Map<
     bigint,
     { handle: ReturnType<typeof setTimeout>; resolve: (id: TimerId) => void }
@@ -56,8 +62,10 @@ export class TimeoutTimeHandler implements TimeHandler {
     );
   }
 
-  /// The wall clock gives the delay once. After that, `performance.now()`
-  /// measures it, because that clock does not jump when the wall clock is set.
+  /**
+   * The wall clock gives the delay once. After that, `performance.now()`
+   * measures it, because that clock does not jump when the wall clock is set.
+   */
   notifyAt(operation: NotifyAt): Promise<TimerId> {
     const target =
       Number(operation.instant.seconds) * 1000 +
