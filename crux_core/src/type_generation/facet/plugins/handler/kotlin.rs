@@ -13,7 +13,7 @@ use facet_generate::{
     reflection::format::{Format, FormatHolder as _, Namespace, QualifiedTypeName},
 };
 
-use super::{super::Variant, super::lower_camel, Matched};
+use super::{super::Variant, super::lower_camel, super::write_doc, Matched};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
@@ -28,11 +28,13 @@ pub(super) fn emit(
 
 fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(w, "/// Receives the items of a streaming effect.")?;
-    writeln!(w, "///")?;
-    writeln!(
+    write_doc(
         w,
-        "/// Every item sent is one resolution of the request that started the stream."
+        &[
+            "Receives the items of a streaming effect.",
+            "",
+            "Every item sent is one resolution of the request that started the stream.",
+        ],
     )?;
     writeln!(w, "fun interface EffectSink<in T> {{")?;
     w.indent();
@@ -65,15 +67,14 @@ fn emit_handler(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(w, "/// Handles every effect `{}` can carry.", m.name)?;
-    writeln!(w, "///")?;
-    writeln!(
+    write_doc(
         w,
-        "/// `EffectDispatcher` resolves each request for you, so there is no"
-    )?;
-    writeln!(
-        w,
-        "/// `resolve` to call at the wrong time or with the wrong bytes."
+        &[
+            &format!("Handles every effect `{}` can carry.", m.name),
+            "",
+            "`EffectDispatcher` resolves each request for you, so there is no",
+            "`resolve` to call at the wrong time or with the wrong bytes.",
+        ],
     )?;
     writeln!(w, "interface EffectHandler {{")?;
     w.indent();
@@ -95,12 +96,16 @@ fn emit_handler(
             let output = render_output(variant, config);
             writeln!(w, "suspend fun {method}(operation: {operation}): {output}")?;
         } else if variant.render {
-            writeln!(
+            write_doc(
                 w,
-                "/// `Core` handles `{}` itself, so this does nothing; implement it",
-                variant.name
+                &[
+                    &format!(
+                        "`Core` handles `{}` itself, so this does nothing; implement it",
+                        variant.name
+                    ),
+                    "only if you drive `EffectDispatcher` yourself.",
+                ],
             )?;
-            writeln!(w, "/// only if you drive `EffectDispatcher` yourself.")?;
             writeln!(w, "fun {method}(operation: {operation}) {{}}")?;
         } else {
             writeln!(w, "fun {method}(operation: {operation})")?;
@@ -120,15 +125,14 @@ fn emit_dispatcher(
     let effect = m.name;
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Routes each request to an `EffectHandler` and resolves it for you:"
+        &[
+            "Routes each request to an `EffectHandler` and resolves it for you:",
+            "never for a notification, once for a request, once per item for a",
+            "stream.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// never for a notification, once for a request, once per item for a"
-    )?;
-    writeln!(w, "/// stream.")?;
     writeln!(w, "class EffectDispatcher(")?;
     w.indent();
     writeln!(w, "private val handler: EffectHandler,")?;

@@ -7,7 +7,7 @@ use facet_generate::generation::{
     indent::IndentWrite, kotlin::variant_class_name, plugin::EmitContext,
 };
 
-use super::Matched;
+use super::{super::write_doc, Matched};
 
 pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>, _ctx: &EmitContext) -> io::Result<()> {
     if m.primary {
@@ -18,17 +18,17 @@ pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>, _ctx: &EmitContext)
 
 fn emit_kind(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// How many times the shell is expected to resolve a request."
+        &["How many times the shell is expected to resolve a request."],
     )?;
     writeln!(w, "enum class OperationKind {{")?;
     w.indent();
-    writeln!(w, "/// Never — the core is not waiting for an answer.")?;
+    write_doc(w, &["Never — the core is not waiting for an answer."])?;
     writeln!(w, "NOTIFY,")?;
-    writeln!(w, "/// Exactly once.")?;
+    write_doc(w, &["Exactly once."])?;
     writeln!(w, "REQUEST,")?;
-    writeln!(w, "/// Any number of times, until the shell stops sending.")?;
+    write_doc(w, &["Any number of times, until the shell stops sending."])?;
     writeln!(w, "STREAM,")?;
     w.unindent();
     writeln!(w, "}}")?;
@@ -40,13 +40,12 @@ fn emit_accessor(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     let effect = m.name;
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// How many times the shell resolves a request carrying this effect,"
-    )?;
-    writeln!(
-        w,
-        "/// or `null` when the operation leaves that to the call site."
+        &[
+            "How many times the shell resolves a request carrying this effect,",
+            "or `null` when the operation leaves that to the call site.",
+        ],
     )?;
     writeln!(w, "val {effect}.operationKind: OperationKind?")?;
     w.indent();
