@@ -43,8 +43,11 @@ function cursorToSelection(cursor: TextCursor): Selection {
 
 const Home: NextPage = () => {
   const [view, setView] = useState<ViewModel>(
-    new ViewModel("", textCursorPosition(BigInt(0))),
+    new ViewModel("", textCursorPosition(BigInt(0)), null),
   );
+  // Until the core has produced its first view there is nothing to edit, and
+  // edits would be dropped (`core.current` is still null).
+  const [ready, setReady] = useState(false);
 
   // TODO the state and channel handling should probably get
   // packaged up as a custom hook or something
@@ -52,7 +55,9 @@ const Home: NextPage = () => {
   // Set by the core's `subscribe` handler; every peer message becomes one
   // item on this sink.
   const subscription = useRef<EffectSink<Message> | null>(null);
-  const channel = useRef(new BroadcastChannel("crux-note"));
+  // Created once, in the effect: a `useRef` initialiser would open a new
+  // channel on every render.
+  const channel = useRef<BroadcastChannel | null>(null);
   const core = useRef<Core | null>(null);
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
@@ -81,10 +86,20 @@ const Home: NextPage = () => {
           try {
             // `Core.create` waits for the WASM module before building the
             // generated bridge over it.
-            core.current = await createCore(setView, channel, subscription);
+            const ch = new BroadcastChannel("crux-note");
+            channel.current = ch;
+
+            core.current = await createCore(
+              (view) => {
+                setView(view);
+                setReady(true);
+              },
+              channel,
+              subscription,
+            );
 
             // Subscribe to the BroadcastChannel
-            channel.current.onmessage = onMessage;
+            ch.onmessage = onMessage;
 
             // Open the document
             core.current.update(eventOpen());
@@ -94,15 +109,14 @@ const Home: NextPage = () => {
               kind: "reset",
             };
 
-            channel.current.postMessage(message);
+            ch.postMessage(message);
           } catch (error) {
             console.error("Error during WASM initialization:", error);
           }
         })();
 
-        const ch = channel.current;
         return () => {
-          ch.onmessage = null;
+          if (channel.current) channel.current.onmessage = null;
         };
       }
     },
@@ -112,6 +126,7 @@ const Home: NextPage = () => {
   // Event handlers
 
   const onChange = ({ start, end, text }: ChangeEvent): void => {
+    if (!ready) return;
     log(`onChange ${start} ${end} "${text}"`);
 
     core.current?.update(eventReplace(BigInt(start), BigInt(end), text));
@@ -144,6 +159,16 @@ const Home: NextPage = () => {
       <div className="min-h-screen flex flex-col bg-slate-200">
         <Navbar title="A note" />
         <main className="grow flex flex-col">
+          {view.error ? (
+            <div role="alert" className="p-3 bg-red-100 text-red-800">
+              {view.error}
+            </div>
+          ) : null}
+          {!ready ? (
+            <div role="status" className="px-3 pt-2 text-sm text-slate-500">
+              Loading…
+            </div>
+          ) : null}
           <div className="grow basis-1 flex flex-col">
             <Textarea
               className="p-3 grow resize-none w-full focus:outline-none"
@@ -152,6 +177,7 @@ const Home: NextPage = () => {
               onSelect={onSelect}
               onChange={onChange}
               value={view.text}
+              disabled={!ready}
             />
           </div>
           {LOG_EDITS ? (
