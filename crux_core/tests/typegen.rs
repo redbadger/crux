@@ -152,7 +152,7 @@ mod facet_test {
 
     use super::{
         facet_shared::{App, OtherApp},
-        toolchain::build,
+        toolchain::{build, kotlinc_build},
     };
 
     #[test]
@@ -508,6 +508,20 @@ mod facet_test {
             &["build", "--nologo"].map(std::ffi::OsStr::new),
             dir.path(),
         );
+    }
+
+    /// The same for Kotlin. The `EffectHandler` and `Core` name the root
+    /// types from `com.example.shared`, and `Kit.Presence` from its own
+    /// package below it. A bare `Kit.Presence` does not resolve there, so
+    /// only `kotlinc` can tell if the spelling is correct.
+    #[test]
+    fn the_generated_kotlin_compiles() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        kotlinc_build(dir.path());
     }
 
     /// Reads the Swift module a `CodeGenerator` writes, for the tests that
@@ -1116,7 +1130,11 @@ mod facet_clash_test {
 /// `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set.
 #[cfg(feature = "facet_typegen")]
 mod toolchain {
-    use std::{path::Path, process::Command};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        process::Command,
+    };
 
     /// Whether a toolchain that this test cannot find is a failure, not a
     /// skip. Set `CRUX_REQUIRE_SHELL_TOOLCHAINS` where every toolchain is
@@ -1154,5 +1172,83 @@ mod toolchain {
             }
             Err(e) => panic!("could not run `{program}`: {e}"),
         }
+    }
+
+    /// Compiles the generated Kotlin package directories under `dir` with
+    /// `kotlinc`. It does not compile `dir` itself, because `kotlinc` would
+    /// then try to compile the `build.gradle.kts` file in it.
+    pub fn kotlinc_build(dir: &Path) {
+        let Some(coroutines) = coroutines_jar() else {
+            unavailable(
+                "there is no kotlinx-coroutines-core jar in KOTLINX_COROUTINES_JAR or under \
+                 ~/.gradle or ~/.m2, and `kotlinc` ships only the standard library",
+                "the generated Kotlin is not compiled",
+            );
+            return;
+        };
+
+        let mut args: Vec<std::ffi::OsString> = fs::read_dir(dir)
+            .expect("should read the generated package")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .map(PathBuf::into_os_string)
+            .collect();
+        args.sort();
+        args.extend([
+            "-classpath".into(),
+            coroutines.into_os_string(),
+            "-d".into(),
+            dir.join("classes.jar").into_os_string(),
+        ]);
+        let args: Vec<&std::ffi::OsStr> = args.iter().map(std::ffi::OsString::as_os_str).collect();
+        build("kotlinc", &args, dir);
+    }
+
+    /// Finds a `kotlinx-coroutines-core` jar, which the generated Kotlin
+    /// imports. Gradle and Maven keep one under the home directory after a
+    /// build that uses it. Set `KOTLINX_COROUTINES_JAR` to use a jar in a
+    /// different location.
+    fn coroutines_jar() -> Option<PathBuf> {
+        if let Ok(jar) = std::env::var("KOTLINX_COROUTINES_JAR") {
+            return Some(PathBuf::from(jar));
+        }
+
+        let home = PathBuf::from(std::env::var("HOME").ok()?);
+        [
+            home.join(
+                ".gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm",
+            ),
+            home.join(".m2/repository/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm"),
+        ]
+        .iter()
+        .find_map(|root| find_jar(root, 4))
+    }
+
+    /// The first jar under `dir`, no deeper than `depth`, without the
+    /// `-sources` jars.
+    fn find_jar(dir: &Path, depth: usize) -> Option<PathBuf> {
+        if depth == 0 {
+            return None;
+        }
+
+        let mut entries: Vec<_> = fs::read_dir(dir)
+            .ok()?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .collect();
+        entries.sort();
+
+        entries.iter().find_map(|path| {
+            let name = path.file_name()?.to_str()?;
+            if path.is_dir() {
+                find_jar(path, depth - 1)
+            } else {
+                let jar = path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("jar"));
+                (jar && !name.ends_with("-sources.jar")).then(|| path.clone())
+            }
+        })
     }
 }
