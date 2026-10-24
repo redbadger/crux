@@ -10,11 +10,11 @@ import {
   eventDecrement,
 } from "shared_types/app";
 
-import { Core } from "./core";
+import { CoreWrapper } from "./core";
 
 const Home: NextPage = () => {
   const [view, setView] = useState(new ViewModel(""));
-  const core = useRef(new Core(setView));
+  const core = useRef(new CoreWrapper(setView));
 
   useEffect(() => {
     void core.current.initialize(true);
