@@ -6,12 +6,12 @@ use facet_generate::{
     generation::{
         CodeGeneratorConfig,
         indent::IndentWrite,
-        kotlin::{render_type, variant_class_name},
+        kotlin::{render_type, variant_class_name, write_doc},
     },
     reflection::format::Format,
 };
 
-use super::{super::Matched, super::write_doc, AppMeta, BoltFfi, render};
+use super::{super::Matched, AppMeta, BoltFfi, render};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,

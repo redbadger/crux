@@ -162,7 +162,7 @@ impl EmitterPlugin<Swift> for ShellExtensionPlugin {
 
     /// A Swift package entry declares the package; the target still needs its
     /// edge to the product, which is the extension's to name.
-    fn target_dependencies(&self) -> Vec<String> {
+    fn target_dependencies(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
         self.union(
             |extension| extension.swift.as_ref(),
             |shipped| shipped.target_dependencies,

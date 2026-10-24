@@ -4,14 +4,16 @@ use std::io;
 
 use facet_generate::{
     generation::{
-        CodeGeneratorConfig, bincode::typescript::write_serialize_value, indent::IndentWrite,
-        typescript::render_type,
+        CodeGeneratorConfig,
+        bincode::typescript::write_serialize_value,
+        indent::IndentWrite,
+        typescript::{render_type, requalify, write_doc},
     },
     reflection::format::{Format, QualifiedTypeName},
 };
 use heck::ToUpperCamelCase;
 
-use super::{super::Matched, super::write_doc, AppMeta, BoltFfi};
+use super::{super::Matched, AppMeta, BoltFfi};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
@@ -97,8 +99,13 @@ fn emit_core(
     let render = m
         .render_variant()
         .expect("the plugin only matches an effect with a render variant");
-    let event = render_type(&Format::TypeName(app.event.clone()), config);
-    let view_model = render_type(&Format::TypeName(app.view_model.clone()), config);
+    // The app's types are named as the registry spells them, and the emitter
+    // functions take the spelling the generator rewrites references to.
+    let event = render_type(&Format::TypeName(requalify(config, &app.event)), config);
+    let view_model = render_type(
+        &Format::TypeName(requalify(config, &app.view_model)),
+        config,
+    );
 
     writeln!(w)?;
     write_doc(
@@ -199,7 +206,12 @@ fn emit_methods(
     writeln!(w, "public update(event: {event}): void {{")?;
     w.indent();
     writeln!(w, "const serializer = new BincodeSerializer();")?;
-    write_serialize_value(w, "event", &Format::TypeName(app.event.clone()), config)?;
+    write_serialize_value(
+        w,
+        "event",
+        &Format::TypeName(requalify(config, &app.event)),
+        config,
+    )?;
     writeln!(
         w,
         "this.processBytes(this.bridge.update(serializer.getBytes()));"
@@ -252,8 +264,9 @@ fn emit_methods(
 /// How the bincode emitter spells "read one of these from `deserializer`": an
 /// enum has a free function, everything else a static method.
 fn deserialize_expr(name: &QualifiedTypeName, config: &CodeGeneratorConfig) -> String {
+    let name = requalify(config, name);
     let type_name = name.format(ToUpperCamelCase::to_upper_camel_case, ".");
-    if config.enum_type_names.contains(&type_name) {
+    if config.is_enum(&name) {
         format!("deserialize{type_name}(deserializer)")
     } else {
         format!("{type_name}.deserialize(deserializer)")
