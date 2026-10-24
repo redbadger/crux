@@ -3,7 +3,10 @@
 
 use std::io;
 
-use facet_generate::generation::{indent::IndentWrite, swift::case_name};
+use facet_generate::generation::{
+    indent::IndentWrite,
+    swift::{case_name, write_doc},
+};
 
 use super::{EFFECT_SHIFT, Matched, SEQUENCE_MASK, STREAM_BIT};
 
@@ -14,14 +17,18 @@ pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
 
 fn emit_effect_kind(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(w, "/// Which effect a request id names.")?;
-    writeln!(w, "///")?;
-    writeln!(
+    write_doc(
         w,
-        "/// The raw value is the effect's position in `{}`, which is what the",
-        m.name
+        &[
+            "Which effect a request id names.",
+            "",
+            &format!(
+                "The raw value is the effect's position in `{}`, which is what the",
+                m.name
+            ),
+            "request id carries.",
+        ],
     )?;
-    writeln!(w, "/// request id carries.")?;
     writeln!(w, "public enum EffectKind: UInt8, Hashable, Sendable {{")?;
     w.indent();
     for (index, variant) in m.variants.iter().enumerate() {
@@ -35,25 +42,21 @@ fn emit_effect_kind(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> 
 
 fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The parts of the id the core issues with every request."
+        &[
+            "The parts of the id the core issues with every request.",
+            "",
+            "Resolve with `rawValue`, exactly as it arrived — this is for logging,",
+            "tracing and assertions. The bit layout is Crux's, so read ids with this",
+            "rather than picking the integer apart by hand.",
+        ],
     )?;
-    writeln!(w, "///")?;
-    writeln!(
-        w,
-        "/// Resolve with `rawValue`, exactly as it arrived — this is for logging,"
-    )?;
-    writeln!(
-        w,
-        "/// tracing and assertions. The bit layout is Crux's, so read ids with this"
-    )?;
-    writeln!(w, "/// rather than picking the integer apart by hand.")?;
     writeln!(w, "public struct RequestId: Hashable, Sendable {{")?;
     w.indent();
-    writeln!(
+    write_doc(
         w,
-        "/// The id as it came from the core, and as it goes back."
+        &["The id as it came from the core, and as it goes back."],
     )?;
     writeln!(w, "public let rawValue: UInt32")?;
     writeln!(w)?;
@@ -63,26 +66,27 @@ fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Every notification shares one reserved id, because the core is not"
+        &[
+            "Every notification shares one reserved id, because the core is not",
+            "waiting on any of them.",
+        ],
     )?;
-    writeln!(w, "/// waiting on any of them.")?;
     writeln!(w, "public var isNotification: Bool {{")?;
     w.indent();
     writeln!(w, "self.rawValue == 0")?;
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Which effect this request carries — `nil` for a notification, whose"
+        &[
+            "Which effect this request carries — `nil` for a notification, whose",
+            "id names none, and for an id naming an effect this generated code",
+            "does not know.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// id names none, and for an id naming an effect this generated code"
-    )?;
-    writeln!(w, "/// does not know.")?;
     writeln!(w, "public var effectKind: EffectKind? {{")?;
     w.indent();
     writeln!(w, "if self.isNotification {{ return nil }}")?;
@@ -93,9 +97,9 @@ fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// How many times the core expects this request to be resolved."
+        &["How many times the core expects this request to be resolved."],
     )?;
     writeln!(w, "public var operationKind: OperationKind {{")?;
     w.indent();
@@ -107,11 +111,13 @@ fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The ascending number the request was issued with. Zero for a"
+        &[
+            "The ascending number the request was issued with. Zero for a",
+            "notification, the one id that is not sequenced.",
+        ],
     )?;
-    writeln!(w, "/// notification, the one id that is not sequenced.")?;
     writeln!(w, "public var sequence: UInt32 {{")?;
     w.indent();
     writeln!(w, "self.rawValue & {SEQUENCE_MASK:#x}")?;

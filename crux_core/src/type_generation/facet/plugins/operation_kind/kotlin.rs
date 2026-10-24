@@ -4,10 +4,12 @@
 use std::io;
 
 use facet_generate::generation::{
-    indent::IndentWrite, kotlin::variant_class_name, plugin::EmitContext,
+    indent::IndentWrite,
+    kotlin::{variant_class_name, write_doc},
+    plugin::EmitContext,
 };
 
-use super::{super::write_doc, Matched};
+use super::Matched;
 
 pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>, _ctx: &EmitContext) -> io::Result<()> {
     if m.primary {

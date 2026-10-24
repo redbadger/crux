@@ -3,10 +3,13 @@
 
 use std::io;
 
-use facet_generate::generation::{indent::IndentWrite, kotlin::variant_class_name};
+use facet_generate::generation::{
+    indent::IndentWrite,
+    kotlin::{variant_class_name, write_doc},
+};
 use heck::ToShoutySnakeCase;
 
-use super::{super::write_doc, EFFECT_SHIFT, Matched, SEQUENCE_MASK, STREAM_BIT};
+use super::{EFFECT_SHIFT, Matched, SEQUENCE_MASK, STREAM_BIT};
 
 pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     emit_effect_kind(w, m)?;

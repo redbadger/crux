@@ -3,9 +3,9 @@
 
 use std::io;
 
-use facet_generate::generation::indent::IndentWrite;
+use facet_generate::generation::{indent::IndentWrite, typescript::write_doc};
 
-use super::{super::write_doc, EFFECT_SHIFT, Matched, SEQUENCE_MASK, STREAM_BIT};
+use super::{EFFECT_SHIFT, Matched, SEQUENCE_MASK, STREAM_BIT};
 
 pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     emit_effect_kind(w, m)?;

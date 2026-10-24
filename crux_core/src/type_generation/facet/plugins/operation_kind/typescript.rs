@@ -6,9 +6,9 @@
 
 use std::io;
 
-use facet_generate::generation::{indent::IndentWrite, plugin::EmitContext};
+use facet_generate::generation::{indent::IndentWrite, plugin::EmitContext, typescript::write_doc};
 
-use super::{super::write_doc, Matched};
+use super::Matched;
 use crate::type_generation::facet::plugins::lower_camel;
 
 pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>, _ctx: &EmitContext) -> io::Result<()> {

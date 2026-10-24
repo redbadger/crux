@@ -30,11 +30,10 @@ mod shell_handler;
 mod tests;
 
 use facet_generate::{
-    generation::{CodeGeneratorConfig, PackageLocation, indent::IndentWrite, plugin::EmitContext},
+    generation::{CodeGeneratorConfig, PackageLocation, plugin::EmitContext},
     reflection::format::{ContainerFormat, Format, VariantFormat},
 };
 use heck::ToLowerCamelCase;
-use std::io;
 
 pub(super) use core::{COMPANION_FILE_STEMS, CorePlugin, FFI_BRIDGE_FILE};
 pub(super) use handler::EffectHandlerPlugin;
@@ -144,24 +143,6 @@ const fn output_of(meta: &EffectVariantMeta) -> Option<&Format> {
 /// for a member derived from a type or variant name.
 pub fn lower_camel(name: &str) -> String {
     name.to_lower_camel_case()
-}
-
-/// Writes a Kotlin or TypeScript doc comment, one `lines` entry per line and an
-/// empty entry for a blank line. Both languages only treat `/** ... */` as a
-/// doc comment, so `///` would be a plain comment to their tooling.
-pub fn write_doc(w: &mut dyn IndentWrite, lines: &[&str]) -> io::Result<()> {
-    if let [line] = lines {
-        return writeln!(w, "/** {line} */");
-    }
-    writeln!(w, "/**")?;
-    for line in lines {
-        if line.is_empty() {
-            writeln!(w, " *")?;
-        } else {
-            writeln!(w, " * {line}")?;
-        }
-    }
-    writeln!(w, " */")
 }
 
 /// Whether the dispatcher will serialize an output, which is what needs a
