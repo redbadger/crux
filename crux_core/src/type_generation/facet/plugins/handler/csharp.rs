@@ -2,11 +2,14 @@
 
 use std::io;
 
-use facet_generate::generation::{
-    CodeGeneratorConfig,
-    bincode::csharp::write_serialize_value,
-    csharp::{escape_identifier, render_type},
-    indent::IndentWrite,
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        bincode::csharp::write_serialize_value,
+        csharp::{escape_identifier, render_type, requalify_format},
+        indent::IndentWrite,
+    },
+    reflection::format::Format,
 };
 
 use super::{super::Variant, super::lower_camel, Matched};
@@ -240,8 +243,8 @@ fn emit_resolve(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w, "var serializer = new BincodeSerializer();")?;
-    if let Some(output) = variant.output {
-        write_serialize_value(w, value, output, config)?;
+    if let Some(output) = output_format(variant, config) {
+        write_serialize_value(w, value, &output, config)?;
     }
     writeln!(w, "_resolve(id, serializer.GetBytes());")?;
 
@@ -280,8 +283,21 @@ fn emit_delegate_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
 }
 
 fn render_output(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> String {
-    variant.output.map_or_else(
+    output_format(variant, config).map_or_else(
         || "object".to_string(),
-        |format| render_type(format, config),
+        |format| render_type(&format, config),
     )
+}
+
+/// The output type, in the spelling the emitter functions take.
+///
+/// The `Format`s on the effect metadata are recorded during reflection, so,
+/// unlike the formats reached through the registry, they have not been
+/// requalified by the generator.
+fn output_format(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> Option<Format> {
+    variant.output.map(|format| {
+        let mut format = format.clone();
+        requalify_format(config, &mut format);
+        format
+    })
 }
