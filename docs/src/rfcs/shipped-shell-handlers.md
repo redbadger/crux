@@ -31,7 +31,7 @@ writes. For the operations of a published capability — `crux_http`,
 the protocol, not to the app: that a `URLError.timedOut` becomes
 `HttpError.timeout` and every other `URLError` becomes `HttpError.io`; that
 `NotifyAfter` is answered with the timer's id when it fires, and that if
-`Clear` arrives first the timer is cancelled and the late answer is harmless.
+`ClearTimer` arrives first the timer is cancelled and the late answer is harmless.
 The capability author is the one who knows those rules, and today every shell
 author re-derives them from the book and the examples.
 
@@ -77,7 +77,7 @@ struct WeatherHandler: EffectHandler {
 
     func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
     func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
-    func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
+    func timeClear(_ operation: ClearTimer) async -> TimerId { await time.clear(operation) }
 
     func getLocation(_ operation: GetLocation) async -> Location { /* … */ }
     func isLocationEnabled(_ operation: IsLocationEnabled) async -> Bool { /* … */ }
@@ -254,7 +254,7 @@ untouched, and the breaking release's reshaping of
 
 `rust_types` is there because a shipped source implements the whole capability,
 while an app's `Effect` may carry only some of its operations. The weather
-app never sends `Exists` or `Now`, so left to itself type generation would
+app never sends `KeyExists` or `Now`, so left to itself type generation would
 not emit them, and `KeyValue.swift` would not compile. The function the
 static names registers every operation and output the sources mention —
 `HttpRequest::register_types_facet` and its siblings — so that they are
@@ -362,7 +362,7 @@ class WeatherHandler(private val location: LocationClient) : EffectHandler {
 
     override suspend fun http(operation: HttpRequest) = http.request(operation)
     override suspend fun timeNotifyAfter(operation: NotifyAfter) = time.notifyAfter(operation)
-    override suspend fun timeClear(operation: Clear) = time.clear(operation)
+    override suspend fun timeClear(operation: ClearTimer) = time.clear(operation)
 
     override suspend fun getLocation(operation: GetLocation) = location.current()
     override suspend fun isLocationEnabled(operation: IsLocationEnabled) = location.enabled()
@@ -402,7 +402,7 @@ still serves the capability's other operations.
 
 ```swift
 // Swift
-func kvGet(_ operation: Get) async -> ValueResult {
+func kvGet(_ operation: GetValue) async -> ValueResult {
     if operation.key == "session" { return await keychainGet() }
     return await kv.get(operation)
 }

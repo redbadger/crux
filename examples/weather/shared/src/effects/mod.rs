@@ -40,14 +40,14 @@ pub enum Effect {
     /// Perform an HTTP request — weather and geocoding API calls.
     Http(HttpRequest),
     /// Read the favourites list from the shell's key-value store.
-    KvGet(kv::Get),
+    KvGet(kv::GetValue),
     /// Write the favourites list to the shell's key-value store.
-    KvSet(kv::Set),
+    KvSet(kv::SetValue),
     /// Schedule a timer — used to debounce the search input on the
     /// add-favourite screen.
     TimeNotifyAfter(time::NotifyAfter),
     /// Release a timer the core no longer cares about.
-    TimeClear(time::Clear),
+    TimeClear(time::ClearTimer),
     /// Ask whether location services are enabled.
     IsLocationEnabled(IsLocationEnabled),
     /// Ask for the device's coordinates.

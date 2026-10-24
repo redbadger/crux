@@ -8,7 +8,7 @@ use crux_time::operation;
 use shared::ViewModel;
 
 thread_local! {
-    /// Live timeouts, so a `Clear` can drop the one it names. Dropping a
+    /// Live timeouts, so a `ClearTimer` can drop the one it names. Dropping a
     /// `Timeout` cancels it.
     static TIMERS: RefCell<HashMap<usize, Timeout>> = RefCell::new(HashMap::new());
 }
@@ -34,14 +34,14 @@ pub(super) fn notify_after(
     TIMERS.with_borrow_mut(|timers| timers.insert(id.0, timeout));
 }
 
-/// `Clear` is a request: drop the timer and answer with the id it named.
+/// `ClearTimer` is a request: drop the timer and answer with the id it named.
 ///
 /// Dropping the [`Timeout`] cancels it, so the `NotifyAfter` request it holds
 /// is never resolved. Resolving it late would be harmless too — the core stops
 /// listening for that request the moment it clears the timer.
 pub(super) fn clear(
     core: &super::Core,
-    mut request: Request<operation::Clear>,
+    mut request: Request<operation::ClearTimer>,
     render: WriteSignal<ViewModel>,
 ) {
     let id = request.operation.id;

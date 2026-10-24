@@ -75,7 +75,7 @@ mod app {
     pub(crate) enum Effect {
         Render(RenderOperation),
         TimeNotifyAfter(time::NotifyAfter),
-        TimeClear(time::Clear),
+        TimeClear(time::ClearTimer),
         Permission(PermissionRequest),
         Camera(CaptureImageOp),
         ImageAssets(StoreImageAssets),
@@ -259,7 +259,7 @@ mod ffi {
     pub enum SerializedEffect {
         Render(RenderOperation),
         TimeNotifyAfter(time::NotifyAfter),
-        TimeClear(time::Clear),
+        TimeClear(time::ClearTimer),
         Permission(PermissionRequest),
     }
 

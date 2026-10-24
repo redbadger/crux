@@ -91,10 +91,10 @@ pub enum Effect {
     Render(RenderOperation),
     Publish(pub_sub::Publish),
     Subscribe(pub_sub::Subscribe),
-    KvGet(kv::Get),
-    KvSet(kv::Set),
+    KvGet(kv::GetValue),
+    KvSet(kv::SetValue),
     TimeNotifyAfter(time::NotifyAfter),
-    TimeClear(time::Clear),
+    TimeClear(time::ClearTimer),
 }
 
 const EDIT_TIMER: u64 = 1000;
@@ -584,7 +584,7 @@ mod save_load_tests {
         let request = &mut effects.next().unwrap().expect_kv_get();
         assert_eq!(
             request.operation,
-            kv::Get {
+            kv::GetValue {
                 key: "note".to_string()
             }
         );
@@ -616,7 +616,7 @@ mod save_load_tests {
 
         assert_eq!(
             request.operation,
-            kv::Set {
+            kv::SetValue {
                 key: "note".to_string(),
                 value: model.note.save(),
             }
@@ -641,7 +641,7 @@ mod save_load_tests {
         let request = &mut effects.next().unwrap().expect_kv_get();
         assert_eq!(
             request.operation,
-            kv::Get {
+            kv::GetValue {
                 key: "note".to_string()
             }
         );
@@ -659,7 +659,7 @@ mod save_load_tests {
 
         assert_eq!(
             request.operation,
-            kv::Set {
+            kv::SetValue {
                 key: "note".to_string(),
                 value: model.note.save(),
             }
@@ -724,7 +724,7 @@ mod save_load_tests {
         let save = effects.next().unwrap().expect_kv_set();
         assert_eq!(
             save.operation,
-            kv::Set {
+            kv::SetValue {
                 key: "note".to_string(),
                 value: model.note.save(),
             }
