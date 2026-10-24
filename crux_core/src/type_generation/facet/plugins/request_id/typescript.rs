@@ -5,7 +5,7 @@ use std::io;
 
 use facet_generate::generation::indent::IndentWrite;
 
-use super::{EFFECT_SHIFT, Matched, SEQUENCE_MASK, STREAM_BIT};
+use super::{super::write_doc, EFFECT_SHIFT, Matched, SEQUENCE_MASK, STREAM_BIT};
 
 pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     emit_effect_kind(w, m)?;
@@ -27,18 +27,22 @@ fn emit_effect_kind(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> 
         .join(", ");
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Which effect a request id names — the same discriminant `{}` uses.",
-        m.name
+        &[&format!(
+            "Which effect a request id names — the same discriminant `{}` uses.",
+            m.name
+        )],
     )?;
     writeln!(w, "export type EffectKind = {union};")?;
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The effects in declaration order, indexed by the position a request id"
+        &[
+            "The effects in declaration order, indexed by the position a request id",
+            "carries.",
+        ],
     )?;
-    writeln!(w, "/// carries.")?;
     writeln!(w, "const EFFECT_KINDS: EffectKind[] = [{list}];")?;
 
     Ok(())
@@ -46,59 +50,61 @@ fn emit_effect_kind(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> 
 
 fn emit_request_id(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The parts of the id the core issues with every request."
+        &["The parts of the id the core issues with every request."],
     )?;
     writeln!(w, "export interface RequestId {{")?;
     w.indent();
-    writeln!(
+    write_doc(
         w,
-        "/// The id as it came from the core, and as it goes back."
+        &["The id as it came from the core, and as it goes back."],
     )?;
     writeln!(w, "rawValue: number;")?;
-    writeln!(
+    write_doc(
         w,
-        "/// Every notification shares one reserved id, because the core is not"
+        &[
+            "Every notification shares one reserved id, because the core is not",
+            "waiting on any of them.",
+        ],
     )?;
-    writeln!(w, "/// waiting on any of them.")?;
     writeln!(w, "isNotification: boolean;")?;
-    writeln!(
+    write_doc(
         w,
-        "/// Which effect this request carries — `undefined` for a notification,"
+        &[
+            "Which effect this request carries — `undefined` for a notification,",
+            "whose id names none, and for an id naming an effect this generated",
+            "code does not know.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// whose id names none, and for an id naming an effect this generated"
-    )?;
-    writeln!(w, "/// code does not know.")?;
     writeln!(w, "effectKind: EffectKind | undefined;")?;
-    writeln!(
+    write_doc(
         w,
-        "/// How many times the core expects this request to be resolved."
+        &["How many times the core expects this request to be resolved."],
     )?;
     writeln!(w, "operationKind: OperationKind;")?;
-    writeln!(
+    write_doc(
         w,
-        "/// The ascending number the request was issued with. Zero for a"
+        &[
+            "The ascending number the request was issued with. Zero for a",
+            "notification, the one id that is not sequenced.",
+        ],
     )?;
-    writeln!(w, "/// notification, the one id that is not sequenced.")?;
     writeln!(w, "sequence: number;")?;
     w.unindent();
     writeln!(w, "}}")?;
 
     writeln!(w)?;
-    writeln!(w, "/// Read a request id.")?;
-    writeln!(w, "///")?;
-    writeln!(
+    write_doc(
         w,
-        "/// Resolve with the id exactly as it arrived — this is for logging, tracing"
+        &[
+            "Read a request id.",
+            "",
+            "Resolve with the id exactly as it arrived — this is for logging, tracing",
+            "and assertions. The bit layout is Crux's, so decode ids with this rather",
+            "than picking the number apart by hand.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// and assertions. The bit layout is Crux's, so decode ids with this rather"
-    )?;
-    writeln!(w, "/// than picking the number apart by hand.")?;
     writeln!(
         w,
         "export function decodeRequestId(rawValue: number): RequestId {{"

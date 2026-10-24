@@ -1,63 +1,67 @@
-/// The shell side of `crux_kv`, as one method per operation.
-///
-/// Each method's shape is the generated `EffectHandler`'s, so an app's handler
-/// holds an instance and delegates in one line:
-///
-/// ```ts
-/// const kv = createLocalStorageKeyValueHandler();
-///
-/// const handler: EffectHandler = {
-///   kvGet: (operation) => kv.get(operation),
-///   kvSet: (operation) => kv.set(operation),
-/// };
-/// ```
-///
-/// Write an object of your own shape to put the store somewhere else —
-/// IndexedDB, a server, `sessionStorage` — or to replace a single method and
-/// leave the rest.
-///
-/// ## What each operation answers with
-///
-/// `get` answers with what is stored under the key, `valueNone()` when nothing
-/// is. `set` and `delete` answer with the value they replaced or removed, which
-/// is also `valueNone()` when there was none. A missing key is an answer, not
-/// an error. The errors are a store that failed, and a value that is not a
-/// stored byte array — written by something else — which is
-/// `keyValueErrorOther`; `set` and `delete` leave that value where it is.
+/**
+ * The shell side of `crux_kv`, as one method per operation.
+ *
+ * Each method's shape is the generated `EffectHandler`'s, so an app's handler
+ * holds an instance and delegates in one line:
+ *
+ * ```ts
+ * const kv = createLocalStorageKeyValueHandler();
+ *
+ * const handler: EffectHandler = {
+ *   kvGet: (operation) => kv.get(operation),
+ *   kvSet: (operation) => kv.set(operation),
+ * };
+ * ```
+ *
+ * Write an object of your own shape to put the store somewhere else —
+ * IndexedDB, a server, `sessionStorage` — or to replace a single method and
+ * leave the rest.
+ *
+ * ## What each operation answers with
+ *
+ * `get` answers with what is stored under the key, `valueNone()` when nothing
+ * is. `set` and `delete` answer with the value they replaced or removed, which
+ * is also `valueNone()` when there was none. A missing key is an answer, not
+ * an error. The errors are a store that failed, and a value that is not a
+ * stored byte array — written by something else — which is
+ * `keyValueErrorOther`; `set` and `delete` leave that value where it is.
+ */
 export interface KeyValueHandler {
-  /// Read the bytes stored under `operation.key`.
+  /** Read the bytes stored under `operation.key`. */
   get(operation: Get): Promise<ValueResult>;
-  /// Write `operation.value`, answering with the value it replaced.
+  /** Write `operation.value`, answering with the value it replaced. */
   set(operation: Set): Promise<ValueResult>;
-  /// Remove `operation.key`, answering with the value it removed.
+  /** Remove `operation.key`, answering with the value it removed. */
   delete(operation: Delete): Promise<ValueResult>;
-  /// Whether `operation.key` is in the store.
+  /** Whether `operation.key` is in the store. */
   exists(operation: Exists): Promise<BoolResult>;
-  /// The keys starting with `operation.prefix`, from `operation.cursor`.
+  /** The keys starting with `operation.prefix`, from `operation.cursor`. */
   listKeys(operation: ListKeys): Promise<KeysResult>;
 }
 
-/// A `KeyValueHandler` over `localStorage`, storing each value as a JSON array
-/// of byte values.
-///
-/// ## Where it stores things
-///
-/// `localStorage` is shared with everything else on the origin, so `prefix`
-/// keeps this store's keys apart from the rest. It is empty by default, which
-/// keeps a key the app already stores readable; give it one — `"myapp."` —
-/// before the app has anything worth keeping.
-///
-/// ## When there is no `localStorage`
-///
-/// There is none on a server, in a worker, or when the browser has storage
-/// turned off. Rather than pretend, every operation then answers
-/// `keyValueErrorIo`, so the core sees a store that is not working rather than
-/// one that is empty. Pass a `Storage` of your own — `sessionStorage`, or an
-/// in-memory stand-in in a test — to decide otherwise.
-///
-/// @param prefix put in front of every key in the underlying storage.
-/// @param storage the storage to use; the global `localStorage` when omitted,
-///   read at call time so that a page can install one first.
+/**
+ * A `KeyValueHandler` over `localStorage`, storing each value as a JSON array
+ * of byte values.
+ *
+ * ## Where it stores things
+ *
+ * `localStorage` is shared with everything else on the origin, so `prefix`
+ * keeps this store's keys apart from the rest. It is empty by default, which
+ * keeps a key the app already stores readable; give it one — `"myapp."` —
+ * before the app has anything worth keeping.
+ *
+ * ## When there is no `localStorage`
+ *
+ * There is none on a server, in a worker, or when the browser has storage
+ * turned off. Rather than pretend, every operation then answers
+ * `keyValueErrorIo`, so the core sees a store that is not working rather than
+ * one that is empty. Pass a `Storage` of your own — `sessionStorage`, or an
+ * in-memory stand-in in a test — to decide otherwise.
+ *
+ * @param prefix put in front of every key in the underlying storage.
+ * @param storage the storage to use; the global `localStorage` when omitted,
+ *   read at call time so that a page can install one first.
+ */
 export function createLocalStorageKeyValueHandler(
   prefix = "",
   storage?: Storage,
@@ -140,9 +144,11 @@ export function createLocalStorageKeyValueHandler(
       return boolResultOk(value.kind === "Ok" && value.value.kind === "Bytes");
     },
 
-    /// One page holds every remaining key, so the answer's cursor is always 0:
-    /// `localStorage` is walked in one go anyway, and paging it would only
-    /// invite a caller to hold a cursor across a write.
+    /**
+     * One page holds every remaining key, so the answer's cursor is always 0:
+     * `localStorage` is walked in one go anyway, and paging it would only
+     * invite a caller to hold a cursor across a write.
+     */
     async listKeys(operation: ListKeys): Promise<KeysResult> {
       const store = open();
       if (store === undefined) return keysResultErr(unavailable);

@@ -25,29 +25,33 @@ import {
 import * as location from "./location";
 import * as secret from "./secret";
 
-/// The shell's side of the effect protocol.
-///
-/// `WeatherHandler` implements the generated `EffectHandler`: one method per
-/// operation the app declares, each returning the single output that operation
-/// is answered with. The generated `EffectDispatcher` does the resolving, so
-/// nothing here decides when — or how often — to call `resolve`.
-///
-/// There is no `render` method: the generated `Core` intercepts `Render`
-/// before the dispatcher sees it and calls the `onView` callback instead.
-///
-/// `createFetchHttpHandler`, `createLocalStorageKeyValueHandler` and
-/// `TimeoutTimeHandler` are what `crux_http`, `crux_kv` and `crux_time` ship,
-/// generated into `shared_types/app` because the codegen binary asks for them.
-/// The rules for mapping a `fetch` response, answering a store operation or
-/// answering a timer belong to those crates, so the only thing this shell
-/// writes for them is the line that delegates.
+/**
+ * The shell's side of the effect protocol.
+ *
+ * `WeatherHandler` implements the generated `EffectHandler`: one method per
+ * operation the app declares, each returning the single output that operation
+ * is answered with. The generated `EffectDispatcher` does the resolving, so
+ * nothing here decides when — or how often — to call `resolve`.
+ *
+ * There is no `render` method: the generated `Core` intercepts `Render`
+ * before the dispatcher sees it and calls the `onView` callback instead.
+ *
+ * `createFetchHttpHandler`, `createLocalStorageKeyValueHandler` and
+ * `TimeoutTimeHandler` are what `crux_http`, `crux_kv` and `crux_time` ship,
+ * generated into `shared_types/app` because the codegen binary asks for them.
+ * The rules for mapping a `fetch` response, answering a store operation or
+ * answering a timer belong to those crates, so the only thing this shell
+ * writes for them is the line that delegates.
+ */
 export class WeatherHandler implements EffectHandler {
   private readonly httpHandler = createFetchHttpHandler();
-  /// `localStorage` is shared with the whole origin, so the app's keys get a
-  /// prefix of their own.
+  /**
+   * `localStorage` is shared with the whole origin, so the app's keys get a
+   * prefix of their own.
+   */
   private readonly keyValueHandler =
     createLocalStorageKeyValueHandler("weather.");
-  /// The timer table is state, so there is one handler, for the page's life.
+  /** The timer table is state, so there is one handler, for the page's life. */
   private readonly timeHandler = new TimeoutTimeHandler();
 
   // ANCHOR: http
