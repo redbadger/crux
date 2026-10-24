@@ -3,12 +3,17 @@
 
 use std::io;
 
-use facet_generate::generation::{
-    CodeGeneratorConfig, bincode::typescript::write_serialize_value, indent::IndentWrite,
-    typescript::render_type,
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        bincode::typescript::write_serialize_value,
+        indent::IndentWrite,
+        typescript::{render_type, requalify_format, write_doc},
+    },
+    reflection::format::Format,
 };
 
-use super::{super::Variant, super::lower_camel, super::write_doc, Matched};
+use super::{super::Variant, super::lower_camel, Matched};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
@@ -191,8 +196,8 @@ fn emit_resolve(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w, "const serializer = new BincodeSerializer();")?;
-    if let Some(output) = variant.output {
-        write_serialize_value(w, value, output, config)?;
+    if let Some(output) = output_format(variant, config) {
+        write_serialize_value(w, value, &output, config)?;
     }
     writeln!(w, "this.resolve(id, serializer.getBytes());")?;
 
@@ -200,7 +205,19 @@ fn emit_resolve(
 }
 
 fn render_output(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> String {
-    variant
-        .output
-        .map_or_else(|| "void".to_string(), |format| render_type(format, config))
+    output_format(variant, config)
+        .map_or_else(|| "void".to_string(), |format| render_type(&format, config))
+}
+
+/// The output type, in the spelling the emitter functions take.
+///
+/// The `Format`s on the effect metadata are recorded during reflection, so,
+/// unlike the formats reached through the registry, they have not been
+/// requalified by the generator.
+fn output_format(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> Option<Format> {
+    variant.output.map(|format| {
+        let mut format = format.clone();
+        requalify_format(config, &mut format);
+        format
+    })
 }

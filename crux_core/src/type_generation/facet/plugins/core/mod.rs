@@ -154,7 +154,7 @@ impl EmitterPlugin<Swift> for CorePlugin {
     }
 
     /// …and the generated target has to depend on its product.
-    fn target_dependencies(&self) -> Vec<String> {
+    fn target_dependencies(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
         self.ffi()
             .and_then(BoltFfi::swift_ffi)
             .map(|swift| {

@@ -8,12 +8,12 @@ use facet_generate::{
         CodeGeneratorConfig,
         bincode::kotlin::write_serialize_value,
         indent::IndentWrite,
-        kotlin::{render_type, variant_class_name},
+        kotlin::{render_type, variant_class_name, write_doc},
     },
     reflection::format::{Format, FormatHolder as _, Namespace, QualifiedTypeName},
 };
 
-use super::{super::Variant, super::lower_camel, super::write_doc, Matched};
+use super::{super::Variant, super::lower_camel, Matched};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,

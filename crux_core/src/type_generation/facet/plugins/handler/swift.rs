@@ -2,11 +2,14 @@
 
 use std::io;
 
-use facet_generate::generation::{
-    CodeGeneratorConfig,
-    bincode::swift::write_serialize_value,
-    indent::IndentWrite,
-    swift::{case_name, render_type},
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        bincode::swift::write_serialize_value,
+        indent::IndentWrite,
+        swift::{case_name, render_type, requalify_format, write_doc},
+    },
+    reflection::format::Format,
 };
 
 use super::{super::SWIFT_AVAILABILITY as AVAILABILITY, Matched};
@@ -24,11 +27,13 @@ pub(super) fn emit(
 
 fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(w, "/// Receives the items of a streaming effect.")?;
-    writeln!(w, "///")?;
-    writeln!(
+    write_doc(
         w,
-        "/// Every item sent is one resolution of the request that started the stream."
+        &[
+            "Receives the items of a streaming effect.",
+            "",
+            "Every item sent is one resolution of the request that started the stream.",
+        ],
     )?;
     writeln!(w, "public struct EffectSink<Item>: Sendable {{")?;
     w.indent();
@@ -43,7 +48,7 @@ fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(w)?;
-    writeln!(w, "/// Send one item back to the core.")?;
+    write_doc(w, &["Send one item back to the core."])?;
     writeln!(w, "public func send(_ item: Item) {{")?;
     w.indent();
     writeln!(w, "self._send(item)")?;
@@ -57,15 +62,14 @@ fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
 
 fn emit_serialize_helper(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Serializing an effect output cannot fail for any value the core can"
+        &[
+            "Serializing an effect output cannot fail for any value the core can",
+            "accept, so the dispatcher traps rather than making every handler",
+            "method throw.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// accept, so the dispatcher traps rather than making every handler"
-    )?;
-    writeln!(w, "/// method throw.")?;
     writeln!(
         w,
         "private func serializeEffectOutput(_ body: (BincodeSerializer) throws -> Void) -> [UInt8] {{"
@@ -86,15 +90,14 @@ fn emit_handler(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(w, "/// Handles every effect `{}` can carry.", m.name)?;
-    writeln!(w, "///")?;
-    writeln!(
+    write_doc(
         w,
-        "/// `EffectDispatcher` resolves each request for you, so there is no"
-    )?;
-    writeln!(
-        w,
-        "/// `resolve` to call at the wrong time or with the wrong bytes."
+        &[
+            &format!("Handles every effect `{}` can carry.", m.name),
+            "",
+            "`EffectDispatcher` resolves each request for you, so there is no",
+            "`resolve` to call at the wrong time or with the wrong bytes.",
+        ],
     )?;
     writeln!(w, "{AVAILABILITY}")?;
     writeln!(w, "public protocol EffectHandler: Sendable {{")?;
@@ -145,12 +148,16 @@ fn emit_default_render(
     let operation = render_type(variant.operation, config);
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// `Core` handles `{}` itself, so this does nothing; implement it",
-        variant.name
+        &[
+            &format!(
+                "`Core` handles `{}` itself, so this does nothing; implement it",
+                variant.name
+            ),
+            "only if you drive `EffectDispatcher` yourself.",
+        ],
     )?;
-    writeln!(w, "/// only if you drive `EffectDispatcher` yourself.")?;
     writeln!(w, "{AVAILABILITY}")?;
     writeln!(w, "extension EffectHandler {{")?;
     w.indent();
@@ -167,15 +174,14 @@ fn emit_dispatcher(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Routes each request to an `EffectHandler` and resolves it for you:"
+        &[
+            "Routes each request to an `EffectHandler` and resolves it for you:",
+            "never for a notification, once for a request, once per item for a",
+            "stream.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// never for a notification, once for a request, once per item for a"
-    )?;
-    writeln!(w, "/// stream.")?;
     writeln!(w, "{AVAILABILITY}")?;
     writeln!(w, "public struct EffectDispatcher: Sendable {{")?;
     w.indent();
@@ -257,8 +263,8 @@ fn emit_resolve(
 ) -> io::Result<()> {
     writeln!(w, "resolve(id, serializeEffectOutput {{ serializer in")?;
     w.indent();
-    if let Some(output) = variant.output {
-        write_serialize_value(w, value, output, config)?;
+    if let Some(output) = output_format(variant, config) {
+        write_serialize_value(w, value, &output, config)?;
     }
     w.unindent();
     writeln!(w, "}})")?;
@@ -267,7 +273,22 @@ fn emit_resolve(
 }
 
 fn render_output(variant: &super::super::Variant<'_>, config: &CodeGeneratorConfig) -> String {
-    variant
-        .output
-        .map_or_else(|| "Unit".to_string(), |format| render_type(format, config))
+    output_format(variant, config)
+        .map_or_else(|| "Unit".to_string(), |format| render_type(&format, config))
+}
+
+/// The output type, in the spelling the emitter functions take.
+///
+/// The `Format`s on the effect metadata are recorded during reflection, so,
+/// unlike the formats reached through the registry, they have not been
+/// requalified by the generator.
+fn output_format(
+    variant: &super::super::Variant<'_>,
+    config: &CodeGeneratorConfig,
+) -> Option<Format> {
+    variant.output.map(|format| {
+        let mut format = format.clone();
+        requalify_format(config, &mut format);
+        format
+    })
 }

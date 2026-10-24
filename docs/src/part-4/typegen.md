@@ -792,4 +792,4 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   you'd expect — `crux_kv`'s `Set` shadows `Set` in Swift, Kotlin and
   TypeScript. Alias it at the import site
   (`import com.example.Set as KeyValueSet`, `import { Set as SetValue }`).
-- Facet type generation requires `facet_generate` 0.21 or later.
+- Facet type generation requires `facet_generate` 0.22.2 or later.
