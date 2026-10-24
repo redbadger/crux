@@ -6,7 +6,7 @@ use facet_generate::{
     generation::{
         CodeGeneratorConfig,
         indent::IndentWrite,
-        swift::{case_name, render_type},
+        swift::{case_name, render_type, requalify, write_doc},
     },
     reflection::format::Format,
 };
@@ -49,29 +49,19 @@ pub(super) fn ffi_bridge(
     config: &CodeGeneratorConfig,
 ) -> io::Result<String> {
     render(config, |w| {
-        writeln!(
+        write_doc(
             w,
-            "/// The generated `CoreBridge`, implemented over BoltFFI's `{class}`: bytes"
+            &[
+                &format!("The generated `CoreBridge`, implemented over BoltFFI's `{class}`: bytes"),
+                "in, bytes out, nothing else. It is the only generated type that knows",
+                "the Rust core exists — pass a fake to `Core(bridge:handler:)` instead",
+                "for previews and tests.",
+                "",
+                &format!("`@unchecked Sendable` because `{class}` is a class Swift cannot prove"),
+                "`Sendable`; its state is a handle into a mutex-guarded bridge on the",
+                "Rust side, so calling it from any task is safe.",
+            ],
         )?;
-        writeln!(
-            w,
-            "/// in, bytes out, nothing else. It is the only generated type that knows"
-        )?;
-        writeln!(
-            w,
-            "/// the Rust core exists — pass a fake to `Core(bridge:handler:)` instead"
-        )?;
-        writeln!(w, "/// for previews and tests.")?;
-        writeln!(w, "///")?;
-        writeln!(
-            w,
-            "/// `@unchecked Sendable` because `{class}` is a class Swift cannot prove"
-        )?;
-        writeln!(
-            w,
-            "/// `Sendable`; its state is a handle into a mutex-guarded bridge on the"
-        )?;
-        writeln!(w, "/// Rust side, so calling it from any task is safe.")?;
         writeln!(
             w,
             "public struct FfiBridge: CoreBridge, @unchecked Sendable {{"
@@ -110,13 +100,12 @@ pub(super) fn ffi_bridge(
 
 fn emit_bridge(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The core's FFI surface, as bytes. Implement it around the `CoreFfi` your"
-    )?;
-    writeln!(
-        w,
-        "/// Rust crate exports, or with a fake for previews and tests."
+        &[
+            "The core's FFI surface, as bytes. Implement it around the `CoreFfi` your",
+            "Rust crate exports, or with a fake for previews and tests.",
+        ],
     )?;
     writeln!(w, "public protocol CoreBridge: Sendable {{")?;
     w.indent();
@@ -143,36 +132,39 @@ fn emit_core(
         .render_variant()
         .expect("the plugin only matches an effect with a render variant");
     let render_case = case_name(render.name);
-    let event = render_type(&Format::TypeName(app.event.clone()), config);
-    let view_model = render_type(&Format::TypeName(app.view_model.clone()), config);
+    // The app's types are named as the registry spells them, and the emitter
+    // functions take the spelling the generator rewrites references to.
+    let event = render_type(&Format::TypeName(requalify(config, &app.event)), config);
+    let view_model = render_type(
+        &Format::TypeName(requalify(config, &app.view_model)),
+        config,
+    );
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The shell's side of the core: it serializes events, dispatches the"
+        &[
+            "The shell's side of the core: it serializes events, dispatches the",
+            "requests that come back, and resolves them through the bridge.",
+            "",
+            &format!(
+                "`{}` is handled here, so an `EffectHandler` need not implement it.",
+                render.name
+            ),
+            "",
+            "`view` is observable, so a SwiftUI view that reads it is invalidated",
+            "whenever the core renders.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// requests that come back, and resolves them through the bridge."
-    )?;
-    writeln!(w, "///")?;
-    writeln!(
-        w,
-        "/// `{}` is handled here, so an `EffectHandler` need not implement it.",
-        render.name
-    )?;
-    writeln!(w, "///")?;
-    writeln!(
-        w,
-        "/// `view` is observable, so a SwiftUI view that reads it is invalidated"
-    )?;
-    writeln!(w, "/// whenever the core renders.")?;
     writeln!(w, "{AVAILABILITY}")?;
     writeln!(w, "@Observable")?;
     writeln!(w, "@MainActor")?;
     writeln!(w, "public final class Core {{")?;
     w.indent();
-    writeln!(w, "/// The view model as of the last `{}`.", render.name)?;
+    write_doc(
+        w,
+        &[&format!("The view model as of the last `{}`.", render.name)],
+    )?;
     writeln!(w, "public private(set) var view: {view_model}")?;
     writeln!(w, "@ObservationIgnored private let bridge: any CoreBridge")?;
     // The resolve callback captures `self`, which Swift will not allow until
@@ -211,12 +203,16 @@ fn emit_core(
 
     if let Some(ffi) = ffi {
         writeln!(w)?;
-        writeln!(
+        write_doc(
             w,
-            "/// Build a `Core` over the `{}` the Rust crate exports — the shell",
-            ffi.class_name()
+            &[
+                &format!(
+                    "Build a `Core` over the `{}` the Rust crate exports — the shell",
+                    ffi.class_name()
+                ),
+                "writes the handler and never sees the bridge.",
+            ],
         )?;
-        writeln!(w, "/// writes the handler and never sees the bridge.")?;
         writeln!(w, "public convenience init(handler: any EffectHandler) {{")?;
         w.indent();
         writeln!(w, "self.init(bridge: FfiBridge(), handler: handler)")?;
@@ -238,9 +234,9 @@ fn emit_methods(
     render_case: &str,
 ) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Send an event to the core and run the loop it starts."
+        &["Send an event to the core and run the loop it starts."],
     )?;
     writeln!(w, "public func update(_ event: {event}) {{")?;
     w.indent();
@@ -251,9 +247,9 @@ fn emit_methods(
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Serialized requests, as returned by the bridge or pushed by middleware."
+        &["Serialized requests, as returned by the bridge or pushed by middleware."],
     )?;
     writeln!(w, "public func process(bytes: [UInt8]) {{")?;
     w.indent();

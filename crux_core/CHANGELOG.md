@@ -192,8 +192,8 @@ and this project adheres to
   `EffectDispatcher`) are now reserved: `TypeRegistry::build` reports an error
   if a shared type or an effect variant claims one.
 
-  Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
-  every top-level type and exposes the helpers these plugins need.
+  The plugins use the `after_type` plugin hook of `facet_generate`, which
+  fires for every top-level type, and the helpers that it exposes for them.
 
 - **Type generation also emits a shell-side `Core`.** With the handler API in
   place, what every shell still wrote by hand was the same loop: serialize the
@@ -288,7 +288,7 @@ and this project adheres to
   joins the reserved names, and a `boltffi(..)` configuration with no `Core`
   to bridge (`without_core()`, no registered app, or no `Render` variant) is
   an error rather than a no-op. Requires `facet_generate` with the
-  companion-file and manifest hooks (0.21).
+  companion-file and manifest hooks.
 
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` used to be a bare counter. It now packs, from the top, eight
@@ -363,7 +363,7 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **Facet type generation now requires `facet_generate` 0.21.** Only the
+- **Facet type generation now requires `facet_generate` 0.22.4.** Only the
   `facet_typegen` feature is affected; every other feature of this crate is
   unchanged.
 - Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.
