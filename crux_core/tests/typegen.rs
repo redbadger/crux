@@ -152,7 +152,7 @@ mod facet_test {
 
     use super::{
         facet_shared::{App, OtherApp},
-        toolchain::build,
+        toolchain::{build, kotlinc_build},
     };
 
     #[test]
@@ -508,6 +508,20 @@ mod facet_test {
             &["build", "--nologo"].map(std::ffi::OsStr::new),
             dir.path(),
         );
+    }
+
+    /// The same for Kotlin. The `EffectHandler` and `Core` name the root
+    /// types from `com.example.shared`, and `Kit.Presence` from its own
+    /// package below it. A bare `Kit.Presence` does not resolve there, so
+    /// only `kotlinc` can tell if the spelling is correct.
+    #[test]
+    fn the_generated_kotlin_compiles() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        kotlinc_build(dir.path());
     }
 
     /// Reads the Swift module a `CodeGenerator` writes, for the tests that
