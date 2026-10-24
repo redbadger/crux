@@ -3,9 +3,14 @@
 
 use std::io;
 
-use facet_generate::generation::{
-    CodeGeneratorConfig, bincode::typescript::write_serialize_value, indent::IndentWrite,
-    typescript::render_type,
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        bincode::typescript::write_serialize_value,
+        indent::IndentWrite,
+        typescript::{render_type, requalify_format, write_doc},
+    },
+    reflection::format::Format,
 };
 
 use super::{super::Variant, super::lower_camel, Matched};
@@ -22,11 +27,13 @@ pub(super) fn emit(
 
 fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(w, "/// Receives the items of a streaming effect.")?;
-    writeln!(w, "///")?;
-    writeln!(
+    write_doc(
         w,
-        "/// Every item sent is one resolution of the request that started the stream."
+        &[
+            "Receives the items of a streaming effect.",
+            "",
+            "Every item sent is one resolution of the request that started the stream.",
+        ],
     )?;
     writeln!(w, "export interface EffectSink<T> {{")?;
     w.indent();
@@ -43,15 +50,14 @@ fn emit_handler(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(w, "/// Handles every effect `{}` can carry.", m.name)?;
-    writeln!(w, "///")?;
-    writeln!(
+    write_doc(
         w,
-        "/// `EffectDispatcher` resolves each request for you, so there is no"
-    )?;
-    writeln!(
-        w,
-        "/// `resolve` to call at the wrong time or with the wrong bytes."
+        &[
+            &format!("Handles every effect `{}` can carry.", m.name),
+            "",
+            "`EffectDispatcher` resolves each request for you, so there is no",
+            "`resolve` to call at the wrong time or with the wrong bytes.",
+        ],
     )?;
     writeln!(w, "export interface EffectHandler {{")?;
     w.indent();
@@ -73,12 +79,16 @@ fn emit_handler(
             let output = render_output(variant, config);
             writeln!(w, "{method}(operation: {operation}): Promise<{output}>;")?;
         } else if variant.render {
-            writeln!(
+            write_doc(
                 w,
-                "/// `Core` handles `{}` itself, so this is optional; implement it",
-                variant.name
+                &[
+                    &format!(
+                        "`Core` handles `{}` itself, so this is optional; implement it",
+                        variant.name
+                    ),
+                    "only if you drive `EffectDispatcher` yourself.",
+                ],
             )?;
-            writeln!(w, "/// only if you drive `EffectDispatcher` yourself.")?;
             writeln!(w, "{method}?(operation: {operation}): void;")?;
         } else {
             writeln!(w, "{method}(operation: {operation}): void;")?;
@@ -96,15 +106,14 @@ fn emit_dispatcher(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Routes each request to an `EffectHandler` and resolves it for you:"
+        &[
+            "Routes each request to an `EffectHandler` and resolves it for you:",
+            "never for a notification, once for a request, once per item for a",
+            "stream.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// never for a notification, once for a request, once per item for a"
-    )?;
-    writeln!(w, "/// stream.")?;
     writeln!(w, "export class EffectDispatcher {{")?;
     w.indent();
     writeln!(w, "constructor(")?;
@@ -187,8 +196,8 @@ fn emit_resolve(
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w, "const serializer = new BincodeSerializer();")?;
-    if let Some(output) = variant.output {
-        write_serialize_value(w, value, output, config)?;
+    if let Some(output) = output_format(variant, config) {
+        write_serialize_value(w, value, &output, config)?;
     }
     writeln!(w, "this.resolve(id, serializer.getBytes());")?;
 
@@ -196,7 +205,19 @@ fn emit_resolve(
 }
 
 fn render_output(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> String {
-    variant
-        .output
-        .map_or_else(|| "void".to_string(), |format| render_type(format, config))
+    output_format(variant, config)
+        .map_or_else(|| "void".to_string(), |format| render_type(&format, config))
+}
+
+/// The output type, in the spelling the emitter functions take.
+///
+/// The `Format`s on the effect metadata are recorded during reflection, so,
+/// unlike the formats reached through the registry, they have not been
+/// requalified by the generator.
+fn output_format(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> Option<Format> {
+    variant.output.map(|format| {
+        let mut format = format.clone();
+        requalify_format(config, &mut format);
+        format
+    })
 }

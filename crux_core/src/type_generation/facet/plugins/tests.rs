@@ -443,13 +443,15 @@ fn swift_depends_on_the_package_the_bindings_are_in() {
     let app = app_meta(&registry);
     let effects: std::sync::Arc<[EffectMeta]> = effects.into();
 
+    let config = CodeGeneratorConfig::new("Shared".to_string());
+
     let plugin = CorePlugin::new(&effects, app.clone(), Some(boltffi()));
     assert_eq!(
         EmitterPlugin::<Swift>::manifest_dependencies(&plugin),
         vec![r#".package(path: "../Shared")"#.to_string()]
     );
     assert_eq!(
-        EmitterPlugin::<Swift>::target_dependencies(&plugin),
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &config),
         vec![r#".product(name: "Shared", package: "Shared")"#.to_string()]
     );
 
@@ -462,7 +464,7 @@ fn swift_depends_on_the_package_the_bindings_are_in() {
         vec![r#".package(path: "../generated/Shared")"#.to_string()]
     );
     assert_eq!(
-        EmitterPlugin::<Swift>::target_dependencies(&plugin),
+        EmitterPlugin::<Swift>::target_dependencies(&plugin, &config),
         vec![r#".product(name: "SharedLib", package: "Shared")"#.to_string()]
     );
 }
