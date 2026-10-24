@@ -30,8 +30,8 @@ check: check-versions
 # bump leaves the toolchain silently mismatched rather than failing loudly.
 # lib.just is the single source of truth; this recipe holds everything to it.
 #
-# facet is the worst of the three to get wrong. It is pinned in ten places (the
-# workspace manifest, all six example shared crates, the book, and two lines of
+# facet is the worst of the three to get wrong. It is pinned in eleven places (the
+# workspace manifest, all seven example shared crates, the book, and two lines of
 # renovate.json), and a partial bump does not surface as a version conflict —
 # cargo happily resolves two facet_core versions, and you get
 # `RenderOperation: Facet<'_> is not satisfied` from whichever crate ended up on
@@ -82,8 +82,8 @@ check-versions:
     $(grep -E -A2 -H '"boltffi",[[:space:]]*"boltffi_cli"' renovate.json | grep -E 'allowedVersions' || true)
     PINS
 
-    if [ "$checked" -lt 24 ]; then
-        echo "  {{ style("error") }}✗ only found $checked BoltFFI pins, expected at least 24, has a pin site moved or been renamed?{{ NORMAL }}"
+    if [ "$checked" -lt 28 ]; then
+        echo "  {{ style("error") }}✗ only found $checked BoltFFI pins, expected at least 28, has a pin site moved or been renamed?{{ NORMAL }}"
         status=1
     fi
 
@@ -104,8 +104,8 @@ check-versions:
     $(grep -E -A3 -H '"matchPackageNames"[[:space:]]*:[[:space:]]*\[[[:space:]]*"facet"[[:space:]]*\],' renovate.json | grep -E 'allowedVersions' || true)
     FACET_PINS
 
-    if [ "$facet_checked" -lt 10 ]; then
-        echo "  {{ style("error") }}✗ only found $facet_checked facet pins, expected at least 10 — has a pin site moved or been renamed?{{ NORMAL }}"
+    if [ "$facet_checked" -lt 11 ]; then
+        echo "  {{ style("error") }}✗ only found $facet_checked facet pins, expected at least 11 — has a pin site moved or been renamed?{{ NORMAL }}"
         status=1
     fi
 
@@ -126,8 +126,8 @@ check-versions:
     $(grep -HoE "^[[:space:]]*coroutines_version=[\"']?[0-9]+\.[0-9]+\.[0-9]+" .github/workflows/build.yaml || true)
     COROUTINES_PINS
 
-    if [ "$coroutines_checked" -lt 7 ]; then
-        echo "  {{ style("error") }}✗ only found $coroutines_checked kotlinx-coroutines pins, expected at least 7 — has a pin site moved or been renamed?{{ NORMAL }}"
+    if [ "$coroutines_checked" -lt 9 ]; then
+        echo "  {{ style("error") }}✗ only found $coroutines_checked kotlinx-coroutines pins, expected at least 9 — has a pin site moved or been renamed?{{ NORMAL }}"
         status=1
     fi
 
@@ -152,6 +152,11 @@ check-versions:
 check-examples:
     @echo '{{ style("command") }}check-examples:{{ NORMAL }}'
     just examples/check
+
+# Build the book and check its code includes — mirrors the `docs` job of the `build` CI workflow
+docs:
+    @echo '{{ style("command") }}docs:{{ NORMAL }}'
+    just docs/ci
 
 # Clean build artefacts in the root workspace and all examples
 clean:

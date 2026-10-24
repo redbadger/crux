@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 777.5" width="860" height="777.5" role="img" aria-labelledby="title desc">
+<title id="title">Crux: middleware in the counter</title>
+<desc id="desc">The Rust shared crate holds three nested layers. The Bridge, with BincodeFfiFormat, is on the outside. It holds the MapEffectLayer, which holds the HandleEffectLayer. The HandleEffectLayer holds the Core of the Counter app and the RngMiddleware, which runs on its own thread. The Core sends Random to the RngMiddleware, which sends a RandomNumber back to the Core. Every other effect goes out through the MapEffectLayer, which converts it to an ffi::Effect, and through the Bridge, which serializes it. The bytes go to the EffectHandler in the Swift or Kotlin shell. The bridge returns them from update or resolve, or sends them through the CruxShell callback. The shell sends the serialized output back in through the layers to the Core.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<rect x="15" y="15" width="830" height="509.5" rx="14" fill="#22c55e" fill-opacity="0.08" stroke="#22c55e" stroke-width="1.5"/>
+<text x="35" y="42" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:15px;font-weight:600">Rust (shared crate)</text>
+<rect x="35" y="58" width="790" height="446.5" rx="14" fill="#8b5cf6" fill-opacity="0.08" stroke="#8b5cf6" stroke-width="1.5"/>
+<text x="53" y="85" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:15px;font-weight:600" xml:space="preserve"><tspan class="m">Bridge</tspan> with <tspan class="m">BincodeFfiFormat</tspan></text>
+<rect x="55" y="100" width="750" height="384.5" rx="14" fill="#9ca3af" fill-opacity="0.08" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="73" y="127" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:15px;font-weight:600" xml:space="preserve"><tspan class="m">MapEffectLayer</tspan></text>
+<rect x="75" y="142" width="710" height="296.5" rx="14" fill="#d97706" fill-opacity="0.08" stroke="#d97706" stroke-width="1.5"/>
+<text x="93" y="169" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:15px;font-weight:600" xml:space="preserve"><tspan class="m">HandleEffectLayer</tspan></text>
+<rect x="95" y="184" width="360" height="64" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="1.5"/>
+<text x="275" y="213.3" text-anchor="middle" class="b m">Core&lt;Counter&gt;</text>
+<text x="275" y="231.3" text-anchor="middle" class="s">runs the app</text>
+<rect x="280" y="354.5" width="240" height="64" rx="10" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/>
+<text x="400" y="383.8" text-anchor="middle" class="b m">RngMiddleware</text>
+<text x="400" y="401.8" text-anchor="middle" class="s">runs on its own thread</text>
+<path d="M400,250 V352.5" class="ln" marker-end="url(#a)"/>
+<rect x="368.8" y="290" width="62.5" height="22.5" rx="11.2" class="pill"/>
+<text x="400" y="305.8" text-anchor="middle" class="l m">Random</text>
+<path d="M278,386.5 H136 Q120,386.5,120,370.5 V250" class="ln" marker-end="url(#a)"/>
+<rect x="153.5" y="375.2" width="109" height="22.5" rx="11.2" class="pill"/>
+<text x="208" y="391" text-anchor="middle" class="l m">RandomNumber</text>
+<path d="M457,216 H634 Q650,216,650,232 V622.5" class="ln" marker-end="url(#a)"/>
+<rect x="478.4" y="204.8" width="132.2" height="22.5" rx="11.2" class="pill"/>
+<text x="544.5" y="220.5" text-anchor="middle" class="l">everything else</text>
+<rect x="599.4" y="450.2" width="101.2" height="22.5" rx="11.2" class="pill"/>
+<text x="650" y="466" text-anchor="middle" class="l m">ffi::Effect</text>
+<rect x="487" y="533.2" width="326" height="22.5" rx="11.2" class="pill"/>
+<text x="650" y="549" text-anchor="middle" class="l">bytes, returned or by CruxShell callback</text>
+<rect x="15" y="564.5" width="830" height="198" rx="14" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="150" y="591.5" text-anchor="start" class="s" style="fill:#8a8a8a;font-size:15px;font-weight:600">Shell (Swift, Kotlin)</text>
+<rect x="525" y="624.5" width="250" height="64" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="650" y="653.8" text-anchor="middle" class="b m">EffectHandler</text>
+<text x="650" y="671.8" text-anchor="middle" class="s">the serialized interface</text>
+<path d="M650,690.5 V726.5 Q650,742.5,634,742.5 H136 Q120,742.5,120,726.5 V250" class="ln" marker-end="url(#a)"/>
+<rect x="576.1" y="704.2" width="147.8" height="22.5" rx="11.2" class="pill"/>
+<text x="650" y="720" text-anchor="middle" class="l">serialized output</text>
+</svg>

@@ -25,6 +25,13 @@ edition = "2024"
 //!   the transitions between them
 //! - part-2/nested_state_machines.svg, the events that go down the weather
 //!   app's model tree and the transitions that come back up
+//! - part-3/effect_router.svg, the core and the routing closure in an
+//!   `EffectRouter`, and the routes that send effects to a Rust handler, the
+//!   shell and a custom FFI
+//! - part-3/effect_router_counter.svg, the same diagram for the
+//!   counter-routing example
+//! - part-3/middleware.svg, the middleware layers around the core in the
+//!   counter-middleware example, and the path of each effect through them
 //!
 //! Do not edit the SVG files directly. Change this script and run it again.
 //! The script needs a nightly Rust toolchain, because cargo runs single-file
@@ -2474,6 +2481,606 @@ fn nested_state_machines() -> String {
     s
 }
 
+// ---------------------------------------------------------------------------
+// The effect router (part-3/effect_router*.svg)
+// ---------------------------------------------------------------------------
+
+/// Where a route sends its effects in the shell.
+struct ShellEnd {
+    name: Label,
+    sub: &'static str,
+    /// The label on the arrow from the route to the shell.
+    request: Label,
+}
+
+/// One route in an effect router diagram.
+struct Route {
+    name: Label,
+    sub: &'static str,
+    /// The label on the arrow from the routing closure, if any.
+    effects: Option<Label>,
+    /// The handler in the shell, or `None` for a Rust handler that resolves
+    /// its requests itself.
+    shell: Option<ShellEnd>,
+    /// The label on the arrow that takes the output back to the core.
+    output: Label,
+}
+
+/// The strings and the width of one effect router diagram.
+struct Router {
+    width: f64,
+    title: &'static str,
+    desc: &'static str,
+    core_sub: &'static str,
+    /// The label on the arrow from the core to the routing closure.
+    effects: Label,
+    /// The heading of the routes group, in parts that are code or prose.
+    routes_heading: &'static [Label],
+    shell_heading: &'static str,
+    /// The left of the routes group. The space to its left holds the arrow
+    /// that takes the outputs back to the core.
+    routes_x: f64,
+    card_w: f64,
+    /// The first route is the Rust handler, and the others go to the shell.
+    routes: &'static [Route],
+}
+
+/// The height of a pill with 12.5px text.
+const PILL_H: f64 = 22.5;
+
+/// Panic unless a pill centred at `y` on a vertical line from `y0` down to
+/// an arrowhead at `y1` leaves a clear run of line on each side of it.
+fn assert_clear_run(y: f64, y0: f64, y1: f64) {
+    assert!(
+        y - PILL_H / 2.0 - y0 >= CLEAR && y1 - HEAD - (y + PILL_H / 2.0) >= CLEAR,
+        "the pill at {y} is too close to the end of its line"
+    );
+}
+
+/// An effect router: the core and the routing closure, the routes below
+/// them, and the shell under the routes. Every output goes back to the core
+/// along one line on the left, and the core sends the follow-up effects to
+/// the routing closure again.
+fn effect_router(p: &Router) -> String {
+    let w = p.width;
+    let bus = 100.0; // the x of the line that takes the outputs back to the core
+    let rad = 16.0; // the radius of the corners of the lines
+    let card_h = 64.0;
+    let router_y = 58.0; // the EffectRouter group
+    let top = router_y + 42.0; // the core and the routing closure
+    // The arrow into the bottom of the core crosses the bottom of the group on
+    // a clear run of line, below its arrowhead.
+    let router_h = top + card_h + 2.0 + HEAD + CLEAR - router_y;
+    let routes_y = router_y + router_h + 36.0; // the routes group
+    let branch_y = routes_y - 18.0; // where the arrows from the closure divide
+    // A pill centred on the line after the bend, with a clear run on each side.
+    let lane_y = branch_y + rad + 2.0 * (CLEAR + HEAD) + PILL_H + 2.0; // the route cards
+    let routes_h = lane_y + card_h + 44.0 - routes_y;
+    let rust_bottom = routes_y + routes_h + 16.0;
+    let shell_y = rust_bottom + 40.0;
+    // As far below the top of the shell as the route cards are above the
+    // bottom of the Rust area, so that a pill in the gap is centred on its line.
+    let dest_y = shell_y + (rust_bottom - (lane_y + card_h)); // the shell cards
+    let bus_y = dest_y + card_h + 54.0; // the shell outputs join here
+    let h = bus_y + 20.0 + 15.0;
+
+    assert!(
+        p.routes[0].shell.is_none(),
+        "the first route is the Rust handler"
+    );
+    assert!(p.routes[1..].iter().all(|r| r.shell.is_some()));
+    let n = p.routes.len() as f64;
+    let routes = Rect::new(p.routes_x, routes_y, w - 35.0 - p.routes_x, routes_h);
+    let gap = (routes.w - 40.0 - n * p.card_w) / (n - 1.0);
+    let lanes: Vec<Rect> = (0..p.routes.len())
+        .map(|i| {
+            Rect::new(
+                routes.x + 20.0 + i as f64 * (p.card_w + gap),
+                lane_y,
+                p.card_w,
+                card_h,
+            )
+        })
+        .collect();
+    let mid = (lanes[0].cx() + lanes[lanes.len() - 1].cx()) / 2.0;
+
+    let mut s = String::new();
+    head(&mut s, w, h, p.title, p.desc);
+    let attrs = |mono: bool| if mono { CODE } else { TITLE };
+
+    // Rust
+    container(
+        &mut s,
+        Rect::new(15.0, 15.0, w - 30.0, rust_bottom - 15.0),
+        Kind::Fn,
+    );
+    text(
+        &mut s,
+        35.0,
+        42.0,
+        "start",
+        &faint(15.0, false),
+        "Rust (shared crate)",
+    );
+    group(
+        &mut s,
+        Rect::new(35.0, router_y, w - 70.0, router_h),
+        Kind::Cmd,
+        "EffectRouter",
+        true,
+    );
+    let core = Rect::new(55.0, top, 196.0, card_h);
+    lines_card(
+        &mut s,
+        core,
+        Kind::Fn,
+        &[(CODE, 16.0, "Core"), (SMALL, 12.0, p.core_sub)],
+    );
+    let closure = Rect::new(mid - 120.0, top, 240.0, card_h);
+    lines_card(
+        &mut s,
+        closure,
+        Kind::Cmd,
+        &[
+            (TITLE, 16.0, "routing closure"),
+            (SMALL, 12.0, "sends each effect to a route"),
+        ],
+    );
+    let (label, mono) = p.effects;
+    let x0 = core.x + core.w;
+    // The pill is above the line, but clear of the arrowhead as well.
+    let pill_w = text_width(label, 12.5) + 16.0;
+    assert!(
+        (closure.x - 2.0 - x0 - pill_w) / 2.0 - HEAD >= CLEAR,
+        "{label:?} is too close to the arrowhead"
+    );
+    h_arrow(&mut s, x0 + 2.0, core.cy(), closure.x - 2.0);
+    pill(
+        &mut s,
+        (x0 + closure.x) / 2.0,
+        core.cy() - 14.0,
+        label,
+        mono,
+        12.5,
+    );
+
+    // The routes. The heading is at the bottom left, under the Rust
+    // handler, clear of the arrows from the routing closure.
+    container(&mut s, routes, Kind::Model);
+    mixed_text(
+        &mut s,
+        routes.x + 18.0,
+        routes.y + routes.h - 14.0,
+        &faint(15.0, false),
+        p.routes_heading,
+    );
+    let from = closure.y + closure.h + 2.0;
+    for (route, lane) in p.routes.iter().zip(&lanes) {
+        let (name, mono) = route.name;
+        lines_card(
+            &mut s,
+            *lane,
+            Kind::Model,
+            &[(attrs(mono), 16.0, name), (SMALL, 12.0, route.sub)],
+        );
+        let x = lane.cx();
+        let path = if x == mid {
+            Path::new().m(mid, from).v(lane_y - 2.0)
+        } else {
+            let dir = (x - mid).signum();
+            Path::new()
+                .m(mid, from)
+                .v(branch_y - rad)
+                .q(mid, branch_y, mid + dir * rad, branch_y)
+                .h(x - dir * rad)
+                .q(x, branch_y, x, branch_y + rad)
+                .v(lane_y - 2.0)
+        };
+        arrow(&mut s, path, Arrow::Solid);
+        if let Some((label, mono)) = route.effects {
+            let start = if x == mid { from } else { branch_y + rad };
+            let y = (branch_y + rad + lane_y - 2.0) / 2.0;
+            assert_clear_run(y, start, lane_y - 2.0);
+            pill(&mut s, x, y, label, mono, 12.5);
+        }
+    }
+
+    // The shell
+    container(
+        &mut s,
+        Rect::new(15.0, shell_y, w - 30.0, h - 15.0 - shell_y),
+        Kind::Shell,
+    );
+    text(
+        &mut s,
+        bus + 30.0,
+        shell_y + 27.0,
+        "start",
+        &faint(15.0, false),
+        p.shell_heading,
+    );
+    let core_bottom = core.y + core.h + 2.0;
+    for (route, lane) in p.routes.iter().zip(&lanes) {
+        let x = lane.cx();
+        let (label, mono) = route.output;
+        let Some(end) = &route.shell else {
+            // The Rust handler resolves its requests itself.
+            arrow(
+                &mut s,
+                Path::new()
+                    .m(lane.x - 2.0, lane.cy())
+                    .h(bus + rad)
+                    .q(bus, lane.cy(), bus, lane.cy() - rad)
+                    .v(core_bottom),
+                Arrow::Solid,
+            );
+            let room = routes.x - (bus + rad);
+            assert!(text_width(label, 12.5) + 16.0 + 12.0 <= room, "{label:?}");
+            pill(
+                &mut s,
+                (bus + rad + routes.x) / 2.0,
+                lane.cy(),
+                label,
+                mono,
+                12.5,
+            );
+            continue;
+        };
+        let dest = Rect::new(lane.x, dest_y, lane.w, card_h);
+        let (name, name_mono) = end.name;
+        lines_card(
+            &mut s,
+            dest,
+            Kind::Shell,
+            &[(attrs(name_mono), 16.0, name), (SMALL, 12.0, end.sub)],
+        );
+        let (request, request_mono) = end.request;
+        down(&mut s, x, lane.y + lane.h, dest_y, None);
+        let y = (rust_bottom + shell_y) / 2.0;
+        assert!(y == (lane.y + lane.h + dest_y) / 2.0, "the pill is off centre");
+        assert_clear_run(y, lane.y + lane.h + 2.0, dest_y - 2.0);
+        pill(
+            &mut s,
+            x,
+            y,
+            request,
+            request_mono,
+            12.5,
+        );
+        arrow(
+            &mut s,
+            Path::new()
+                .m(x, dest_y + card_h + 2.0)
+                .v(bus_y - rad)
+                .q(x, bus_y, x - rad, bus_y)
+                .h(bus + rad)
+                .q(bus, bus_y, bus, bus_y - rad)
+                .v(core_bottom),
+            Arrow::Solid,
+        );
+        pill(
+            &mut s,
+            x,
+            (dest_y + card_h + bus_y) / 2.0,
+            label,
+            mono,
+            12.5,
+        );
+    }
+
+    s.push_str("</svg>\n");
+    s
+}
+
+/// The parts of the effect router, without the counter's names.
+const EFFECT_ROUTER: Router = Router {
+    width: 1100.0,
+    title: "Crux: the effect router",
+    desc: "The Rust shared crate holds an EffectRouter, which holds the Core and a \
+           routing closure. The Core runs the app, and the app does not change. The Core \
+           gives each effect and each follow-up effect to the routing closure. The \
+           routing closure sends each effect to a route of your own. A Rust handler \
+           resolves its requests itself, next to the core. The Serialized lane sends \
+           bytes to the shell's EffectHandler, which is the usual serialized interface. \
+           The Parked lane sends the typed operation to a custom FFI of your own design. \
+           Each output goes back to the Core along one line, and the Core sends the \
+           follow-up effects to the routing closure again.",
+    core_sub: "runs the app, unchanged",
+    effects: ("effects and follow-ups", false),
+    routes_heading: &[("Your Routes type", false)],
+    shell_heading: "Shell",
+    routes_x: 220.0,
+    card_w: 215.0,
+    routes: &[
+        Route {
+            name: ("Rust handler", false),
+            sub: "runs alongside the core",
+            effects: None,
+            shell: None,
+            output: ("output", false),
+        },
+        Route {
+            name: ("Serialized", true),
+            sub: "serializes each effect",
+            effects: None,
+            shell: Some(ShellEnd {
+                name: ("EffectHandler", true),
+                sub: "the serialized interface",
+                request: ("bytes", false),
+            }),
+            output: ("serialized output", false),
+        },
+        Route {
+            name: ("Parked", true),
+            sub: "parks the typed request",
+            effects: None,
+            shell: Some(ShellEnd {
+                name: ("Custom FFI", false),
+                sub: "your own design",
+                request: ("typed operation", false),
+            }),
+            output: ("typed output", false),
+        },
+    ],
+};
+
+/// The effect router in the counter-routing example.
+const EFFECT_ROUTER_COUNTER: Router = Router {
+    width: 920.0,
+    title: "Crux: the effect router in the counter",
+    desc: "The Rust shared crate holds the EffectRouter and the EffectRoutes type, \
+           which implements Routes. The EffectRouter holds the Core, which runs the \
+           app, and the routing closure. The Core gives its effects to the routing \
+           closure. The closure sends Random to the RngHandler, which runs on its own \
+           thread, and everything else to the Serialized lane. The Serialized lane \
+           sends bytes to the shell's EffectHandler through the CruxShell callback. \
+           The shell is in Swift or Kotlin. The RngHandler sends a \
+           RandomNumber back to the Core, and the shell sends the serialized output \
+           back to the Core.",
+    core_sub: "runs the app",
+    effects: ("effects", false),
+    routes_heading: &[("EffectRoutes", true), (" (our Routes impl)", false)],
+    shell_heading: "Shell (Swift, Kotlin)",
+    routes_x: 250.0,
+    card_w: 250.0,
+    routes: &[
+        Route {
+            name: ("RngHandler", true),
+            sub: "runs on its own thread",
+            effects: Some(("Random", true)),
+            shell: None,
+            output: ("RandomNumber", true),
+        },
+        Route {
+            name: ("Serialized", true),
+            sub: "serializes each effect",
+            effects: Some(("everything else", false)),
+            shell: Some(ShellEnd {
+                name: ("EffectHandler", true),
+                sub: "the serialized interface",
+                request: ("bytes, via CruxShell callback", false),
+            }),
+            output: ("serialized output", false),
+        },
+    ],
+};
+// ---------------------------------------------------------------------------
+// Middleware (part-3/middleware.svg)
+// ---------------------------------------------------------------------------
+
+/// The middleware layers in the counter-middleware example, in the visual
+/// language of `effect_router`. The layers nest: the `Bridge` holds the
+/// `MapEffectLayer`, which holds the `HandleEffectLayer`, which holds the
+/// core and the `RngMiddleware`. Effects go out through the layers to the
+/// shell, and every output comes back in along one line on the left.
+fn middleware() -> String {
+    const W: f64 = 860.0;
+    let bus = 120.0; // the x of the line that takes the outputs back to the core
+    let rad = 16.0;
+    let card_h = 64.0;
+    let pad = 20.0; // between a group and the group or card inside it
+    let bridge_y = 58.0;
+    let map_y = bridge_y + 42.0;
+    let handle_y = map_y + 42.0;
+    let top = handle_y + 42.0; // the core
+    // A pill centred on the line from the core, with a clear run on each side.
+    let rng_y = top + card_h + 2.0 + 2.0 * (CLEAR + HEAD) + PILL_H + 2.0;
+    let handle_bottom = rng_y + card_h + pad;
+    let map_bottom = handle_bottom + 46.0; // room for a pill under the inner group
+    let bridge_bottom = map_bottom + pad;
+    let rust_bottom = bridge_bottom + pad;
+    let shell_y = rust_bottom + 40.0;
+    let dest_y = shell_y + 60.0; // the EffectHandler
+    let bus_y = dest_y + card_h + 54.0;
+    let h = bus_y + 20.0 + 15.0;
+
+    let title = "Crux: middleware in the counter";
+    let desc = "The Rust shared crate holds three nested layers. The Bridge, with \
+                BincodeFfiFormat, is on the outside. It holds the MapEffectLayer, which \
+                holds the HandleEffectLayer. The HandleEffectLayer holds the Core of the \
+                Counter app and the RngMiddleware, which runs on its own thread. The Core \
+                sends Random to the RngMiddleware, which sends a RandomNumber back to the \
+                Core. Every other effect goes out through the MapEffectLayer, which converts \
+                it to an ffi::Effect, and through the Bridge, which serializes it. The bytes go \
+                to the EffectHandler in the Swift or Kotlin shell. The bridge returns \
+                them from update or resolve, or sends them through the CruxShell callback. \
+                The shell sends the serialized output back in through the layers to the \
+                Core.";
+    let mut s = String::new();
+    head(&mut s, W, h, title, desc);
+    let heading = faint(15.0, false);
+
+    // The layers, from the outside in
+    container(
+        &mut s,
+        Rect::new(15.0, 15.0, W - 30.0, rust_bottom - 15.0),
+        Kind::Fn,
+    );
+    text(&mut s, 35.0, 42.0, "start", &heading, "Rust (shared crate)");
+    let layers: [(f64, f64, Kind, &[Label]); 3] = [
+        (
+            bridge_y,
+            bridge_bottom,
+            Kind::Cmd,
+            &[
+                ("Bridge", true),
+                (" with ", false),
+                ("BincodeFfiFormat", true),
+            ],
+        ),
+        (map_y, map_bottom, Kind::World, &[("MapEffectLayer", true)]),
+        (
+            handle_y,
+            handle_bottom,
+            Kind::Model,
+            &[("HandleEffectLayer", true)],
+        ),
+    ];
+    for (i, &(y, bottom, kind, parts)) in layers.iter().enumerate() {
+        let inset = 35.0 + i as f64 * pad;
+        container(
+            &mut s,
+            Rect::new(inset, y, W - 2.0 * inset, bottom - y),
+            kind,
+        );
+        mixed_text(&mut s, inset + 18.0, y + 27.0, &heading, parts);
+    }
+    let core = Rect::new(95.0, top, 360.0, card_h);
+    lines_card(
+        &mut s,
+        core,
+        Kind::Fn,
+        &[(CODE, 16.0, "Core<Counter>"), (SMALL, 12.0, "runs the app")],
+    );
+    let rng = Rect::new(280.0, rng_y, 240.0, card_h);
+    lines_card(
+        &mut s,
+        rng,
+        Kind::Model,
+        &[
+            (CODE, 16.0, "RngMiddleware"),
+            (SMALL, 12.0, "runs on its own thread"),
+        ],
+    );
+
+    // Random: from the core to the middleware, and back along the shared line
+    let core_bottom = core.y + core.h + 2.0;
+    let x = rng.cx();
+    down(&mut s, x, core.y + core.h, rng.y, None);
+    let y = (core_bottom + rng.y - 2.0) / 2.0;
+    assert_clear_run(y, core_bottom, rng.y - 2.0);
+    pill(&mut s, x, y, "Random", true, 12.5);
+    arrow(
+        &mut s,
+        Path::new()
+            .m(rng.x - 2.0, rng.cy())
+            .h(bus + rad)
+            .q(bus, rng.cy(), bus, rng.cy() - rad)
+            .v(core_bottom),
+        Arrow::Solid,
+    );
+    let label = "RandomNumber";
+    assert!(text_width(label, 12.5) + 16.0 + 12.0 <= rng.x - (bus + rad));
+    pill(
+        &mut s,
+        (bus + rad + rng.x) / 2.0,
+        rng.cy(),
+        label,
+        true,
+        12.5,
+    );
+    // The arrowhead into the core is clear of the line that joins it.
+    assert!(rng.cy() - rad - HEAD - core_bottom >= CLEAR);
+
+    // Everything else: out through the layers to the shell
+    let xe = 650.0;
+    let dest = Rect::new(xe - 125.0, dest_y, 250.0, card_h);
+    assert!(rng.x + rng.w + 40.0 < xe && core.x + core.w + 2.0 * rad < xe);
+    arrow(
+        &mut s,
+        Path::new()
+            .m(core.x + core.w + 2.0, core.cy())
+            .h(xe - rad)
+            .q(xe, core.cy(), xe, core.cy() + rad)
+            .v(dest_y - 2.0),
+        Arrow::Solid,
+    );
+    pill(
+        &mut s,
+        (core.x + core.w + xe - rad) / 2.0,
+        core.cy(),
+        "everything else",
+        false,
+        12.5,
+    );
+    pill(
+        &mut s,
+        xe,
+        (handle_bottom + map_bottom) / 2.0,
+        "ffi::Effect",
+        true,
+        12.5,
+    );
+    let y = (rust_bottom + shell_y) / 2.0;
+    pill(
+        &mut s,
+        xe,
+        y,
+        "bytes, returned or by CruxShell callback",
+        false,
+        12.5,
+    );
+    // The last pill and the top of the shell are clear of the arrowhead.
+    assert!(dest_y - 2.0 - HEAD - (y + PILL_H / 2.0) >= CLEAR);
+    assert!(dest_y - 2.0 - HEAD - shell_y >= CLEAR);
+
+    // The shell
+    container(
+        &mut s,
+        Rect::new(15.0, shell_y, W - 30.0, h - 15.0 - shell_y),
+        Kind::Shell,
+    );
+    text(
+        &mut s,
+        bus + 30.0,
+        shell_y + 27.0,
+        "start",
+        &heading,
+        "Shell (Swift, Kotlin)",
+    );
+    lines_card(
+        &mut s,
+        dest,
+        Kind::Shell,
+        &[
+            (CODE, 16.0, "EffectHandler"),
+            (SMALL, 12.0, "the serialized interface"),
+        ],
+    );
+    arrow(
+        &mut s,
+        Path::new()
+            .m(xe, dest_y + card_h + 2.0)
+            .v(bus_y - rad)
+            .q(xe, bus_y, xe - rad, bus_y)
+            .h(bus + rad)
+            .q(bus, bus_y, bus, bus_y - rad)
+            .v(core_bottom),
+        Arrow::Solid,
+    );
+    pill(
+        &mut s,
+        xe,
+        (dest_y + card_h + bus_y) / 2.0,
+        "serialized output",
+        false,
+        12.5,
+    );
+
+    s.push_str("</svg>\n");
+    s
+}
+
 fn main() -> std::io::Result<()> {
     // Under `-Zscript`, CARGO_MANIFEST_DIR is the directory of this script, so
     // the default output directory does not depend on the current directory.
@@ -2502,5 +3109,14 @@ fn main() -> std::io::Result<()> {
         format!("{out}/part-2/nested_state_machines.svg"),
         nested_state_machines(),
     )?;
+    std::fs::write(
+        format!("{out}/part-3/effect_router.svg"),
+        effect_router(&EFFECT_ROUTER),
+    )?;
+    std::fs::write(
+        format!("{out}/part-3/effect_router_counter.svg"),
+        effect_router(&EFFECT_ROUTER_COUNTER),
+    )?;
+    std::fs::write(format!("{out}/part-3/middleware.svg"), middleware())?;
     Ok(())
 }
