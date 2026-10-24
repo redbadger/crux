@@ -395,7 +395,7 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **Facet type generation now requires `facet_generate` 0.21.** Only the
+- **Facet type generation now requires `facet_generate` 0.22.2.** Only the
   `facet_typegen` feature is affected; every other feature of this crate is
   unchanged.
 - Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.

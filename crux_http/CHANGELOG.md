@@ -10,6 +10,29 @@ and this project adheres to
 
 ### Added
 
+- **A shell-side HTTP handler ships with the crate.**
+  `crux_http::shell::EXTENSION` is a `ShellExtension` carrying Swift, Kotlin,
+  TypeScript and C# implementations of the protocol (`URLSessionHttpHandler`,
+  `UrlConnectionHttpHandler`, `createFetchHttpHandler` and
+  `HttpClientHttpHandler`), each behind an `HttpHandler` protocol with one
+  `request` method. Each is constructed by the shell, with no arguments for the
+  platform's default client or with the configuration it needs. An app
+  registers it in its codegen binary
+  (`registry.shell_extension(&crux_http::shell::EXTENSION)?`) and its
+  `EffectHandler` delegates `http` in one line; the mapping of platform errors
+  onto `HttpResult` is then the crate's, not the shell's. Each handler that owns
+  a client keeps cookies, so a session survives between requests on every
+  platform: `URLSession` and `HttpClient` already do, and
+  `UrlConnectionHttpHandler` carries an `InMemoryCookieJar` (pass
+  `cookies = null` to opt out, or a `CookieJar` of your own to persist
+  them). `java.net.CookieManager` is deliberately *not* used — it writes a
+  `Max-Age` cookie in RFC 2965 form that servers do not read. Each handler
+  follows redirects, and answers `HttpError::Io` for a `GET` or `HEAD` with a
+  body. The sources are under `shell/` and compile against the generated types;
+  `tests/shell_source.rs` builds the Swift, TypeScript and C# sources where a
+  toolchain is present. See
+  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
+
 - **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
   response into the `Response` an app sees, with the same semantics a `crux_http`
   request gives it.

@@ -17,6 +17,19 @@ and this project adheres to
 
 ### 🚀 Features
 
+- **A shell-side key-value handler ships with the crate.**
+  `crux_kv::shell::EXTENSION` is a `ShellExtension` carrying
+  `UserDefaultsKeyValueHandler` (Swift), `FileKeyValueHandler` over a directory
+  (Kotlin and C#) and `createLocalStorageKeyValueHandler` (TypeScript), each
+  behind a `KeyValueHandler` protocol with `get`, `set`, `delete`, `exists` and
+  `listKeys`. An app registers it in its codegen binary
+  (`registry.shell_extension(&crux_kv::shell::EXTENSION)?`), which also
+  generates every operation of the capability, and delegates one line per
+  operation. Note that this puts `Get`, `Set`, `Delete`, `Exists` and
+  `ListKeys` into the app's generated namespace: an app-defined operation with
+  one of those names must be renamed. See
+  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
+
 - **One type per store operation, in the new `crux_kv::operation` module, and a
   `store::KeyValue` capability that sends them.** `KeyValueOperation` has one output
   type — `KeyValueResult` — for all five of its variants, so a `Get` can be answered
@@ -73,9 +86,9 @@ and this project adheres to
   ```rust
   pub enum ValueResult { Ok(Value), Err(KeyValueError) }
   pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
-  pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
+  pub enum KeysResult  { Ok(KeyPage), Err(KeyValueError) }
 
-  pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
+  pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
   ```
 
   Each converts to and from the `Result` alias an app sees (`ValueResult` ↔
@@ -106,6 +119,7 @@ and this project adheres to
   enum and in the shells that serve it. The
   [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html)
   walks through it, including the shell side.
+
 ## [0.14.0](https://github.com/redbadger/crux/compare/crux_kv-v0.13.0...crux_kv-v0.14.0) - 2026-08-06
 
 ### ⚙️ Miscellaneous Tasks
