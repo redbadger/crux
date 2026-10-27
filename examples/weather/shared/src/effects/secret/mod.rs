@@ -7,9 +7,8 @@
 //! them, so no call site has to rule out variants that cannot happen. The
 //! developer-facing command builders live in the [`command`] submodule.
 //!
-//! The names carry the capability because the generated shell module is one
-//! flat namespace: a bare `Delete` here and `crux_kv`'s `Delete` would both
-//! generate as `Delete`, and the app registers both capabilities.
+//! The names include `Secret` so that they do not collide with `crux_kv`'s
+//! `Delete` in the generated shell types.
 
 pub mod command;
 

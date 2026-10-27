@@ -29,12 +29,7 @@ fn main() -> Result<()> {
 
     let mut registry = TypeRegistry::new();
     registry.register_app::<NoteEditor>()?;
-    // The store and the timer table are the capabilities' own business, so the
-    // shell holds an instance of what these emit and delegates to it rather
-    // than writing the protocols' rules out itself. Registering a handler also
-    // registers the types its sources name, so the operations this app never
-    // sends — `Delete`, `Exists`, `ListKeys`, `Now` and `NotifyAt` — are
-    // generated too: the shipped source implements the whole capability.
+    // Use the provided default implementations on the shell side
     registry
         .shell_extension(&crux_kv::shell::EXTENSION)?
         .shell_extension(&crux_time::shell::EXTENSION)?;

@@ -40,20 +40,10 @@ export type SyncMessage = {
  * is answered with. The generated `EffectDispatcher` does the resolving —
  * nothing here calls `resolve` by hand, and there is no `render` method
  * because the generated `Core` handles `Render` itself.
- *
- * The store and the timers are `crux_kv`'s and `crux_time`'s own business, so
- * this shell uses the handlers those crates ship — generated into
- * `shared_types/app` because the codegen binary asks for them — and writes only
- * the line that delegates. Publishing and subscribing are this app's, and are
- * written out below.
  */
 export class NotesHandler implements EffectHandler {
-  /**
-   * No prefix, so the documents this app has already saved under their own
-   * keys are still where it left them.
-   */
+  /** No prefix, so the app still finds documents that it saved before. */
   private readonly kv = createLocalStorageKeyValueHandler();
-  /** The timer table is state, so there is one handler, for the page's life. */
   private readonly time = new TimeoutTimeHandler();
 
   constructor(

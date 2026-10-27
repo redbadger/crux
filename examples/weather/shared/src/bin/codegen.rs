@@ -27,12 +27,7 @@ fn main() -> Result<()> {
 
     let mut registry = TypeRegistry::new();
     registry.register_app::<shared::Weather>()?;
-    // The HTTP client, the store and the timer table are the same in every
-    // shell, so the shells hold an instance of what these emit and delegate to
-    // it rather than writing the protocols' rules out three times. Registering
-    // a handler also registers the types its sources name, so the operations
-    // this app never sends — `Delete`, `Now` and the rest — are generated
-    // too: the shipped source implements the whole capability.
+    // Use the provided default implementations on the shell side
     registry
         .shell_extension(&crux_http::shell::EXTENSION)?
         .shell_extension(&crux_kv::shell::EXTENSION)?
