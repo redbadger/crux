@@ -120,6 +120,7 @@ fn the_swift_source_compiles() {
         .expect("should write the handler beside the module");
     assert!(shipped.contains("public protocol KeyValueHandler: Sendable {"));
     assert!(shipped.contains("public final class UserDefaultsKeyValueHandler"));
+    assert!(shipped.contains("public final class InMemoryKeyValueHandler"));
 
     swift_build(&dir.path().join("App"));
 }
@@ -140,6 +141,7 @@ fn the_kotlin_source_is_emitted() {
     assert!(shipped.starts_with("package com.example.shared\n"));
     assert!(shipped.contains("interface KeyValueHandler {"));
     assert!(shipped.contains("class FileKeyValueHandler("));
+    assert!(shipped.contains("class InMemoryKeyValueHandler :"));
 }
 
 /// `typescript()` runs `tsc` over what it wrote, so generating at all is a
@@ -154,6 +156,7 @@ fn the_typescript_source_compiles() {
     let declarations = fs::read_to_string(dir.path().join("shared_types.d.ts"))
         .expect("tsc should have emitted declarations");
     assert!(declarations.contains("declare function createLocalStorageKeyValueHandler("));
+    assert!(declarations.contains("declare function createInMemoryKeyValueHandler("));
 }
 
 #[test]
@@ -166,6 +169,7 @@ fn the_csharp_source_compiles() {
     let shipped = fs::read_to_string(dir.path().join("Example/Shared/KeyValue.cs"))
         .expect("should write the handler beside the module");
     assert!(shipped.contains("public interface IKeyValueHandler"));
+    assert!(shipped.contains("public sealed class InMemoryKeyValueHandler"));
 
     dotnet_build(dir.path());
 }

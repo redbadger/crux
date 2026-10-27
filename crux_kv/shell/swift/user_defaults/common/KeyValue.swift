@@ -17,6 +17,9 @@ import Foundation
 /// Conform your own type to it to put the store somewhere else — the keychain,
 /// a database, a file — or to replace a single method and leave the rest.
 ///
+/// Two stores ship: `UserDefaultsKeyValueHandler` keeps values in the user's
+/// defaults, and `InMemoryKeyValueHandler` keeps them only in memory.
+///
 /// ## What each operation answers with
 ///
 /// `get` answers with what is stored under the key, `Value.none` when nothing
@@ -143,5 +146,61 @@ public final class UserDefaultsKeyValueHandler: KeyValueHandler, @unchecked Send
     private static func value(_ data: Data?) -> Value {
         guard let data else { return .none }
         return .bytes([UInt8](data))
+    }
+}
+
+/// A `KeyValueHandler` that keeps values in a dictionary for the life of the
+/// handler.
+///
+/// Use it in tests, in previews, in a shell with no storage, or when the values
+/// must not outlive the process. Use `UserDefaultsKeyValueHandler` when they
+/// must survive a restart. Like that store, `listKeys` answers with one page.
+///
+/// A lock guards the dictionary, not an actor, because the generated types are
+/// not `Sendable`.
+public final class InMemoryKeyValueHandler: KeyValueHandler, @unchecked Sendable {
+    private var values: [String: [UInt8]] = [:]
+    private let lock = NSLock()
+
+    public init() {}
+
+    public func get(_ operation: Get) async -> ValueResult {
+        .ok(Self.value(locked { values[operation.key] }))
+    }
+
+    public func set(_ operation: Set) async -> ValueResult {
+        .ok(Self.value(locked { values.updateValue(operation.value, forKey: operation.key) }))
+    }
+
+    public func delete(_ operation: Delete) async -> ValueResult {
+        .ok(Self.value(locked { values.removeValue(forKey: operation.key) }))
+    }
+
+    public func exists(_ operation: Exists) async -> BoolResult {
+        .ok(locked { values[operation.key] != nil })
+    }
+
+    public func listKeys(_ operation: ListKeys) async -> KeysResult {
+        let keys = locked { Array(values.keys) }
+            .filter { $0.hasPrefix(operation.prefix) }
+            .sorted()
+
+        guard operation.cursor <= UInt64(keys.count) else {
+            return .err(.cursorNotFound)
+        }
+
+        return .ok(KeyPage(keys: Array(keys[Int(operation.cursor)...]), nextCursor: 0))
+    }
+
+    private func locked<T>(_ body: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return body()
+    }
+
+    /// An array is a value, so the caller gets a copy.
+    private static func value(_ bytes: [UInt8]?) -> Value {
+        guard let bytes else { return .none }
+        return .bytes(bytes)
     }
 }

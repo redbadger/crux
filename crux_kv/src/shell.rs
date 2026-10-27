@@ -28,6 +28,9 @@
 //! configuration, and a shell that wants a different one conforms its own type
 //! to the protocol.
 //!
+//! Each language also has an in-memory store, which keeps values for the life
+//! of the handler.
+//!
 //! [`Value::None`]: crate::protocol::Value::None
 
 use crux_core::{
@@ -43,7 +46,8 @@ pub mod swift {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
 
-    /// `KeyValueHandler`, and `UserDefaultsKeyValueHandler` over `UserDefaults`.
+    /// `KeyValueHandler`, `UserDefaultsKeyValueHandler` over `UserDefaults`,
+    /// and `InMemoryKeyValueHandler`.
     pub static USER_DEFAULTS: ShellExtension = ShellExtension::swift(
         "KeyValue",
         include_dir!("$CARGO_MANIFEST_DIR/shell/swift/user_defaults"),
@@ -51,7 +55,11 @@ pub mod swift {
     .platforms(&[Platform::Apple, Platform::Linux])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&["KeyValueHandler", "UserDefaultsKeyValueHandler"]);
+    .foreign_types(&[
+        "KeyValueHandler",
+        "UserDefaultsKeyValueHandler",
+        "InMemoryKeyValueHandler",
+    ]);
 }
 
 /// The Kotlin handler, for an app to register with
@@ -60,7 +68,8 @@ pub mod kotlin {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
 
-    /// `KeyValueHandler`, and `FileKeyValueHandler` over a file per key.
+    /// `KeyValueHandler`, `FileKeyValueHandler` over a file per key, and
+    /// `InMemoryKeyValueHandler`.
     pub static FILE: ShellExtension = ShellExtension::kotlin(
         "KeyValue",
         include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/file"),
@@ -68,7 +77,11 @@ pub mod kotlin {
     .platforms(&[Platform::Jvm, Platform::Android])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&["KeyValueHandler", "FileKeyValueHandler"]);
+    .foreign_types(&[
+        "KeyValueHandler",
+        "FileKeyValueHandler",
+        "InMemoryKeyValueHandler",
+    ]);
 }
 
 /// The TypeScript handler, for an app to register with
@@ -77,8 +90,8 @@ pub mod typescript {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
 
-    /// `KeyValueHandler`, and `createLocalStorageKeyValueHandler` over
-    /// `localStorage`.
+    /// `KeyValueHandler`, `createLocalStorageKeyValueHandler` over
+    /// `localStorage`, and `createInMemoryKeyValueHandler`.
     pub static LOCAL_STORAGE: ShellExtension = ShellExtension::typescript(
         "KeyValue",
         include_dir!("$CARGO_MANIFEST_DIR/shell/typescript/local_storage"),
@@ -86,7 +99,11 @@ pub mod typescript {
     .platforms(&[Platform::Web])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&["KeyValueHandler", "createLocalStorageKeyValueHandler"]);
+    .foreign_types(&[
+        "KeyValueHandler",
+        "createLocalStorageKeyValueHandler",
+        "createInMemoryKeyValueHandler",
+    ]);
 }
 
 /// The C# handler, for an app to register with
@@ -95,7 +112,8 @@ pub mod csharp {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
 
-    /// `IKeyValueHandler`, and `FileKeyValueHandler` over a file per key.
+    /// `IKeyValueHandler`, `FileKeyValueHandler` over a file per key, and
+    /// `InMemoryKeyValueHandler`.
     pub static FILE: ShellExtension = ShellExtension::csharp(
         "KeyValue",
         include_dir!("$CARGO_MANIFEST_DIR/shell/csharp/file"),
@@ -103,7 +121,11 @@ pub mod csharp {
     .platforms(&[Platform::DotNet])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&["IKeyValueHandler", "FileKeyValueHandler"]);
+    .foreign_types(&[
+        "IKeyValueHandler",
+        "FileKeyValueHandler",
+        "InMemoryKeyValueHandler",
+    ]);
 }
 
 /// Registers the types the shipped sources name, for an app that does not use

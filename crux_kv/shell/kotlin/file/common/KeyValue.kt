@@ -3,6 +3,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The shell side of `crux_kv`, as one method per operation.
@@ -21,6 +22,9 @@ import java.net.URLDecoder
  *
  * Implement it yourself to put the store somewhere else — `DataStore`, a
  * database, a keystore — or to replace a single method and leave the rest.
+ *
+ * Two stores ship: [FileKeyValueHandler] keeps values in files, and
+ * [InMemoryKeyValueHandler] keeps them only in memory.
  *
  * ## What each operation answers with
  *
@@ -235,4 +239,37 @@ class FileKeyValueHandler(
         } catch (e: SecurityException) {
             ValueResult.Err(KeyValueError.Io(e.message ?: "access denied"))
         }
+}
+
+/**
+ * A [KeyValueHandler] that keeps values in a map for the life of the handler.
+ *
+ * Use it in tests, in previews, in a shell with no storage, or when the values
+ * must not outlive the process. Use [FileKeyValueHandler] when they must
+ * survive a restart. Like that store, `listKeys` answers with one page.
+ */
+class InMemoryKeyValueHandler : KeyValueHandler {
+    private val values = ConcurrentHashMap<String, List<UByte>>()
+
+    override suspend fun get(operation: Get): ValueResult = ValueResult.Ok(value(values[operation.key]))
+
+    override suspend fun set(operation: Set): ValueResult =
+        ValueResult.Ok(value(values.put(operation.key, operation.value.toList())))
+
+    override suspend fun delete(operation: Delete): ValueResult = ValueResult.Ok(value(values.remove(operation.key)))
+
+    override suspend fun exists(operation: Exists): BoolResult = BoolResult.Ok(values.containsKey(operation.key))
+
+    override suspend fun listKeys(operation: ListKeys): KeysResult {
+        val keys = values.keys.filter { it.startsWith(operation.prefix) }.sorted()
+
+        if (operation.cursor > keys.size.toULong()) {
+            return KeysResult.Err(KeyValueError.CursorNotFound)
+        }
+
+        return KeysResult.Ok(KeyPage(keys.drop(operation.cursor.toInt()), 0uL))
+    }
+
+    /** A copy, so that the caller cannot change what is stored. */
+    private fun value(bytes: List<UByte>?): Value = if (bytes == null) Value.None else Value.Bytes(bytes.toList())
 }
