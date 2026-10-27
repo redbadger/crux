@@ -57,6 +57,12 @@ public interface IHttpHandler
 /// <c>https</c> to <c>http</c>. To change this, pass a client of your own with
 /// <c>AllowAutoRedirect</c> set on its handler.
 /// </para>
+/// <para>
+/// <b>Cookies.</b> The default client keeps cookies, because the
+/// <c>CookieContainer</c> of its <c>HttpClientHandler</c> is on by default
+/// (<c>UseCookies</c>). That client is shared, so its cookies are
+/// process-wide. A client of your own uses the cookie settings of its handler.
+/// </para>
 /// </remarks>
 public sealed class HttpClientHttpHandler : IHttpHandler
 {
