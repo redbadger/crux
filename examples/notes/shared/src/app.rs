@@ -559,7 +559,6 @@ mod editing_tests {
 mod save_load_tests {
     use crux_core::assert_effect;
     use crux_kv::{operation::ValueResult, value::Value};
-    use crux_time::TimerId;
 
     use super::*;
 
@@ -715,12 +714,12 @@ mod save_load_tests {
 
         let _publish = effects.next().unwrap().expect_publish();
         let timer = effects.next().unwrap().expect_time_notify_after();
+        // Every test in this binary takes timer ids from one counter, so the
+        // test checks that the id is new, not which number it is.
+        assert_ne!(timer.operation.id, second_id);
         assert_eq!(
-            timer.operation,
-            time::NotifyAfter {
-                id: TimerId(3),
-                duration: crux_time::Duration::from_millis(1000)
-            }
+            timer.operation.duration,
+            crux_time::Duration::from_millis(1000)
         );
     }
     // ANCHOR_END: starts_a_timer_after_an_edit
