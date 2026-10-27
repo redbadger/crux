@@ -17,6 +17,9 @@
  * IndexedDB, a server, `sessionStorage` — or to replace a single method and
  * leave the rest.
  *
+ * Two stores ship: `createLocalStorageKeyValueHandler` keeps values in the
+ * browser, and `createInMemoryKeyValueHandler` keeps them only in memory.
+ *
  * ## What each operation answers with
  *
  * `get` answers with what is stored under the key, `valueNone()` when nothing
@@ -40,8 +43,8 @@ export interface KeyValueHandler {
 }
 
 /**
- * A `KeyValueHandler` over `localStorage`, storing each value as a JSON array
- * of byte values.
+ * A `KeyValueHandler` over the browser's `localStorage`, storing each value as
+ * a JSON array of byte values.
  *
  * ## Where it stores things
  *
@@ -56,7 +59,8 @@ export interface KeyValueHandler {
  * turned off. Rather than pretend, every operation then answers
  * `keyValueErrorIo`, so the core sees a store that is not working rather than
  * one that is empty. Pass a `Storage` of your own — `sessionStorage`, or an
- * in-memory stand-in in a test — to decide otherwise.
+ * in-memory stand-in in a test — to decide otherwise. On a server or in a
+ * worker, use `createInMemoryKeyValueHandler` instead.
  *
  * @param prefix put in front of every key in the underlying storage.
  * @param storage the storage to use; the global `localStorage` when omitted,
@@ -160,6 +164,56 @@ export function createLocalStorageKeyValueHandler(
         const key = stored.slice(prefix.length);
         if (key.startsWith(operation.prefix)) keys.push(key);
       }
+      keys.sort();
+
+      const cursor = Number(operation.cursor);
+      if (cursor > keys.length) return keysResultErr(keyValueErrorCursorNotFound());
+
+      return keysResultOk(new KeyPage(keys.slice(cursor), BigInt(0)));
+    },
+  };
+}
+
+/**
+ * A `KeyValueHandler` that keeps values in a `Map` for the life of the
+ * handler.
+ *
+ * Use it in tests, on a server or in a worker, or when the values must not
+ * outlive the process. Use `createLocalStorageKeyValueHandler` when they must
+ * survive a reload. Like that store, `listKeys` answers with one page.
+ */
+export function createInMemoryKeyValueHandler(): KeyValueHandler {
+  const values = new Map<string, number[]>();
+
+  // A copy, so that the caller cannot change what is stored.
+  const answer = (value: number[] | undefined): ValueResult =>
+    valueResultOk(value === undefined ? valueNone() : valueBytes([...value]));
+
+  return {
+    async get(operation: Get): Promise<ValueResult> {
+      return answer(values.get(operation.key));
+    },
+
+    async set(operation: Set): Promise<ValueResult> {
+      const previous = values.get(operation.key);
+      values.set(operation.key, Array.from(operation.value));
+      return answer(previous);
+    },
+
+    async delete(operation: Delete): Promise<ValueResult> {
+      const previous = values.get(operation.key);
+      values.delete(operation.key);
+      return answer(previous);
+    },
+
+    async exists(operation: Exists): Promise<BoolResult> {
+      return boolResultOk(values.has(operation.key));
+    },
+
+    async listKeys(operation: ListKeys): Promise<KeysResult> {
+      const keys = Array.from(values.keys()).filter((key) =>
+        key.startsWith(operation.prefix),
+      );
       keys.sort();
 
       const cursor = Number(operation.cursor);

@@ -22,9 +22,11 @@ and this project adheres to
   `UserDefaultsKeyValueHandler` (Swift), `FileKeyValueHandler` over a directory
   (Kotlin and C#) and `createLocalStorageKeyValueHandler` (TypeScript), each
   behind a `KeyValueHandler` protocol with `get`, `set`, `delete`, `exists` and
-  `listKeys`. An app registers it in its codegen binary
-  (`registry.shell_extension(&crux_kv::shell::EXTENSION)?`), which also
-  generates every operation of the capability, and delegates one line per
+  `listKeys`. Each language also has an in-memory store,
+  `InMemoryKeyValueHandler` (`createInMemoryKeyValueHandler` in TypeScript),
+  for tests and for a shell with no storage. An app registers it in its
+  codegen binary (`registry.shell_extension(&crux_kv::shell::EXTENSION)?`),
+  which also generates every operation of the capability, and delegates one line per
   operation. Note that this puts `Get`, `Set`, `Delete`, `Exists` and
   `ListKeys` into the app's generated namespace: an app-defined operation with
   one of those names must be renamed. See

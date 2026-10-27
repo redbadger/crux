@@ -37,6 +37,8 @@ use crate::operation::{Delete, Exists, Get, ListKeys, Set};
 /// the JVM and in C#, and `localStorage` in the browser. Where the store lives
 /// is the shell's choice — each implementation takes it as configuration, and a
 /// shell that wants a different one conforms its own type to the protocol.
+/// Each language also has an in-memory store, which keeps values for the life
+/// of the handler.
 pub static EXTENSION: ShellExtension = ShellExtension::new("KeyValue")
     .rust_types(register_types)
     // The names the shipped sources declare at module scope, in any language.
@@ -46,6 +48,8 @@ pub static EXTENSION: ShellExtension = ShellExtension::new("KeyValue")
         "UserDefaultsKeyValueHandler",
         "FileKeyValueHandler",
         "createLocalStorageKeyValueHandler",
+        "InMemoryKeyValueHandler",
+        "createInMemoryKeyValueHandler",
     ])
     .swift(ShellSource::stdlib(include_str!(
         "../shell/swift/KeyValue.swift"

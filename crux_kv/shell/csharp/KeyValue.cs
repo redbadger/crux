@@ -27,6 +27,10 @@ using System.Threading.Tasks;
 /// single method and leave the rest.
 /// </para>
 /// <para>
+/// Two stores ship: <see cref="FileKeyValueHandler"/> keeps values in files,
+/// and <see cref="InMemoryKeyValueHandler"/> keeps them only in memory.
+/// </para>
+/// <para>
 /// <c>Get</c> answers with what is stored under the key, <c>Value.None</c> when
 /// nothing is. <c>Set</c> and <c>Delete</c> answer with the value they replaced
 /// or removed, which is also <c>Value.None</c> when there was none. Nothing
@@ -275,4 +279,94 @@ public sealed class FileKeyValueHandler : IKeyValueHandler
             return new ValueResult.Err(new KeyValueError.Io(e.Message));
         }
     }
+}
+
+/// <summary>
+/// An <see cref="IKeyValueHandler"/> that keeps values in a dictionary for the
+/// life of the handler.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Use it in tests, in previews, in a shell with no storage, or when the values
+/// must not outlive the process. Use <see cref="FileKeyValueHandler"/> when
+/// they must survive a restart. Like that store, <c>ListKeys</c> answers with
+/// one page.
+/// </para>
+/// </remarks>
+public sealed class InMemoryKeyValueHandler : IKeyValueHandler
+{
+    private readonly Dictionary<string, byte[]> _values = new();
+    private readonly object _lock = new();
+
+    public Task<ValueResult> Get(Get operation)
+    {
+        lock (_lock)
+        {
+            _values.TryGetValue(operation.Key, out var value);
+            return Answer(value);
+        }
+    }
+
+    public Task<ValueResult> Set(Set operation)
+    {
+        var bytes = new byte[operation.Value.Count];
+        operation.Value.CopyTo(bytes, 0);
+        lock (_lock)
+        {
+            _values.TryGetValue(operation.Key, out var previous);
+            _values[operation.Key] = bytes;
+            return Answer(previous);
+        }
+    }
+
+    public Task<ValueResult> Delete(Delete operation)
+    {
+        lock (_lock)
+        {
+            _values.Remove(operation.Key, out var previous);
+            return Answer(previous);
+        }
+    }
+
+    public Task<BoolResult> Exists(Exists operation)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult<BoolResult>(new BoolResult.Ok(_values.ContainsKey(operation.Key)));
+        }
+    }
+
+    public Task<KeysResult> ListKeys(ListKeys operation)
+    {
+        var keys = new List<string>();
+        lock (_lock)
+        {
+            foreach (var key in _values.Keys)
+            {
+                if (key.StartsWith(operation.Prefix, StringComparison.Ordinal))
+                {
+                    keys.Add(key);
+                }
+            }
+        }
+        keys.Sort(StringComparer.Ordinal);
+
+        if (operation.Cursor > (ulong)keys.Count)
+        {
+            return Task.FromResult<KeysResult>(new KeysResult.Err(new KeyValueError.CursorNotFound()));
+        }
+
+        var page = keys.GetRange((int)operation.Cursor, keys.Count - (int)operation.Cursor);
+        return Task.FromResult<KeysResult>(new KeysResult.Ok(new KeyPage
+        {
+            Keys = new ObservableCollection<string>(page),
+            NextCursor = 0,
+        }));
+    }
+
+    /// <summary>A copy, so that the caller cannot change what is stored.</summary>
+    private static Task<ValueResult> Answer(byte[]? value) =>
+        Task.FromResult<ValueResult>(value is null
+            ? new ValueResult.Ok(new Value.None())
+            : new ValueResult.Ok(new Value.Bytes(new ObservableCollection<byte>(value))));
 }
