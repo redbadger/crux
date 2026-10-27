@@ -63,6 +63,12 @@ interface TimeHandler {
  * same name twice. `kotlin.time.Duration` is written out in full because the
  * generated module has a `Duration` of its own.
  *
+ * ## Precision
+ *
+ * `now` reads `System.currentTimeMillis`, so it has a resolution of one
+ * millisecond. `delay` also counts milliseconds, and it rounds a part of a
+ * millisecond up, so a timer does not fire early. It can fire late.
+ *
  * If [scope] is cancelled, each pending `notifyAt` and `notifyAfter` throws
  * the `CancellationException`, and does not answer.
  *

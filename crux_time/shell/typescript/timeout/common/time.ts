@@ -43,6 +43,14 @@ const MAX_TIMEOUT = 2 ** 31 - 1;
  *
  * The timer table is state, so the app constructs one handler where it
  * constructs its own.
+ *
+ * ## Precision
+ *
+ * `now` reads `Date.now()`, so it has a resolution of one millisecond.
+ * `setTimeout` also counts milliseconds. A browser can clamp nested timers
+ * and throttle a background tab, and a timer then fires late. The handler
+ * checks the deadline when `setTimeout` returns, so a timer does not fire
+ * early.
  */
 export class TimeoutTimeHandler implements TimeHandler {
   /**

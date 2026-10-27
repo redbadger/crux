@@ -53,8 +53,18 @@ public interface ITimeHandler
 /// An <see cref="ITimeHandler"/> whose timers are <c>Task.Delay</c>s.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The timer table is state, so the app constructs one handler where it
 /// constructs its own.
+/// </para>
+/// <para>
+/// <b>Precision.</b> <c>Now</c> reads <c>DateTime.UtcNow</c>, which counts
+/// 100 ns ticks. Its real resolution depends on the operating system. A timer
+/// waits a whole number of milliseconds, rounded up, and the operating system
+/// timer can be coarser: about 15 ms on Windows. A timer can fire late. It
+/// can also fire early by under 100 ns, because the conversion from
+/// nanoseconds to ticks truncates.
+/// </para>
 /// </remarks>
 public sealed class TaskTimeHandler : ITimeHandler
 {

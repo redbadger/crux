@@ -42,6 +42,16 @@ public protocol TimeHandler: Sendable {
 /// because an actor would make every call a hop across an isolation boundary,
 /// and the operations and outputs that would have to cross it are generated
 /// types, which are not `Sendable`.
+///
+/// ## Precision
+///
+/// `now` reads `Date`, which keeps seconds as a `Double`. Near the present that
+/// resolves about 240 ns, finer than a microsecond. `Task.sleep` takes
+/// nanoseconds. `notifyAfter` passes its duration to `Task.sleep` unchanged,
+/// so it does not fire early. `notifyAt` builds its deadline as a `Double`,
+/// and the conversion back to nanoseconds truncates. It can fire early by
+/// under a microsecond. Both timers can fire late, because the system
+/// schedules the task.
 public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
     /// The timers that have not fired or been cleared, by id, and the lock
     /// that makes the table safe to reach from every operation at once.
