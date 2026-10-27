@@ -1,20 +1,15 @@
 import { Location } from "shared_types/app";
 
-/**
- * How long to wait for a fix before giving up and showing the user the
- * "location disabled" panel, which has a retry.
- */
+/** After this time, the UI shows the "location disabled" panel, which has a retry. */
 const TIMEOUT_MS = 10_000;
 
 /**
  * `IsLocationEnabled` is answered with a bare `boolean` — that is the
  * operation's output type, so there is nothing to wrap or unwrap.
  *
- * The browser having the API is not the same as this page being allowed to
- * use it, so a permission the user has already refused is answered here
- * rather than by asking for a fix we will not get. `navigator.permissions`
- * is not everywhere, and where it is missing the request itself is the only
- * way to find out.
+ * If the user already refused the permission, this answers `false`. Where
+ * `navigator.permissions` is not available, only the request itself can find
+ * out.
  */
 export async function isLocationEnabled(): Promise<boolean> {
   if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
@@ -40,10 +35,7 @@ export async function isLocationEnabled(): Promise<boolean> {
  * `GetLocation` is answered with the coordinates, or `null` if we couldn't
  * get a fix.
  *
- * The request carries a timeout because the default is not to have one: a
- * prompt the user never answers, or a device with nothing to locate itself
- * by, would otherwise leave this promise pending forever and the core
- * waiting on an effect that never resolves.
+ * The browser default has no timeout, so without one the core can wait forever.
  */
 export async function getLocation(): Promise<Location | null> {
   try {

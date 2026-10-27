@@ -19,10 +19,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
     /**
-     * The `HttpHandler` `crux_http` ships, with this app's timeouts. Its
-     * `configure` hook is where a shell's own connection settings go; a shell
-     * that wanted OkHttp or Ktor instead would implement `HttpHandler` over
-     * that and provide it here, and nothing else would change.
+     * The handler that `crux_http` ships, with this app's timeouts. To use OkHttp
+     * or Ktor, implement `HttpHandler` and provide it here.
      */
     @Provides
     @Singleton
@@ -33,10 +31,8 @@ object AppModule {
         }
 
     /**
-     * The `KeyValueHandler` `crux_kv` ships, over a directory of the app's
-     * own. A shell that wanted `DataStore` or Room instead would implement
-     * `KeyValueHandler` over that and provide it here, and nothing else would
-     * change.
+     * The handler that `crux_kv` ships, over a directory of the app's own. To use
+     * `DataStore` or Room, implement `KeyValueHandler` and provide it here.
      */
     @Provides
     @Singleton
@@ -44,10 +40,7 @@ object AppModule {
         @ApplicationContext context: Context,
     ): KeyValueHandler = FileKeyValueHandler(File(context.filesDir, "key_value_store"))
 
-    /**
-     * The `TimeHandler` `crux_time` ships. It owns the timer table, so there
-     * is one of it, for the life of the app.
-     */
+    /** One instance for the life of the app, because it owns the timer table. */
     @Provides
     @Singleton
     fun provideTimeHandler(): TimeHandler = CoroutineTimeHandler()

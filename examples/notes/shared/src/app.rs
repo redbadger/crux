@@ -218,8 +218,7 @@ impl App for NoteEditor {
             }
             Event::Open => KeyValue::get("note".to_string()).then_send(Event::Load),
             Event::Load(Ok(value)) => {
-                // An empty value has no document in it, and a note loaded
-                // from one has no body, so treat it as no value.
+                // An empty value has no document in it, so treat it as no value.
                 let value = value.filter(|bytes| !bytes.is_empty());
                 let mut commands = Vec::new();
                 if value.is_none() {

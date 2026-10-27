@@ -40,15 +40,7 @@ class LocationHandler
             )
         val permissionRequests = _permissionRequests.asSharedFlow()
 
-        /**
-         * Whether the shell can locate the device: the system switch is on
-         * *and* this app may use it.
-         *
-         * Both have to hold, and they fail differently — the switch is the
-         * user's device-wide choice, the permission is this app's. The core
-         * asks one question, so a `false` here covers either, and the UI
-         * offers a retry once the user has fixed whichever it was.
-         */
+        /** True if the system location switch is on and this app has the permission. */
         suspend fun isLocationEnabled(): Boolean {
             val manager = context.getSystemService(LocationManager::class.java)
             if (manager?.isLocationEnabled != true) {
@@ -63,14 +55,8 @@ class LocationHandler
         }
 
         /**
-         * The device's coordinates, or `null` if the shell could not get a
-         * fix.
-         *
-         * The cached fix is tried first because it is free, but it is only a
-         * cache: on a device that has not located itself recently — a fresh
-         * emulator, most of all — it is empty, and a location set in the
-         * emulator's controls does not fill it. So an empty cache asks for a
-         * live fix rather than reporting failure.
+         * The device's coordinates, or `null` if there is no fix. If the cached
+         * fix is empty (for example, on a fresh emulator), this asks for a live fix.
          */
         suspend fun getLocation(): Location? =
             withContext(Dispatchers.IO) {
@@ -120,14 +106,8 @@ class LocationHandler
         }
 
         /**
-         * Asks the device to locate itself now, which is what answers on a
-         * device with an empty cache. Each continuation is resumed exactly
-         * once, here or in [resumeWithLocation].
-         *
-         * High accuracy, because that is the setting that uses GPS. The
-         * balanced setting locates from wifi and cell towers, which a device
-         * with neither — an emulator — cannot do, and an emulator's position
-         * is injected into the GPS provider.
+         * High accuracy uses GPS, which is where an emulator injects its position.
+         * Each continuation is resumed exactly once, here or in [resumeWithLocation].
          */
         @SuppressLint("MissingPermission")
         private fun Continuation<Location?>.resumeWithCurrentLocation() {
@@ -149,14 +129,7 @@ class LocationHandler
                 }
         }
 
-        /**
-         * The platform's own last fix, asked provider by provider.
-         *
-         * Play services is one layer above the providers and can decline to
-         * answer when it has nothing recent of its own. The platform manager
-         * is the layer the emulator injects into, so it answers when the
-         * fused client will not.
-         */
+        /** The platform providers can have a fix when the fused client has none. */
         @SuppressLint("MissingPermission")
         private fun lastKnownFromPlatform(): Location? {
             val manager = context.getSystemService(LocationManager::class.java) ?: return null

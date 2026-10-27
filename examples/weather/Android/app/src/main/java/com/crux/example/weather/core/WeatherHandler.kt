@@ -33,12 +33,6 @@ import com.crux.example.weather.Set as KeyValueSet
  * There is no `render` override: the generated `Core` intercepts `Render`
  * before the dispatcher sees it and refreshes its `view` flow, so the
  * interface's default no-op stands.
- *
- * `HttpHandler`, `KeyValueHandler` and `TimeHandler` are the handlers
- * `crux_http`, `crux_kv` and `crux_time` ship, generated into this module and
- * injected by `AppModule`: the rules for mapping a response, answering a
- * store operation or answering a timer belong to those crates, so the only
- * thing this shell writes for them is the line that delegates.
  */
 @Singleton
 class WeatherHandler
