@@ -8,11 +8,14 @@ using Example.Shared;
 // Every mismatch, so that one run reports all of them rather than the first.
 var failures = new List<string>();
 
+// The store under test, named in front of each mismatch.
+var store = "";
+
 void Expect<T>(string what, T actual, T expected)
 {
     if (!Show(actual).Equals(Show(expected), StringComparison.Ordinal))
     {
-        failures.Add($"{what}: expected {Show(expected)}, got {Show(actual)}");
+        failures.Add($"{store}: {what}: expected {Show(expected)}, got {Show(actual)}");
     }
 }
 
@@ -65,83 +68,111 @@ const string Awkward = "alpha/two words%25";
 // this list and not a sort of it.
 string[] written = ["alpha", Awkward, "beta", "delta"];
 
-IKeyValueHandler kv = new InMemoryKeyValueHandler();
-
-// An empty store, before anything has been written to it.
-Expect("Get of a missing key is Value.None, not an error", Bytes(await kv.Get(new Get { Key = "alpha" })), null);
-Expect("Exists is false for a missing key", Present(await kv.Exists(new Exists { Key = "alpha" })), false);
-Expect(
-    "ListKeys of an empty store answers with no keys",
-    Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 0 })),
-    []
-);
-Expect(
-    "Delete of a missing key is Value.None, not an error",
-    Bytes(await kv.Delete(new Delete { Key = "alpha" })),
-    null
-);
-
-// Each key holds its own name, so a value that comes back under the wrong key
-// is visible rather than plausible.
-foreach (var key in written)
+// The checks that hold for every store: the answers to each operation on an
+// empty store, then on the keys in `written`.
+async Task Check(IKeyValueHandler kv)
 {
-    var set = new Set { Key = key, Value = new ObservableCollection<byte>(Stored(key)) };
-    Expect("Set of a new key answers with Value.None", Bytes(await kv.Set(set)), null);
+    // An empty store, before anything has been written to it.
+    Expect("Get of a missing key is Value.None, not an error", Bytes(await kv.Get(new Get { Key = "alpha" })), null);
+    Expect("Exists is false for a missing key", Present(await kv.Exists(new Exists { Key = "alpha" })), false);
+    Expect(
+        "ListKeys of an empty store answers with no keys",
+        Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 0 })),
+        []
+    );
+    Expect(
+        "Delete of a missing key is Value.None, not an error",
+        Bytes(await kv.Delete(new Delete { Key = "alpha" })),
+        null
+    );
+
+    // Each key holds its own name, so a value that comes back under the wrong key
+    // is visible rather than plausible.
+    foreach (var key in written)
+    {
+        var set = new Set { Key = key, Value = new ObservableCollection<byte>(Stored(key)) };
+        Expect("Set of a new key answers with Value.None", Bytes(await kv.Set(set)), null);
+    }
+
+    foreach (var key in written)
+    {
+        Expect($"Get returns the bytes set under {key}", Bytes(await kv.Get(new Get { Key = key })), Stored(key));
+        Expect($"Exists is true for {key}", Present(await kv.Exists(new Exists { Key = key })), true);
+    }
+
+    Expect(
+        "Set of an existing key answers with the value it replaced",
+        Bytes(await kv.Set(new Set { Key = "beta", Value = [9, 9] })),
+        Stored("beta")
+    );
+    Expect("Get returns the replacement", Bytes(await kv.Get(new Get { Key = "beta" })), [9, 9]);
+
+    // Everything the store lists is a key the app wrote.
+    Expect(
+        "ListKeys answers with the keys that were written, sorted, and nothing else",
+        Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 0 })),
+        [.. written]
+    );
+    Expect(
+        "ListKeys honours the prefix",
+        Keys(await kv.ListKeys(new ListKeys { Prefix = "alpha", Cursor = 0 })),
+        ["alpha", Awkward]
+    );
+    Expect(
+        "ListKeys starts at the cursor",
+        Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 2 })),
+        ["beta", "delta"]
+    );
+    Expect(
+        "a cursor equal to the number of keys is an empty page, not an error",
+        Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = (ulong)written.Length })),
+        []
+    );
+    Expect(
+        "a cursor past the end answers with CursorNotFound",
+        await kv.ListKeys(new ListKeys { Prefix = "", Cursor = (ulong)written.Length + 1 }),
+        new KeysResult.Err(new KeyValueError.CursorNotFound())
+    );
+
+    Expect("the awkward key survives the round trip", Bytes(await kv.Get(new Get { Key = Awkward })), Stored(Awkward));
+
+    Expect(
+        "Delete answers with the value it removed",
+        Bytes(await kv.Delete(new Delete { Key = "delta" })),
+        Stored("delta")
+    );
+    Expect("Exists is false once the key is deleted", Present(await kv.Exists(new Exists { Key = "delta" })), false);
+    Expect("Get is Value.None once the key is deleted", Bytes(await kv.Get(new Get { Key = "delta" })), null);
+    Expect(
+        "ListKeys no longer answers with the deleted key",
+        Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 0 })),
+        ["alpha", Awkward, "beta"]
+    );
 }
 
-foreach (var key in written)
+store = "InMemoryKeyValueHandler";
+IKeyValueHandler memory = new InMemoryKeyValueHandler();
+await Check(memory);
+
+// The store keeps a copy of what it is given and gives out a copy of what it
+// holds, so a caller that changes a collection does not change the stored
+// value.
+var given = new ObservableCollection<byte>([1, 2, 3]);
+await memory.Set(new Set { Key = "copied", Value = given });
+given[0] = 9;
+Expect(
+    "a change to the collection given to Set does not change the stored value",
+    Bytes(await memory.Get(new Get { Key = "copied" })),
+    [1, 2, 3]
+);
+if (await memory.Get(new Get { Key = "copied" }) is ValueResult.Ok(Value.Bytes answered))
 {
-    Expect($"Get returns the bytes set under {key}", Bytes(await kv.Get(new Get { Key = key })), Stored(key));
-    Expect($"Exists is true for {key}", Present(await kv.Exists(new Exists { Key = key })), true);
+    answered.Value[0] = 9;
 }
-
 Expect(
-    "Set of an existing key answers with the value it replaced",
-    Bytes(await kv.Set(new Set { Key = "beta", Value = [9, 9] })),
-    Stored("beta")
-);
-Expect("Get returns the replacement", Bytes(await kv.Get(new Get { Key = "beta" })), [9, 9]);
-
-// Everything the store lists is a key the app wrote.
-Expect(
-    "ListKeys answers with the keys that were written, sorted, and nothing else",
-    Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 0 })),
-    [.. written]
-);
-Expect(
-    "ListKeys honours the prefix",
-    Keys(await kv.ListKeys(new ListKeys { Prefix = "alpha", Cursor = 0 })),
-    ["alpha", Awkward]
-);
-Expect(
-    "ListKeys starts at the cursor",
-    Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 2 })),
-    ["beta", "delta"]
-);
-Expect(
-    "a cursor equal to the number of keys is an empty page, not an error",
-    Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = (ulong)written.Length })),
-    []
-);
-Expect(
-    "a cursor past the end answers with CursorNotFound",
-    await kv.ListKeys(new ListKeys { Prefix = "", Cursor = (ulong)written.Length + 1 }),
-    new KeysResult.Err(new KeyValueError.CursorNotFound())
-);
-
-Expect("the awkward key survives the round trip", Bytes(await kv.Get(new Get { Key = Awkward })), Stored(Awkward));
-
-Expect(
-    "Delete answers with the value it removed",
-    Bytes(await kv.Delete(new Delete { Key = "delta" })),
-    Stored("delta")
-);
-Expect("Exists is false once the key is deleted", Present(await kv.Exists(new Exists { Key = "delta" })), false);
-Expect("Get is Value.None once the key is deleted", Bytes(await kv.Get(new Get { Key = "delta" })), null);
-Expect(
-    "ListKeys no longer answers with the deleted key",
-    Keys(await kv.ListKeys(new ListKeys { Prefix = "", Cursor = 0 })),
-    ["alpha", Awkward, "beta"]
+    "a change to the collection in the answer to Get does not change the stored value",
+    Bytes(await memory.Get(new Get { Key = "copied" })),
+    [1, 2, 3]
 );
 
 if (failures.Count == 0)

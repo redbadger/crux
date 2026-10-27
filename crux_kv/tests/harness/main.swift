@@ -7,12 +7,15 @@ import Foundation
 // Every mismatch, so that one run reports all of them rather than the first.
 var failures: [String] = []
 
+/// The store under test, named in front of each mismatch.
+var store = ""
+
 func expect(_ what: String, _ satisfied: Bool) {
-    if !satisfied { failures.append(what) }
+    if !satisfied { failures.append("\(store): \(what)") }
 }
 
 func expect<T: Equatable>(_ what: String, _ actual: T, _ expected: T) {
-    if actual != expected { failures.append("\(what): expected \(expected), got \(actual)") }
+    if actual != expected { failures.append("\(store): \(what): expected \(expected), got \(actual)") }
 }
 
 /// The bytes a `ValueResult` carries, `nil` for `Value.none`.
@@ -43,86 +46,93 @@ let awkward = "alpha/two words%25"
 /// this list and not a sort of it.
 let written = ["alpha", awkward, "beta", "delta"]
 
-let kv = InMemoryKeyValueHandler()
-
-// An empty store, before anything has been written to it.
-expect("get of a missing key is Value.none, not an error", bytes(await kv.get(Get(key: "alpha"))) == nil)
-expect("exists is false for a missing key", present(await kv.exists(Exists(key: "alpha"))), false)
-expect(
-    "listKeys of an empty store answers with no keys",
-    keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
-    []
-)
-expect(
-    "delete of a missing key is Value.none, not an error",
-    bytes(await kv.delete(Delete(key: "alpha"))) == nil
-)
-
-// Each key holds its own name, so a value that comes back under the wrong key
-// is visible rather than plausible.
-for key in written {
+/// The checks that hold for every store: the answers to each operation on an
+/// empty store, then on the keys in `written`.
+func check(_ kv: some KeyValueHandler) async {
+    // An empty store, before anything has been written to it.
+    expect("get of a missing key is Value.none, not an error", bytes(await kv.get(Get(key: "alpha"))) == nil)
+    expect("exists is false for a missing key", present(await kv.exists(Exists(key: "alpha"))), false)
     expect(
-        "set of a new key answers with Value.none",
-        bytes(await kv.set(App.Set(key: key, value: [UInt8](key.utf8)))) == nil
+        "listKeys of an empty store answers with no keys",
+        keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
+        []
+    )
+    expect(
+        "delete of a missing key is Value.none, not an error",
+        bytes(await kv.delete(Delete(key: "alpha"))) == nil
+    )
+
+    // Each key holds its own name, so a value that comes back under the wrong
+    // key is visible rather than plausible.
+    for key in written {
+        expect(
+            "set of a new key answers with Value.none",
+            bytes(await kv.set(App.Set(key: key, value: [UInt8](key.utf8)))) == nil
+        )
+    }
+
+    for key in written {
+        expect("get returns the bytes set under \(key)", bytes(await kv.get(Get(key: key))), [UInt8](key.utf8))
+        expect("exists is true for \(key)", present(await kv.exists(Exists(key: key))), true)
+    }
+
+    expect(
+        "set of an existing key answers with the value it replaced",
+        bytes(await kv.set(App.Set(key: "beta", value: [9, 9]))),
+        [UInt8]("beta".utf8)
+    )
+    expect("get returns the replacement", bytes(await kv.get(Get(key: "beta"))), [9, 9])
+
+    // Everything the store lists is a key the app wrote.
+    expect(
+        "listKeys answers with the keys that were written, sorted, and nothing else",
+        keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
+        written
+    )
+    expect(
+        "listKeys honours the prefix",
+        keys(await kv.listKeys(ListKeys(prefix: "alpha", cursor: 0))),
+        ["alpha", awkward]
+    )
+    expect(
+        "listKeys starts at the cursor",
+        keys(await kv.listKeys(ListKeys(prefix: "", cursor: 2))),
+        ["beta", "delta"]
+    )
+    expect(
+        "a cursor equal to the number of keys is an empty page, not an error",
+        keys(await kv.listKeys(ListKeys(prefix: "", cursor: UInt64(written.count)))),
+        []
+    )
+    if case .err(.cursorNotFound) = await kv.listKeys(ListKeys(prefix: "", cursor: UInt64(written.count + 1))) {
+    } else {
+        expect("a cursor past the end answers with CursorNotFound", false)
+    }
+
+    expect(
+        "the awkward key survives the round trip",
+        bytes(await kv.get(Get(key: awkward))),
+        [UInt8](awkward.utf8)
+    )
+
+    expect(
+        "delete answers with the value it removed",
+        bytes(await kv.delete(Delete(key: "delta"))),
+        [UInt8]("delta".utf8)
+    )
+    expect("exists is false once the key is deleted", present(await kv.exists(Exists(key: "delta"))), false)
+    expect("get is Value.none once the key is deleted", bytes(await kv.get(Get(key: "delta"))) == nil)
+    expect(
+        "listKeys no longer answers with the deleted key",
+        keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
+        ["alpha", awkward, "beta"]
     )
 }
 
-for key in written {
-    expect("get returns the bytes set under \(key)", bytes(await kv.get(Get(key: key))), [UInt8](key.utf8))
-    expect("exists is true for \(key)", present(await kv.exists(Exists(key: key))), true)
-}
-
-expect(
-    "set of an existing key answers with the value it replaced",
-    bytes(await kv.set(App.Set(key: "beta", value: [9, 9]))),
-    [UInt8]("beta".utf8)
-)
-expect("get returns the replacement", bytes(await kv.get(Get(key: "beta"))), [9, 9])
-
-// Everything the store lists is a key the app wrote.
-expect(
-    "listKeys answers with the keys that were written, sorted, and nothing else",
-    keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
-    written
-)
-expect(
-    "listKeys honours the prefix",
-    keys(await kv.listKeys(ListKeys(prefix: "alpha", cursor: 0))),
-    ["alpha", awkward]
-)
-expect(
-    "listKeys starts at the cursor",
-    keys(await kv.listKeys(ListKeys(prefix: "", cursor: 2))),
-    ["beta", "delta"]
-)
-expect(
-    "a cursor equal to the number of keys is an empty page, not an error",
-    keys(await kv.listKeys(ListKeys(prefix: "", cursor: UInt64(written.count)))),
-    []
-)
-if case .err(.cursorNotFound) = await kv.listKeys(ListKeys(prefix: "", cursor: UInt64(written.count + 1))) {
-} else {
-    failures.append("a cursor past the end answers with CursorNotFound")
-}
-
-expect(
-    "the awkward key survives the round trip",
-    bytes(await kv.get(Get(key: awkward))),
-    [UInt8](awkward.utf8)
-)
-
-expect(
-    "delete answers with the value it removed",
-    bytes(await kv.delete(Delete(key: "delta"))),
-    [UInt8]("delta".utf8)
-)
-expect("exists is false once the key is deleted", present(await kv.exists(Exists(key: "delta"))), false)
-expect("get is Value.none once the key is deleted", bytes(await kv.get(Get(key: "delta"))) == nil)
-expect(
-    "listKeys no longer answers with the deleted key",
-    keys(await kv.listKeys(ListKeys(prefix: "", cursor: 0))),
-    ["alpha", awkward, "beta"]
-)
+// A Swift array is a value, so a caller cannot change the bytes that the store
+// holds, and the in-memory store needs no check for that.
+store = "InMemoryKeyValueHandler"
+await check(InMemoryKeyValueHandler())
 
 if failures.isEmpty {
     print("HARNESS OK")
