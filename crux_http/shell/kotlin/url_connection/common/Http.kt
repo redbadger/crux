@@ -247,11 +247,12 @@ class InMemoryCookieJar : CookieJar {
  *
  * ## Cookies
  *
- * Kept, by default, in a jar of this handler's own — so a session survives
- * between requests, as it does under `URLSession` on Apple and `HttpClient`
- * on .NET. One handler is one jar: share the instance to share the session.
- * Pass `cookies = null` for a handler that keeps none, or a [CookieJar] of
- * your own to persist them. **Do not reach for `java.net.CookieManager`** —
+ * `HttpURLConnection` keeps no cookies of its own, so the handler keeps them,
+ * by default, in a jar of its own. A session then survives between requests,
+ * as it does under `URLSession` on Apple and `HttpClient` on .NET. One
+ * handler is one jar: share the instance to share the session. Pass
+ * `cookies = null` for a handler that keeps none, or a [CookieJar] of your own
+ * to persist them. **Do not reach for `java.net.CookieManager`** —
  * [InMemoryCookieJar] documents why it cannot work.
  *
  * A `Cookie` header the operation already carries is left alone: a core that

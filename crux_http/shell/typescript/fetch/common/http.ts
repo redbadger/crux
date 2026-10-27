@@ -41,6 +41,14 @@ export interface HttpHandler {
  * last response. The Fetch standard follows at most 20 redirects, and removes
  * the `Authorization` header when a redirect leaves the origin.
  *
+ * ## Cookies
+ *
+ * The handler sets no `credentials`, so `fetch` uses its default,
+ * `same-origin`. In a browser, the browser's own cookie store then applies to
+ * requests to the page's origin. Node's `fetch` keeps no cookies. To keep a
+ * session there, set the `Cookie` header in the operation, or pass a
+ * `fetchImpl` that stores cookies.
+ *
  * @param fetchImpl the `fetch` to use; the global one when omitted, read at
  *   call time so that a test can install its own first.
  */

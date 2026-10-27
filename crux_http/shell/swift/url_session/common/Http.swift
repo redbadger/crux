@@ -49,6 +49,13 @@ public protocol HttpHandler: Sendable {
 ///
 /// The session follows redirects by its own rules, and the core gets the last
 /// response. A session delegate can change those rules.
+///
+/// ## Cookies
+///
+/// The session keeps cookies, so a session survives between requests. With the
+/// default `URLSession.shared`, they are in the process-wide
+/// `HTTPCookieStorage.shared`. A session of your own uses the storage in its
+/// configuration.
 public final class URLSessionHttpHandler: HttpHandler {
     private let session: URLSession
 
