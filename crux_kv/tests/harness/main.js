@@ -5,11 +5,13 @@
 // `.d.ts` it type-checks — so the harness is plain JavaScript and `node` runs
 // it with no build step of its own. The types are already checked by the
 // compile test above; what is left to find out is what the code does.
-
 const shared = require("../generated/shared_types.js");
 
 /** Every mismatch, so that one run reports all of them rather than the first. */
 const failures = [];
+
+/** The store under test, named in front of each mismatch. */
+let store = "";
 
 /** `JSON.stringify` refuses a `BigInt`, and the cursor is one. */
 const show = (value) => JSON.stringify(value, (_, v) => (typeof v === "bigint" ? `${v}n` : v));
@@ -17,7 +19,7 @@ const show = (value) => JSON.stringify(value, (_, v) => (typeof v === "bigint" ?
 const expect = (what, actual, expected) => {
   const got = show(actual);
   const wanted = show(expected);
-  if (got !== wanted) failures.push(`${what}: expected ${wanted}, got ${got}`);
+  if (got !== wanted) failures.push(`${store}: ${what}: expected ${wanted}, got ${got}`);
 };
 
 /**
@@ -45,11 +47,7 @@ const present = (result) => {
 
 const value = (key) => [...Buffer.from(key, "utf8")];
 
-/**
- * A `/`, a space and a `%`, the three characters a store that names files
- * after keys has to encode and decode again. `localStorage` does not, but the
- * key has to survive a round trip all the same.
- */
+/** A `/`, a space and a `%`, which a key has to survive a round trip with. */
 const awkward = "alpha/two words%25";
 
 /**
@@ -58,9 +56,11 @@ const awkward = "alpha/two words%25";
  */
 const written = ["alpha", awkward, "beta", "delta"];
 
-const main = async () => {
-  const kv = shared.createInMemoryKeyValueHandler();
-
+/**
+ * The checks that hold for every store: the answers to each operation on an
+ * empty store, then on the keys in `written`.
+ */
+const check = async (kv) => {
   // An empty store, before anything has been written to it.
   expect("get of a missing key is Value.None, not an error", bytes(await kv.get(new shared.Get("alpha"))), null);
   expect("exists is false for a missing key", present(await kv.exists(new shared.Exists("alpha"))), false);
@@ -118,6 +118,29 @@ const main = async () => {
     awkward,
     "beta",
   ]);
+};
+
+const main = async () => {
+  store = "createInMemoryKeyValueHandler";
+  const memory = shared.createInMemoryKeyValueHandler();
+  await check(memory);
+
+  // The store keeps a copy of what it is given and gives out a copy of what it
+  // holds, so a caller that changes an array does not change the stored value.
+  const given = [1, 2, 3];
+  await memory.set(new shared.Set("copied", given));
+  given[0] = 9;
+  expect(
+    "a change to the array given to set does not change the stored value",
+    bytes(await memory.get(new shared.Get("copied"))),
+    [1, 2, 3],
+  );
+  bytes(await memory.get(new shared.Get("copied")))[0] = 9;
+  expect(
+    "a change to the array in the answer to get does not change the stored value",
+    bytes(await memory.get(new shared.Get("copied"))),
+    [1, 2, 3],
+  );
 };
 
 main().then(() => {
