@@ -1,10 +1,10 @@
-# Web — TypeScript and React Router
+# Web: TypeScript and React Router
 
 These are the steps to set up and run a simple TypeScript Web app that calls
 into a shared core.
 
 ```admonish
-This walk-through assumes you have already set up the `shared` library and codegen as described in [Shared core and types](../../part-1/shell.md).
+This walk-through assumes you have already set up the `shared` library and codegen as described in [Getting started](../../getting_started/core.md).
 ```
 
 ```admonish info
@@ -38,7 +38,7 @@ brew install binaryen # provides wasm-opt
 
 The crate is `boltffi_cli`; it installs the `boltffi` binary used below.
 
-Binaryen must be version 123 or newer — BoltFFI passes `--enable-bulk-memory-opt`
+Binaryen must be version 123 or newer, because BoltFFI passes `--enable-bulk-memory-opt`
 to `wasm-opt`, which older releases don't understand. Check with
 `wasm-opt --version`; distribution packages are often well behind, so prefer a
 [release from GitHub](https://github.com/WebAssembly/binaryen/releases) if your
@@ -140,45 +140,48 @@ We will use the [simple counter example](https://github.com/redbadger/crux/tree/
 
 A simple app that increments, decrements and resets a counter.
 
-#### Wrap the core to handle effects
+#### Write the effect handler
 
-First, let's add some boilerplate code to wrap our core and handle the
-effects that it produces. For this example, we only need to support the
-`Render` effect, which triggers a render of the UI.
+The generated types include a `Core` class that drives the loop between the
+shell and the Rust core: it serializes the events we send, passes them to the
+core, deserializes the requests that come back and dispatches each one to an
+`EffectHandler` that we write. Because the codegen binary was told where
+`boltffi pack wasm` puts the bindings (with `.boltffi(..)`, see
+[Type generation](../../part-4/typegen.md#bridging-to-boltffi)), it also
+generates the `FfiBridge` that carries the bytes to and from `CoreFfi`, so
+there is no hand-written wrapper.
 
-```admonish
-This code that wraps the core only needs to be written once — it only grows when
-we need to support additional capabilities.
-```
+Edit `app/core.ts` to look like the following. The generated `EffectHandler`
+interface has one method per operation the app declares. The counter's only
+effect is `Render`, which the generated `Core` handles itself (it reads the
+new view model and passes it to the `onView` callback), so `CounterHandler`
+is empty.
 
-Edit `app/core.ts` to look like the following. This code sends our
-(UI-generated) events to the core, and handles any effects that the core asks
-for. In this simple example, we aren't calling any HTTP APIs or handling any
-side effects other than rendering the UI, so we just handle this render effect
-by updating the component's `view` hook with the core's ViewModel.
-
-Notice that we have to serialize and deserialize the data that we pass between
-the core and the shell. This is because the core is running in a separate
-WebAssembly instance, and so we can't just pass the data directly.
+`Core.create` is an `async` factory rather than a constructor, because it
+waits for the Wasm module's `initialized` promise before it builds the bridge.
 
 ```typescript
 {{#include ../../../../examples/counter/web-react-router/app/core.ts}}
 ```
 
 ```admonish tip
-That `matchEffect` call, above, is where you would handle any other effects that
-your core might ask for. For example, if your core needs to make an HTTP
-request, you would handle that here. To see an example of this, take a look at
-the
-[counter-http example](https://github.com/redbadger/crux/tree/master/examples/counter-http/web-nextjs/src/app/core.ts)
+`CounterHandler` is where you would handle any other effects that your core
+might ask for. For example, if your core needs to make an HTTP request, the
+generated `EffectHandler` gains a method for that operation, which returns the
+response.
+To see an example of this, take a look at the
+[weather example](https://github.com/redbadger/crux/tree/master/examples/weather/web-nextjs/src/lib/core)
 in the Crux repository.
 ```
 
 #### Create a component to render the UI
 
-Edit `app/routes/_index.tsx` to look like the following. Notice that we pass the
-`setState` hook to the update function so that we can update the state in
-response to a render effect from the core (as seen above).
+Edit `app/routes/_index.tsx` to look like the following. When the component
+mounts, we create the core, passing the `setView` state setter as the `onView`
+callback, so every `Render` from the core updates the view. The `onView`
+callback is only called on a render, so we also set the view once from
+`core.view` when the core has been created. The buttons send events to the
+core with `update`.
 
 ```typescript
 {{#include ../../../../examples/counter/web-react-router/app/routes/_index.tsx}}

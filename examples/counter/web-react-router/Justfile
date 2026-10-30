@@ -21,8 +21,8 @@ check:
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     @echo "  No lint configured"
 
-# generate types for typescript
-typegen:
+# generate types for typescript (the generated package depends on the wasm one)
+typegen: wasm
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
         --package shared \
@@ -45,7 +45,7 @@ install:
     pnpm install
 
 # build the project
-build: typegen wasm install
+build: typegen install
     @echo '{{ style("command") }}build:{{ NORMAL }}'
     pnpm build
 
@@ -61,7 +61,7 @@ clean:
     rm -rf generated .react-router node_modules
 
 # update pnpm dependencies to latest
-update-pnpm-deps: typegen wasm
+update-pnpm-deps: typegen
     @echo '{{ style("command") }}update-pnpm-deps:{{ NORMAL }}'
     pnpm update
 
@@ -72,6 +72,6 @@ dev: fix check build test
 ci: check build test
 
 # serve the app locally
-serve: typegen wasm install
+serve: typegen install
     @echo '{{ style("command") }}serve:{{ NORMAL }}'
     pnpm dev

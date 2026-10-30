@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
+import type { Core } from "shared_types/app";
 import {
   ViewModel,
   eventReset,
   eventIncrement,
   eventDecrement,
 } from "shared_types/app";
-import { Core } from "../core";
+import { createCore } from "../core";
 
 export const meta = () => {
   return [
@@ -17,10 +18,18 @@ export const meta = () => {
 
 export default function Index() {
   const [view, setView] = useState(new ViewModel(""));
-  const core = useRef(new Core(setView));
+  const core = useRef<Core | null>(null);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    void core.current.initialize(false);
+    if (initialized.current) return;
+    initialized.current = true;
+
+    void createCore(setView).then((created) => {
+      core.current = created;
+      // `onView` is only called on a render, so show the initial view now.
+      setView(created.view);
+    });
   }, []);
 
   return (
@@ -30,19 +39,19 @@ export default function Index() {
         <div className="buttons section is-centered">
           <button
             className="button is-primary is-danger"
-            onClick={() => core.current.update(eventReset())}
+            onClick={() => core.current?.update(eventReset())}
           >
             {"Reset"}
           </button>
           <button
             className="button is-primary is-success"
-            onClick={() => core.current.update(eventIncrement())}
+            onClick={() => core.current?.update(eventIncrement())}
           >
             {"Increment"}
           </button>
           <button
             className="button is-primary is-warning"
-            onClick={() => core.current.update(eventDecrement())}
+            onClick={() => core.current?.update(eventDecrement())}
           >
             {"Decrement"}
           </button>
