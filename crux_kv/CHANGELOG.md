@@ -18,13 +18,15 @@ and this project adheres to
 ### 🚀 Features
 
 - **A shell-side key-value handler ships with the crate.**
-  `crux_kv::shell::EXTENSION` is a `ShellExtension` carrying
-  `UserDefaultsKeyValueHandler` (Swift), `FileKeyValueHandler` over a directory
-  (Kotlin and C#) and `createLocalStorageKeyValueHandler` (TypeScript), each
-  behind a `KeyValueHandler` protocol with `get`, `set`, `delete`, `exists` and
-  `listKeys`. Each language also has an in-memory store,
+  `crux_kv::shell::EXTENSION` is a `ShellExtension` that carries a
+  `KeyValueHandler` protocol with `get`, `set`, `delete`, `exists` and
+  `listKeys`, in Swift, Kotlin, TypeScript and C#. One store implements it,
   `InMemoryKeyValueHandler` (`createInMemoryKeyValueHandler` in TypeScript),
-  for tests and for a shell with no storage. An app registers it in its
+  which keeps values only for the life of the handler. It is for tests,
+  previews and a shell with no storage. To keep values after the app stops,
+  implement `KeyValueHandler` over a durable store of your platform. The
+  weather and notes examples have one for `UserDefaults`, `SharedPreferences`
+  and `localStorage`. An app registers the extension in its
   codegen binary (`registry.shell_extension(&crux_kv::shell::EXTENSION)?`),
   which also generates every operation of the capability, and delegates one line per
   operation. Note that this puts `Get`, `Set`, `Delete`, `Exists` and

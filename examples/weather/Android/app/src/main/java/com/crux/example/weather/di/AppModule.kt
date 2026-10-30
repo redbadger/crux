@@ -2,17 +2,16 @@ package com.crux.example.weather.di
 
 import android.content.Context
 import com.crux.example.weather.CoroutineTimeHandler
-import com.crux.example.weather.FileKeyValueHandler
 import com.crux.example.weather.HttpHandler
 import com.crux.example.weather.KeyValueHandler
 import com.crux.example.weather.TimeHandler
 import com.crux.example.weather.UrlConnectionHttpHandler
+import com.crux.example.weather.core.PreferencesKeyValueHandler
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import java.io.File
 import javax.inject.Singleton
 
 @Module
@@ -30,15 +29,13 @@ object AppModule {
             connection.readTimeout = READ_TIMEOUT_MILLIS
         }
 
-    /**
-     * The handler that `crux_kv` ships, over a directory of the app's own. To use
-     * `DataStore` or Room, implement `KeyValueHandler` and provide it here.
-     */
+    /** The app's own store, in a preferences file of its own. */
     @Provides
     @Singleton
     fun provideKeyValueHandler(
         @ApplicationContext context: Context,
-    ): KeyValueHandler = FileKeyValueHandler(File(context.filesDir, "key_value_store"))
+    ): KeyValueHandler =
+        PreferencesKeyValueHandler(context.getSharedPreferences("key_value_store", Context.MODE_PRIVATE))
 
     /** One instance for the life of the app, because it owns the timer table. */
     @Provides

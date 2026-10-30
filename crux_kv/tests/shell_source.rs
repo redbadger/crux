@@ -119,7 +119,6 @@ fn the_swift_source_compiles() {
     let shipped = fs::read_to_string(dir.path().join("App/Sources/App/KeyValue.swift"))
         .expect("should write the handler beside the module");
     assert!(shipped.contains("public protocol KeyValueHandler: Sendable {"));
-    assert!(shipped.contains("public final class UserDefaultsKeyValueHandler"));
     assert!(shipped.contains("public final class InMemoryKeyValueHandler"));
 
     swift_build(&dir.path().join("App"));
@@ -140,7 +139,6 @@ fn the_kotlin_source_is_emitted() {
         .expect("should write the handler beside the module");
     assert!(shipped.starts_with("package com.example.shared\n"));
     assert!(shipped.contains("interface KeyValueHandler {"));
-    assert!(shipped.contains("class FileKeyValueHandler("));
     assert!(shipped.contains("class InMemoryKeyValueHandler :"));
 }
 
@@ -155,7 +153,6 @@ fn the_typescript_source_compiles() {
 
     let declarations = fs::read_to_string(dir.path().join("shared_types.d.ts"))
         .expect("tsc should have emitted declarations");
-    assert!(declarations.contains("declare function createLocalStorageKeyValueHandler("));
     assert!(declarations.contains("declare function createInMemoryKeyValueHandler("));
 }
 

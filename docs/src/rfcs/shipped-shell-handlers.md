@@ -386,7 +386,7 @@ use any other type conforming to the shipped protocol.
 ```kotlin
 // Kotlin
 private val http = OkHttpHttpHandler(client)                  // app's own conformer
-private val kv = FileKeyValueHandler(context.filesDir)
+private val kv = PreferencesKeyValueHandler(preferences)      // app's own conformer
 ```
 
 ```swift
@@ -651,10 +651,16 @@ evolves.
    first implementation.
 2. **Which implementations to ship.** Tentatively: `crux_http` everywhere
    (`URLSession`, `HttpURLConnection`, `fetch`, `HttpClient`); `crux_time`
-   everywhere; `crux_kv` as `UserDefaults` in Swift, `localStorage` where
-   present in TypeScript, and a file-backed store taking a directory on the
-   JVM and in C#. To be settled per capability in the implementing pull
-   requests.
+   everywhere; `crux_kv` as an in-memory store only, in every language. The
+   right durable store differs by platform (`DataStore` on Android,
+   `UserDefaults` or files on Apple platforms, IndexedDB or `localStorage` in
+   a browser). A shipped source can use only its language's standard library,
+   so it cannot use `DataStore`. A durable store would also settle what
+   `crux_kv` promises (durability, and access from more than one process or
+   tab) before [#641](https://github.com/redbadger/crux/issues/641) decides
+   it. An app that needs a durable store would implement `KeyValueHandler`
+   over the store of its platform, and the weather and notes examples would
+   show one for each platform.
 3. **Checking the source against the protocol.** Type generation does not
    parse the shipped source, so a protocol method whose shape drifts from its
    operation is caught only when an example shell compiles. Whether a typegen
@@ -668,8 +674,8 @@ evolves.
    per-operation types stack already depends on it.
 2. Add `ShellExtension`, `ShellSource` and `TypeRegistry::shell_extension` to
    `crux_core`, with the plugin and its checks.
-3. Ship handlers for `crux_http`, `crux_kv` and `crux_time` in all four
-   languages, and migrate the notes and weather shells to them, so CI compiles
+3. Ship handlers for `crux_http`, `crux_kv` (in-memory only) and `crux_time`
+   in all four languages, and migrate the notes and weather shells to them, so CI compiles
    every shipped Swift, Kotlin and TypeScript file. Give counter-http a C#
    shell, or add a C# typegen fixture, so the C# files are compiled too.
 4. Write the capability-author chapter: how to declare a shipped handler, the

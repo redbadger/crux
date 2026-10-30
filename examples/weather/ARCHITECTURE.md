@@ -112,7 +112,8 @@ apple/
 └── WeatherKit/                     # Swift package with all views + effect handlers
     └── Sources/WeatherKit/
         ├── Core/
-        │   ├── WeatherHandler.swift # EffectHandler: delegates HTTP, KV and timers to the shipped handlers
+        │   ├── WeatherHandler.swift # EffectHandler: delegates HTTP and timers to the shipped handlers
+        │   ├── kv.swift            # Key-value store (UserDefaults)
         │   ├── update.swift        # CoreUpdater: environment object for sending events
         │   ├── location.swift      # Location operations (CoreLocation)
         │   ├── secret.swift        # Secret operations (Keychain)

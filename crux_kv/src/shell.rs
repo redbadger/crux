@@ -32,22 +32,18 @@ use crate::operation::{Delete, Exists, Get, ListKeys, Set};
 /// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
 ///
 /// Each declares a `KeyValueHandler` protocol (`IKeyValueHandler` in C#) with
-/// one method per operation, and an implementation of it over a store every
-/// platform already has: `UserDefaults` on Apple platforms, a file per key on
-/// the JVM and in C#, and `localStorage` in the browser. Where the store lives
-/// is the shell's choice — each implementation takes it as configuration, and a
-/// shell that wants a different one conforms its own type to the protocol.
-/// Each language also has an in-memory store, which keeps values for the life
-/// of the handler.
+/// one method per operation, and one implementation of it,
+/// `InMemoryKeyValueHandler` (`createInMemoryKeyValueHandler` in TypeScript),
+/// which keeps values for the life of the handler. The durable store is the
+/// shell's choice, because the right store differs on each platform. To keep
+/// values after the app stops, a shell conforms its own type to the protocol.
+/// The weather and notes examples show durable stores for each platform.
 pub static EXTENSION: ShellExtension = ShellExtension::new("KeyValue")
     .rust_types(register_types)
     // The names the shipped sources declare at module scope, in any language.
     .foreign_types(&[
         "KeyValueHandler",
         "IKeyValueHandler",
-        "UserDefaultsKeyValueHandler",
-        "FileKeyValueHandler",
-        "createLocalStorageKeyValueHandler",
         "InMemoryKeyValueHandler",
         "createInMemoryKeyValueHandler",
     ])

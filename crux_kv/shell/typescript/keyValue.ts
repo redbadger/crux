@@ -5,7 +5,7 @@
  * holds an instance and delegates in one line:
  *
  * ```ts
- * const kv = createLocalStorageKeyValueHandler();
+ * const kv = createInMemoryKeyValueHandler();
  *
  * const handler: EffectHandler = {
  *   kvGet: (operation) => kv.get(operation),
@@ -13,21 +13,17 @@
  * };
  * ```
  *
- * Write an object of your own shape to put the store somewhere else —
- * IndexedDB, a server, `sessionStorage` — or to replace a single method and
- * leave the rest.
- *
- * Two stores ship: `createLocalStorageKeyValueHandler` keeps values in the
- * browser, and `createInMemoryKeyValueHandler` keeps them only in memory.
+ * One store ships: `createInMemoryKeyValueHandler`, which keeps values only in
+ * memory. To keep values after a reload, write an object of this shape over a
+ * store that persists (`localStorage`, IndexedDB or a server). You can also
+ * write one to replace a single method.
  *
  * ## What each operation answers with
  *
  * `get` answers with what is stored under the key, `valueNone()` when nothing
  * is. `set` and `delete` answer with the value they replaced or removed, which
  * is also `valueNone()` when there was none. A missing key is an answer, not
- * an error. The errors are a store that failed, and a value that is not a
- * stored byte array — written by something else — which is
- * `keyValueErrorOther`; `set` and `delete` leave that value where it is.
+ * an error. An operation answers with an error only when the store fails.
  */
 export interface KeyValueHandler {
   /** Read the bytes stored under `operation.key`. */
@@ -43,144 +39,12 @@ export interface KeyValueHandler {
 }
 
 /**
- * A `KeyValueHandler` over the browser's `localStorage`, storing each value as
- * a JSON array of byte values.
- *
- * ## Where it stores things
- *
- * `localStorage` is shared with everything else on the origin, so `prefix`
- * keeps this store's keys apart from the rest. It is empty by default, which
- * keeps a key the app already stores readable; give it one — `"myapp."` —
- * before the app has anything worth keeping.
- *
- * ## When there is no `localStorage`
- *
- * There is none on a server, in a worker, or when the browser has storage
- * turned off. Rather than pretend, every operation then answers
- * `keyValueErrorIo`, so the core sees a store that is not working rather than
- * one that is empty. Pass a `Storage` of your own — `sessionStorage`, or an
- * in-memory stand-in in a test — to decide otherwise. On a server or in a
- * worker, use `createInMemoryKeyValueHandler` instead.
- *
- * @param prefix put in front of every key in the underlying storage.
- * @param storage the storage to use; the global `localStorage` when omitted,
- *   read at call time so that a page can install one first.
- */
-export function createLocalStorageKeyValueHandler(
-  prefix = "",
-  storage?: Storage,
-): KeyValueHandler {
-  const open = (): Storage | undefined => {
-    if (storage !== undefined) return storage;
-    try {
-      return globalThis.localStorage;
-    } catch {
-      // Reading the property itself throws when storage is blocked.
-      return undefined;
-    }
-  };
-  const unavailable = keyValueErrorIo("localStorage is not available");
-
-  // What is stored is a JSON array of bytes. Anything else was written by
-  // something other than this store — likely, with the empty prefix — and is
-  // reported rather than guessed at or overwritten.
-  const read = (store: Storage, key: string): ValueResult => {
-    const stored = store.getItem(prefix + key);
-    if (stored === null) return valueResultOk(valueNone());
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(stored);
-    } catch {
-      parsed = undefined;
-    }
-    if (
-      !Array.isArray(parsed) ||
-      !parsed.every((b) => Number.isInteger(b) && b >= 0 && b <= 255)
-    ) {
-      return valueResultErr(
-        keyValueErrorOther(`value under "${key}" is not a stored byte array`),
-      );
-    }
-    return valueResultOk(valueBytes(parsed as number[]));
-  };
-
-  return {
-    async get(operation: Get): Promise<ValueResult> {
-      const store = open();
-      if (store === undefined) return valueResultErr(unavailable);
-      return read(store, operation.key);
-    },
-
-    async set(operation: Set): Promise<ValueResult> {
-      const store = open();
-      if (store === undefined) return valueResultErr(unavailable);
-      const previous = read(store, operation.key);
-      if (previous.kind === "Err") return previous;
-      try {
-        store.setItem(
-          prefix + operation.key,
-          JSON.stringify(Array.from(operation.value)),
-        );
-      } catch (error) {
-        // Over quota, most likely.
-        return valueResultErr(
-          keyValueErrorIo(error instanceof Error ? error.message : String(error)),
-        );
-      }
-      return previous;
-    },
-
-    async delete(operation: Delete): Promise<ValueResult> {
-      const store = open();
-      if (store === undefined) return valueResultErr(unavailable);
-      const previous = read(store, operation.key);
-      if (previous.kind === "Err") return previous;
-      store.removeItem(prefix + operation.key);
-      return previous;
-    },
-
-    async exists(operation: Exists): Promise<BoolResult> {
-      const store = open();
-      if (store === undefined) return boolResultErr(unavailable);
-      // Through `read`, so that a key exists only if `get` answers with bytes
-      // for it.
-      const value = read(store, operation.key);
-      return boolResultOk(value.kind === "Ok" && value.value.kind === "Bytes");
-    },
-
-    /**
-     * One page holds every remaining key, so the answer's cursor is always 0:
-     * `localStorage` is walked in one go anyway, and paging it would only
-     * invite a caller to hold a cursor across a write.
-     */
-    async listKeys(operation: ListKeys): Promise<KeysResult> {
-      const store = open();
-      if (store === undefined) return keysResultErr(unavailable);
-
-      const keys: string[] = [];
-      for (let i = 0; i < store.length; i++) {
-        const stored = store.key(i);
-        if (stored === null || !stored.startsWith(prefix)) continue;
-        const key = stored.slice(prefix.length);
-        if (key.startsWith(operation.prefix)) keys.push(key);
-      }
-      keys.sort();
-
-      const cursor = Number(operation.cursor);
-      if (cursor > keys.length) return keysResultErr(keyValueErrorCursorNotFound());
-
-      return keysResultOk(new KeyPage(keys.slice(cursor), BigInt(0)));
-    },
-  };
-}
-
-/**
  * A `KeyValueHandler` that keeps values in a `Map` for the life of the
  * handler.
  *
  * Use it in tests, on a server or in a worker, or when the values must not
- * outlive the process. Use `createLocalStorageKeyValueHandler` when they must
- * survive a reload. Like that store, `listKeys` answers with one page.
+ * outlive the process. `listKeys` answers with one page, so the next cursor is
+ * always 0.
  */
 export function createInMemoryKeyValueHandler(): KeyValueHandler {
   const values = new Map<string, number[]>();

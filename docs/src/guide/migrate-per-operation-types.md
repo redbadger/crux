@@ -624,7 +624,8 @@ hand-written match has to keep right by hand, every time an operation is added.
 `crux_http`, `crux_kv` and `crux_time` ship the shell side of their protocols:
 a Swift, Kotlin, TypeScript and C# implementation of each, embedded in the
 crate. If you adopted the handler API above, the methods you wrote for those
-three capabilities can go. See
+three capabilities can go. The exception is a durable key-value store, because
+`crux_kv` ships only an in-memory one. See
 [Shell extensions](../part-4/typegen.md#shell-extensions) for the
 mechanism; this is the migration.
 
@@ -661,7 +662,7 @@ mechanism; this is the migration.
    ```swift
    // Swift
    let httpHandler = URLSessionHttpHandler()
-   let kvHandler = UserDefaultsKeyValueHandler(suiteName: "com.example.app.store")
+   let kvHandler = InMemoryKeyValueHandler()
    let timeHandler = TaskTimeHandler()
 
    func http(_ operation: HttpRequest) async -> HttpResult { await httpHandler.request(operation) }
@@ -674,7 +675,7 @@ mechanism; this is the migration.
    ```kotlin
    // Kotlin
    private val httpHandler = UrlConnectionHttpHandler { it.connectTimeout = 15_000 }
-   private val kvHandler = FileKeyValueHandler(File(context.filesDir, "key_value_store"))
+   private val kvHandler = InMemoryKeyValueHandler()
    private val timeHandler = CoroutineTimeHandler()
 
    override suspend fun http(operation: HttpRequest) = httpHandler.request(operation)
@@ -685,7 +686,7 @@ mechanism; this is the migration.
    ```typescript
    // TypeScript
    private readonly httpHandler = createFetchHttpHandler();
-   private readonly kvHandler = createLocalStorageKeyValueHandler("app.");
+   private readonly kvHandler = createInMemoryKeyValueHandler();
    private readonly timeHandler = new TimeoutTimeHandler();
 
    http(operation: HttpRequest) { return this.httpHandler.request(operation); }
@@ -696,7 +697,7 @@ mechanism; this is the migration.
    ```csharp
    // C#
    private readonly IHttpHandler httpHandler = new HttpClientHttpHandler();
-   private readonly IKeyValueHandler kvHandler = new FileKeyValueHandler(storeDirectory);
+   private readonly IKeyValueHandler kvHandler = new InMemoryKeyValueHandler();
    private readonly ITimeHandler timeHandler = new TaskTimeHandler();
 
    public Task<HttpResult> Http(HttpRequest operation) => httpHandler.Request(operation);
@@ -709,11 +710,19 @@ mechanism; this is the migration.
    app. The weather and notes examples do exactly this; their diffs are the
    worked version of this section.
 
+   `crux_kv` ships one store, `InMemoryKeyValueHandler`
+   (`createInMemoryKeyValueHandler` in TypeScript), which keeps values only
+   for the life of the handler. To keep values after the app stops, implement
+   `KeyValueHandler` over a durable store of your platform, and hold that
+   instead. If your shell already serves the `crux_kv` operations from a
+   durable store, keep that code. The weather and notes examples each have a
+   durable store in the app's own code: `UserDefaults` on Apple platforms,
+   `SharedPreferences` on Android and `localStorage` on the web.
+
 **Configuring.** Construct the shipped implementation with what it needs — a
-pinned `URLSession`, a directory, a `localStorage` prefix, an
-`HttpURLConnection` configurator — or conform your own type to the protocol
-and hold that instead. To take one operation back, write its method body
-yourself and keep delegating the others.
+pinned `URLSession` or an `HttpURLConnection` configurator — or conform your
+own type to the protocol and hold that instead. To take one operation back,
+write its method body yourself and keep delegating the others.
 
 **When a capability gains an operation**, regenerating brings the new type
 and the shipped method for it, and your handler stops compiling until you add
