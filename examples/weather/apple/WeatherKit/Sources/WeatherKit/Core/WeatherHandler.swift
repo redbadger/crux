@@ -12,9 +12,7 @@ private nonisolated let logger = Log.core
 /// There is no `render` method: the generated `Core` intercepts `Render`
 /// before the dispatcher sees it, so the protocol's default no-op stands.
 ///
-/// The methods live beside the platform code they use: `http.swift`,
-/// `keyValue.swift`, `location.swift`, `secret.swift` and `time.swift`. The
-/// state they share — the key-value store and the timer table — lives here.
+/// The location and secret methods live in `location.swift` and `secret.swift`.
 ///
 /// `EffectHandler` is `Sendable` and its requirements are not actor-isolated,
 /// so the handler methods are `nonisolated`: URLSession, Keychain and
@@ -23,18 +21,34 @@ private nonisolated let logger = Log.core
 /// values across.
 @MainActor
 public final class WeatherHandler {
-    let keyValueStore: KeyValueStore
-    var activeTimers: [UInt64: Task<Void, Never>] = [:]
+    let httpHandler = URLSessionHttpHandler()
 
-    public init() {
-        do {
-            keyValueStore = try KeyValueStore()
-            logger.debug("KeyValueStore initialized successfully")
-        } catch {
-            logger.error("Failed to initialize KeyValueStore: \(error.localizedDescription)")
-            fatalError("KeyValueStore initialization failed: \(error)")
-        }
-    }
+    /// A suite of its own, so the favourites do not share the standard defaults.
+    let keyValueHandler = UserDefaultsKeyValueHandler(suiteName: "com.crux.examples.weather.store")
+
+    let timeHandler = TaskTimeHandler()
+
+    public init() {}
 }
 
-nonisolated extension WeatherHandler: EffectHandler {}
+nonisolated extension WeatherHandler: EffectHandler {
+    public func http(_ operation: HttpRequest) async -> HttpResult {
+        await httpHandler.request(operation)
+    }
+
+    public func kvGet(_ operation: App.Get) async -> ValueResult {
+        await keyValueHandler.get(operation)
+    }
+
+    public func kvSet(_ operation: App.Set) async -> ValueResult {
+        await keyValueHandler.set(operation)
+    }
+
+    public func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId {
+        await timeHandler.notifyAfter(operation)
+    }
+
+    public func timeClear(_ operation: Clear) async -> TimerId {
+        await timeHandler.clear(operation)
+    }
+}

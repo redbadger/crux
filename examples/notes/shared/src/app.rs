@@ -218,6 +218,8 @@ impl App for NoteEditor {
             }
             Event::Open => KeyValue::get("note".to_string()).then_send(Event::Load),
             Event::Load(Ok(value)) => {
+                // An empty value has no document in it, so treat it as no value.
+                let value = value.filter(|bytes| !bytes.is_empty());
                 let mut commands = Vec::new();
                 if value.is_none() {
                     model.note = Note::new();
@@ -559,7 +561,6 @@ mod editing_tests {
 mod save_load_tests {
     use crux_core::assert_effect;
     use crux_kv::{operation::ValueResult, value::Value};
-    use crux_time::TimerId;
 
     use super::*;
 
@@ -601,6 +602,24 @@ mod save_load_tests {
         assert_effect!(cmd, Effect::Render(_));
 
         assert_eq!(app.view(&model).text, "LOADED");
+    }
+
+    #[test]
+    fn creates_a_document_if_the_stored_value_is_empty() {
+        let app = NoteEditor;
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::Load(Ok(Some(vec![]))), &mut model);
+        let request = cmd.effects().find_map(Effect::into_kv_set).unwrap();
+
+        assert_eq!(
+            request.operation,
+            kv::Set {
+                key: "note".to_string(),
+                value: model.note.save(),
+            }
+        );
+        assert_eq!(model.note.text(), "");
     }
 
     #[test]
@@ -715,12 +734,12 @@ mod save_load_tests {
 
         let _publish = effects.next().unwrap().expect_publish();
         let timer = effects.next().unwrap().expect_time_notify_after();
+        // Every test in this binary takes timer ids from one counter, so the
+        // test checks that the id is new, not which number it is.
+        assert_ne!(timer.operation.id, second_id);
         assert_eq!(
-            timer.operation,
-            time::NotifyAfter {
-                id: TimerId(3),
-                duration: crux_time::Duration::from_millis(1000)
-            }
+            timer.operation.duration,
+            crux_time::Duration::from_millis(1000)
         );
     }
     // ANCHOR_END: starts_a_timer_after_an_edit

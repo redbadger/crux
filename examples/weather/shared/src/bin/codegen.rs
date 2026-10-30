@@ -25,8 +25,15 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new()
-        .register_app::<shared::Weather>()?
+    let mut registry = TypeRegistry::new();
+    registry.register_app::<shared::Weather>()?;
+    // Use the provided default implementations on the shell side
+    registry
+        .shell_extension(&crux_http::shell::EXTENSION)?
+        .shell_extension(&crux_kv::shell::EXTENSION)?
+        .shell_extension(&crux_time::shell::EXTENSION)?;
+
+    let typegen_app = registry
         .build()?
         // Where `boltffi pack` puts the bindings for each shell, so that the
         // generated `Core` can be constructed with nothing but a handler.

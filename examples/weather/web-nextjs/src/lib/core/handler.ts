@@ -1,8 +1,8 @@
 import type {
   Clear,
-  Delete,
+  DeleteSecret,
   EffectHandler,
-  Fetch,
+  FetchSecret,
   Get,
   HttpRequest,
   HttpResult,
@@ -12,47 +12,54 @@ import type {
   SecretFetchResponse,
   SecretStoreResponse,
   Set as SetValue,
-  Store,
+  StoreSecret,
   TimerId,
   ValueResult,
 } from "shared_types/app";
+import { createFetchHttpHandler, TimeoutTimeHandler } from "shared_types/app";
 
-import * as http from "./http";
-import * as kv from "./kv";
+import { createLocalStorageKeyValueHandler } from "./kv";
 import * as location from "./location";
 import * as secret from "./secret";
-import * as time from "./time";
 
-/// The shell's side of the effect protocol.
-///
-/// `WeatherHandler` implements the generated `EffectHandler`: one method per
-/// operation the app declares, each returning the single output that operation
-/// is answered with. The generated `EffectDispatcher` does the resolving, so
-/// nothing here decides when — or how often — to call `resolve`.
-///
-/// There is no `render` method: the generated `Core` intercepts `Render`
-/// before the dispatcher sees it and calls the `onView` callback instead.
+/**
+ * The shell's side of the effect protocol.
+ *
+ * `WeatherHandler` implements the generated `EffectHandler`: one method per
+ * operation the app declares, each returning the single output that operation
+ * is answered with. The generated `EffectDispatcher` does the resolving, so
+ * nothing here decides when — or how often — to call `resolve`.
+ *
+ * There is no `render` method: the generated `Core` intercepts `Render`
+ * before the dispatcher sees it and calls the `onView` callback instead.
+ */
 export class WeatherHandler implements EffectHandler {
+  private readonly httpHandler = createFetchHttpHandler();
+  /** `localStorage` is shared with the whole origin, so the keys get a prefix. */
+  private readonly keyValueHandler =
+    createLocalStorageKeyValueHandler("weather.");
+  private readonly timeHandler = new TimeoutTimeHandler();
+
   // ANCHOR: http
   http(operation: HttpRequest): Promise<HttpResult> {
-    return http.request(operation);
+    return this.httpHandler.request(operation);
   }
   // ANCHOR_END: http
 
   kvGet(operation: Get): Promise<ValueResult> {
-    return kv.get(operation);
+    return this.keyValueHandler.get(operation);
   }
 
   kvSet(operation: SetValue): Promise<ValueResult> {
-    return kv.set(operation);
+    return this.keyValueHandler.set(operation);
   }
 
   timeNotifyAfter(operation: NotifyAfter): Promise<TimerId> {
-    return time.notifyAfter(operation);
+    return this.timeHandler.notifyAfter(operation);
   }
 
   timeClear(operation: Clear): Promise<TimerId> {
-    return time.clear(operation);
+    return this.timeHandler.clear(operation);
   }
 
   isLocationEnabled(): Promise<boolean> {
@@ -63,15 +70,15 @@ export class WeatherHandler implements EffectHandler {
     return location.getLocation();
   }
 
-  fetchSecret(operation: Fetch): Promise<SecretFetchResponse> {
+  fetchSecret(operation: FetchSecret): Promise<SecretFetchResponse> {
     return secret.fetch(operation);
   }
 
-  storeSecret(operation: Store): Promise<SecretStoreResponse> {
+  storeSecret(operation: StoreSecret): Promise<SecretStoreResponse> {
     return secret.store(operation);
   }
 
-  deleteSecret(operation: Delete): Promise<SecretDeleteResponse> {
+  deleteSecret(operation: DeleteSecret): Promise<SecretDeleteResponse> {
     return secret.remove(operation);
   }
 }

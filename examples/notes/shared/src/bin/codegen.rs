@@ -27,8 +27,14 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new()
-        .register_app::<NoteEditor>()?
+    let mut registry = TypeRegistry::new();
+    registry.register_app::<NoteEditor>()?;
+    // Use the provided default implementations on the shell side
+    registry
+        .shell_extension(&crux_kv::shell::EXTENSION)?
+        .shell_extension(&crux_time::shell::EXTENSION)?;
+
+    let typegen_app = registry
         .build()?
         // Only the web shell is built from this example, so only TypeScript
         // names where `boltffi pack` put its bindings.

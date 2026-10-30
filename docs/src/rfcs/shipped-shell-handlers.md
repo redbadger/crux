@@ -3,10 +3,10 @@
 ```admonish
 This RFC is **proposed**. It builds on the
 [per-operation types RFC](./per-operation-types.md) and the
-[generated `Core` RFC](./generated-core.md), and is not yet implemented. It is
-written against the compat release of per-operation types, but nothing in it
-depends on the `Operation` trait, which the breaking release replaces with
-`Notify`, `Request` and `Stream`.
+[generated `Core` RFC](./generated-core.md). It is written against the
+compat release of per-operation types, but nothing in it depends on the
+`Operation` trait, which the breaking release replaces with `Notify`,
+`Request` and `Stream`.
 ```
 
 This RFC proposes that a capability crate can ship the shell side of its
@@ -69,7 +69,7 @@ and its handler uses it:
 ```swift
 // Swift — the weather shell's handler
 struct WeatherHandler: EffectHandler {
-    let http = URLSessionHttpHandler.shared
+    let http = URLSessionHttpHandler()
     let time = TaskTimeHandler()
 
     func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
@@ -334,8 +334,7 @@ public protocol HttpHandler: Sendable {
 }
 
 public final class URLSessionHttpHandler: HttpHandler {
-    public static let shared = URLSessionHttpHandler(session: .shared)
-    public init(session: URLSession) { /* … */ }
+    public init(session: URLSession = .shared) { /* … */ }
     public func request(_ operation: HttpRequest) async -> HttpResult { /* … */ }
 }
 ```
@@ -355,8 +354,8 @@ and `Core` are exactly as the earlier RFCs describe them.
 ```kotlin
 // Kotlin
 class WeatherHandler(private val location: LocationClient) : EffectHandler {
-    private val http = UrlConnectionHttpHandler
-    private val time = TaskTimeHandler()
+    private val http = UrlConnectionHttpHandler()
+    private val time = CoroutineTimeHandler()
 
     override suspend fun http(operation: HttpRequest) = http.request(operation)
     override suspend fun timeNotifyAfter(operation: NotifyAfter) = time.notifyAfter(operation)
@@ -369,8 +368,8 @@ class WeatherHandler(private val location: LocationClient) : EffectHandler {
 
 ```ts
 // TypeScript
-const http = fetchHttpHandler;
-const time = new TaskTimeHandler();
+const http = createFetchHttpHandler();
+const time = new TimeoutTimeHandler();
 
 const handler: EffectHandler = {
   http: (operation) => http.request(operation),
@@ -387,7 +386,7 @@ use any other type conforming to the shipped protocol.
 ```kotlin
 // Kotlin
 private val http = OkHttpHttpHandler(client)                  // app's own conformer
-private val kv = FileKeyValueHandler(context.filesDir)
+private val kv = PreferencesKeyValueHandler(preferences)      // app's own conformer
 ```
 
 ```swift
@@ -420,12 +419,31 @@ regenerated file that does it silently.
 
 ### State and concurrency
 
-The app owns the instance, so lifetime is the app's. Shipped implementations
-that are safe to share offer a shared instance
-(`URLSessionHttpHandler.shared`, a Kotlin `object`, a C# static) for the
-plain path, and an initialiser for the configured one. Shipped
-implementations that hold state, like a timer table, are constructed by the
-app, once, where it constructs its handler.
+The app owns the instance, so lifetime is the app's. Every shipped
+implementation is constructed by the app, once, where it constructs its
+handler, and none offers a shared instance: an app has one core, and so one
+handler, so a shared instance would buy nothing. Where there is a sensible
+default, an implementation has an initialiser with no arguments for the plain
+path, and it always has one that takes configuration. A file store has no
+sensible default, because it needs its directory.
+Where the platform has a shared client, the plain initialiser uses it, so
+there is still one client per process: `URLSessionHttpHandler()` sends with
+`URLSession.shared`, and `new HttpClientHttpHandler()` with one static
+`HttpClient`, created on first use, that lives for the process, because
+`HttpClient` is meant to be created once and reused. A shell that needs a
+configured client passes its own, such as a pinned `URLSession`, or, where
+`SocketsHttpHandler` is available (it is not on Blazor WebAssembly), an
+`HttpClient` over one with a `PooledConnectionLifetime` so that it sees DNS
+changes.
+
+That decides where cookies live. With `URLSessionHttpHandler()` they are in
+the process-wide `HTTPCookieStorage.shared`, and with
+`new HttpClientHttpHandler()` in the static client, which is process-wide
+too. `UrlConnectionHttpHandler()` keeps them in an `InMemoryCookieJar` of
+that handler instance's own, so two handlers have two sessions. In
+TypeScript, `createFetchHttpHandler()` leaves them to the runtime's `fetch`:
+in a browser that is the browser's cookie store, for same-origin requests,
+because the handler sets no `credentials`, and under Node there are none.
 
 Shipped Swift protocols are `Sendable` and their methods `nonisolated`, matching
 `EffectHandler`; a stateful implementation guards its state with a lock rather
@@ -633,10 +651,16 @@ evolves.
    first implementation.
 2. **Which implementations to ship.** Tentatively: `crux_http` everywhere
    (`URLSession`, `HttpURLConnection`, `fetch`, `HttpClient`); `crux_time`
-   everywhere; `crux_kv` as `UserDefaults` in Swift, `localStorage` where
-   present in TypeScript, and a file-backed store taking a directory on the
-   JVM and in C#. To be settled per capability in the implementing pull
-   requests.
+   everywhere; `crux_kv` as an in-memory store only, in every language. The
+   right durable store differs by platform (`DataStore` on Android,
+   `UserDefaults` or files on Apple platforms, IndexedDB or `localStorage` in
+   a browser). A shipped source can use only its language's standard library,
+   so it cannot use `DataStore`. A durable store would also settle what
+   `crux_kv` promises (durability, and access from more than one process or
+   tab) before [#641](https://github.com/redbadger/crux/issues/641) decides
+   it. An app that needs a durable store would implement `KeyValueHandler`
+   over the store of its platform, and the weather and notes examples would
+   show one for each platform.
 3. **Checking the source against the protocol.** Type generation does not
    parse the shipped source, so a protocol method whose shape drifts from its
    operation is caught only when an example shell compiles. Whether a typegen
@@ -650,8 +674,8 @@ evolves.
    per-operation types stack already depends on it.
 2. Add `ShellExtension`, `ShellSource` and `TypeRegistry::shell_extension` to
    `crux_core`, with the plugin and its checks.
-3. Ship handlers for `crux_http`, `crux_kv` and `crux_time` in all four
-   languages, and migrate the notes and weather shells to them, so CI compiles
+3. Ship handlers for `crux_http`, `crux_kv` (in-memory only) and `crux_time`
+   in all four languages, and migrate the notes and weather shells to them, so CI compiles
    every shipped Swift, Kotlin and TypeScript file. Give counter-http a C#
    shell, or add a C# typegen fixture, so the C# files are compiled too.
 4. Write the capability-author chapter: how to declare a shipped handler, the

@@ -18,6 +18,7 @@ WeatherKit never touches the Rust FFI. Neither, in fact, does any code we wrote:
 Here's the app entry point:
 
 ```swift
+// Swift
 {{#include ../../../../examples/weather/apple/WeatherApp/WeatherApp.swift:start}}
 ```
 
@@ -30,6 +31,7 @@ Build the generated `Core` from a `WeatherHandler`, keep it in `@State`, wire up
 `Core(handler:)` is a convenience: underneath, `Core` talks to Rust through a `CoreBridge` protocol with three byte-level methods — `update` and `resolve` return the serialized requests the core produced, `view` the serialized view model — and the generated package implements it over BoltFFI's `CoreFfi` in a file of its own, `FfiBridge.swift`:
 
 ```swift
+// Swift
 public struct FfiBridge: CoreBridge, @unchecked Sendable {
     private let ffi = Shared.CoreFfi()
 
@@ -50,6 +52,7 @@ public struct FfiBridge: CoreBridge, @unchecked Sendable {
 Nothing here knows about bincode or about Swift types — the generated `Core` does the serializing — so this is the only place that knows `CoreFfi` exists, and it is generated because the codegen was told where BoltFFI put it:
 
 ```rust,ignore
+// Rust
 .boltffi(BoltFfi::new().swift("Shared") /* … */)
 ```
 
@@ -62,6 +65,7 @@ One annotation is worth a look. `CoreBridge` is `Sendable` while `CoreFfi` is a 
 The loop — serialize the event, call the bridge, deserialize the requests, dispatch each one, resolve, go round again — is the generated `Core`. Its whole public surface is:
 
 ```swift
+// Swift
 @available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
 @Observable @MainActor public final class Core {
     public private(set) var view: ViewModel
@@ -78,22 +82,15 @@ The loop — serialize the event, call the bridge, deserialize the requests, dis
 What the shell writes is the `EffectHandler`. In WeatherKit that is `WeatherHandler`:
 
 ```swift
+// Swift
 {{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/WeatherHandler.swift}}
 ```
 
-The conformance is an empty extension. `render` has a generated default, because `Core` owns it, and the other methods live beside the platform code they use (`http.swift`, `keyValue.swift`, `location.swift`, `secret.swift`, `time.swift`), all as Swift extensions on `WeatherHandler`, so they share state (like the `KeyValueStore` and the active timer list) without passing it around.
+`render` has a generated default, because `Core` owns it. The `crux_http` and `crux_time` methods delegate to the handlers that those crates ship, so the app needs no code of its own for those capabilities. `crux_kv` ships only an in-memory store, so the `crux_kv` methods delegate to the app's own `UserDefaultsKeyValueHandler` in `kv.swift`. That handler implements the shipped `KeyValueHandler` protocol over `UserDefaults`. If the shipped handlers do not suit your app (for example, you need a different store or HTTP client), see [Shipping the shell side too](../capabilities.md#shipping-the-shell-side-too). The app's own operations, location and secret, live beside the platform code they use in `location.swift` and `secret.swift`, as extensions on `WeatherHandler`.
 
 Note the `nonisolated`. The generated `EffectHandler` is `Sendable` and its requirements are not actor-isolated, but `WeatherHandler` is `@MainActor` — so the handler methods are `nonisolated` and hop to the main actor only where they touch main-actor state. URLSession, Keychain and CoreLocation work doesn't belong on the main actor anyway.
 
-Here's the HTTP handler in full:
-
-```swift
-{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/http.swift}}
-```
-
 `http(_:)` is `async` and returns an `HttpResult`. That's the whole contract — the operation declares that it is answered exactly once, with an `HttpResult`, so the method signature says so and the dispatcher does the resolving. There's no request id in sight and no `resolve` call to get wrong.
-
-The other effect handlers follow the same shape — one method per operation, returning that operation's output. The timer ones are worth a glance: `timeNotifyAfter` waits out the duration and returns the `TimerId`, and `timeClear` cancels the pending timer and returns the same `TimerId`, which is the core's cue that the timer is gone. If the timer fires anyway before the clear reaches the shell, the late answer to `timeNotifyAfter` is ignored: the core stopped waiting for it when the timer was cleared.
 
 ## Views driven by the ViewModel
 
@@ -102,6 +99,7 @@ The generated `Core` is `@Observable`, so `WeatherApp` puts it straight into the
 The root `ContentView` dispatches on the top-level `ViewModel` variants:
 
 ```swift
+// Swift
 {{#include ../../../../examples/weather/apple/WeatherApp/ContentView.swift}}
 ```
 
@@ -114,6 +112,7 @@ When the user taps a button, the view sends an event via the `CoreUpdater` that 
 Because WeatherKit never touches the FFI, previews don't need the Rust framework. They do need a `Core`, since that is what the views read from, so `PreviewCore.swift` provides the two things a real `Core` is built from: a `CoreBridge` that answers `view()` with a fixed view model and returns no requests, and an `EffectHandler` whose methods never run, because a preview never sends an event. With those and a `CoreUpdater.forPreview()` that swallows events, a preview builds a genuine generated `Core` and injects it:
 
 ```swift
+// Swift
 {{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Preview/PreviewCore.swift}}
 ```
 

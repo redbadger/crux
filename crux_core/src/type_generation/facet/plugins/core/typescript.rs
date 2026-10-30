@@ -4,8 +4,10 @@ use std::io;
 
 use facet_generate::{
     generation::{
-        CodeGeneratorConfig, bincode::typescript::write_serialize_value, indent::IndentWrite,
-        typescript::render_type,
+        CodeGeneratorConfig,
+        bincode::typescript::write_serialize_value,
+        indent::IndentWrite,
+        typescript::{render_type, requalify, write_doc},
     },
     reflection::format::{Format, QualifiedTypeName},
 };
@@ -33,19 +35,15 @@ pub(super) fn emit(
 /// `FfiBridge`, the `CoreBridge` over `BoltFFI`'s wasm bindings.
 fn emit_ffi_bridge(w: &mut dyn IndentWrite, class: &str) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The generated `CoreBridge`, implemented over BoltFFI's `{class}`: bytes"
+        &[
+            &format!("The generated `CoreBridge`, implemented over BoltFFI's `{class}`: bytes"),
+            &format!("in, bytes out, nothing else. `{class}.new()` reaches into the wasm"),
+            "module, so build one only once the package has loaded — `Core.create`",
+            "waits for that.",
+        ],
     )?;
-    writeln!(
-        w,
-        "/// in, bytes out, nothing else. `{class}.new()` reaches into the wasm"
-    )?;
-    writeln!(
-        w,
-        "/// module, so build one only once the package has loaded — `Core.create`"
-    )?;
-    writeln!(w, "/// waits for that.")?;
     writeln!(w, "export class FfiBridge implements CoreBridge {{")?;
     w.indent();
     writeln!(w, "private readonly ffi = boltffi.{class}.new();")?;
@@ -73,11 +71,13 @@ fn emit_ffi_bridge(w: &mut dyn IndentWrite, class: &str) -> io::Result<()> {
 
 fn emit_bridge(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The core's FFI surface, as bytes. Implement it around the bindings your"
+        &[
+            "The core's FFI surface, as bytes. Implement it around the bindings your",
+            "Rust crate exports, or with a fake for tests.",
+        ],
     )?;
-    writeln!(w, "/// Rust crate exports, or with a fake for tests.")?;
     writeln!(w, "export interface CoreBridge {{")?;
     w.indent();
     writeln!(w, "update(event: Uint8Array): Uint8Array;")?;
@@ -99,27 +99,33 @@ fn emit_core(
     let render = m
         .render_variant()
         .expect("the plugin only matches an effect with a render variant");
-    let event = render_type(&Format::TypeName(app.event.clone()), config);
-    let view_model = render_type(&Format::TypeName(app.view_model.clone()), config);
+    // The app's types are named as the registry spells them, and the emitter
+    // functions take the spelling the generator rewrites references to.
+    let event = render_type(&Format::TypeName(requalify(config, &app.event)), config);
+    let view_model = render_type(
+        &Format::TypeName(requalify(config, &app.view_model)),
+        config,
+    );
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// The shell's side of the core: it serializes events, dispatches the"
-    )?;
-    writeln!(
-        w,
-        "/// requests that come back, and resolves them through the bridge."
-    )?;
-    writeln!(w, "///")?;
-    writeln!(
-        w,
-        "/// `{}` is handled here, so an `EffectHandler` need not implement it.",
-        render.name
+        &[
+            "The shell's side of the core: it serializes events, dispatches the",
+            "requests that come back, and resolves them through the bridge.",
+            "",
+            &format!(
+                "`{}` is handled here, so an `EffectHandler` need not implement it.",
+                render.name
+            ),
+        ],
     )?;
     writeln!(w, "export class Core {{")?;
     w.indent();
-    writeln!(w, "/// The view model as of the last `{}`.", render.name)?;
+    write_doc(
+        w,
+        &[&format!("The view model as of the last `{}`.", render.name)],
+    )?;
     writeln!(w, "public view: {view_model};")?;
     writeln!(w, "private readonly dispatcher: EffectDispatcher;")?;
     writeln!(w)?;
@@ -159,11 +165,13 @@ fn emit_core(
 /// cannot await.
 fn emit_create(w: &mut dyn IndentWrite, class: &str, view_model: &str) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Build a `Core` over the `{class}` the Rust crate exports, once the"
+        &[
+            &format!("Build a `Core` over the `{class}` the Rust crate exports, once the"),
+            "wasm module has loaded.",
+        ],
     )?;
-    writeln!(w, "/// wasm module has loaded.")?;
     writeln!(w, "public static async create(")?;
     w.indent();
     writeln!(w, "handler: EffectHandler,")?;
@@ -191,14 +199,19 @@ fn emit_methods(
     render: &str,
 ) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Send an event to the core and run the loop it starts."
+        &["Send an event to the core and run the loop it starts."],
     )?;
     writeln!(w, "public update(event: {event}): void {{")?;
     w.indent();
     writeln!(w, "const serializer = new BincodeSerializer();")?;
-    write_serialize_value(w, "event", &Format::TypeName(app.event.clone()), config)?;
+    write_serialize_value(
+        w,
+        "event",
+        &Format::TypeName(requalify(config, &app.event)),
+        config,
+    )?;
     writeln!(
         w,
         "this.processBytes(this.bridge.update(serializer.getBytes()));"
@@ -206,9 +219,9 @@ fn emit_methods(
     w.unindent();
     writeln!(w, "}}")?;
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// Serialized requests, as returned by the bridge or pushed by middleware."
+        &["Serialized requests, as returned by the bridge or pushed by middleware."],
     )?;
     writeln!(w, "public processBytes(bytes: Uint8Array): void {{")?;
     w.indent();
@@ -251,8 +264,9 @@ fn emit_methods(
 /// How the bincode emitter spells "read one of these from `deserializer`": an
 /// enum has a free function, everything else a static method.
 fn deserialize_expr(name: &QualifiedTypeName, config: &CodeGeneratorConfig) -> String {
+    let name = requalify(config, name);
     let type_name = name.format(ToUpperCamelCase::to_upper_camel_case, ".");
-    if config.enum_type_names.contains(&type_name) {
+    if config.is_enum(&name) {
         format!("deserialize{type_name}(deserializer)")
     } else {
         format!("{type_name}.deserialize(deserializer)")

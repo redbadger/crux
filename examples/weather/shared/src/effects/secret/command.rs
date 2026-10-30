@@ -10,7 +10,10 @@ use std::future::Future;
 use crux_core::Request;
 use crux_core::command::RequestBuilder;
 
-use super::{Delete, Fetch, SecretDeleteResponse, SecretFetchResponse, SecretStoreResponse, Store};
+use super::{
+    DeleteSecret, FetchSecret, SecretDeleteResponse, SecretFetchResponse, SecretStoreResponse,
+    StoreSecret,
+};
 
 /// Fetches the secret stored under `key`, if any.
 #[must_use]
@@ -18,10 +21,10 @@ pub fn fetch<Ef, Ev>(
     key: impl Into<String>,
 ) -> RequestBuilder<Ef, Ev, impl Future<Output = SecretFetchResponse>>
 where
-    Ef: From<Request<Fetch>> + Send + 'static,
+    Ef: From<Request<FetchSecret>> + Send + 'static,
     Ev: Send + 'static,
 {
-    crux_core::Command::request_from_shell(Fetch(key.into()))
+    crux_core::Command::request_from_shell(FetchSecret(key.into()))
 }
 
 /// Stores `value` under `key`, replacing any existing secret.
@@ -31,10 +34,10 @@ pub fn store<Ef, Ev>(
     value: impl Into<String>,
 ) -> RequestBuilder<Ef, Ev, impl Future<Output = SecretStoreResponse>>
 where
-    Ef: From<Request<Store>> + Send + 'static,
+    Ef: From<Request<StoreSecret>> + Send + 'static,
     Ev: Send + 'static,
 {
-    crux_core::Command::request_from_shell(Store(key.into(), value.into()))
+    crux_core::Command::request_from_shell(StoreSecret(key.into(), value.into()))
 }
 
 /// Deletes the secret stored under `key`.
@@ -43,8 +46,8 @@ pub fn delete<Ef, Ev>(
     key: impl Into<String>,
 ) -> RequestBuilder<Ef, Ev, impl Future<Output = SecretDeleteResponse>>
 where
-    Ef: From<Request<Delete>> + Send + 'static,
+    Ef: From<Request<DeleteSecret>> + Send + 'static,
     Ev: Send + 'static,
 {
-    crux_core::Command::request_from_shell(Delete(key.into()))
+    crux_core::Command::request_from_shell(DeleteSecret(key.into()))
 }

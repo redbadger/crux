@@ -30,9 +30,10 @@ Otherwise, in this order:
    operations you use in your `Effect` enum.
 3. **Your `Effect` enum** — one variant per operation, which renames the
    generated `is_` / `into_` / `expect_*` test helpers.
-4. **Regenerate your shells** and let the generated `Core` drive the loop, or
-   adopt just the generated `EffectHandler`, or widen the match you already
-   have.
+4. **Regenerate your shells** and adopt the handler API — implement
+   `EffectHandler` and let the generated `Core` drive the loop. If that can't
+   work for you, implementing just the handler, or widening the match you
+   already have, are both still supported.
 5. **Check the [traps](#traps-worth-knowing-about)** — Swift actor isolation,
    `Set` name collisions, and what a late timer does.
 
@@ -45,6 +46,7 @@ writes the `Operation` implementation, its `Output`, the kind and the matching
 marker trait so the three cannot disagree:
 
 ```rust
+// Rust
 use crux_core::macros::Operation;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
@@ -96,6 +98,7 @@ to migrate your own capabilities to take `crux_core` 0.21.
 If you'd rather not use the derive, declare the kind and the marker together:
 
 ```rust,ignore
+// Rust
 impl Operation for Get {
     type Output = ValueResult;
     const KIND: Option<OperationKind> = Some(OperationKind::Request);
@@ -117,7 +120,7 @@ six-variant response, so every call site had to rule out the four variants that
 could not apply to it:
 
 ```rust,ignore
-// Before
+// Rust — Before
 pub enum SecretRequest {
     Fetch(String),
     Store(String, String),
@@ -155,7 +158,7 @@ After, each operation is its own type and the narrow response types it already
 had become its output:
 
 ```rust,ignore
-// After
+// Rust — After
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(request, output = SecretFetchResponse)]
 pub struct Fetch(pub String);
@@ -204,7 +207,7 @@ with the same signatures and the same `DataResult` / `StatusResult` /
 changes is the `Effect` enum.
 
 ```rust,ignore
-// Before
+// Rust — Before
 use crux_kv::{KeyValue, KeyValueOperation, error::KeyValueError};
 
 #[effect(facet_typegen)]
@@ -217,7 +220,7 @@ KeyValue::get("note").then_send(Event::Load)
 ```
 
 ```rust,ignore
-// After
+// Rust — After
 use crux_kv::{error::KeyValueError, operation as kv, store::KeyValue};
 
 #[effect(facet_typegen)]
@@ -241,11 +244,12 @@ The operations and their outputs:
 | `operation::ListKeys` | `prefix: String, cursor: u64` | `KeysResult` | request |
 
 ```rust,ignore
+// Rust
 pub enum ValueResult { Ok(Value), Err(KeyValueError) }
 pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
-pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
+pub enum KeysResult  { Ok(KeyPage), Err(KeyValueError) }
 
-pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
+pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
 ```
 
 `KeyValueError`, `Value`, `DataResult`, `StatusResult` and `ListResult` are
@@ -279,7 +283,7 @@ the root type is deprecated, and the breaking release re-exports `clock::Time`
 in its place.
 
 ```rust,ignore
-// Before
+// Rust — Before
 use crux_time::{TimeRequest, command::{Time, TimerHandle, TimerOutcome}};
 
 #[effect(facet_typegen)]
@@ -291,7 +295,7 @@ let (notify_after, handle) = Time::notify_after(duration);
 ```
 
 ```rust,ignore
-// After
+// Rust — After
 use crux_time::{TimerHandle, TimerOutcome, clock::Time, operation as time};
 
 #[effect(facet_typegen)]
@@ -342,6 +346,7 @@ Renaming variants renames the test helpers `#[effect]` generates from them, whic
 is usually the largest mechanical diff in an app's test suite:
 
 ```rust,ignore
+// Rust
 // Before                              // After
 effects.next().unwrap()                effects.next().unwrap()
     .expect_key_value()                    .expect_kv_get()
@@ -364,8 +369,12 @@ a notification, once for a request, once per sink item for a stream. See
 [Type generation](../part-4/typegen.md#operation-kinds-and-the-effect-handler-api)
 for the exact shapes in each language.
 
-Adopting it is optional. **Matching on `Effect` and calling `resolve` by hand
-keeps working**, and is the right choice for Rust shells — see
+**Adopt it.** One method per operation, with the operation and output types
+already correct and the resolving done for you, is what makes the per-operation
+design worth having on the shell side, and it is what both examples and the rest
+of this guide do. If it can't work for your shell — you own the concurrency, or
+your deployment target is below the `Core`'s — matching on `Effect` and calling
+`resolve` by hand keeps working, and is the right choice for Rust shells; see
 [keeping a flat match](#keeping-a-flat-match).
 
 ### Letting the generated Core own the loop
@@ -385,6 +394,7 @@ The bridge between `Core` and BoltFFI's `CoreFfi` is generated too, once the
 codegen knows where BoltFFI put its output:
 
 ```rust,ignore
+// Rust
 TypeRegistry::new()
     .register_app::<Weather>()?
     .build()?
@@ -417,6 +427,7 @@ Implement the handler on the class that already owned the effect loop, and let
 the dispatcher replace the nested `switch`. From the notes example:
 
 ```typescript
+// TypeScript
 // Before — nested match helpers, hand-built responses, and an id in a ref
 private processEffect(id: number, effect: Effect) {
   matchEffect(effect, {
@@ -439,6 +450,7 @@ private processEffect(id: number, effect: Effect) {
 ```
 
 ```typescript
+// TypeScript
 // After — a handler with one method per operation, and the generated Core
 // owning the loop and the bridge to the wasm module
 export class NotesHandler implements EffectHandler {
@@ -478,6 +490,7 @@ around that untyped promise goes too. Construct the core in an effect, not in a
 ### Swift
 
 ```swift
+// Swift
 // Before — a switch, and a resolve call per capability
 func processEffect(_ request: Request) {
     switch request.effect {
@@ -493,6 +506,7 @@ func processEffect(_ request: Request) {
 ```
 
 ```swift
+// Swift
 // After — a handler with one method per operation, and the generated Core
 // owning the loop and the bridge to CoreFfi
 @MainActor public final class WeatherHandler {
@@ -534,6 +548,7 @@ a `platforms:` floor at least as high as `Shared` declares — set it on the
 A handler that delegates, and the generated `Core` provided by Hilt:
 
 ```kotlin
+// Kotlin
 @Singleton
 class WeatherHandler @Inject constructor(/* … */) : EffectHandler {
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
@@ -582,6 +597,7 @@ output that request resolves with. The weather Leptos shell just grew from six
 arms to eleven:
 
 ```rust,ignore
+// Rust
 fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
     match effect {
         Effect::Render(_) => render.set(core.view()),
@@ -596,10 +612,131 @@ fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
 }
 ```
 
-The same applies to a non-Rust shell that wants full control over its own
-concurrency: the emission is additive, and ignoring it costs nothing.
+A non-Rust shell that wants full control over its own concurrency can do the
+same — the emission is additive, and ignoring it costs nothing — but that is the
+fallback, not the recommendation: everything the handler API gives you, a
+hand-written match has to keep right by hand, every time an operation is added.
 
 ---
+
+## Adopting the shipped handlers
+
+`crux_http`, `crux_kv` and `crux_time` ship the shell side of their protocols:
+a Swift, Kotlin, TypeScript and C# implementation of each, embedded in the
+crate. If you adopted the handler API above, the methods you wrote for those
+three capabilities can go. The exception is a durable key-value store, because
+`crux_kv` ships only an in-memory one. See
+[Shell extensions](../part-4/typegen.md#shell-extensions) for the
+mechanism; this is the migration.
+
+1. **Register the handlers** in your codegen binary, on the registry, before
+   `build()`:
+
+   ```rust,ignore
+   // Rust
+   let mut registry = TypeRegistry::new();
+   registry.register_app::<App>()?;
+   registry
+       .shell_extension(&crux_http::shell::EXTENSION)?
+       .shell_extension(&crux_kv::shell::EXTENSION)?
+       .shell_extension(&crux_time::shell::EXTENSION)?;
+   let typegen = registry.build()?;
+   ```
+
+   Each capability crate needs its `facet_typegen` feature on for the
+   codegen binary, which it usually already has. Registering a handler also
+   registers every operation and output its source names — the shipped file
+   implements the whole capability, so `Exists`, `Now` and the rest are
+   generated even if your `Effect` never carries them.
+
+2. **Regenerate.** The Swift package gains `Http.swift`, `KeyValue.swift` and
+   `Time.swift`; the Kotlin package and C# namespace gain the same three
+   files; the TypeScript module gains the same declarations at its end. Each
+   declares a protocol — `HttpHandler`, `KeyValueHandler`, `TimeHandler`
+   (`I`-prefixed in C#) — with one method per operation, and an
+   implementation of it.
+
+3. **Delete your implementations and delegate.** Hold an instance and forward
+   each method in one line:
+
+   ```swift
+   // Swift
+   let httpHandler = URLSessionHttpHandler()
+   let kvHandler = InMemoryKeyValueHandler()
+   let timeHandler = TaskTimeHandler()
+
+   func http(_ operation: HttpRequest) async -> HttpResult { await httpHandler.request(operation) }
+   func kvGet(_ operation: Get) async -> ValueResult { await kvHandler.get(operation) }
+   func kvSet(_ operation: Set) async -> ValueResult { await kvHandler.set(operation) }
+   func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await timeHandler.notifyAfter(operation) }
+   func timeClear(_ operation: Clear) async -> TimerId { await timeHandler.clear(operation) }
+   ```
+
+   ```kotlin
+   // Kotlin
+   private val httpHandler = UrlConnectionHttpHandler { it.connectTimeout = 15_000 }
+   private val kvHandler = InMemoryKeyValueHandler()
+   private val timeHandler = CoroutineTimeHandler()
+
+   override suspend fun http(operation: HttpRequest) = httpHandler.request(operation)
+   override suspend fun kvGet(operation: Get) = kvHandler.get(operation)
+   override suspend fun timeClear(operation: Clear) = timeHandler.clear(operation)
+   ```
+
+   ```typescript
+   // TypeScript
+   private readonly httpHandler = createFetchHttpHandler();
+   private readonly kvHandler = createInMemoryKeyValueHandler();
+   private readonly timeHandler = new TimeoutTimeHandler();
+
+   http(operation: HttpRequest) { return this.httpHandler.request(operation); }
+   kvGet(operation: Get) { return this.kvHandler.get(operation); }
+   timeClear(operation: Clear) { return this.timeHandler.clear(operation); }
+   ```
+
+   ```csharp
+   // C#
+   private readonly IHttpHandler httpHandler = new HttpClientHttpHandler();
+   private readonly IKeyValueHandler kvHandler = new InMemoryKeyValueHandler();
+   private readonly ITimeHandler timeHandler = new TaskTimeHandler();
+
+   public Task<HttpResult> Http(HttpRequest operation) => httpHandler.Request(operation);
+   public Task<ValueResult> KvGet(Get operation) => kvHandler.Get(operation);
+   public Task<TimerId> TimeClear(Clear operation) => timeHandler.Clear(operation);
+   ```
+
+   The timer table is state, so construct one `TaskTimeHandler` (or its
+   sibling) where you construct your handler and keep it for the life of the
+   app. The weather and notes examples do exactly this; their diffs are the
+   worked version of this section.
+
+   `crux_kv` ships one store, `InMemoryKeyValueHandler`
+   (`createInMemoryKeyValueHandler` in TypeScript), which keeps values only
+   for the life of the handler. To keep values after the app stops, implement
+   `KeyValueHandler` over a durable store of your platform, and hold that
+   instead. If your shell already serves the `crux_kv` operations from a
+   durable store, keep that code. The weather and notes examples each have a
+   durable store in the app's own code: `UserDefaults` on Apple platforms,
+   `SharedPreferences` on Android and `localStorage` on the web.
+
+**Configuring.** Construct the shipped implementation with what it needs — a
+pinned `URLSession` or an `HttpURLConnection` configurator — or conform your
+own type to the protocol and hold that instead. To take one operation back,
+write its method body yourself and keep delegating the others.
+
+**When a capability gains an operation**, regenerating brings the new type
+and the shipped method for it, and your handler stops compiling until you add
+the delegating line. That is deliberate: it is the moment to read what the new
+operation does.
+
+**Names.** Registering a capability puts all of its operation types into your
+generated module's root namespace — `crux_kv` brings `Get`, `Set`, `Delete`,
+`Exists` and `ListKeys`. An operation of your own with one of those names
+collides, and today the registry keeps one of the two without a word
+([#601](https://github.com/redbadger/crux/issues/601)). Rename yours with
+`#[facet(rename = "...")]` or, better, give app-defined operations names
+that carry their capability, as the weather example's `FetchSecret`,
+`StoreSecret` and `DeleteSecret` do.
 
 ## Traps worth knowing about
 
@@ -618,6 +755,9 @@ event and no error.
 So a shell has two obligations, and neither is about safety: cancel the timer,
 so it does not sit there until it fires, and answer the `Clear`. Under `Time`
 that answer was `TimeResponse::Cleared { id }`; now it is the bare `TimerId`.
+The handler `crux_time` ships does both, so a shell that
+[adopts it](#adopting-the-shipped-handlers) never has to think about this
+again.
 
 What a shell must not do is answer the same request twice, which is a
 `NotFound` from the bridge and a panic in most FFI wrappers, or answer a
@@ -633,9 +773,18 @@ pattern that works is a `nonisolated` extension that hops to the main actor only
 where it touches main-actor state:
 
 ```swift
+// Swift
 nonisolated extension WeatherHandler: EffectHandler {
-    public func kvGet(_ operation: Get) async -> ValueResult {
-        await MainActor.run { keyValueStore.get(operation.key) }
+    public func getLocation(_: GetLocation) async -> Location? {
+        guard let coordinate = await currentCoordinate() else { return nil }
+        return Location(lat: coordinate.latitude, lon: coordinate.longitude)
+    }
+
+    // CoreLocation's delegate runs on the main actor. Only the coordinates,
+    // which are `Sendable`, come back.
+    @MainActor
+    private func currentCoordinate() async -> (latitude: Double, longitude: Double)? {
+        // …
     }
 }
 ```
@@ -657,10 +806,12 @@ isolation.
 Swift, Kotlin and TypeScript all have one already. Alias it at the import:
 
 ```kotlin
+// Kotlin
 import com.example.weather.Set as KeyValueSet
 ```
 
 ```typescript
+// TypeScript
 import type { Set as SetValue } from "shared_types/app";
 ```
 
