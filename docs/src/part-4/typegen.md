@@ -636,9 +636,10 @@ register, and every language it has source for, the generated module gains
 one file named after the extension (`Http.swift` in the Swift target,
 `Http.kt` in the Kotlin package, `Http.cs` in the C# namespace), with the
 module's header prepended and the source otherwise verbatim. TypeScript
-modules are a single file, so there the source is appended after the types,
-as `Core` is. A language the extension does not ship gets nothing, and you
-implement those methods as you would have anyway.
+modules are a single file, so there the source goes at the end of the
+module, after every type (and after `Core`, when it is in this module). A
+language the extension does not ship gets nothing, and you implement those
+methods as you would have anyway.
 
 In Swift, `Http.swift` declares an `HttpHandler` protocol with one method
 per operation, taking the operation and returning what the generated

@@ -195,8 +195,8 @@ and this project adheres to
   `TypeRegistry::build` reports an error if a shared type or an effect variant
   claims one.
 
-  Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
-  every top-level type and exposes the helpers these plugins need.
+  Uses `facet_generate`'s `after_type` plugin hook, which fires for every
+  top-level type, and the helpers it exposes for these plugins.
 
 - **Type generation also emits a shell-side `Core`.** With the handler API in
   place, what every shell still wrote by hand was the same loop: serialize the
@@ -291,7 +291,7 @@ and this project adheres to
   joins the reserved names, and a `boltffi(..)` configuration with no `Core`
   to bridge (`without_core()`, no registered app, or no `Render` variant) is
   an error rather than a no-op. Requires `facet_generate` with the
-  companion-file and manifest hooks (0.21).
+  companion-file and manifest hooks.
 
 - **A crate can ship source for the shell as a shell extension, and type
   generation emits it on request.** The main use is a capability's shell
@@ -311,12 +311,13 @@ and this project adheres to
 
   For each registered extension with source for the language, the generated
   module gains one companion file named after the extension (`Http.swift`,
-  `Http.kt`, `Http.cs`) with the source verbatim under the module header;
-  TypeScript appends it to the module after the types. A capability's
-  handler declares a protocol (`HttpHandler`) with one method per operation,
-  matching the generated `EffectHandler` shapes, and an implementation of
-  it. The app's handler holds an instance and delegates one line per
-  operation. Nothing else is generated: `EffectHandler`, `EffectDispatcher`
+  `Http.kt`, `Http.cs`) with the source verbatim under the module header.
+  TypeScript modules are one file, so there the source goes in the module
+  footer, after every type (and after `Core`, when it is in this module). A
+  capability's handler declares a protocol (`HttpHandler`) with one method
+  per operation, matching the generated `EffectHandler` shapes, and an
+  implementation of it. The app's handler holds an instance and delegates one
+  line per operation. Nothing else is generated: `EffectHandler`, `EffectDispatcher`
   and `Core` are unchanged, an unregistered extension leaves no trace, and
   `without_effect_handlers()` does not affect it.
   `ShellSource::dependencies` carries any manifest lines the source needs,
@@ -407,9 +408,10 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **Facet type generation now requires `facet_generate` 0.22.2.** Only the
-  `facet_typegen` feature is affected; every other feature of this crate is
-  unchanged.
+- **Facet type generation now requires `facet_generate` 0.22.2.** Crux
+  uses its `module_footer` plugin hook to place shell extension source at the
+  end of a TypeScript module. Only the `facet_typegen` feature is affected;
+  every other feature of this crate is unchanged.
 - Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.
 - Released in lockstep with `crux_http` 0.21, `crux_kv` 0.15 and `crux_time`
   0.19. The two capability crates deprecate their enum APIs in favour of the

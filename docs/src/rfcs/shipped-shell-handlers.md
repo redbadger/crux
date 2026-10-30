@@ -324,7 +324,13 @@ emits one companion file in the generated module — Swift
 `Company/Shared/Http.cs` — containing the shipped source verbatim, after the
 module header the language needs (the `package` line in Kotlin, the
 file-scoped `namespace` in C#). In TypeScript, whose modules are one file, the
-source is appended to the module after the types, the way `Core` is today.
+source goes in the module footer, after every type (and after `Core`, when it
+is in this module), so that everything it names is declared before it runs.
+
+Only the root module, the one named after the package, gets the sources. A
+namespace of the app's is a module of its own, and each module's
+configuration says which namespace it generates, so the plugin asks it
+(`config.namespace`) and needs no package name of its own.
 
 A capability's source declares a protocol, `HttpHandler` for `crux_http`, and
 one or more implementations of it, and refers to `HttpRequest` and
@@ -523,8 +529,13 @@ an external package, companion files are written whenever the module itself
 is. It was added for the generated `Core`'s BoltFFI bridge, whose `FfiBridge`
 is emitted through it, and it is the right home for shipped sources in Swift,
 Kotlin and C# too, where one file per capability is what a reader expects to
-find. TypeScript's single-file modules use `after_type`, as `Core` does, and
-`manifest_dependencies` carries the rare library.
+find. TypeScript's single-file modules need one more hook, `module_footer`,
+which facet-generate calls once per module after every type and every
+`after_type` output. `after_type` would not do: it follows one type, and
+plugin order only orders the plugins within a hook, so the source would have
+to be written after whichever type happens to come last. The footer is the
+end of the module by definition. `manifest_dependencies` carries the rare
+library.
 
 ## Drawbacks
 

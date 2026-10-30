@@ -6,12 +6,12 @@
 //! putting it where the language expects to find it. Swift, Kotlin and C# get
 //! one companion file per extension, `Http.swift` / `Http.kt` / `Http.cs`,
 //! beside the module's own file and inside its module, package or namespace.
-//! TypeScript's modules are a single file, so the source is appended after the
-//! types, the way `Core` is.
+//! TypeScript modules are one file, so the source goes in the module footer,
+//! after every type (and after `Core`, when it is in this module).
 //!
 //! A namespace of its own is a module of its own in every language, so the
-//! sources are emitted for the module the app's own types are in — named by
-//! the package — and not repeated into a namespaced sibling.
+//! sources are emitted for the root module, which holds the app's types that
+//! have no namespace, and not repeated into a namespaced sibling.
 //!
 //! The module header the companion-file machinery writes carries only the
 //! package or namespace declaration and the generated module's own imports, so
@@ -20,64 +20,42 @@
 
 use std::{io, sync::Arc};
 
-use facet_generate::generation::{
-    CodeGeneratorConfig,
-    csharp::CSharp,
-    indent::IndentWrite,
-    kotlin::Kotlin,
-    plugin::{CompanionFile, EmitContext, EmitterPlugin},
-    swift::Swift,
-    typescript::TypeScript,
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        csharp::CSharp,
+        indent::IndentWrite,
+        kotlin::Kotlin,
+        plugin::{CompanionFile, EmitterPlugin},
+        swift::Swift,
+        typescript::TypeScript,
+    },
+    reflection::format::Namespace,
 };
 
-use crate::type_generation::facet::{
-    QualifiedTypeName,
-    shell_handler::{ShellExtension, ShellSource},
-};
+use crate::type_generation::facet::shell_extension::{ShellExtension, ShellSource};
+
+/// Whether `config` is the root module: the one named after the package,
+/// which holds the app's types that have no namespace of their own.
+///
+/// facet-generate generates one module per namespace and calls every module's
+/// plugins, and each module's config says which namespace it generates. The
+/// sources belong in the root module only.
+fn is_root_module(config: &CodeGeneratorConfig) -> bool {
+    config.namespace == Namespace::Root
+}
 
 /// Emits the registered shell extensions' sources.
 #[derive(Debug, Clone)]
 pub struct ShellExtensionPlugin {
     extensions: Arc<[&'static ShellExtension]>,
-    /// The module the app's own types are in, which is the one the sources
-    /// belong to. A type in a namespace is generated into a module of its own,
-    /// and every module's plugins are asked for their files.
-    package: String,
-    /// The last type that module writes, which is what TypeScript appends
-    /// after. `None` when nothing was registered, in which case there is no
-    /// `after_type` to hook and the TypeScript sources are not emitted.
-    ///
-    /// Plugin order cannot do this instead: it orders the plugins within one
-    /// hook, but it does not choose which type an `after_type` call follows.
-    /// TypeScript has no companion files, so the source has to go into the
-    /// module's one file, after its last type. Writing it ahead of the types
-    /// would be unsafe in general, because an extension's top-level code may
-    /// construct or extend a generated class, and a class cannot be used until
-    /// its declaration has run.
-    last_type: Option<QualifiedTypeName>,
 }
 
 impl ShellExtensionPlugin {
-    pub fn new(
-        extensions: &[&'static ShellExtension],
-        package: &str,
-        last_type: Option<QualifiedTypeName>,
-    ) -> Self {
+    pub fn new(extensions: &[&'static ShellExtension]) -> Self {
         Self {
             extensions: extensions.into(),
-            package: package.to_string(),
-            last_type,
         }
-    }
-
-    /// Whether this is the module the app's root types are in.
-    ///
-    /// facet-generate generates one module per facet namespace, and asks the
-    /// plugins of every module for their companion files. The sources belong
-    /// only in the module named by the package, which holds the app's types
-    /// that have no namespace of their own.
-    fn is_app_module(&self, config: &CodeGeneratorConfig) -> bool {
-        config.module_name() == self.package
     }
 
     /// One companion file per extension that ships this language, named after
@@ -88,7 +66,7 @@ impl ShellExtensionPlugin {
         extension: &str,
         source_of: fn(&ShellExtension) -> Option<&ShellSource>,
     ) -> Vec<CompanionFile> {
-        if !self.is_app_module(config) {
+        if !is_root_module(config) {
             return vec![];
         }
         self.extensions
@@ -129,14 +107,13 @@ impl ShellExtensionPlugin {
         self.union(source_of, |shipped| shipped.dependencies)
     }
 
-    /// Writes the TypeScript sources after the module's last type, so that
-    /// every type they name is already declared above them.
-    ///
-    /// TypeScript is the one language whose module is a single file, with no
-    /// companion files beside it, so its sources are written into the module
-    /// itself rather than returned from `companion_files`.
-    fn append_typescript(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        if !self.is_app_module(ctx.config) || self.last_type.as_ref() != Some(ctx.container.name) {
+    /// Writes the TypeScript sources into the root module's footer.
+    fn append_typescript(
+        &self,
+        w: &mut dyn IndentWrite,
+        config: &CodeGeneratorConfig,
+    ) -> io::Result<()> {
+        if !is_root_module(config) {
             return Ok(());
         }
 
@@ -163,10 +140,10 @@ impl EmitterPlugin<Swift> for ShellExtensionPlugin {
     /// A Swift package entry declares the package; the target still needs its
     /// edge to the product, which is the extension's to name.
     ///
-    /// The app's target, since that is where the sources were emitted — every
-    /// module is asked, and a namespaced one has none of them.
+    /// The root module's target, since that is where the sources were emitted.
+    /// Every module is asked, and a namespaced one has none of them.
     fn target_dependencies(&self, config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.is_app_module(config) {
+        if !is_root_module(config) {
             return vec![];
         }
         self.union(
@@ -197,8 +174,12 @@ impl EmitterPlugin<CSharp> for ShellExtensionPlugin {
 }
 
 impl EmitterPlugin<TypeScript> for ShellExtensionPlugin {
-    fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {
-        self.append_typescript(w, ctx)
+    fn module_footer(
+        &self,
+        w: &mut dyn IndentWrite,
+        config: &CodeGeneratorConfig,
+    ) -> io::Result<()> {
+        self.append_typescript(w, config)
     }
 
     fn manifest_dependencies(&self) -> Vec<String> {
