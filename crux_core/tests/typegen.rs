@@ -983,7 +983,12 @@ mod facet_shell_extension_test {
     // `#[derive(Facet)]` generates `unsafe` methods.
     #![allow(clippy::unsafe_derive_deserialize)]
 
-    use std::{fs, path::Path, process::Command};
+    use std::{
+        fs,
+        path::Path,
+        process::Command,
+        sync::atomic::{AtomicUsize, Ordering},
+    };
 
     use crux_core::{
         Command as CruxCommand,
@@ -994,10 +999,12 @@ mod facet_shell_extension_test {
         macros::{Operation, effect},
         render::RenderOperation,
         type_generation::facet::{
-            CodeGenerator, Config, ShellExtension, ShellSource, TypeGenError, TypeRegistry,
+            CodeGenerator, Config, Platform, ShellExtension, ShellProtocol, TypeGenError,
+            TypeRegistry,
         },
     };
     use facet::Facet;
+    use include_dir::{Dir, DirEntry, File, include_dir};
     use serde::{Deserialize, Serialize};
 
     // -----------------------------------------------------------------------
@@ -1078,122 +1085,201 @@ mod facet_shell_extension_test {
     // What a capability would ship
     // -----------------------------------------------------------------------
 
-    const SWIFT_SOURCE: &str = r"import Foundation
+    const SWIFT_SOURCE: &str =
+        include_str!("fixtures/shell_extensions/store/swift/common/Store.swift");
+    const KOTLIN_SOURCE: &str =
+        include_str!("fixtures/shell_extensions/store/kotlin/common/Store.kt");
+    const TYPESCRIPT_SOURCE: &str =
+        include_str!("fixtures/shell_extensions/store/typescript/common/store.ts");
+    const CSHARP_SOURCE: &str =
+        include_str!("fixtures/shell_extensions/store/csharp/common/Store.cs");
 
-public protocol StoreHandler: Sendable {
-    func get(_ operation: Get) async -> StoreValue
-}
+    const STORE_NAMES: &[&str] = &[
+        "StoreHandler",
+        "IStoreHandler",
+        "InMemoryStoreHandler",
+        "inMemoryStoreHandler",
+    ];
 
-public struct InMemoryStoreHandler: StoreHandler {
-    public init() {}
+    /// One capability, one extension in each language. The extensions share
+    /// the capability's name and the names they declare.
+    static STORE_SWIFT: ShellExtension = ShellExtension::swift(
+        "Store",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/store/swift"),
+    )
+    .platforms(&[Platform::Apple, Platform::Linux])
+    .foreign_types(STORE_NAMES);
+    static STORE_KOTLIN: ShellExtension = ShellExtension::kotlin(
+        "Store",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/store/kotlin"),
+    )
+    .platforms(&[Platform::Jvm, Platform::Android])
+    .foreign_types(STORE_NAMES);
+    static STORE_TYPESCRIPT: ShellExtension = ShellExtension::typescript(
+        "Store",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/store/typescript"),
+    )
+    .platforms(&[Platform::Web])
+    .foreign_types(STORE_NAMES);
+    static STORE_CSHARP: ShellExtension = ShellExtension::csharp(
+        "Store",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/store/csharp"),
+    )
+    .platforms(&[Platform::DotNet])
+    .foreign_types(STORE_NAMES);
 
-    public func get(_ operation: Get) async -> StoreValue {
-        StoreValue(value: Array(operation.key.utf8))
-    }
-}
-";
+    const STORE: &[&ShellExtension] = &[
+        &STORE_SWIFT,
+        &STORE_KOTLIN,
+        &STORE_TYPESCRIPT,
+        &STORE_CSHARP,
+    ];
 
-    const KOTLIN_SOURCE: &str = r"import java.util.Locale
-
-interface StoreHandler {
-    suspend fun get(operation: Get): StoreValue
-}
-
-object InMemoryStoreHandler : StoreHandler {
-    override suspend fun get(operation: Get): StoreValue =
-        StoreValue(operation.key.lowercase(Locale.ROOT).map { it.code.toUByte() })
-}
-";
-
-    const TYPESCRIPT_SOURCE: &str = r"export interface StoreHandler {
-  get(operation: Get): Promise<StoreValue>;
-}
-
-export const inMemoryStoreHandler: StoreHandler = {
-  async get(operation: Get): Promise<StoreValue> {
-    return new StoreValue([operation.key.length]);
-  },
-};
-";
-
-    const CSHARP_SOURCE: &str = r"using System.Collections.ObjectModel;
-using System.Threading.Tasks;
-
-public interface IStoreHandler
-{
-    Task<StoreValue> Get(Get operation);
-}
-
-public sealed class InMemoryStoreHandler : IStoreHandler
-{
-    public Task<StoreValue> Get(Get operation) =>
-        Task.FromResult(new StoreValue { Value = new ObservableCollection<byte>() });
-}
-";
-
-    static STORE: ShellExtension = ShellExtension::new("Store")
-        .foreign_types(&[
-            "StoreHandler",
-            "IStoreHandler",
-            "InMemoryStoreHandler",
-            "inMemoryStoreHandler",
-        ])
-        .swift(ShellSource::stdlib(SWIFT_SOURCE))
-        .kotlin(ShellSource::stdlib(KOTLIN_SOURCE))
-        .typescript(ShellSource::stdlib(TYPESCRIPT_SOURCE))
-        .csharp(ShellSource::stdlib(CSHARP_SOURCE));
-
-    /// A capability whose source implements an operation the app never sends,
-    /// so registering the extension has to register that operation's types
-    /// too. One operation is an operation's own `register_types_facet`; a
-    /// capability with several names a `fn` in its own `shell` module.
-    static SHIPS_TYPES: ShellExtension = ShellExtension::new("Peeker")
+    /// The protocol of a capability with an operation the app never sends.
+    /// Its `rust_types` registers that operation's types. One operation is
+    /// an operation's own `register_types_facet`. A capability with several
+    /// names a `fn` in its own `shell` module.
+    static PEEKER: ShellProtocol = ShellProtocol::new("Peeker")
         .rust_types(Peek::register_types_facet)
-        .foreign_types(&["PeekerHandler"])
-        .swift(ShellSource::stdlib("public protocol PeekerHandler {}\n"));
+        .swift("public protocol PeekerHandler {}\n", &["PeekerHandler"]);
 
-    /// A capability that ships Swift only. The other languages implement the
-    /// methods themselves.
-    static SWIFT_ONLY: ShellExtension = ShellExtension::new("Clock")
-        .foreign_types(&["ClockHandler"])
-        .swift(ShellSource::stdlib("public protocol ClockHandler {}\n"));
+    /// An implementation of [`PEEKER`]. Registering the extension registers
+    /// its protocol, and so the operation's types.
+    static SHIPS_TYPES: ShellExtension = ShellExtension::swift(
+        "Peeker",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/peeker/swift"),
+    )
+    .protocol(&PEEKER)
+    .platforms(&[Platform::Apple])
+    .foreign_types(&["InMemoryPeekerHandler"]);
+
+    /// A capability that ships Swift, for Apple only. The other languages
+    /// implement the methods themselves.
+    static SWIFT_ONLY: ShellExtension = ShellExtension::swift(
+        "Clock",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/clock/swift"),
+    )
+    .platforms(&[Platform::Apple])
+    .foreign_types(&["ClockHandler"]);
 
     /// A capability whose source needs a library, which is the rare case the
     /// manifest entries are for.
-    static DEPENDENT: ShellExtension = ShellExtension::new("Fetcher")
-        .foreign_types(&["FetcherHandler"])
-        .kotlin(
-            ShellSource::stdlib("interface FetcherHandler\n")
-                .dependencies(&[r#"    implementation("com.squareup.okhttp3:okhttp:4.12.0")"#]),
-        );
+    static DEPENDENT: ShellExtension = ShellExtension::kotlin(
+        "Fetcher",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/fetcher/kotlin"),
+    )
+    .platforms(&[Platform::Jvm, Platform::Android])
+    .foreign_types(&["FetcherHandler"])
+    .dependencies(&[r#"    implementation("com.squareup.okhttp3:okhttp:4.12.0")"#]);
 
     /// A capability whose Swift source needs a package, which in Swift means
     /// two entries: the package, and the target's edge to its product.
-    static SWIFT_DEPENDENT: ShellExtension = ShellExtension::new("Uploader")
-        .foreign_types(&["UploaderHandler"])
-        .swift(
-            ShellSource::stdlib("public protocol UploaderHandler {}\n")
-                .dependencies(&[
-                    r#".package(url: "https://github.com/apple/swift-nio", from: "2.0.0")"#,
-                ])
-                .target_dependencies(&[r#".product(name: "NIOCore", package: "swift-nio")"#]),
-        );
+    static SWIFT_DEPENDENT: ShellExtension = ShellExtension::swift(
+        "Uploader",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/uploader/swift"),
+    )
+    .platforms(&[Platform::Apple])
+    .foreign_types(&["UploaderHandler"])
+    .dependencies(&[r#".package(url: "https://github.com/apple/swift-nio", from: "2.0.0")"#])
+    .target_dependencies(&[r#".product(name: "NIOCore", package: "swift-nio")"#]);
 
-    /// An extension that is not a capability's handler and declares nothing
+    /// Extensions that are not a capability's handler and declare nothing
     /// the checks need to know about: a helper function in each language.
-    static HELPERS: ShellExtension = ShellExtension::new("Helpers")
-        .swift(ShellSource::stdlib(
-            "public func describe(_ value: StoreValue) -> String { \"\\(value.value)\" }\n",
+    static HELPERS_SWIFT: ShellExtension = ShellExtension::swift(
+        "Helpers",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/helpers/swift"),
+    )
+    .platforms(&[Platform::Apple]);
+    static HELPERS_KOTLIN: ShellExtension = ShellExtension::kotlin(
+        "Helpers",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/helpers/kotlin"),
+    )
+    .platforms(&[Platform::Jvm]);
+    static HELPERS_TYPESCRIPT: ShellExtension = ShellExtension::typescript(
+        "Helpers",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/helpers/typescript"),
+    )
+    .platforms(&[Platform::Web]);
+    static HELPERS_CSHARP: ShellExtension = ShellExtension::csharp(
+        "Helpers",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/helpers/csharp"),
+    )
+    .platforms(&[Platform::DotNet]);
+
+    /// A Kotlin capability with a file for Android only: `common/` holds
+    /// `Net.kt` and `Client.kt`, and `android/` holds `AndroidCookies.kt`.
+    static NET: ShellExtension = ShellExtension::kotlin(
+        "Net",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/net/kotlin"),
+    )
+    .platforms(&[Platform::Jvm, Platform::Android])
+    .foreign_types(&["NetHandler", "NetClient", "AndroidCookies"]);
+
+    /// The same capability as [`NET`] and the same source, for the JVM only.
+    static NET_JVM: ShellExtension = ShellExtension::kotlin(
+        "Net",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/net/kotlin"),
+    )
+    .platforms(&[Platform::Jvm])
+    .foreign_types(&["NetHandler", "NetClient", "AndroidCookies"]);
+
+    /// A second Kotlin implementation of the [`NET`] capability, for Android
+    /// only.
+    static NET_OKHTTP: ShellExtension = ShellExtension::kotlin(
+        "Net",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/okhttp/kotlin"),
+    )
+    .platforms(&[Platform::Android])
+    .foreign_types(&["OkHttpNet"]);
+
+    /// A source directory with a misspelled platform directory, `andriod/`.
+    static TYPO: ShellExtension = ShellExtension::kotlin(
+        "Typo",
+        include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/typo/kotlin"),
+    )
+    .platforms(&[Platform::Android]);
+
+    /// Leaks `value`, so that a test can make a `'static` source directory at
+    /// run time.
+    fn leak<T: ?Sized>(value: Box<T>) -> &'static T {
+        Box::leak(value)
+    }
+
+    /// A source directory made at run time, for the file names a repository
+    /// cannot hold, such as `CON.swift`. Each path is `<directory>/<file>`, or
+    /// a bare file name for a file at the root.
+    fn source_set(files: &[(&str, &str)]) -> Dir<'static> {
+        let mut root: Vec<DirEntry<'static>> = Vec::new();
+        let mut directories: Vec<(&'static str, Vec<DirEntry<'static>>)> = Vec::new();
+        for (path, contents) in files {
+            let path: &'static str = leak(path.to_string().into_boxed_str());
+            let contents: &'static [u8] = leak(contents.as_bytes().to_vec().into_boxed_slice());
+            let file = DirEntry::File(File::new(path, contents));
+            match path.split_once('/') {
+                None => root.push(file),
+                Some((directory, _)) => {
+                    match directories.iter_mut().find(|(name, _)| *name == directory) {
+                        Some((_, entries)) => entries.push(file),
+                        None => directories.push((directory, vec![file])),
+                    }
+                }
+            }
+        }
+        for (directory, entries) in directories {
+            root.push(DirEntry::Dir(Dir::new(
+                directory,
+                leak(entries.into_boxed_slice()),
+            )));
+        }
+        Dir::new("", leak(root.into_boxed_slice()))
+    }
+
+    /// A Swift extension for Apple, made at run time from `files`.
+    fn swift_extension(name: &'static str, files: &[(&str, &str)]) -> &'static ShellExtension {
+        leak(Box::new(
+            ShellExtension::swift(name, source_set(files)).platforms(&[Platform::Apple]),
         ))
-        .kotlin(ShellSource::stdlib(
-            "fun describe(value: StoreValue): String = value.value.toString()\n",
-        ))
-        .typescript(ShellSource::stdlib(
-            "export function describe(value: StoreValue): string {\n  return value.value.join(\",\");\n}\n",
-        ))
-        .csharp(ShellSource::stdlib(
-            "public static class Helpers\n{\n    public static string Describe(StoreValue value) => value.Value.Count.ToString();\n}\n",
-        ));
+    }
 
     /// The registry the tests generate from: the app, plus whichever shell
     /// extensions the test registers. Registering an extension is where its
@@ -1232,6 +1318,15 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         }
     }
 
+    /// Why generating Swift with `extensions` was rejected.
+    fn swift_rejection(extensions: &[&'static ShellExtension]) -> String {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        match generator(extensions).swift(&Config::builder("App", dir.path()).build()) {
+            Ok(()) => panic!("should reject the extension"),
+            Err(error) => message_of(error),
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Emission
     // -----------------------------------------------------------------------
@@ -1239,7 +1334,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn swift_writes_the_source_into_a_companion_file() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
-        generator(&[&STORE])
+        generator(STORE)
             .swift(&Config::builder("App", dir.path()).build())
             .expect("swift type generation should succeed");
 
@@ -1265,7 +1360,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn kotlin_writes_the_source_into_a_companion_file() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
-        generator(&[&STORE])
+        generator(STORE)
             .kotlin(&Config::builder("com.example.shared", dir.path()).build())
             .expect("kotlin type generation should succeed");
 
@@ -1291,7 +1386,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn csharp_writes_the_source_into_a_companion_file() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
-        generator(&[&STORE])
+        generator(STORE)
             .csharp(&Config::builder("Example.Shared", dir.path()).build())
             .expect("c# type generation should succeed");
 
@@ -1315,12 +1410,13 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         );
     }
 
-    /// TypeScript modules are one file, so the source is appended after the
-    /// types rather than written beside them.
+    /// TypeScript modules are one file, so the source goes in the module
+    /// footer rather than beside the module: after every type, and after
+    /// `Core`, as the last thing in the file.
     #[test]
-    fn typescript_appends_the_source_after_the_types() {
+    fn typescript_ends_the_module_with_the_source() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
-        generator(&[&STORE])
+        generator(STORE)
             .typescript(&Config::builder("shared_types", dir.path()).build())
             .expect("typescript type generation should succeed");
 
@@ -1332,9 +1428,12 @@ public sealed class InMemoryStoreHandler : IStoreHandler
             "expected the shipped source verbatim:\n{source}"
         );
         assert!(
-            source.find("export class StoreValue").unwrap()
-                < source.find("export interface StoreHandler").unwrap(),
-            "the shipped source should come after the types it names"
+            source.trim_end().ends_with(TYPESCRIPT_SOURCE.trim_end()),
+            "the shipped source should be the tail of the module:\n{source}"
+        );
+        assert!(
+            source.contains("export class Core"),
+            "expected a generated `Core` ahead of the shipped source:\n{source}"
         );
 
         // `typescript()` runs `tsc`, so this is a real compile of the shipped
@@ -1356,10 +1455,10 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         );
     }
 
-    /// An extension that does not ship a language leaves that language exactly
-    /// as it was.
+    /// An extension of one language leaves the other languages exactly as
+    /// they were.
     #[test]
-    fn a_language_without_source_emits_nothing() {
+    fn other_languages_extensions_are_ignored() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
         let generator = generator(&[&SWIFT_ONLY]);
 
@@ -1386,7 +1485,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn without_effect_handlers_still_emits_shell_extensions() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
-        generator(&[&STORE])
+        generator(STORE)
             .without_effect_handlers()
             .swift(&Config::builder("App", dir.path()).build())
             .expect("swift type generation should succeed");
@@ -1410,9 +1509,11 @@ public sealed class InMemoryStoreHandler : IStoreHandler
             .expect("should register the app")
             .register_type::<Tag>()
             .expect("should register the namespaced type");
-        registry
-            .shell_extension(&STORE)
-            .expect("should register the shell extension");
+        for extension in STORE {
+            registry
+                .shell_extension(extension)
+                .expect("should register the shell extension");
+        }
         let generator = registry.build().expect("should build the registry");
 
         let swift = tempfile::tempdir().expect("should create a temp dir");
@@ -1453,11 +1554,12 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         assert!(!kit.contains("StoreHandler"), "unexpected module:\n{kit}");
     }
 
-    /// A shipped handler implements the whole capability, so the extension
-    /// registers every type it names, including the operations this app's
-    /// `Effect` never carries.
+    /// A shipped handler implements the whole capability, so registering the
+    /// extension registers its protocol, and the protocol registers every
+    /// type of the capability, including the operations this app's `Effect`
+    /// never carries.
     #[test]
-    fn registering_an_extension_registers_the_types_its_source_names() {
+    fn registering_an_extension_registers_its_protocol_and_the_types() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
         generator(&[&SHIPS_TYPES])
             .swift(&Config::builder("App", dir.path()).build())
@@ -1467,7 +1569,19 @@ public sealed class InMemoryStoreHandler : IStoreHandler
             .expect("should write a Swift module");
         assert!(
             source.contains("struct Peek"),
-            "the extension's own operation should be generated:\n{source}"
+            "the capability's operation should be generated:\n{source}"
+        );
+        let protocol = fs::read_to_string(dir.path().join("App/Sources/App/Peeker.swift"))
+            .expect("should write the protocol beside the module");
+        assert!(
+            protocol.contains("public protocol PeekerHandler {}"),
+            "unexpected protocol:\n{protocol}"
+        );
+        assert!(
+            dir.path()
+                .join("App/Sources/App/InMemoryPeeker.swift")
+                .exists(),
+            "should write the implementation beside the module"
         );
 
         // …and only because the extension asked for it.
@@ -1480,6 +1594,505 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         assert!(
             !source.contains("struct Peek"),
             "unexpected type:\n{source}"
+        );
+    }
+
+    /// The extensions of one capability, one per language, register the
+    /// capability's protocol, and so its types, once.
+    #[test]
+    fn a_capability_registers_its_types_once() {
+        static CALLS: AtomicUsize = AtomicUsize::new(0);
+
+        // The shape `rust_types` takes, which can fail.
+        #[allow(clippy::unnecessary_wraps)]
+        fn register(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+            CALLS.fetch_add(1, Ordering::SeqCst);
+            Ok(registry)
+        }
+
+        static COUNTED: ShellProtocol = ShellProtocol::new("Counted").rust_types(register);
+
+        static SWIFT: ShellExtension = ShellExtension::swift(
+            "Counted",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/clock/swift"),
+        )
+        .protocol(&COUNTED)
+        .platforms(&[Platform::Apple]);
+        static KOTLIN: ShellExtension = ShellExtension::kotlin(
+            "Counted",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/fetcher/kotlin"),
+        )
+        .protocol(&COUNTED)
+        .platforms(&[Platform::Jvm]);
+
+        generator(&[&SWIFT, &KOTLIN]);
+        assert_eq!(CALLS.load(Ordering::SeqCst), 1);
+    }
+
+    /// TypeScript gets the files in the order of their paths, so
+    /// `common/Format.ts` comes before `common/Helpers.ts`.
+    #[test]
+    fn typescript_appends_the_files_in_path_order() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&HELPERS_TYPESCRIPT])
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("typescript type generation should succeed");
+
+        let module = fs::read_to_string(dir.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+        let format = module
+            .find("export function format(")
+            .expect("should append Format.ts");
+        let describe = module
+            .find("export function describe(")
+            .expect("should append Helpers.ts");
+        assert!(format < describe, "unexpected order:\n{module}");
+    }
+
+    // -----------------------------------------------------------------------
+    // Platforms
+    // -----------------------------------------------------------------------
+
+    /// `kotlin` generates for the JVM, and `generate` for the platform it is
+    /// given. Both get `common/`, and only Android gets `android/`.
+    #[test]
+    fn the_platform_directory_is_emitted_for_its_platform_only() {
+        let jvm = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&NET])
+            .kotlin(&Config::builder("com.example.shared", jvm.path()).build())
+            .expect("kotlin type generation should succeed");
+        let package = jvm.path().join("com/example/shared");
+        assert!(package.join("Net.kt").exists());
+        assert!(package.join("Client.kt").exists());
+        assert!(!package.join("AndroidCookies.kt").exists());
+
+        let android = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&NET])
+            .generate(
+                Platform::Android,
+                &Config::builder("com.example.shared", android.path()).build(),
+            )
+            .expect("kotlin type generation should succeed");
+        let package = android.path().join("com/example/shared");
+        assert!(package.join("Net.kt").exists());
+        assert!(package.join("Client.kt").exists());
+        let cookies = fs::read_to_string(package.join("AndroidCookies.kt"))
+            .expect("should write the Android file beside the module");
+        assert!(cookies.contains("class AndroidCookies"), "{cookies}");
+    }
+
+    /// The generator keeps no platform, so one generator generates Kotlin for
+    /// the JVM and for Android, into two output directories.
+    #[test]
+    fn one_generator_generates_for_several_platforms() {
+        let generator = generator(&[&NET]);
+
+        let jvm = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .generate(
+                Platform::Jvm,
+                &Config::builder("com.example.shared", jvm.path()).build(),
+            )
+            .expect("kotlin type generation for the JVM should succeed");
+
+        let android = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .generate(
+                Platform::Android,
+                &Config::builder("com.example.shared", android.path()).build(),
+            )
+            .expect("kotlin type generation for Android should succeed");
+
+        let jvm = jvm.path().join("com/example/shared");
+        let android = android.path().join("com/example/shared");
+        assert!(jvm.join("Net.kt").exists());
+        assert!(android.join("Net.kt").exists());
+        assert!(!jvm.join("AndroidCookies.kt").exists());
+        assert!(android.join("AndroidCookies.kt").exists());
+    }
+
+    /// `generate` with a language's default platform is the language's own
+    /// method.
+    #[test]
+    fn generate_for_the_default_platform_is_the_language_method() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[&SWIFT_ONLY])
+            .generate(Platform::Apple, &Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+        assert!(dir.path().join("App/Sources/App/Clock.swift").exists());
+    }
+
+    /// One capability can have a Kotlin extension for each platform, and
+    /// each platform gets its own.
+    #[test]
+    fn each_platform_gets_its_own_extension_of_a_capability() {
+        let generator = generator(&[&NET_JVM, &NET_OKHTTP]);
+
+        let jvm = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .generate(
+                Platform::Jvm,
+                &Config::builder("com.example.shared", jvm.path()).build(),
+            )
+            .expect("kotlin type generation should succeed");
+        let package = jvm.path().join("com/example/shared");
+        assert!(package.join("Net.kt").exists());
+        assert!(!package.join("OkHttpNet.kt").exists());
+
+        let android = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .generate(
+                Platform::Android,
+                &Config::builder("com.example.shared", android.path()).build(),
+            )
+            .expect("kotlin type generation should succeed");
+        let package = android.path().join("com/example/shared");
+        assert!(!package.join("Net.kt").exists());
+        assert!(package.join("OkHttpNet.kt").exists());
+    }
+
+    /// The app registered a capability's Swift extension, but none of its
+    /// Swift extensions runs on the platform being generated.
+    #[test]
+    fn a_platform_no_extension_lists_is_rejected() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let error = generator(&[&SWIFT_ONLY])
+            .generate(Platform::Linux, &Config::builder("App", dir.path()).build())
+            .expect_err("should reject the platform");
+        let message = message_of(error);
+        assert!(
+            message.contains(
+                "the registered Swift extensions of shell extension `Clock` list the platforms Apple, but Swift is generated for the Linux platform"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// Crux cannot choose between two extensions of one capability that both
+    /// run on the platform.
+    #[test]
+    fn two_extensions_for_one_platform_are_rejected() {
+        let message = swift_rejection(&[&STORE_SWIFT, &STORE_SWIFT]);
+        assert!(
+            message.contains(
+                "2 registered Swift extensions of shell extension `Store` list the Apple platform"
+            ),
+            "unexpected message: {message}"
+        );
+
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let error = generator(&[&NET, &NET_OKHTTP])
+            .generate(
+                Platform::Android,
+                &Config::builder("com.example.shared", dir.path()).build(),
+            )
+            .expect_err("should reject the two extensions");
+        let message = message_of(error);
+        assert!(
+            message.contains(
+                "2 registered Kotlin extensions of shell extension `Net` list the Android platform"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// Each platform belongs to one language, and an extension lists the
+    /// platforms of its own language.
+    #[test]
+    fn an_extension_cannot_list_a_platform_of_another_language() {
+        static MISMATCH: ShellExtension = ShellExtension::kotlin(
+            "Mismatch",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/fetcher/kotlin"),
+        )
+        .platforms(&[Platform::Jvm, Platform::Apple]);
+
+        let message = rejection(&[&MISMATCH]);
+        assert!(
+            message.contains(
+                "shell extension `Mismatch` is Kotlin source, but it lists the Apple platform, which is a Swift platform"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// An extension that lists no platforms is never emitted, which is a
+    /// mistake.
+    #[test]
+    fn an_extension_has_to_list_a_platform() {
+        static NONE: ShellExtension = ShellExtension::kotlin(
+            "Nowhere",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/fetcher/kotlin"),
+        );
+
+        let message = rejection(&[&NONE]);
+        assert!(
+            message.contains("shell extension `Nowhere` (Kotlin) lists no platforms"),
+            "unexpected message: {message}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // The source directory is checked
+    // -----------------------------------------------------------------------
+
+    /// A misspelled platform directory would otherwise be left out without a
+    /// word.
+    #[test]
+    fn an_unknown_directory_is_rejected() {
+        let message = rejection(&[&TYPO]);
+        assert!(
+            message.contains(
+                "shell extension `Typo` has the directory `andriod/`, which crux does not know"
+            ),
+            "unexpected message: {message}"
+        );
+        assert!(
+            message.contains("`common/`, `jvm/`, `android/`"),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// A platform of another language is not a directory of this one.
+    #[test]
+    fn another_languages_platform_directory_is_rejected() {
+        let extension = swift_extension(
+            "Wrong",
+            &[
+                ("common/Wrong.swift", "// nothing\n"),
+                ("android/Wrong.swift", "// nothing\n"),
+            ],
+        );
+        let message = rejection(&[extension]);
+        assert!(
+            message.contains("shell extension `Wrong` has the directory `android/`"),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn a_file_at_the_root_is_rejected() {
+        let extension = swift_extension("Loose", &[("Loose.swift", "// nothing\n")]);
+        let message = rejection(&[extension]);
+        assert!(
+            message.contains(
+                "shell extension `Loose` has the file `Loose.swift` at the root of its source directory"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn a_nested_directory_is_rejected() {
+        static NESTED: ShellExtension = ShellExtension::swift(
+            "Nested",
+            Dir::new(
+                "",
+                &[DirEntry::Dir(Dir::new(
+                    "common",
+                    &[DirEntry::Dir(Dir::new(
+                        "common/deeper",
+                        &[DirEntry::File(File::new(
+                            "common/deeper/Nested.swift",
+                            b"// nothing\n",
+                        ))],
+                    ))],
+                ))],
+            ),
+        )
+        .platforms(&[Platform::Apple]);
+
+        let message = rejection(&[&NESTED]);
+        assert!(
+            message.contains(
+                "shell extension `Nested` has the directory `common/deeper/`. The directory `common/` can contain only files."
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// A Swift extension holds Swift files.
+    #[test]
+    fn a_file_of_another_language_is_rejected() {
+        let extension = swift_extension("Mixed", &[("common/Mixed.kt", "// nothing\n")]);
+        let message = rejection(&[extension]);
+        assert!(
+            message.contains(
+                "shell extension `Mixed` has the file `common/Mixed.kt`, which is not a Swift source file"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// Finder writes `.DS_Store` into a directory it opens, so a hidden file
+    /// is left out rather than rejected.
+    #[test]
+    fn a_hidden_file_is_ignored() {
+        let extension = swift_extension(
+            "Hidden",
+            &[
+                (".DS_Store", "\0"),
+                ("common/.DS_Store", "\0"),
+                ("common/Hidden.swift", "public protocol HiddenHandler {}\n"),
+            ],
+        );
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[extension])
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+        let sources = dir.path().join("App/Sources/App");
+        assert!(sources.join("Hidden.swift").exists());
+        assert!(!sources.join(".DS_Store").exists());
+    }
+
+    /// The file is written beside the module under its own name, in every
+    /// language and on every file system, so the name has to look like an
+    /// identifier.
+    #[test]
+    fn a_file_name_must_be_a_bare_identifier() {
+        for stem in [
+            "Store ",
+            "Has Space",
+            "Ünicode",
+            "-Store",
+            "_Store",
+            "1Store",
+            "Http:Store",
+            "Store*",
+            "Sto\0re",
+        ] {
+            let path = format!("common/{stem}.swift");
+            let extension = swift_extension("Named", &[(&path, "// nothing\n")]);
+            let message = rejection(&[extension]);
+            assert!(
+                message.contains(&format!(
+                    "shell extension `Named` has the file `{path}`, whose name cannot be used as a file name in every language"
+                )),
+                "unexpected message for {stem:?}: {message}"
+            );
+        }
+    }
+
+    /// The name of the capability is checked as an identifier too.
+    #[test]
+    fn an_extension_name_must_be_an_identifier() {
+        for name in ["", "Has Space", "1Store", "Http/Store"] {
+            let extension = swift_extension(
+                leak(name.to_string().into_boxed_str()),
+                &[("common/Fine.swift", "// nothing\n")],
+            );
+            let message = rejection(&[extension]);
+            assert!(
+                message.contains(&format!(
+                    "shell extension `{name}` has a name that is not an identifier"
+                )),
+                "unexpected message for {name:?}: {message}"
+            );
+        }
+    }
+
+    /// Windows will not create a file called `CON.swift` or `lpt1.swift`.
+    #[test]
+    fn a_file_cannot_take_a_windows_device_name() {
+        for stem in [
+            "CON", "con", "Nul", "aux", "PRN", "COM1", "com9", "LPT1", "Lpt9",
+        ] {
+            let path = format!("common/{stem}.swift");
+            let extension = swift_extension("Device", &[(&path, "// nothing\n")]);
+            let message = rejection(&[extension]);
+            assert!(
+                message.contains(&format!(
+                    "shell extension `Device` has the file `{path}`, whose name Windows reserves for a device"
+                )),
+                "unexpected message for {stem:?}: {message}"
+            );
+        }
+    }
+
+    /// `FfiBridge.swift` is the generated bridge's own file, so a source file
+    /// of that name, in any case, would overwrite it.
+    #[test]
+    fn a_file_cannot_take_a_generated_file_name() {
+        for path in ["common/FfiBridge.swift", "common/ffibridge.swift"] {
+            let extension = swift_extension("Bridge", &[(path, "// nothing\n")]);
+            let message = rejection(&[extension]);
+            assert!(
+                message.contains("would be written over the generated `FfiBridge` file"),
+                "unexpected message: {message}"
+            );
+        }
+    }
+
+    /// A file only needs a name the module's own files do not take, so it may
+    /// match a type the app or the shell API declares.
+    #[test]
+    fn a_file_may_be_named_like_a_type() {
+        let extension = swift_extension(
+            "Typed",
+            &[
+                ("common/Get.swift", "// nothing\n"),
+                ("common/Effect.swift", "// nothing\n"),
+                ("common/Core.swift", "// nothing\n"),
+            ],
+        );
+
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[extension])
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+        assert!(dir.path().join("App/Sources/App/Get.swift").exists());
+        assert!(dir.path().join("App/Sources/App/Core.swift").exists());
+    }
+
+    /// Two emitted files of the same name, ignoring case, would overwrite
+    /// each other on a case-insensitive file system.
+    #[test]
+    fn two_emitted_files_cannot_share_a_name() {
+        let lower = swift_extension("Lower", &[("common/store.swift", "// nothing\n")]);
+
+        let message = swift_rejection(&[&STORE_SWIFT, lower]);
+        assert!(
+            message.contains(
+                "the `Store` shell extension's `common/Store.swift` and the `Lower` shell extension's `common/store.swift` are both written beside the generated module"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// A file in `common/` and a file in the platform's directory are emitted
+    /// together, so they cannot share a name either. Another platform's file
+    /// of the same name is fine, because it is never emitted with them.
+    #[test]
+    fn a_platform_file_cannot_share_a_name_with_a_common_file() {
+        let extension = leak(Box::new(
+            ShellExtension::swift(
+                "Split",
+                source_set(&[
+                    ("common/Split.swift", "// nothing\n"),
+                    ("apple/Transport.swift", "// apple\n"),
+                    ("linux/Transport.swift", "// linux\n"),
+                    ("linux/split.swift", "// nothing\n"),
+                ]),
+            )
+            .platforms(&[Platform::Apple, Platform::Linux]),
+        ));
+
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&[extension])
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+        let transport = fs::read_to_string(dir.path().join("App/Sources/App/Transport.swift"))
+            .expect("should write the Apple file");
+        assert!(transport.contains("// apple"), "{transport}");
+
+        let error = generator(&[extension])
+            .generate(Platform::Linux, &Config::builder("App", dir.path()).build())
+            .expect_err("should reject the two files");
+        let message = message_of(error);
+        assert!(
+            message.contains(
+                "`common/Split.swift` and the `Split` shell extension's `linux/split.swift`"
+            ),
+            "unexpected message: {message}"
         );
     }
 
@@ -1545,134 +2158,19 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     }
 
     // -----------------------------------------------------------------------
-    // Registration is checked
+    // Declared names are checked
     // -----------------------------------------------------------------------
-
-    #[test]
-    fn two_extensions_cannot_share_a_name() {
-        let message = rejection(&[&STORE, &STORE]);
-        assert!(
-            message.contains("shell extension `Store` is registered after shell extension `Store`"),
-            "unexpected message: {message}"
-        );
-        assert!(
-            message.contains("only one of them can be registered"),
-            "unexpected message: {message}"
-        );
-    }
-
-    /// The name is a file stem, and `Store.swift` overwrites `store.swift` on
-    /// a case-insensitive file system.
-    #[test]
-    fn two_extensions_cannot_share_a_name_in_different_case() {
-        static LOWER: ShellExtension =
-            ShellExtension::new("store").swift(ShellSource::stdlib("// nothing\n"));
-
-        let message = rejection(&[&STORE, &LOWER]);
-        assert!(
-            message.contains("shell extension `store` is registered after shell extension `Store`"),
-            "unexpected message: {message}"
-        );
-    }
-
-    /// The name is written as a file beside the module, in every language and
-    /// on every file system, so it has to look like an identifier.
-    #[test]
-    fn an_extension_name_must_be_a_bare_file_stem() {
-        for name in [
-            "",
-            "../Store",
-            "Http/Store",
-            "Http\\Store",
-            "Store.swift",
-            "Store.",
-            "Store ",
-            "Has Space",
-            "Ünicode",
-            "-Store",
-            "_Store",
-            "1Store",
-            "Http:Store",
-            "Store*",
-            "Sto\0re",
-        ] {
-            let extension: &'static ShellExtension = Box::leak(Box::new(
-                ShellExtension::new(name).swift(ShellSource::stdlib("// nothing\n")),
-            ));
-            let message = rejection(&[extension]);
-            assert!(
-                message.contains(&format!(
-                    "shell extension `{name}` has a name that cannot be used as a file name"
-                )),
-                "unexpected message for {name:?}: {message}"
-            );
-        }
-    }
-
-    /// Windows will not create a file called `CON.swift` or `lpt1.kt`.
-    #[test]
-    fn an_extension_cannot_take_a_windows_device_name() {
-        for name in [
-            "CON", "con", "Nul", "aux", "PRN", "COM1", "com9", "LPT1", "Lpt9",
-        ] {
-            let extension: &'static ShellExtension = Box::leak(Box::new(
-                ShellExtension::new(name).swift(ShellSource::stdlib("// nothing\n")),
-            ));
-            let message = rejection(&[extension]);
-            assert!(
-                message.contains(&format!(
-                    "shell extension `{name}` has a name Windows reserves for a device"
-                )),
-                "unexpected message for {name:?}: {message}"
-            );
-        }
-    }
-
-    /// `FfiBridge.swift` is the generated bridge's own file, so an extension
-    /// of that name, in any case, would overwrite it.
-    #[test]
-    fn an_extension_cannot_take_a_generated_file_name() {
-        static BRIDGE: ShellExtension =
-            ShellExtension::new("FfiBridge").swift(ShellSource::stdlib("// nothing\n"));
-        static LOWER_BRIDGE: ShellExtension =
-            ShellExtension::new("ffibridge").swift(ShellSource::stdlib("// nothing\n"));
-
-        for extension in [&BRIDGE, &LOWER_BRIDGE] {
-            let message = rejection(&[extension]);
-            assert!(
-                message.contains("would be written over the generated `FfiBridge` file"),
-                "unexpected message: {message}"
-            );
-        }
-    }
-
-    /// The name only names the extension's files, which sit beside the
-    /// module's own file, so it may match a type the app or the shell API
-    /// declares.
-    #[test]
-    fn an_extension_may_be_named_like_a_type() {
-        static GET: ShellExtension =
-            ShellExtension::new("Get").swift(ShellSource::stdlib("// nothing\n"));
-        static EFFECT: ShellExtension =
-            ShellExtension::new("Effect").swift(ShellSource::stdlib("// nothing\n"));
-        static CORE: ShellExtension =
-            ShellExtension::new("Core").swift(ShellSource::stdlib("// nothing\n"));
-
-        let dir = tempfile::tempdir().expect("should create a temp dir");
-        generator(&[&GET, &EFFECT, &CORE])
-            .swift(&Config::builder("App", dir.path()).build())
-            .expect("swift type generation should succeed");
-        assert!(dir.path().join("App/Sources/App/Get.swift").exists());
-        assert!(dir.path().join("App/Sources/App/Core.swift").exists());
-    }
 
     /// The root module imports the serialization runtime, so an extension
     /// cannot declare one of the names it brings in.
     #[test]
     fn an_extension_cannot_declare_a_runtime_name() {
-        static CLASH: ShellExtension = ShellExtension::new("Codec")
-            .foreign_types(&["Serializer"])
-            .swift(ShellSource::stdlib("public protocol Serializer {}\n"));
+        static CLASH: ShellExtension = ShellExtension::swift(
+            "Codec",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/clock/swift"),
+        )
+        .platforms(&[Platform::Apple])
+        .foreign_types(&["Serializer"]);
 
         let message = rejection(&[&CLASH]);
         assert!(
@@ -1687,9 +2185,12 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     /// extension cannot declare its name.
     #[test]
     fn an_extension_cannot_declare_a_namespace_name() {
-        static CLASH: ShellExtension = ShellExtension::new("Kits")
-            .foreign_types(&["Kit"])
-            .swift(ShellSource::stdlib("public struct Kit {}\n"));
+        static CLASH: ShellExtension = ShellExtension::swift(
+            "Kits",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/clock/swift"),
+        )
+        .platforms(&[Platform::Apple])
+        .foreign_types(&["Kit"]);
 
         let mut registry = TypeRegistry::new();
         registry
@@ -1716,9 +2217,12 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     /// declare a name the app's types already use.
     #[test]
     fn an_extension_cannot_declare_a_registered_type_name() {
-        static CLASH: ShellExtension = ShellExtension::new("Getter")
-            .foreign_types(&["Get"])
-            .swift(ShellSource::stdlib("public struct Get {}\n"));
+        static CLASH: ShellExtension = ShellExtension::swift(
+            "Getter",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/clock/swift"),
+        )
+        .platforms(&[Platform::Apple])
+        .foreign_types(&["Get"]);
 
         let message = rejection(&[&CLASH]);
         assert!(
@@ -1742,7 +2246,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
             .register_type::<StoreHandler>()
             .expect("should register the clashing type");
         registry
-            .shell_extension(&STORE)
+            .shell_extension(&STORE_SWIFT)
             .expect("should register the shell extension");
         let message = match registry.build() {
             Ok(_) => panic!("should reject the clashing type"),
@@ -1754,15 +2258,18 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         );
     }
 
-    /// Two extensions declaring the same name would declare it twice in one
-    /// module.
+    /// Extensions of two capabilities declaring the same name would declare
+    /// it twice in one module.
     #[test]
-    fn two_extensions_cannot_declare_the_same_name() {
-        static OTHER_STORE: ShellExtension = ShellExtension::new("OtherStore")
-            .foreign_types(&["StoreHandler"])
-            .swift(ShellSource::stdlib("public protocol StoreHandler {}\n"));
+    fn two_capabilities_cannot_declare_the_same_name() {
+        static OTHER_STORE: ShellExtension = ShellExtension::swift(
+            "OtherStore",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/clock/swift"),
+        )
+        .platforms(&[Platform::Apple])
+        .foreign_types(&["StoreHandler"]);
 
-        let message = rejection(&[&STORE, &OTHER_STORE]);
+        let message = rejection(&[&STORE_SWIFT, &OTHER_STORE]);
         assert!(
             message
                 .contains("shell extensions `Store` and `OtherStore` both declare `StoreHandler`"),
@@ -1774,9 +2281,12 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     /// such as `EffectHandler`.
     #[test]
     fn an_extension_cannot_declare_a_reserved_name() {
-        static CLASH: ShellExtension = ShellExtension::new("Effect")
-            .foreign_types(&["EffectHandler"])
-            .swift(ShellSource::stdlib("public protocol EffectHandler {}\n"));
+        static CLASH: ShellExtension = ShellExtension::swift(
+            "Effect",
+            include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/shell_extensions/clock/swift"),
+        )
+        .platforms(&[Platform::Apple])
+        .foreign_types(&["EffectHandler"]);
 
         let message = rejection(&[&CLASH]);
         assert!(
@@ -1791,7 +2301,12 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     /// it ships.
     #[test]
     fn an_extension_that_declares_nothing_is_emitted() {
-        let generator = generator(&[&HELPERS]);
+        let generator = generator(&[
+            &HELPERS_SWIFT,
+            &HELPERS_KOTLIN,
+            &HELPERS_TYPESCRIPT,
+            &HELPERS_CSHARP,
+        ]);
 
         let swift = tempfile::tempdir().expect("should create a temp dir");
         generator
@@ -1829,64 +2344,71 @@ public sealed class InMemoryStoreHandler : IStoreHandler
         );
     }
 
+    // -----------------------------------------------------------------------
+    // A file cannot overwrite the module
+    // -----------------------------------------------------------------------
+
     /// The check ignores case: on a case-insensitive file system `Store.swift`
     /// overwrites `store.swift`.
     #[test]
-    fn an_extension_cannot_be_named_after_the_module_in_another_case() {
+    fn a_file_cannot_be_named_after_the_module_in_another_case() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
-        let generator = generator(&[&STORE]);
+        let generator = generator(STORE);
 
         let error = generator
             .swift(&Config::builder("store", dir.path()).build())
             .expect_err("should reject the package that would be overwritten");
+        let message = message_of(error);
         assert!(
-            message_of(error)
-                .contains("the `Store` shell extension is written beside the generated module"),
+            message.contains(
+                "the `Store` shell extension's `common/Store.swift` is written beside the generated module"
+            ),
+            "unexpected message: {message}"
         );
 
         let error = generator
             .csharp(&Config::builder("Crux.STORE", dir.path()).build())
             .expect_err("should reject the namespace that would be overwritten");
-        assert!(message_of(error).contains("`Store` shell extension"));
+        assert!(message_of(error).contains("`Store` shell extension's `common/Store.cs`"));
     }
 
     /// The companion file sits beside the module's own source file, and the
     /// module names that after the last segment of its package, so a package
-    /// ending in the extension's name would have the extension overwrite the
-    /// types.
+    /// ending in the file's name would have the file overwrite the types.
     #[test]
-    fn an_extension_cannot_be_named_after_the_module_it_is_written_beside() {
-        // Swift names the module's file after the whole package name, in
-        // `UpperCamelCase`, so `shared_types` writes `SharedTypes.swift`.
-        static SHARED_TYPES: ShellExtension =
-            ShellExtension::new("SharedTypes").swift(ShellSource::stdlib("// nothing\n"));
-
+    fn a_file_cannot_be_named_after_the_module_it_is_written_beside() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
-        let generator = generator(&[&STORE]);
+        let generator = generator(STORE);
 
         let error = generator
             .csharp(&Config::builder("Crux.Store", dir.path()).build())
             .expect_err("should reject the package that would be overwritten");
         let message = message_of(error);
         assert!(
-            message.contains("the `Store` shell extension is written beside the generated module"),
+            message.contains(
+                "the `Store` shell extension's `common/Store.cs` is written beside the generated module"
+            ),
             "unexpected message: {message}"
         );
 
         let error = generator
             .kotlin(&Config::builder("com.example.store", dir.path()).build())
             .expect_err("should reject the package that would be overwritten");
-        assert!(message_of(error).contains("`Store` shell extension"));
+        assert!(message_of(error).contains("`Store` shell extension's `common/Store.kt`"));
 
         let error = generator
             .swift(&Config::builder("Store", dir.path()).build())
             .expect_err("should reject the package that would be overwritten");
-        assert!(message_of(error).contains("`Store` shell extension"));
+        assert!(message_of(error).contains("`Store` shell extension's `common/Store.swift`"));
 
-        let error = self::generator(&[&SHARED_TYPES])
+        // Swift names the module's file after the whole package name, in
+        // `UpperCamelCase`, so `shared_types` writes `SharedTypes.swift`.
+        let shared_types =
+            swift_extension("Shared", &[("common/SharedTypes.swift", "// nothing\n")]);
+        let error = self::generator(&[shared_types])
             .swift(&Config::builder("shared_types", dir.path()).build())
             .expect_err("should reject the package that would be overwritten");
-        assert!(message_of(error).contains("`SharedTypes` shell extension"));
+        assert!(message_of(error).contains("`common/SharedTypes.swift`"));
 
         // TypeScript appends the source to the module rather than writing a
         // file beside it, so there is nothing to overwrite.
@@ -1927,7 +2449,7 @@ public sealed class InMemoryStoreHandler : IStoreHandler
     #[test]
     fn csharp_shipped_source_compiles() {
         let dir = tempfile::tempdir().expect("should create a temp dir");
-        generator(&[&STORE])
+        generator(STORE)
             .csharp(&Config::builder("Example.Shared", dir.path()).build())
             .expect("c# type generation should succeed");
 
@@ -1951,11 +2473,12 @@ mod facet_shell_protocol_test {
         macros::{Operation, effect},
         render::RenderOperation,
         type_generation::facet::{
-            CodeGenerator, Config, ShellExtension, ShellProtocol, ShellSource, TypeGenError,
+            CodeGenerator, Config, Platform, ShellExtension, ShellProtocol, TypeGenError,
             TypeRegistry,
         },
     };
     use facet::Facet;
+    use include_dir::{Dir, DirEntry, File};
     use serde::{Deserialize, Serialize};
 
     // -----------------------------------------------------------------------
@@ -2174,15 +2697,97 @@ public interface IStoreHandler
         pub whoops: String,
     }
 
-    /// An extension with the name of the protocol, for the clash test.
-    static STORE_EXTENSION: ShellExtension = ShellExtension::new("store")
-        .foreign_types(&["InMemoryStore"])
-        .swift(ShellSource::stdlib("public struct InMemoryStore {}\n"));
+    /// An implementation of the protocol of `Store`, in Swift. It declares
+    /// only its own name, and the protocol declares `StoreHandler`.
+    static IN_MEMORY_SWIFT: ShellExtension = ShellExtension::swift(
+        "Store",
+        Dir::new(
+            "",
+            &[DirEntry::Dir(Dir::new(
+                "common",
+                &[DirEntry::File(File::new(
+                    "common/InMemoryStore.swift",
+                    b"public struct InMemoryStoreHandler {}\n",
+                ))],
+            ))],
+        ),
+    )
+    .protocol(&STORE)
+    .platforms(&[Platform::Apple])
+    .foreign_types(&["InMemoryStoreHandler"]);
 
-    /// An extension that declares the name the protocol declares.
-    static HANDLER_EXTENSION: ShellExtension = ShellExtension::new("Handlers")
-        .foreign_types(&["StoreHandler"])
-        .swift(ShellSource::stdlib("public protocol StoreHandler {}\n"));
+    /// An implementation of the protocol of `Store`, in TypeScript.
+    static IN_MEMORY_TYPESCRIPT: ShellExtension = ShellExtension::typescript(
+        "Store",
+        Dir::new(
+            "",
+            &[DirEntry::Dir(Dir::new(
+                "common",
+                &[DirEntry::File(File::new(
+                    "common/inMemoryStore.ts",
+                    b"export class InMemoryStoreHandler {}\n",
+                ))],
+            ))],
+        ),
+    )
+    .protocol(&STORE)
+    .platforms(&[Platform::Web])
+    .foreign_types(&["InMemoryStoreHandler"]);
+
+    /// An implementation of the protocol of `Store` that also declares the
+    /// name of the protocol, for the clash test.
+    static REDECLARES_PROTOCOL: ShellExtension = ShellExtension::swift(
+        "Store",
+        Dir::new(
+            "",
+            &[DirEntry::Dir(Dir::new(
+                "common",
+                &[DirEntry::File(File::new(
+                    "common/InMemoryStore.swift",
+                    b"public protocol StoreHandler {}\n",
+                ))],
+            ))],
+        ),
+    )
+    .protocol(&STORE)
+    .platforms(&[Platform::Apple])
+    .foreign_types(&["StoreHandler", "InMemoryStoreHandler"]);
+
+    /// An extension with a file of the same name as the protocol's file, in
+    /// another case, for the clash test.
+    static STORE_FILE_EXTENSION: ShellExtension = ShellExtension::swift(
+        "Cache",
+        Dir::new(
+            "",
+            &[DirEntry::Dir(Dir::new(
+                "common",
+                &[DirEntry::File(File::new(
+                    "common/store.swift",
+                    b"public struct InMemoryStore {}\n",
+                ))],
+            ))],
+        ),
+    )
+    .platforms(&[Platform::Apple])
+    .foreign_types(&["InMemoryStore"]);
+
+    /// An extension of another capability that declares the name the
+    /// protocol declares.
+    static HANDLER_EXTENSION: ShellExtension = ShellExtension::swift(
+        "Handlers",
+        Dir::new(
+            "",
+            &[DirEntry::Dir(Dir::new(
+                "common",
+                &[DirEntry::File(File::new(
+                    "common/Handlers.swift",
+                    b"public protocol StoreHandler {}\n",
+                ))],
+            ))],
+        ),
+    )
+    .platforms(&[Platform::Apple])
+    .foreign_types(&["StoreHandler"]);
 
     fn one_op() -> CodeGenerator {
         let mut registry = TypeRegistry::new();
@@ -2540,20 +3145,114 @@ public interface IStoreHandler
         );
     }
 
+    /// The extension's `common/store.swift` and the protocol's `Store.swift`
+    /// would overwrite each other on a case-insensitive file system.
     #[test]
     fn a_protocol_and_an_extension_cannot_share_a_file_name() {
         let mut registry = TypeRegistry::new();
         registry
             .register_app::<one_op::App>()
             .expect("should register the app")
-            .shell_extension(&STORE_EXTENSION)
+            .shell_extension(&STORE_FILE_EXTENSION)
+            .expect("should register the extension");
+        let generator = registry.build().expect("should build the registry");
+
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let error = generator
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect_err("should reject the files that overwrite each other");
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains(
+                "the `Cache` shell extension's `common/store.swift` and the `Store` shell protocol"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn an_extension_cannot_declare_a_name_that_its_protocol_declares() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .shell_extension(&REDECLARES_PROTOCOL)
             .expect("should register the extension");
 
         let message = message_of(registry.build());
         assert!(
-            message.contains("shell extension `store` is registered after shell protocol `Store`"),
+            message.contains(
+                "shell protocol `Store` and shell extension `Store` both declare `StoreHandler`"
+            ),
             "unexpected message: {message}"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Extensions that implement a protocol
+    // -----------------------------------------------------------------------
+
+    /// An app that uses no operation of the capability, but registers an
+    /// implementation of its protocol, gets the protocol and every type of
+    /// the capability. The protocol and the implementation share the name of
+    /// the capability, and the protocol does not count as a second
+    /// implementation.
+    #[test]
+    fn registering_an_extension_registers_its_protocol() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<no_ops::App>()
+            .expect("should register the app")
+            .shell_extension(&IN_MEMORY_SWIFT)
+            .expect("should register the extension");
+        let generator = registry.build().expect("should build the registry");
+
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+        let sources = dir.path().join("App/Sources/App");
+        let protocol = fs::read_to_string(sources.join("Store.swift"))
+            .expect("should write the protocol beside the module");
+        assert!(protocol.contains(SWIFT_PROTOCOL), "{protocol}");
+        assert!(sources.join("InMemoryStore.swift").exists());
+        let module =
+            fs::read_to_string(sources.join("App.swift")).expect("should write a Swift module");
+        assert!(module.contains("struct StoreRemove"), "{module}");
+    }
+
+    /// In TypeScript, the protocols and the implementations all go in the
+    /// module footer. The protocols come first, in registration order, and
+    /// then the implementations.
+    #[test]
+    fn typescript_writes_the_protocols_before_the_implementations() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<one_op::App>()
+            .expect("should register the app")
+            .shell_extension(&IN_MEMORY_TYPESCRIPT)
+            .expect("should register the extension")
+            .shell_protocol(&BEEPER)
+            .expect("should register the second protocol");
+        let generator = registry.build().expect("should build the registry");
+
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("typescript type generation should succeed");
+        let module = fs::read_to_string(dir.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+
+        let at = |text: &str| {
+            module
+                .find(text)
+                .unwrap_or_else(|| panic!("expected `{text}`:\n{module}"))
+        };
+        let store = at("export interface StoreHandler");
+        let beeper = at("export interface BeeperHandler");
+        let implementation = at("export class InMemoryStoreHandler");
+        assert!(store < beeper, "{module}");
+        assert!(beeper < implementation, "{module}");
     }
 
     #[test]

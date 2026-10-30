@@ -32,6 +32,7 @@ facet_generate = "0.22.3"
 facet-generate-attrs = "0.18.1"
 # facet_generate = { path = "../facet-generate/crates/facet_generate" }
 # facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
+include_dir = "0.7.4"
 serde = "1.0"
 thiserror = "2.0"
 uniffi_bindgen = "=0.29.4"
