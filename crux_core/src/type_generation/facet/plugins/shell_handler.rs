@@ -1,13 +1,17 @@
 //! Emits the shell extensions the app registered, such as the handler a
 //! capability ships.
 //!
-//! There is nothing to generate here. The source is written by the
-//! extension's author and emitted verbatim, so the plugin's whole job is
-//! putting it where the language expects to find it. Swift, Kotlin and C# get
-//! one companion file per extension, `Http.swift` / `Http.kt` / `Http.cs`,
-//! beside the module's own file and inside its module, package or namespace.
-//! TypeScript's modules are a single file, so the source is appended after the
-//! types, the way `Core` is.
+//! There is nothing to generate here. The extension's author writes the
+//! source and the plugin emits it verbatim, where the language expects to
+//! find it. The generator chooses the extensions and their files for the
+//! language and platform, and the plugin receives only those files.
+//!
+//! Swift, Kotlin and C# get one companion file for each source file, with the
+//! name of the source file (`Http.swift`, `WebkitCookieJar.kt`). The plugin
+//! writes the companion file beside the module's own file, inside its module,
+//! package or namespace. A TypeScript module is a single file, so the plugin
+//! appends the sources after the types, as it does for `Core`, in the order of
+//! their paths.
 //!
 //! A namespace of its own is a module of its own in every language, so the
 //! sources are emitted for the module the app's own types are in — named by
@@ -30,15 +34,20 @@ use facet_generate::generation::{
     typescript::TypeScript,
 };
 
-use crate::type_generation::facet::{
-    QualifiedTypeName,
-    shell_handler::{ShellExtension, ShellSource},
-};
+use crate::type_generation::facet::{QualifiedTypeName, shell_handler::SourceFile};
 
-/// Emits the registered shell extensions' sources.
+/// Emits the source files of the shell extensions that the generator selected
+/// for one language and platform.
 #[derive(Debug, Clone)]
 pub struct ShellExtensionPlugin {
-    extensions: Arc<[&'static ShellExtension]>,
+    /// The files to emit, in order: each selected extension in registration
+    /// order, and in each extension, `common/` then the platform's directory,
+    /// each sorted by path.
+    files: Arc<[SourceFile]>,
+    /// The union of the selected extensions' manifest entries.
+    dependencies: Vec<String>,
+    /// The union of the selected extensions' Swift target edges.
+    target_dependencies: Vec<String>,
     /// The module the app's own types are in, which is the one the sources
     /// belong to. A type in a namespace is generated into a module of its own,
     /// and every module's plugins are asked for their files.
@@ -59,12 +68,16 @@ pub struct ShellExtensionPlugin {
 
 impl ShellExtensionPlugin {
     pub fn new(
-        extensions: &[&'static ShellExtension],
+        files: Vec<SourceFile>,
+        dependencies: Vec<String>,
+        target_dependencies: Vec<String>,
         package: &str,
         last_type: Option<QualifiedTypeName>,
     ) -> Self {
         Self {
-            extensions: extensions.into(),
+            files: files.into(),
+            dependencies,
+            target_dependencies,
             package: package.to_string(),
             last_type,
         }
@@ -80,53 +93,21 @@ impl ShellExtensionPlugin {
         config.module_name() == self.package
     }
 
-    /// One companion file per extension that ships this language, named after
-    /// the extension.
-    fn companion_sources(
-        &self,
-        config: &CodeGeneratorConfig,
-        extension: &str,
-        source_of: fn(&ShellExtension) -> Option<&ShellSource>,
-    ) -> Vec<CompanionFile> {
+    /// One companion file per source file, with the source file's name.
+    fn companion_sources(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
         if !self.is_app_module(config) {
             return vec![];
         }
-        self.extensions
+        self.files
             .iter()
-            .filter_map(|shell_extension| {
-                source_of(shell_extension).map(|shipped| CompanionFile {
-                    file_name: format!("{}.{extension}", shell_extension.name),
-                    // The shipped source carries its own imports: only the
-                    // extension's author knows what it uses.
-                    imports: vec![],
-                    contents: shipped.source.to_string(),
-                })
+            .map(|file| CompanionFile {
+                file_name: file.file_name.to_string(),
+                // The shipped source carries its own imports, because only
+                // the extension's author knows what it uses.
+                imports: vec![],
+                contents: file.contents.unwrap_or_default().to_string(),
             })
             .collect()
-    }
-
-    /// The union of one list of the registered extensions' sources, in
-    /// registration order and without repeats.
-    fn union(
-        &self,
-        source_of: fn(&ShellExtension) -> Option<&ShellSource>,
-        entries_of: fn(&ShellSource) -> &'static [&'static str],
-    ) -> Vec<String> {
-        let mut entries: Vec<String> = Vec::new();
-        for shipped in self.extensions.iter().filter_map(|e| source_of(e)) {
-            for entry in entries_of(shipped) {
-                let entry = (*entry).to_string();
-                if !entries.contains(&entry) {
-                    entries.push(entry);
-                }
-            }
-        }
-        entries
-    }
-
-    /// What the registered extensions' sources need in the manifest.
-    fn dependencies(&self, source_of: fn(&ShellExtension) -> Option<&ShellSource>) -> Vec<String> {
-        self.union(source_of, |shipped| shipped.dependencies)
     }
 
     /// Writes the TypeScript sources after the module's last type, so that
@@ -140,9 +121,9 @@ impl ShellExtensionPlugin {
             return Ok(());
         }
 
-        for shipped in self.extensions.iter().filter_map(|e| e.typescript.as_ref()) {
+        for file in self.files.iter() {
             writeln!(w)?;
-            for line in shipped.source.lines() {
+            for line in file.contents.unwrap_or_default().lines() {
                 writeln!(w, "{line}")?;
             }
         }
@@ -153,40 +134,37 @@ impl ShellExtensionPlugin {
 
 impl EmitterPlugin<Swift> for ShellExtensionPlugin {
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
-        self.companion_sources(config, "swift", |extension| extension.swift.as_ref())
+        self.companion_sources(config)
     }
 
     fn manifest_dependencies(&self) -> Vec<String> {
-        self.dependencies(|extension| extension.swift.as_ref())
+        self.dependencies.clone()
     }
 
     /// A Swift package entry declares the package; the target still needs its
     /// edge to the product, which is the extension's to name.
     fn target_dependencies(&self) -> Vec<String> {
-        self.union(
-            |extension| extension.swift.as_ref(),
-            |shipped| shipped.target_dependencies,
-        )
+        self.target_dependencies.clone()
     }
 }
 
 impl EmitterPlugin<Kotlin> for ShellExtensionPlugin {
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
-        self.companion_sources(config, "kt", |extension| extension.kotlin.as_ref())
+        self.companion_sources(config)
     }
 
     fn manifest_dependencies(&self) -> Vec<String> {
-        self.dependencies(|extension| extension.kotlin.as_ref())
+        self.dependencies.clone()
     }
 }
 
 impl EmitterPlugin<CSharp> for ShellExtensionPlugin {
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
-        self.companion_sources(config, "cs", |extension| extension.csharp.as_ref())
+        self.companion_sources(config)
     }
 
     fn manifest_dependencies(&self) -> Vec<String> {
-        self.dependencies(|extension| extension.csharp.as_ref())
+        self.dependencies.clone()
     }
 }
 
@@ -196,6 +174,6 @@ impl EmitterPlugin<TypeScript> for ShellExtensionPlugin {
     }
 
     fn manifest_dependencies(&self) -> Vec<String> {
-        self.dependencies(|extension| extension.typescript.as_ref())
+        self.dependencies.clone()
     }
 }

@@ -452,6 +452,7 @@ dependencies = [
  "facet_generate",
  "futures",
  "heck",
+ "include_dir",
  "insta",
  "log",
  "rand 0.10.2",

@@ -32,6 +32,7 @@ facet_generate = { git = "https://github.com/redbadger/facet-generate", rev = "d
 facet-generate-attrs = { git = "https://github.com/redbadger/facet-generate", rev = "d9d4fc7b" }
 # facet_generate = { path = "../facet-generate/crates/facet_generate" }
 # facet-generate-attrs = { path = "../facet-generate/crates/facet-generate-attrs" }
+include_dir = "0.7.4"
 serde = "1.0"
 thiserror = "2.0"
 uniffi_bindgen = "=0.29.4"
