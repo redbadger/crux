@@ -1,0 +1,153 @@
+// Runs `createInMemoryKeyValueHandler` through the whole `crux_kv` protocol
+// and prints `HARNESS OK` when every answer was the one the protocol promises.
+//
+// The generated module is CommonJS — `typescript()` emits `.js` beside the
+// `.d.ts` it type-checks — so the harness is plain JavaScript and `node` runs
+// it with no build step of its own. The types are already checked by the
+// compile test above; what is left to find out is what the code does.
+const shared = require("../generated/shared_types.js");
+
+/** Every mismatch, so that one run reports all of them rather than the first. */
+const failures = [];
+
+/** The store under test, named in front of each mismatch. */
+let store = "";
+
+/** `JSON.stringify` refuses a `BigInt`, and the cursor is one. */
+const show = (value) => JSON.stringify(value, (_, v) => (typeof v === "bigint" ? `${v}n` : v));
+
+const expect = (what, actual, expected) => {
+  const got = show(actual);
+  const wanted = show(expected);
+  if (got !== wanted) failures.push(`${store}: ${what}: expected ${wanted}, got ${got}`);
+};
+
+/**
+ * The bytes a `ValueResult` carries, `null` for `Value.None`.
+ *
+ * An `Err` is a crash rather than a failure: every operation here is one the
+ * protocol says cannot fail short of the store itself failing, so an error
+ * means the run has nothing left to tell us.
+ */
+const bytes = (result) => {
+  if (result.kind !== "Ok") throw new Error(`expected Ok, got ${show(result)}`);
+  return result.value.kind === "Bytes" ? result.value.value : null;
+};
+
+const keys = (result) => {
+  if (result.kind !== "Ok") throw new Error(`expected Ok, got ${show(result)}`);
+  expect("listKeys answers with a cursor of 0, there being no more pages", result.value.next_cursor, 0n);
+  return result.value.keys;
+};
+
+const present = (result) => {
+  if (result.kind !== "Ok") throw new Error(`expected Ok, got ${show(result)}`);
+  return result.value;
+};
+
+const value = (key) => [...Buffer.from(key, "utf8")];
+
+/** A `/`, a space and a `%`, which a key has to survive a round trip with. */
+const awkward = "alpha/two words%25";
+
+/**
+ * Already in the order `listKeys` promises, so that the expected listing is
+ * this list and not a sort of it.
+ */
+const written = ["alpha", awkward, "beta", "delta"];
+
+/**
+ * The checks that hold for every store: the answers to each operation on an
+ * empty store, then on the keys in `written`.
+ */
+const check = async (kv) => {
+  // An empty store, before anything has been written to it.
+  expect("get of a missing key is Value.None, not an error", bytes(await kv.get(new shared.Get("alpha"))), null);
+  expect("exists is false for a missing key", present(await kv.exists(new shared.Exists("alpha"))), false);
+  expect("listKeys of an empty store answers with no keys", keys(await kv.listKeys(new shared.ListKeys("", 0n))), []);
+  expect(
+    "delete of a missing key is Value.None, not an error",
+    bytes(await kv.delete(new shared.Delete("alpha"))),
+    null,
+  );
+
+  // Each key holds its own name, so a value that comes back under the wrong
+  // key is visible rather than plausible.
+  for (const key of written) {
+    expect("set of a new key answers with Value.None", bytes(await kv.set(new shared.Set(key, value(key)))), null);
+  }
+
+  for (const key of written) {
+    expect(`get returns the bytes set under ${key}`, bytes(await kv.get(new shared.Get(key))), value(key));
+    expect(`exists is true for ${key}`, present(await kv.exists(new shared.Exists(key))), true);
+  }
+
+  expect(
+    "set of an existing key answers with the value it replaced",
+    bytes(await kv.set(new shared.Set("beta", [9, 9]))),
+    value("beta"),
+  );
+  expect("get returns the replacement", bytes(await kv.get(new shared.Get("beta"))), [9, 9]);
+
+  // Everything the store lists is a key the app wrote.
+  expect(
+    "listKeys answers with the keys that were written, sorted, and nothing else",
+    keys(await kv.listKeys(new shared.ListKeys("", 0n))),
+    written,
+  );
+  expect("listKeys honours the prefix", keys(await kv.listKeys(new shared.ListKeys("alpha", 0n))), ["alpha", awkward]);
+  expect("listKeys starts at the cursor", keys(await kv.listKeys(new shared.ListKeys("", 2n))), ["beta", "delta"]);
+  expect(
+    "a cursor equal to the number of keys is an empty page, not an error",
+    keys(await kv.listKeys(new shared.ListKeys("", BigInt(written.length)))),
+    [],
+  );
+  expect(
+    "a cursor past the end answers with CursorNotFound",
+    await kv.listKeys(new shared.ListKeys("", BigInt(written.length + 1))),
+    shared.keysResultErr(shared.keyValueErrorCursorNotFound()),
+  );
+
+  expect("the awkward key survives the round trip", bytes(await kv.get(new shared.Get(awkward))), value(awkward));
+
+  expect("delete answers with the value it removed", bytes(await kv.delete(new shared.Delete("delta"))), value("delta"));
+  expect("exists is false once the key is deleted", present(await kv.exists(new shared.Exists("delta"))), false);
+  expect("get is Value.None once the key is deleted", bytes(await kv.get(new shared.Get("delta"))), null);
+  expect("listKeys no longer answers with the deleted key", keys(await kv.listKeys(new shared.ListKeys("", 0n))), [
+    "alpha",
+    awkward,
+    "beta",
+  ]);
+};
+
+const main = async () => {
+  store = "createInMemoryKeyValueHandler";
+  const memory = shared.createInMemoryKeyValueHandler();
+  await check(memory);
+
+  // The store keeps a copy of what it is given and gives out a copy of what it
+  // holds, so a caller that changes an array does not change the stored value.
+  const given = [1, 2, 3];
+  await memory.set(new shared.Set("copied", given));
+  given[0] = 9;
+  expect(
+    "a change to the array given to set does not change the stored value",
+    bytes(await memory.get(new shared.Get("copied"))),
+    [1, 2, 3],
+  );
+  bytes(await memory.get(new shared.Get("copied")))[0] = 9;
+  expect(
+    "a change to the array in the answer to get does not change the stored value",
+    bytes(await memory.get(new shared.Get("copied"))),
+    [1, 2, 3],
+  );
+};
+
+main().then(() => {
+  if (failures.length === 0) {
+    console.log("HARNESS OK");
+  } else {
+    for (const failure of failures) console.log(`FAILED: ${failure}`);
+    process.exitCode = 1;
+  }
+});
