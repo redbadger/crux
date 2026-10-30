@@ -36,11 +36,11 @@ nonisolated extension WeatherHandler: EffectHandler {
         await httpHandler.request(operation)
     }
 
-    public func kvGet(_ operation: App.Get) async -> ValueResult {
+    public func kvGet(_ operation: GetValue) async -> ValueResult {
         await keyValueHandler.get(operation)
     }
 
-    public func kvSet(_ operation: App.Set) async -> ValueResult {
+    public func kvSet(_ operation: SetValue) async -> ValueResult {
         await keyValueHandler.set(operation)
     }
 
@@ -48,7 +48,7 @@ nonisolated extension WeatherHandler: EffectHandler {
         await timeHandler.notifyAfter(operation)
     }
 
-    public func timeClear(_ operation: Clear) async -> TimerId {
+    public func timeClear(_ operation: ClearTimer) async -> TimerId {
         await timeHandler.clear(operation)
     }
 }

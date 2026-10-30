@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     DataResult, ListResult, StatusResult,
     error::KeyValueError,
-    operation::{self, BoolResult, KeyPage, KeysResult, ValueResult},
+    operation::{self, ExistsResult, KeyPage, KeysResult, ValueResult},
     protocol::Value,
     store::KeyValue,
 };
@@ -132,10 +132,10 @@ impl crux_core::App for App {
 
 #[effect]
 pub enum Effect {
-    Get(operation::Get),
-    Set(operation::Set),
-    Delete(operation::Delete),
-    Exists(operation::Exists),
+    Get(operation::GetValue),
+    Set(operation::SetValue),
+    Delete(operation::DeleteValue),
+    Exists(operation::KeyExists),
     ListKeys(operation::ListKeys),
     Render(RenderOperation),
 }
@@ -152,7 +152,7 @@ fn test_get() {
 
     assert_eq!(
         request.operation,
-        operation::Get {
+        operation::GetValue {
             key: "test".to_string()
         }
     );
@@ -179,7 +179,7 @@ fn test_set() {
 
     assert_eq!(
         request.operation,
-        operation::Set {
+        operation::SetValue {
             key: "test".to_string(),
             value: 42i32.to_ne_bytes().to_vec(),
         }
@@ -209,7 +209,7 @@ fn test_delete() {
 
     assert_eq!(
         request.operation,
-        operation::Delete {
+        operation::DeleteValue {
             key: "test".to_string()
         }
     );
@@ -238,13 +238,13 @@ fn test_exists() {
 
     assert_eq!(
         request.operation,
-        operation::Exists {
+        operation::KeyExists {
             key: "test".to_string()
         }
     );
 
     request
-        .resolve(BoolResult::Ok(true))
+        .resolve(ExistsResult::Ok(true))
         .expect("effect should resolve");
 
     let event = cmd.expect_one_event();
@@ -301,7 +301,7 @@ fn test_kv_async() {
 
     assert_eq!(
         request.operation,
-        operation::Get {
+        operation::GetValue {
             key: "test_num".to_string()
         }
     );
@@ -314,7 +314,7 @@ fn test_kv_async() {
 
     assert_eq!(
         request.operation,
-        operation::Set {
+        operation::SetValue {
             key: "test_num".to_string(),
             value: 18u32.to_ne_bytes().to_vec(),
         }
@@ -341,7 +341,7 @@ fn test_error_is_passed_to_the_app() {
     let mut request = cmd.expect_one_effect().expect_exists();
 
     request
-        .resolve(BoolResult::Err(KeyValueError::Timeout))
+        .resolve(ExistsResult::Err(KeyValueError::Timeout))
         .expect("effect should resolve");
 
     let event = cmd.expect_one_event();
@@ -375,18 +375,18 @@ fn value_result_round_trips_through_data_result() {
 }
 
 #[test]
-fn bool_result_round_trips_through_status_result() {
+fn exists_result_round_trips_through_status_result() {
     let cases = [
-        BoolResult::Ok(true),
-        BoolResult::Ok(false),
-        BoolResult::Err(KeyValueError::Io {
+        ExistsResult::Ok(true),
+        ExistsResult::Ok(false),
+        ExistsResult::Err(KeyValueError::Io {
             message: "nope".to_string(),
         }),
     ];
 
     for case in cases {
         let status: StatusResult = case.clone().into();
-        assert_eq!(BoolResult::from(status), case);
+        assert_eq!(ExistsResult::from(status), case);
     }
 }
 
@@ -418,17 +418,17 @@ fn keys_result_round_trips_through_list_result() {
 fn test_set_debug_repr() {
     {
         // small
-        let op = operation::Set {
+        let op = operation::SetValue {
             key: "my key".into(),
             value: b"my value".to_vec(),
         };
         let repr = format!("{op:?}");
-        assert_eq!(repr, r#"Set { key: "my key", value: "my value" }"#);
+        assert_eq!(repr, r#"SetValue { key: "my key", value: "my value" }"#);
     }
 
     {
         // big
-        let op = operation::Set {
+        let op = operation::SetValue {
             key: "my key".into(),
             value:
                 // we check that we handle unicode boundaries correctly
@@ -437,32 +437,32 @@ fn test_set_debug_repr() {
         let repr = format!("{op:?}");
         assert_eq!(
             repr,
-            r#"Set { key: "my key", value: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstu😀😀"... }"#
+            r#"SetValue { key: "my key", value: "abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstu😀😀"... }"#
         );
     }
 
     {
         // binary
-        let op = operation::Set {
+        let op = operation::SetValue {
             key: "my key".into(),
             value: vec![255, 255],
         };
         let repr = format!("{op:?}");
         assert_eq!(
             repr,
-            r#"Set { key: "my key", value: <binary data - 2 bytes> }"#
+            r#"SetValue { key: "my key", value: <binary data - 2 bytes> }"#
         );
     }
 }
 
 #[test]
 fn test_serializing_the_operations_as_json() {
-    let get = operation::Get {
+    let get = operation::GetValue {
         key: "key".to_string(),
     };
     assert_eq!(serde_json::to_string(&get).unwrap(), r#"{"key":"key"}"#);
 
-    let set = operation::Set {
+    let set = operation::SetValue {
         key: "key".to_string(),
         value: vec![1, 2],
     };
@@ -494,7 +494,7 @@ fn test_serializing_the_outputs_as_json() {
     );
 
     assert_eq!(
-        serde_json::to_string(&BoolResult::Ok(true)).unwrap(),
+        serde_json::to_string(&ExistsResult::Ok(true)).unwrap(),
         r#"{"Ok":true}"#
     );
 

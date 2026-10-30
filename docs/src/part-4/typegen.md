@@ -653,7 +653,7 @@ struct WeatherHandler: EffectHandler {
 
     func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
     func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
-    func timeClear(_ operation: Clear) async -> TimerId { await time.clear(operation) }
+    func timeClear(_ operation: ClearTimer) async -> TimerId { await time.clear(operation) }
     // the app's own operations…
 }
 ```
@@ -690,9 +690,9 @@ name the generated module imports from the serialization runtime (such as
 `Serializer`), the name of one of your namespaces, a name another
 registered extension declares, or the name of a type registered in the
 root namespace. The same goes for a type a capability registers: `crux_kv`
-brings its `Delete` with it, and an app with a `Delete` of its own is told
-so at registration, with both Rust types named, and renames one of them
-with `#[facet(rename = "...")]`. The extension's own name only
+brings its `DeleteValue` with it, and an app with a `DeleteValue` of its
+own is told so at registration, with both Rust types named, and renames
+one of them with `#[facet(rename = "...")]`. The extension's own name only
 names its files, so it has to work as a file name (an ASCII letter, then
 ASCII letters, digits or `_`), and two extensions with the same name,
 ignoring case, cannot both be registered, because their files would
@@ -763,8 +763,9 @@ rejects a larger one.
 - The generated Kotlin module declares a dependency on
   `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
   `StateFlow` and coroutine launches need.
-- Operation names collide with standard library types more often than
-  you'd expect — `crux_kv`'s `Set` shadows `Set` in Swift, Kotlin and
-  TypeScript. Alias it at the import site
-  (`import com.example.Set as KeyValueSet`, `import { Set as SetValue }`).
+- A shared type named after a standard library type shadows it in the
+  generated module — an operation called `Set` hides `Set` in Swift, Kotlin
+  and TypeScript, and every shell then has to alias one of them at the
+  import. The bundled capabilities avoid this with verb+noun names such as
+  `SetValue`, and your own operations are worth naming the same way.
 - Facet type generation requires `facet_generate` 0.22.2 or later.
