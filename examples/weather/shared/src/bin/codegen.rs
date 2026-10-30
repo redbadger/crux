@@ -32,9 +32,9 @@ fn main() -> Result<()> {
         .shell_extension(&crux_http::shell::swift::URL_SESSION)?
         .shell_extension(&crux_http::shell::kotlin::URL_CONNECTION)?
         .shell_extension(&crux_http::shell::typescript::FETCH)?
-        .shell_extension(&crux_kv::shell::swift::USER_DEFAULTS)?
-        .shell_extension(&crux_kv::shell::kotlin::FILE)?
-        .shell_extension(&crux_kv::shell::typescript::LOCAL_STORAGE)?
+        .shell_extension(&crux_kv::shell::swift::IN_MEMORY)?
+        .shell_extension(&crux_kv::shell::kotlin::IN_MEMORY)?
+        .shell_extension(&crux_kv::shell::typescript::IN_MEMORY)?
         .shell_extension(&crux_time::shell::swift::TASK)?
         .shell_extension(&crux_time::shell::kotlin::COROUTINE)?
         .shell_extension(&crux_time::shell::typescript::TIMEOUT)?;

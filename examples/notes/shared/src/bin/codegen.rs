@@ -31,9 +31,9 @@ fn main() -> Result<()> {
     registry.register_app::<NoteEditor>()?;
     // Use the provided default implementations on the shell side
     registry
-        .shell_extension(&crux_kv::shell::swift::USER_DEFAULTS)?
-        .shell_extension(&crux_kv::shell::kotlin::FILE)?
-        .shell_extension(&crux_kv::shell::typescript::LOCAL_STORAGE)?
+        .shell_extension(&crux_kv::shell::swift::IN_MEMORY)?
+        .shell_extension(&crux_kv::shell::kotlin::IN_MEMORY)?
+        .shell_extension(&crux_kv::shell::typescript::IN_MEMORY)?
         .shell_extension(&crux_time::shell::swift::TASK)?
         .shell_extension(&crux_time::shell::kotlin::COROUTINE)?
         .shell_extension(&crux_time::shell::typescript::TIMEOUT)?;

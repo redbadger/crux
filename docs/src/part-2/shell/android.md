@@ -11,7 +11,7 @@ The Android app uses [Dagger Hilt](https://dagger.dev/hilt/) to wire up the core
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/AppModule.kt}}
 ```
 
-The three providers construct the HTTP, key-value and timer handlers that `crux_http`, `crux_kv` and `crux_time` ship, so the app needs no code of its own for those capabilities. If these handlers do not suit your app (for example, you need a different store or HTTP client), see [Shipping the shell side too](../capabilities.md#shipping-the-shell-side-too). The app's own handlers get `@Inject constructor(...)` and Hilt figures out the graph from there. Hilt cannot construct the generated `Core`, because it has no `@Inject` constructor, so a second module builds it:
+The HTTP and timer providers construct the handlers that `crux_http` and `crux_time` ship, so the app needs no code of its own for those capabilities. `crux_kv` ships only an in-memory store, so the key-value provider constructs the app's own `PreferencesKeyValueHandler`. That handler implements the shipped `KeyValueHandler` interface over `SharedPreferences`. If the shipped handlers do not suit your app (for example, you need a different store or HTTP client), see [Shipping the shell side too](../capabilities.md#shipping-the-shell-side-too). The app's own handlers get `@Inject constructor(...)` and Hilt figures out the graph from there. Hilt cannot construct the generated `Core`, because it has no `@Inject` constructor, so a second module builds it:
 
 ```kotlin
 // Kotlin

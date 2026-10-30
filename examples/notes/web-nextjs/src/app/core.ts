@@ -20,12 +20,10 @@ import type {
   ValueResult,
   ViewModel,
 } from "shared_types/app";
-import {
-  Core,
-  createLocalStorageKeyValueHandler,
-  TimeoutTimeHandler,
-} from "shared_types/app";
+import { Core, TimeoutTimeHandler } from "shared_types/app";
 import { RefObject } from "react";
+
+import { createLocalStorageKeyValueHandler } from "./kv";
 
 export type SyncMessage = {
   kind: "change" | "reset";

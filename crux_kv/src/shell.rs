@@ -9,10 +9,10 @@
 //! // shared/src/bin/codegen.rs
 //! let typegen = TypeRegistry::new()
 //!     .register_app::<MyApp>()?
-//!     .shell_extension(&crux_kv::shell::swift::USER_DEFAULTS)?
-//!     .shell_extension(&crux_kv::shell::kotlin::FILE)?
-//!     .shell_extension(&crux_kv::shell::typescript::LOCAL_STORAGE)?
-//!     .shell_extension(&crux_kv::shell::csharp::FILE)?
+//!     .shell_extension(&crux_kv::shell::swift::IN_MEMORY)?
+//!     .shell_extension(&crux_kv::shell::kotlin::IN_MEMORY)?
+//!     .shell_extension(&crux_kv::shell::typescript::IN_MEMORY)?
+//!     .shell_extension(&crux_kv::shell::csharp::IN_MEMORY)?
 //!     .build()?;
 //! ```
 //!
@@ -21,15 +21,12 @@
 //!
 //! The Swift, Kotlin, TypeScript and C# implementations of the crate's
 //! protocol each declare a `KeyValueHandler` protocol (`IKeyValueHandler` in
-//! C#) with one method per operation, and an implementation of it over a store
-//! every platform already has: `UserDefaults` on Apple platforms, a file per
-//! key on the JVM and in C#, and `localStorage` in the browser. Where the store
-//! lives is the shell's choice — each implementation takes it as
-//! configuration, and a shell that wants a different one conforms its own type
-//! to the protocol.
-//!
-//! Each language also has an in-memory store, which keeps values for the life
-//! of the handler.
+//! C#) with one method per operation, and one implementation of it,
+//! `InMemoryKeyValueHandler` (`createInMemoryKeyValueHandler` in TypeScript),
+//! which keeps values for the life of the handler. The durable store is the
+//! shell's choice, because the right store differs on each platform. To keep
+//! values after the app stops, a shell conforms its own type to the protocol.
+//! The weather and notes examples show durable stores for each platform.
 //!
 //! [`Value::None`]: crate::protocol::Value::None
 
@@ -46,20 +43,15 @@ pub mod swift {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
 
-    /// `KeyValueHandler`, `UserDefaultsKeyValueHandler` over `UserDefaults`,
-    /// and `InMemoryKeyValueHandler`.
-    pub static USER_DEFAULTS: ShellExtension = ShellExtension::swift(
+    /// `KeyValueHandler`, and `InMemoryKeyValueHandler`.
+    pub static IN_MEMORY: ShellExtension = ShellExtension::swift(
         "KeyValue",
-        include_dir!("$CARGO_MANIFEST_DIR/shell/swift/user_defaults"),
+        include_dir!("$CARGO_MANIFEST_DIR/shell/swift/in_memory"),
     )
     .platforms(&[Platform::Apple, Platform::Linux])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&[
-        "KeyValueHandler",
-        "UserDefaultsKeyValueHandler",
-        "InMemoryKeyValueHandler",
-    ]);
+    .foreign_types(&["KeyValueHandler", "InMemoryKeyValueHandler"]);
 }
 
 /// The Kotlin handler, for an app to register with
@@ -68,20 +60,15 @@ pub mod kotlin {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
 
-    /// `KeyValueHandler`, `FileKeyValueHandler` over a file per key, and
-    /// `InMemoryKeyValueHandler`.
-    pub static FILE: ShellExtension = ShellExtension::kotlin(
+    /// `KeyValueHandler`, and `InMemoryKeyValueHandler`.
+    pub static IN_MEMORY: ShellExtension = ShellExtension::kotlin(
         "KeyValue",
-        include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/file"),
+        include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/in_memory"),
     )
     .platforms(&[Platform::Jvm, Platform::Android])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&[
-        "KeyValueHandler",
-        "FileKeyValueHandler",
-        "InMemoryKeyValueHandler",
-    ]);
+    .foreign_types(&["KeyValueHandler", "InMemoryKeyValueHandler"]);
 }
 
 /// The TypeScript handler, for an app to register with
@@ -90,20 +77,15 @@ pub mod typescript {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
 
-    /// `KeyValueHandler`, `createLocalStorageKeyValueHandler` over
-    /// `localStorage`, and `createInMemoryKeyValueHandler`.
-    pub static LOCAL_STORAGE: ShellExtension = ShellExtension::typescript(
+    /// `KeyValueHandler`, and `createInMemoryKeyValueHandler`.
+    pub static IN_MEMORY: ShellExtension = ShellExtension::typescript(
         "KeyValue",
-        include_dir!("$CARGO_MANIFEST_DIR/shell/typescript/local_storage"),
+        include_dir!("$CARGO_MANIFEST_DIR/shell/typescript/in_memory"),
     )
     .platforms(&[Platform::Web])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&[
-        "KeyValueHandler",
-        "createLocalStorageKeyValueHandler",
-        "createInMemoryKeyValueHandler",
-    ]);
+    .foreign_types(&["KeyValueHandler", "createInMemoryKeyValueHandler"]);
 }
 
 /// The C# handler, for an app to register with
@@ -112,20 +94,15 @@ pub mod csharp {
     use crux_core::type_generation::facet::{Platform, ShellExtension};
     use include_dir::include_dir;
 
-    /// `IKeyValueHandler`, `FileKeyValueHandler` over a file per key, and
-    /// `InMemoryKeyValueHandler`.
-    pub static FILE: ShellExtension = ShellExtension::csharp(
+    /// `IKeyValueHandler`, and `InMemoryKeyValueHandler`.
+    pub static IN_MEMORY: ShellExtension = ShellExtension::csharp(
         "KeyValue",
-        include_dir!("$CARGO_MANIFEST_DIR/shell/csharp/file"),
+        include_dir!("$CARGO_MANIFEST_DIR/shell/csharp/in_memory"),
     )
     .platforms(&[Platform::DotNet])
     .rust_types(super::register_types)
     // The names the shipped sources declare at module scope.
-    .foreign_types(&[
-        "IKeyValueHandler",
-        "FileKeyValueHandler",
-        "InMemoryKeyValueHandler",
-    ]);
+    .foreign_types(&["IKeyValueHandler", "InMemoryKeyValueHandler"]);
 }
 
 /// Registers the types the shipped sources name, for an app that does not use

@@ -15,10 +15,10 @@ use crux_core::type_generation::facet::{Dir, ShellExtension};
 /// Every extension the crate ships, with the name of its language.
 fn extensions() -> [(&'static str, &'static ShellExtension); 4] {
     [
-        ("swift", &crux_kv::shell::swift::USER_DEFAULTS),
-        ("kotlin", &crux_kv::shell::kotlin::FILE),
-        ("typescript", &crux_kv::shell::typescript::LOCAL_STORAGE),
-        ("csharp", &crux_kv::shell::csharp::FILE),
+        ("swift", &crux_kv::shell::swift::IN_MEMORY),
+        ("kotlin", &crux_kv::shell::kotlin::IN_MEMORY),
+        ("typescript", &crux_kv::shell::typescript::IN_MEMORY),
+        ("csharp", &crux_kv::shell::csharp::IN_MEMORY),
     ]
 }
 

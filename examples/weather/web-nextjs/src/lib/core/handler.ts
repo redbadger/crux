@@ -16,12 +16,9 @@ import type {
   TimerId,
   ValueResult,
 } from "shared_types/app";
-import {
-  createFetchHttpHandler,
-  createLocalStorageKeyValueHandler,
-  TimeoutTimeHandler,
-} from "shared_types/app";
+import { createFetchHttpHandler, TimeoutTimeHandler } from "shared_types/app";
 
+import { createLocalStorageKeyValueHandler } from "./kv";
 import * as location from "./location";
 import * as secret from "./secret";
 
