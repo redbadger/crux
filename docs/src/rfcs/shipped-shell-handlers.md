@@ -37,30 +37,33 @@ decision, and some shells have strong reasons to make it themselves. So the
 proposal is a reference implementation the shell can adopt, not a default it
 inherits.
 
-The capability declares what it ships:
+The capability declares what it ships, one extension per language:
 
 ```rust
 // Rust: crux_http/src/shell.rs
 
 #[cfg(feature = "facet_typegen")]
-pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
-    .rust_types(register_types)
-    .foreign_types(&["HttpHandler", "IHttpHandler", "URLSessionHttpHandler", /* … */])
-    .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
-    .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")))
-    .typescript(ShellSource::stdlib(include_str!("../shell/typescript/http.ts")))
-    .csharp(ShellSource::stdlib(include_str!("../shell/csharp/Http.cs")));
+pub mod swift {
+    pub static URL_SESSION: ShellExtension = ShellExtension::swift(
+        "Http",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/swift/url_session"),
+    )
+    .protocol(&super::PROTOCOL)
+    .platforms(&[Platform::Apple, Platform::Linux])
+    .foreign_types(&["URLSessionHttpHandler", /* … */]);
+}
+// kotlin::URL_CONNECTION, typescript::FETCH and csharp::HTTP_CLIENT likewise
 ```
 
 The app asks for it where it configures type generation:
 
 ```rust
-// Rust — shared/src/bin/codegen.rs
+// Rust: shared/src/bin/codegen.rs
 
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
-    .shell_extension(&crux_http::shell::EXTENSION)?
-    .shell_extension(&crux_time::shell::EXTENSION)?
+    .shell_extension(&crux_http::shell::swift::URL_SESSION)?
+    .shell_extension(&crux_time::shell::swift::TASK)?
     .build()?;
 ```
 
@@ -270,144 +273,212 @@ that source names. Nothing about it changes the generated `EffectHandler`. A
 capability's shell handler is the main use, and the one this RFC is about,
 but a crate with other shell-side code to deliver would use the same type.
 
-A capability declares one `ShellExtension` per capability, not per operation.
-The unit of implementation on the shell side is the capability (an HTTP
-client, a key-value store, a timer table), because its operations share
-state, and because that is the unit an app would want to configure or replace.
-By convention the static is `shell::EXTENSION` in the capability crate.
+A language does not identify a platform. Kotlin runs on the JVM and on
+Android, and Swift runs on Apple platforms and on Linux. The better
+implementation is often specific to one platform: an Android handler can keep
+cookies in `android.webkit.CookieManager`, which the JVM does not have, and
+`URLSession` is in `FoundationNetworking` on Linux. So an extension is **one
+language**, and its source is a **directory of source sets**, in the layout of
+Kotlin Multiplatform's `commonMain` and `androidMain`:
+
+```text
+crux_http/shell/kotlin/url_connection/
+  common/   UrlConnectionHttp.kt
+  android/  WebkitCookieJar.kt
+crux_http/shell/swift/url_session/
+  apple/    URLSession.swift
+  linux/    URLSession.swift
+```
+
+For a platform, type generation emits every file in `common/` and every file
+in the directory named after that platform. The directory names are `apple`,
+`linux`, `jvm`, `android`, `web` and `dotnet`.
+
+A capability declares its shell side per capability, not per operation. The
+unit of implementation on the shell side is the capability (an HTTP client, a
+key-value store, a timer table), because its operations share state, and
+because that is the unit an app would want to configure or replace. It
+declares one `ShellExtension` for each language, in a module per language,
+named after the implementation: `crux_http::shell::swift::URL_SESSION`,
+`crux_http::shell::kotlin::URL_CONNECTION`. A language can have a second
+extension of the same capability for another platform, such as an OkHttp
+extension for Android only.
 
 ```rust
 // Rust
 #[non_exhaustive]
-pub struct ShellExtension {
-    /// UpperCamelCase. Names the companion file (`Http.swift`).
-    pub name: &'static str,
-    /// Registers every operation and output the shipped sources name.
-    pub rust_types: Option<fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>>,
-    /// The top-level names the shipped sources declare, in any language
-    /// (`HttpHandler`, `IHttpHandler`, `URLSessionHttpHandler`, …).
-    pub foreign_types: &'static [&'static str],
-    pub swift: Option<ShellSource>,
-    pub kotlin: Option<ShellSource>,
-    pub typescript: Option<ShellSource>,
-    pub csharp: Option<ShellSource>,
-}
-
-impl ShellExtension {
-    pub const fn new(name: &'static str) -> Self { /* nothing declared, every language None */ }
-    pub const fn rust_types(self, register: fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>) -> Self { /* … */ }
-    pub const fn foreign_types(self, names: &'static [&'static str]) -> Self { /* … */ }
-    pub const fn swift(self, source: ShellSource) -> Self { /* … */ }
-    // kotlin, typescript, csharp likewise
-}
+pub enum Platform { Apple, Linux, Jvm, Android, Web, DotNet }
 
 #[non_exhaustive]
-pub struct ShellSource {
-    /// The source text, emitted verbatim into the generated module.
-    pub source: &'static str,
-    /// Manifest entries the source needs beyond the platform standard
-    /// library, in the form facet-generate's `manifest_dependencies` takes.
-    /// Empty for a handler that needs nothing.
+pub struct ShellExtension {
+    /// The capability, in UpperCamelCase (`Http`). Shared by its extensions
+    /// in every language. It does not name a file.
+    pub name: &'static str,
+    pub language: Language,
+    /// The source sets, embedded with `include_dir!`.
+    pub sources: Dir<'static>,
+    /// The platforms the source runs on, all of `language`. Never empty.
+    pub platforms: &'static [Platform],
+    /// The protocol the source implements. Registering the extension also
+    /// registers the protocol.
+    pub protocol: Option<&'static ShellProtocol>,
+    /// The top-level names the shipped sources declare
+    /// (`URLSessionHttpHandler`, …), but not the names of the protocol.
+    pub foreign_types: &'static [&'static str],
+    /// Manifest entries beyond the platform standard library, in the form
+    /// facet-generate's `manifest_dependencies` takes. Usually empty.
     pub dependencies: &'static [&'static str],
     /// Swift only: `Target.Dependency` expressions for the generated target,
-    /// in the form facet-generate's `target_dependencies` takes, for a
-    /// handler whose `dependencies` add a package the target must link.
+    /// for a package that `dependencies` adds.
     pub target_dependencies: &'static [&'static str],
 }
 
-impl ShellSource {
-    pub const fn stdlib(source: &'static str) -> Self { /* both lists empty */ }
+impl ShellExtension {
+    pub const fn swift(name: &'static str, sources: Dir<'static>) -> Self { /* … */ }
+    // kotlin, typescript and csharp likewise
+    pub const fn platforms(self, platforms: &'static [Platform]) -> Self { /* … */ }
+    pub const fn protocol(self, protocol: &'static ShellProtocol) -> Self { /* … */ }
+    pub const fn foreign_types(self, names: &'static [&'static str]) -> Self { /* … */ }
     pub const fn dependencies(self, lines: &'static [&'static str]) -> Self { /* … */ }
     pub const fn target_dependencies(self, lines: &'static [&'static str]) -> Self { /* … */ }
 }
 ```
 
-Both types are `#[non_exhaustive]` and built through `const fn` builders,
-which a `static` initialiser can call, so a fifth language or another kind
-of dependency can be added later without breaking every capability crate.
+Both types are `#[non_exhaustive]`, and the extension is built through
+`const fn` builders, which a `static` initialiser can call. So another
+platform or another kind of dependency can be added later without breaking
+every capability crate. `include_dir!` gives a `Dir` that a `static` can
+hold, so a capability does not write an `include_str!` line per file.
+
+The platform list is explicit. A directory for a platform does not prove that
+the source runs there, and a platform with nothing of its own needs no
+directory: the C# and TypeScript extensions have `common/` only.
 
 `foreign_types` lists the names the sources put into the generated module, so
-that type generation can check them without parsing the source. The name of the
-extension only names its file, and the protocol a handler declares is listed
-like any other name.
+that type generation can check them without parsing the source. The protocol
+declares its own names, so an extension lists only the names of its
+implementation, and it cannot declare a name that a protocol declares.
 
 That is the whole declaration. The `Operation` derive and trait are
 untouched, and the breaking release's move to `Notify`, `Request` and
 `Stream` does not affect it.
 
-`rust_types` is there because a shipped source implements the whole capability,
+`protocol` is there because a shipped source implements the whole capability,
 while an app's `Effect` may carry only some of its operations. The weather
 app never sends `KeyExists` or `Now`, so left to itself type generation would
-not emit them, and `KeyValue.swift` would not compile. The function the
-static names registers every operation and output the sources mention —
-`HttpRequest::register_types_facet` and its siblings — so that they are
-generated whenever the extension is.
+not emit them, and the implementation would not compile. Registering the
+extension registers its protocol, and the `rust_types` of the protocol
+registers every operation and output of the capability
+(`HttpRequest::register_types_facet` and its siblings). The protocol is
+registered once, however many of its extensions the app registers. The
+protocol is not an extension, so the rule of one extension of a capability
+for each platform does not count it.
 
-A language a capability does not ship (`kotlin: None`) simply has nothing to
-emit on that platform: the app implements the methods as it does today.
+A language a capability does not ship simply has nothing to emit on that
+platform: the app implements the methods as it does today.
 
-The static is gated on `facet_typegen`, as `register_types_facet` already is,
-so the source text is compiled into the typegen binary and not into the app's
-core. This relies on the capability crate having a feature of that name,
-which is the existing convention.
+The statics are gated on `facet_typegen`, as `register_types_facet` already
+is, so the source text is compiled into the typegen binary and not into the
+app's core. This relies on the capability crate having a feature of that
+name, which is the existing convention, and `include_dir` is an optional
+dependency behind it.
 
 ### Registering it
 
 The app names the shell extensions it wants on the `TypeRegistry`, before
-it builds, because registering one also registers types:
+it builds, because registering one also registers types. It registers one for
+each language it generates, and names the platform when it generates:
 
 ```rust
-// Rust — shared/src/bin/codegen.rs
+// Rust: shared/src/bin/codegen.rs
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
-    .shell_extension(&crux_http::shell::EXTENSION)?
-    .shell_extension(&crux_time::shell::EXTENSION)?
+    .shell_extension(&crux_http::shell::swift::URL_SESSION)?
+    .shell_extension(&crux_http::shell::kotlin::URL_CONNECTION)?
+    .shell_extension(&crux_time::shell::swift::TASK)?
+    .shell_extension(&crux_time::shell::kotlin::COROUTINE)?
     .build()?
     .boltffi(BoltFfi::new().swift("Shared").kotlin());
+typegen.generate(Platform::Android, &android_config)?;
+typegen.generate(Platform::Apple, &apple_config)?;
 ```
+
+`CodeGenerator::generate` generates the language of a platform, with the
+extensions for that platform. The generator keeps no platform, so one
+generator can generate for several platforms. The existing `swift`, `kotlin`,
+`typescript` and `csharp` methods generate for Apple, the JVM, the web and
+.NET, so an app that does not call `generate` sees no change.
+
+When a language is generated, each capability with registered extensions of
+that language contributes the one that lists the platform. An app can
+register a JVM extension and an Android extension of one capability together,
+and each target gets its own.
 
 This is the one place the app has to know a shipped handler exists, and it
 is where the capability's documentation and the book's typegen chapter point.
 It is also what keeps the dependency story simple: an extension's
-`dependencies` reach the manifest only when the extension is registered, so
-no app pays for a library it did not ask for.
+`dependencies` reach the manifest only when the extension is registered and
+selected, so no app pays for a library it did not ask for.
 
 Registration is checked at `build`, so that a clash is an error rather than a
 generated package that does not compile:
 
-- The `name` is a file stem that works in every language and on every file
-  system: an ASCII letter, then ASCII letters, digits or `_`, and not a name
-  Windows reserves for a device (`CON`, `NUL`, `COM1` and so on).
-- No two registered extensions have the same `name`, ignoring case, because
-  `Http.swift` overwrites `http.swift` on a case-insensitive file system. Two
-  crates may ship extensions with the same name, and only one of them can be
-  registered. Renaming the file on registration would not help, because the
-  names the source declares stay the same.
-- The `name` is not the name of a file crux generates beside the module
-  (`FfiBridge`), ignoring case. It only names files, so it may match a type
-  name.
+- The `name` is an identifier: an ASCII letter, then ASCII letters, digits or
+  `_`.
+- The platform list is not empty, and every platform in it is a platform of
+  the extension's language.
+- The source directory contains only `common/` and the directories of the
+  language's platforms, and those contain only files. A misspelled directory
+  such as `andriod/` is an error, not a set of files that is never emitted.
+  Hidden files such as `.DS_Store` are ignored.
+- Every file has the language's extension, is UTF-8, and has a name that works
+  in every language and on every file system: an ASCII letter, then ASCII
+  letters, digits or `_`, and not a name Windows reserves for a device (`CON`,
+  `NUL`, `COM1` and so on). It is not the name of a file crux generates beside
+  the module (`FfiBridge`), ignoring case. It can match a type name.
 - No name in `foreign_types` is a reserved name of the generated shell API, a
   name the module imports from the serialization runtime (`Serializer`,
   `Bytes` and so on), the name of a namespace the app's types are generated
-  into, a name another registered extension declares, or the name of a type
-  registered in the app's root namespace.
+  into, a name an extension of another capability declares, or the name of a
+  type registered in the app's root namespace. The extensions of one
+  capability declare the same names, and that is not a clash.
 
-A `name` equal to the name of the module's own file, ignoring case, would
-overwrite it, and is an error when that language is generated. Kotlin and C#
-name that file after the last segment of the package or namespace (an `Http`
-extension in a `Crux.Http` namespace), and Swift after the whole package
-name in `UpperCamelCase` (a `SharedTypes` extension in a `shared_types`
-package).
+Some checks depend on the language and platform, and are errors when that
+language is generated:
+
+- For a capability, no more than one registered extension of the language
+  lists the platform, because type generation cannot choose between them.
+- If a capability has registered extensions of the language, one of them lists
+  the platform. An app that registers an Apple-only extension and generates
+  Swift for Linux gets an error, not a package without the handler.
+- No two emitted files have the same name, ignoring case, because
+  `Http.swift` overwrites `http.swift` on a case-insensitive file system.
+  This covers a `common/` file and a platform file of one extension, files
+  of two extensions, and a file of an extension and the file of a protocol.
+- No emitted file has the name of the module's own file, ignoring case. Kotlin
+  and C# name that file after the last segment of the package or namespace
+  (`Http.cs` in a `Crux.Http` namespace), and Swift after the whole package
+  name in `UpperCamelCase` (`SharedTypes.swift` in a `shared_types`
+  package).
 
 ### What is emitted
 
-For each registered extension with source for the target language, the plugin
-emits one companion file in the generated module — Swift
-`Sources/App/Http.swift`, Kotlin `com/crux/example/weather/Http.kt`, C#
-`Company/Shared/Http.cs` — containing the shipped source verbatim, after the
-module header the language needs (the `package` line in Kotlin, the
-file-scoped `namespace` in C#). In TypeScript, whose modules are one file, the
-source is appended to the module after the types, the way `Core` is today.
+For each extension selected for the target language and platform, the plugin
+emits one companion file in the generated module for each source file in
+`common/` and in the platform's directory, with that file's name: Swift
+`Sources/App/URLSession.swift`, Kotlin
+`com/crux/example/weather/WebkitCookieJar.kt`. Each contains the shipped source
+verbatim, after the module header the language needs (the `package` line in
+Kotlin, the file-scoped `namespace` in C#). In TypeScript, whose modules are
+one file, the sources go in the module footer, in the order of their paths,
+after every type (and after `Core`, when it is in this module), so that
+everything they name is declared before they run. The protocols come first in
+the footer, so the implementations follow the protocols that they implement.
+
+Only the root module, the one named after the package, gets the sources. A
+namespace of the app's is a module of its own, and each module's
+configuration says which namespace it generates, so the plugin asks it
+(`config.namespace`) and needs no package name of its own.
 
 A capability's source declares a protocol, `HttpHandler` for `crux_http`, and
 one or more implementations of it, and refers to `HttpRequest` and
@@ -530,24 +601,19 @@ every app that registers it.
 - Depends only on the platform standard library and what the generated
   module already requires: Foundation, the JDK and `kotlinx-coroutines-core`,
   the browser or Node globals, the BCL. A capability that genuinely needs a
-  library declares it in `ShellSource::dependencies`, so that it lands in the
+  library declares it in `dependencies`, so that it lands in the
   manifest only for apps that register the handler, but every one of those
   apps then pays for it, so the bar is high.
-- The Kotlin source is JVM, not Android: the generated package is a
-  `kotlin("jvm")` library, so `android.*` would not compile. The consequence
-  matters more than the rule. Where a platform has something better than the
-  lowest common denominator — `DataStore` for a store, Cronet for a transport —
-  the shipped handler will not be it, and the capability should say so on the
-  type rather than leave an app to find out. That is what the Configure tier is
-  for. It also imports
-  nothing the generated module's header already imports — Kotlin rejects
-  the same simple name imported twice — so `com.novi.serde.Bytes` and
-  `kotlinx.coroutines.CoroutineScope` are written in full where they occur.
-- The Swift source compiles on Linux as well as on Apple platforms, because
-  the crate's own test builds it there. The standard library is not the same
-  on both: `URLSession`, `URLRequest` and `HTTPURLResponse` are in
-  `FoundationNetworking` under corelibs-foundation, so a source that uses them
-  imports it under `#if canImport(FoundationNetworking)`.
+- Uses no compiler directives to tell platforms apart. A platform difference
+  is a file in that platform's directory, and the shared code is in
+  `common/`. The Swift `URLSession` code, for example, is in
+  `apple/URLSession.swift` and in `linux/URLSession.swift`, which imports
+  `FoundationNetworking`. The code in `common/` compiles on every platform
+  the extension lists, and each platform's files compile with it.
+- The Kotlin source does not import a name the generated module's header
+  already imports, because Kotlin rejects the same simple name imported twice.
+  So `com.novi.serde.Bytes` and `kotlinx.coroutines.CoroutineScope` are
+  written in full where they occur.
 - The Swift source uses lock-guarded classes, not actors, for shared state:
   the generated operation and output types are not `Sendable`, so an actor
   could not return them across its isolation boundary.
@@ -573,9 +639,9 @@ every app that registers it.
   C# shell that uses them, or a typegen fixture that compiles the generated
   package, is part of the implementation.
 
-The source lives under `shell/<language>/` in the capability crate, beside the
-Rust that defines the protocol it implements, and changes to the two are
-reviewed together.
+The source lives under `shell/<language>/<implementation>/` in the capability
+crate, beside the Rust that defines the protocol it implements, and changes to
+the two are reviewed together.
 
 ### Changes to facet-generate
 
@@ -587,9 +653,14 @@ namespace directory — with the module's header prepended. Unlike
 an external package, companion files are written whenever the module itself
 is. It was added for the generated `Core`'s BoltFFI bridge, whose `FfiBridge`
 is emitted through it, and it is the right home for shipped sources in Swift,
-Kotlin and C# too, where one file per capability is what a reader expects to
-find. TypeScript's single-file modules use `after_type`, as `Core` does, and
-`manifest_dependencies` carries the rare library.
+Kotlin and C# too, where one file per source file is what a reader expects to
+find. TypeScript's single-file modules need one more hook, `module_footer`,
+which facet-generate calls once per module after every type and every
+`after_type` output. `after_type` would not do: it follows one type, and
+plugin order only orders the plugins within a hook, so the source would have
+to be written after whichever type happens to come last. The footer is the
+end of the module by definition. `manifest_dependencies` carries the rare
+library.
 
 ## Drawbacks
 
@@ -653,7 +724,7 @@ per language.
 
 **A default wired by the core.** The first draft of this RFC had each
 operation name its shipped method in the `#[operation]` attribute, and gave
-`ShellSource` a `default` expression, so that the generated `EffectHandler`
+the shipped source a `default` expression, so that the generated `EffectHandler`
 carried a defaulted property and defaulted methods, and an app that wrote
 nothing got the shipped implementation. Review made the case against it: the
 core was deciding what the shell does; an app that never wanted the shipped
@@ -697,7 +768,21 @@ publish to in lockstep with the crate, a breaking move of every capability
 type out of the app's namespace, and the bincode runtime shared across
 packages. Worth revisiting when shipped handlers are large enough to need
 native unit tests; nothing here precludes it, since a published package could
-provide the conformer the app's property holds.
+provide the conformer the app's property holds. This is the model of Tauri
+plugins, Flutter federated plugins and Expo modules, which ship a native
+project per platform and leave the packaging to that ecosystem's tools. It
+stays the long-term option. The source-set layout of a shipped extension
+follows Kotlin Multiplatform, so the move to per-platform packages, if it
+comes, starts from code that is already split by platform.
+
+**Sources keyed by language, with compiler directives.** The first
+implementation had one source per language, so an extension was the same
+code on every platform of that language. A platform difference then needs a
+compiler directive (`#if canImport(FoundationNetworking)` in Swift), and Kotlin
+has no directive at all, so the Kotlin handler could not use Android APIs and
+kept cookies in memory. Directives also hide the platform code inside shared
+files, where a reviewer cannot see which platform runs what. Source sets keep
+each platform's code in a file of its own, and need no directive.
 
 **A byte-level seam.** Publish a package that bundles its own copy of the
 types and exposes `handle(bytes) -> bytes`; type generation emits a default
@@ -736,7 +821,7 @@ evolves.
 
 1. Release the facet-generate that carries the companion-file hook; the
    per-operation types stack already depends on it.
-2. Add `ShellExtension`, `ShellSource` and `TypeRegistry::shell_extension` to
+2. Add `ShellExtension`, `Platform` and `TypeRegistry::shell_extension` to
    `crux_core`, with the plugin and its checks.
 3. Ship handlers for `crux_http`, `crux_kv` and `crux_time` in all four
    languages, and migrate the notes and weather shells to them, so CI compiles
