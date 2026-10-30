@@ -192,8 +192,8 @@ and this project adheres to
   `EffectDispatcher`) are now reserved: `TypeRegistry::build` reports an error
   if a shared type or an effect variant claims one.
 
-  Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
-  every top-level type and exposes the helpers these plugins need.
+  The plugins use the `after_type` plugin hook of `facet_generate`, which
+  fires for every top-level type, and the helpers that it exposes for them.
 
 - **Type generation also emits a shell-side `Core`.** With the handler API in
   place, what every shell still wrote by hand was the same loop: serialize the
@@ -288,48 +288,88 @@ and this project adheres to
   joins the reserved names, and a `boltffi(..)` configuration with no `Core`
   to bridge (`without_core()`, no registered app, or no `Render` variant) is
   an error rather than a no-op. Requires `facet_generate` with the
-  companion-file and manifest hooks (0.21).
+  companion-file and manifest hooks.
 
 - **A crate can ship source for the shell as a shell extension, and type
-  generation emits it on request.** The main use is a capability's shell
-  handler. A crate exports a `ShellExtension` static behind its
-  `facet_typegen` feature: a name, the top-level names its sources declare,
-  and, per language, a `ShellSource` holding Swift, Kotlin, TypeScript or C#
-  source embedded with `include_str!`. An app registers the ones it wants on
-  the `TypeRegistry`, which also registers every type the shipped sources
-  name:
+  generation emits it on request.** The main use is an implementation of a
+  capability's protocol, over a platform client. An extension is one
+  language. A crate exports one `ShellExtension` static for each language
+  behind its `facet_typegen` feature, built with
+  `ShellExtension::swift`, `kotlin`, `typescript` or `csharp`. It has the
+  capability's name, a source directory embedded with `include_dir!`, the
+  platforms the source runs on, the protocol that it implements
+  (`.protocol(&PROTOCOL)`), and the top-level names its sources declare.
+  The source directory is laid out as source sets: `common/` holds the files
+  for every platform, and a directory named after a `Platform` (`apple`,
+  `linux`, `jvm`, `android`, `web` or `dotnet`) holds the files for that
+  platform only. A platform difference is a file in that platform's
+  directory, not a compiler directive. An app registers the extensions it
+  wants on the `TypeRegistry`, which also registers the protocol of each
+  extension with `TypeRegistry::shell_protocol`. Thus an implementation always
+  arrives with its protocol and with every type of the capability:
 
   ```rust,ignore
-  TypeRegistry::new().register_app::<App>()?
-      .shell_extension(&crux_http::shell::EXTENSION)?
-      .shell_extension(&crux_time::shell::EXTENSION)?
-      .build()?
+  let typegen = TypeRegistry::new().register_app::<App>()?
+      .shell_extension(&crux_http::shell::swift::URL_SESSION)?
+      .shell_extension(&crux_http::shell::kotlin::URL_CONNECTION)?
+      .build()?;
+  typegen.generate(Platform::Android, &config)?;
   ```
 
-  For each registered extension with source for the language, the generated
-  module gains one companion file named after the extension (`Http.swift`,
-  `Http.kt`, `Http.cs`) with the source verbatim under the module header;
-  TypeScript appends it to the module after the types. A capability's
-  handler declares a protocol (`HttpHandler`) with one method per operation,
-  matching the generated `EffectHandler` shapes, and an implementation of
-  it. The app's handler holds an instance and delegates one line per
-  operation. Nothing else is generated: `EffectHandler`, `EffectDispatcher`
-  and `Core` are unchanged, an unregistered extension leaves no trace, and
-  `without_effect_handlers()` does not affect it.
-  `ShellSource::dependencies` carries any manifest lines the source needs,
-  which reach the manifest only through registration. `ShellSource::stdlib(..)`
-  is the constructor for the expected case of none, and a Swift source that
-  adds a package names the target's product with `target_dependencies(..)`.
-  Both types are `#[non_exhaustive]` and built with `const fn` builders
-  (`ShellExtension::new("Http").foreign_types(..).swift(..)`), so a language can
-  be added later without breaking the crates that ship them. The build
-  rejects an extension name that is not an identifier-shaped file stem or is
-  a Windows device name, that matches another extension's ignoring case, or
-  that matches a file crux generates (`FfiBridge`); and a declared name that
-  is reserved for the shell API, imported from the serialization runtime,
-  the name of a namespace, declared by another extension, or used by a type
-  registered in the root namespace. An extension named after the module it
-  would be written beside is rejected when that language is generated. See
+  `CodeGenerator::generate` generates the language of a platform, with the
+  shell extensions for that platform. One generator can generate for several
+  platforms. The `swift`, `kotlin`, `typescript` and `csharp` methods generate
+  for the language's default platform: Apple for Swift, the JVM for Kotlin,
+  the web for TypeScript and .NET for C#. For each capability, crux emits the
+  registered extension of the language that lists the platform. From that
+  extension, crux emits every file in `common/` and in the platform's
+  directory as a companion file of the same name, with the source verbatim
+  under the module header. A TypeScript module is one file, so the files go in
+  the module footer, in the order of their paths, after every type (and after
+  `Core`, when it is in this module), and after the protocols. The protocol
+  (`HttpHandler`) has one method per operation, in the shapes of the
+  generated `EffectHandler`, and the extension declares an implementation of
+  it (`URLSessionHttpHandler`). The app's handler holds an instance and
+  delegates one line per operation. Crux generates nothing else.
+  `EffectHandler`, `EffectDispatcher` and `Core` do not change, crux emits
+  nothing for an unregistered extension, and `without_effect_handlers()` does
+  not affect an extension. `dependencies(..)` carries any manifest lines the
+  source needs. These lines reach the manifest only when the app registers the
+  extension and crux selects it. A Swift source that adds a package names the
+  target's product with `target_dependencies(..)`. `ShellExtension` and
+  `Platform` are `#[non_exhaustive]`, and a crate builds an extension with
+  `const fn` builders. Thus a later release can add a platform, and the crates
+  that ship extensions do not break.
+
+  The build rejects these cases:
+
+  - an extension whose name is not an identifier
+  - an extension with an empty platform list, or with a platform of another
+    language
+  - a source directory that contains anything other than `common/` and the
+    language's platform directories (so a misspelled `andriod/` is an error)
+  - a source file that has the wrong extension or is not UTF-8
+  - a source file whose name is not an identifier, is a Windows device name,
+    or matches a file that crux generates (`FfiBridge`).
+
+  The build also rejects a declared name that is reserved for the shell API,
+  imported from the serialization runtime, the name of a namespace, declared
+  by an extension of another capability, declared by a protocol (including
+  the protocol that the extension implements), or used by a type registered
+  in the root namespace.
+
+  When crux generates a language, it rejects these cases:
+
+  - two registered extensions of a capability that list the platform
+  - registered extensions of a capability, of which none lists the platform
+  - two emitted files with the same name, ignoring case, including a file of
+    an extension and the file of a protocol
+  - an emitted file with the name of the module beside which crux writes it.
+
+  A protocol is not an extension, so the rule of one extension of a
+  capability for each platform does not count it.
+
+  See
   [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
 
 - **A capability can ship its shell protocol, and type generation emits it
@@ -357,10 +397,10 @@ and this project adheres to
   For each protocol with a source for the language, the root module gains
   one companion file with the name of the protocol (`Http.swift`, `Http.kt`,
   `Http.cs`). In TypeScript, the protocols go in the module footer, after
-  every type. Protocols and shell extensions share the name checks. Type
-  generation rejects two of them with the same name, ignoring case. It also
-  rejects a name that two of them declare, and a declared name that the shell
-  API reserves or that a root type uses. See
+  every type. Type generation rejects two protocols with the same name,
+  ignoring case. Protocols and shell extensions share the checks of declared
+  names. Type generation rejects a name that two of them declare, and a
+  declared name that the shell API reserves or that a root type uses. See
   [Shell protocols](https://redbadger.github.io/crux/part-4/typegen.html#shell-protocols).
 
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
@@ -426,7 +466,9 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **Facet type generation now requires `facet_generate` 0.22.3.** Only the
+- **Facet type generation now requires `facet_generate` 0.22.3.** Crux
+  uses its `module_footer` plugin hook to put the sources of protocols and
+  shell extensions at the end of a TypeScript module. Only the
   `facet_typegen` feature is affected; every other feature of this crate is
   unchanged.
 - Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.
