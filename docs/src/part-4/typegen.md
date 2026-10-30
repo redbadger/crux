@@ -595,30 +595,72 @@ The main use is a capability's shell handler, the shell side of its
 protocol. `crux_http`, `crux_kv` and `crux_time` each ship one, as an
 implementation of their operations in all four languages.
 
-You ask in the codegen binary, per extension, on the registry before you
-build it:
+A shell extension is one language. A capability exports one `static` for
+each language it ships, in a module for that language, behind its
+`facet_typegen` feature: for example, `crux_http::shell::swift::URL_SESSION`
+and `crux_http::shell::kotlin::URL_CONNECTION`. In the codegen binary,
+register the extensions for the languages you generate, on the registry
+before you build it:
 
 ```rust,ignore
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
-    .shell_extension(&crux_http::shell::EXTENSION)?
-    .shell_extension(&crux_kv::shell::EXTENSION)?
-    .shell_extension(&crux_time::shell::EXTENSION)?
+    .shell_extension(&crux_http::shell::swift::URL_SESSION)?
+    .shell_extension(&crux_http::shell::kotlin::URL_CONNECTION)?
+    .shell_extension(&crux_time::shell::swift::TASK)?
+    .shell_extension(&crux_time::shell::kotlin::COROUTINE)?
     .build()?;
 ```
 
-Each `ShellExtension` is a `static` the crate exports behind its
-`facet_typegen` feature. Registering a capability's extension also
-registers every operation and output its sources name, including operations
-your `Effect` never carries, because the shipped file implements the whole
-capability and so all of its types have to exist. For every extension you
-register, and every language it has source for, the generated module gains
-one file named after the extension (`Http.swift` in the Swift target,
-`Http.kt` in the Kotlin package, `Http.cs` in the C# namespace), with the
-module's header prepended and the source otherwise verbatim. TypeScript
-modules are a single file, so there the source is appended after the types,
-as `Core` is. A language the extension does not ship gets nothing, and you
-implement those methods as you would have anyway.
+Registering a capability's extension also registers every operation and
+output its sources name, including operations your `Effect` never carries.
+The shipped files implement the whole capability, so all of its types must
+exist. Crux registers those types once for each capability, however many
+languages you register.
+
+A language does not identify a platform. Kotlin runs on the JVM and on
+Android, and Swift runs on Apple platforms and on Linux. For this reason, the
+source of an extension is a directory of source sets. The `common/`
+directory holds the files for every platform, and a directory named after a
+platform (`apple`, `linux`, `jvm`, `android`, `web` or `dotnet`) holds the
+files for that platform only:
+
+```text
+crux_http/shell/kotlin/url_connection/
+  common/   Http.kt  UrlConnectionHttp.kt
+  android/  WebkitCookieJar.kt
+```
+
+The `swift`, `kotlin`, `typescript` and `csharp` methods generate for the
+language's default platform: Apple for Swift, the JVM for Kotlin, the web for
+TypeScript and .NET for C#. To generate for another platform, call
+`generate` with the platform:
+
+```rust,ignore
+typegen.generate(Platform::Android, &config)?;
+```
+
+`generate` generates the language of the platform. One generator can
+generate for several platforms, for example Kotlin for the JVM and for
+Android, into two output directories.
+
+For each capability, crux emits the registered extension of the language
+that lists the platform. From that extension, it emits every file in
+`common/` and every file in the platform's directory. Each file becomes a
+file of the same name in the generated module (`Http.swift` in the Swift
+target, `WebkitCookieJar.kt` in the Kotlin package, `Http.cs` in the C#
+namespace). Crux puts the module's header first and copies the source
+verbatim. A TypeScript module is a single file, so crux appends the sources
+after the types, as it does for `Core`, in the order of their paths. If you
+register no extension of a language for a capability, that language gets
+nothing, and you implement those methods yourself.
+
+Type generation fails in these cases:
+
+- More than one registered extension of a capability lists the platform, so
+  crux cannot choose one.
+- You registered extensions of the language for a capability, but none of
+  them lists the platform.
 
 In Swift, `Http.swift` declares an `HttpHandler` protocol with one method
 per operation, taking the operation and returning what the generated
@@ -659,15 +701,21 @@ library. An extension lists the top-level names its sources declare
 (`HttpHandler`, `IHttpHandler`, `URLSessionHttpHandler` and so on), and
 the build fails if one of those is a name the generated shell API uses, a
 name the generated module imports from the serialization runtime (such as
-`Serializer`), the name of one of your namespaces, a name another
-registered extension declares, or the name of a type registered in the
-root namespace. The same goes for a type a capability registers: `crux_kv`
-brings its `Delete` with it, and an app with a `Delete` of its own renames
-one of them with `#[facet(rename = "...")]`. The extension's own name only
-names its files, so it has to work as a file name (an ASCII letter, then
-ASCII letters, digits or `_`), and two extensions with the same name,
-ignoring case, cannot both be registered, because their files would
-overwrite each other.
+`Serializer`), the name of one of your namespaces, a name that an
+extension of another capability declares, or the name of a type registered
+in the root namespace. The same applies to a type a capability registers:
+`crux_kv` brings its `Delete` with it, and an app with a `Delete` of its own
+renames one of them with `#[facet(rename = "...")]`. The extensions of one
+capability declare the same names, and that is not a clash.
+
+Each source file is written beside the module under its own name, so the
+name must work as a file name in every language: an ASCII letter, then
+ASCII letters, digits or `_`. Two emitted files cannot have the same name,
+ignoring case, because one would overwrite the other.
+
+The build also fails for a source directory that contains anything other
+than `common/` and the directories of the language's platforms. Thus a
+misspelled `andriod/` is an error.
 
 [Building capabilities](../part-2/capabilities.md) covers the other side:
 how a capability declares what it ships.
