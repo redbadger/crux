@@ -1145,6 +1145,7 @@ dependencies = [
  "facet_generate",
  "futures",
  "heck 0.5.0",
+ "include_dir",
  "log",
  "serde",
  "serde_json",

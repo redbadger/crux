@@ -41,7 +41,7 @@
 
 use std::result::Result;
 
-use crate::type_generation::facet::{TypeGenError, TypeRegistry};
+use crate::type_generation::facet::{Language, TypeGenError, TypeRegistry};
 
 /// How a protocol registers the Rust types that its sources name.
 ///
@@ -71,8 +71,11 @@ pub struct ShellProtocol {
     /// [`TypeRegistry::build`] checks the name. It must start with an ASCII
     /// letter and contain only ASCII letters, digits and `_`. It must not be a
     /// name that Windows reserves for a device, or the name of a file that the
-    /// generated shell API writes (`FfiBridge`). Two protocols or shell
-    /// extensions must not have the same name, even in different case.
+    /// generated shell API writes (`FfiBridge`). Two protocols must not have
+    /// the same name, even in different case. A
+    /// [`ShellExtension`](crate::type_generation::facet::ShellExtension) that
+    /// implements the protocol has the same name, because both have the name
+    /// of the capability.
     pub name: &'static str,
     /// Registers the Rust types that the sources name. [`TypeRegistry::shell_protocol`]
     /// runs it.
@@ -188,6 +191,16 @@ impl ShellProtocol {
     ) -> Self {
         self.csharp = Some(ProtocolSource::new(source, foreign_types));
         self
+    }
+
+    /// The source in `language`, if the protocol has one.
+    pub(crate) const fn source(&self, language: Language) -> Option<&ProtocolSource> {
+        match language {
+            Language::Swift => self.swift.as_ref(),
+            Language::Kotlin => self.kotlin.as_ref(),
+            Language::TypeScript => self.typescript.as_ref(),
+            Language::CSharp => self.csharp.as_ref(),
+        }
     }
 
     /// The top-level names that the sources declare, in all languages,
