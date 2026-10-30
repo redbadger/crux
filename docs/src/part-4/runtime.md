@@ -259,9 +259,15 @@ app's `Effect` type (via the `From` trait), and sends it through the
 effects channel. The callback the `Request` carries is what fixes how
 many times the request can be resolved — never, once, or repeatedly —
 and the `RequestHandle` remembers it as an `OperationKind`, readable with
-`handle.kind()`. Notifications are never registered at all, so
-resolving one reports `NotFound`. The `Command` collects these effects and surfaces
-them to the `Core`.
+`handle.kind()`. Notifications are never registered at all: the bridge
+gives every one of them the same id, so resolving one reports
+`ResolveError::Never` rather than an unknown id. The `Command` collects
+these effects and surfaces them to the `Core`.
+
+The id the shell sees is opaque: the shell hands it back untouched. The
+bridge checks it on the way in, and when it rejects one, the error names
+the effect involved rather than just quoting a number — see
+[request ids](./typegen.md#request-ids).
 
 Looking at the core itself:
 

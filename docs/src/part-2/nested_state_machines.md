@@ -4,6 +4,10 @@ In the previous chapter we saw the top-level `Model` behave as a lifecycle state
 
 This chapter zooms in on that nesting: the `Outcome` protocol itself, a worked example of a small state machine, and how transitions from deep inside the hierarchy can bubble all the way back up to the lifecycle.
 
+The diagram shows the branch of the model tree that this chapter uses as its example. Events go down from each parent to its child, and transitions come back up to the parent.
+
+![A tree of state machines in the Active state of the Model. Active holds an ActiveModel, and the screen of the ActiveModel is Screen::Home. Screen::Home holds a HomeScreen, which has two children: LocalWeather and Vec\<FavoriteWeather\>. Solid arrows take events down from each parent to its child: Event::Active, ActiveEvent::Home, HomeEvent::Local and HomeEvent::FavoritesWeather. Dashed arrows take transitions back up in the Outcome that update returns. HomeScreen lifts LocalWeatherTransition::Unauthorized and FavoriteWeatherTransition::Unauthorized to HomeTransition::ApiKeyRejected. ActiveModel lifts that transition to ActiveTransition::Unauthorized. Then update_active changes the Model from Active back to Onboard. Each parent uses map_event to wrap the events of its child in its own variant.](nested_state_machines.svg)
+
 ## The Outcome pattern
 
 Three types do all the work. First, the result of any sub-state-machine step:
@@ -48,7 +52,7 @@ Starting the state machine kicks off the first effect — asking the shell wheth
 {{#include ../../../examples/weather/shared/src/model/active/home/local.rs:start}}
 ```
 
-This is the `Started` pattern we first saw in chapter 3, now at a lower level. The `update` function walks through each event and returns an `Outcome`:
+This is the `Started` pattern we first saw in [App lifecycle](./app_lifecycle.md), now at a lower level. The `update` function walks through each event and returns an `Outcome`:
 
 ```rust
 {{#include ../../../examples/weather/shared/src/model/active/home/local.rs:update}}
@@ -96,7 +100,7 @@ A `LocalWeatherTransition::Unauthorized` doesn't escape `HomeScreen` as-is. It's
 {{#include ../../../examples/weather/shared/src/model/active/home/mod.rs:transition}}
 ```
 
-`HomeTransition::ApiKeyRejected(Favorites)` carries the current favourites list along, because whatever comes next still needs them. The active-model update does the same lift: it maps `HomeTransition::ApiKeyRejected` to `ActiveTransition::Unauthorized`, still carrying the favourites. The top-level `update_active` then sees `Complete(Unauthorized)` — exactly the handler we wrote in chapter 3 — and swaps `Model::Active` for `Model::Onboard`.
+`HomeTransition::ApiKeyRejected(Favorites)` carries the current favourites list along, because whatever comes next still needs them. The active-model update does the same lift: it maps `HomeTransition::ApiKeyRejected` to `ActiveTransition::Unauthorized`, still carrying the favourites. The top-level `update_active` then sees `Complete(Unauthorized)` — exactly the handler we wrote in [App lifecycle](./app_lifecycle.md) — and swaps `Model::Active` for `Model::Onboard`.
 
 That's the full round trip: a 401 from the weather API, three levels below the top of the model tree, propagates up through three transition types until it becomes a lifecycle change. Each level decides what to do with its child's transition — either pass it along (lifted into its own transition type) or handle it locally.
 

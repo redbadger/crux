@@ -19,6 +19,12 @@ edition = "2024"
 //!   `Effect` variant
 //! - part-4/generated_core.svg, the layers of a shell that uses the generated
 //!   `Core`, from the UI down to the Rust core
+//! - part-2/mocking_layers.svg, the layers of the app at run time and in a
+//!   test that uses fakes
+//! - part-2/app_lifecycle.svg, the phases of the weather app's `Model` and
+//!   the transitions between them
+//! - part-2/nested_state_machines.svg, the events that go down the weather
+//!   app's model tree and the transitions that come back up
 //!
 //! Do not edit the SVG files directly. Change this script and run it again.
 //! The script needs a nightly Rust toolchain, because cargo runs single-file
@@ -235,6 +241,17 @@ fn card(out: &mut String, r: Rect, kind: Kind, dashed: bool) {
     emit!(
         out,
         r#"<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="1.5"{dash}/>"#
+    );
+}
+
+/// A dashed grey card with a darker, heavier outline than `card`, so that the
+/// dashes show on a dark page as well as a white one.
+fn bold_dashed_card(out: &mut String, r: Rect) {
+    let (fill, _) = Kind::World.colours();
+    let (x, y, w, h) = (n(r.x), n(r.y), n(r.w), n(r.h));
+    emit!(
+        out,
+        r##"<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" fill="{fill}" stroke="#6b7280" stroke-width="2" stroke-dasharray="8 5"/>"##
     );
 }
 
@@ -1926,6 +1943,537 @@ fn generated_core() -> String {
     s
 }
 
+// ---------------------------------------------------------------------------
+// Testing with fakes (part-2/mocking_layers.svg)
+// ---------------------------------------------------------------------------
+
+/// The layers of an app at run time, next to the layers in a test that uses
+/// fakes. The core is the same in both columns. The transport layers are not
+/// in the test, and a simplified version of the server logic runs in the test
+/// process.
+fn mocking_layers() -> String {
+    const W: f64 = 800.0;
+    let (lx, rx, cw) = (30.0, 500.0, 270.0); // column lefts and the column width
+    let (rh, gap) = (56.0, 14.0); // card height and the gap between cards
+    let top = 64.0;
+    let row = |i: usize| top + i as f64 * (rh + gap);
+    let gx = (lx + cw + rx) / 2.0; // the middle of the gap between the columns
+
+    // The transport group: a heading above three dashed cards.
+    let pad = 12.0;
+    let group_top = row(2);
+    let heading_room = 36.0;
+    let transport_y = |i: usize| group_top + heading_room + i as f64 * (rh + gap);
+    let group_h = heading_room + 3.0 * rh + 2.0 * gap + pad;
+    let server_y = group_top + group_h + gap;
+    let h = server_y + rh + 20.0;
+
+    let title = "Crux: the app layers at run time and in a test";
+    let desc = "Two columns of layers. At runtime, from the top: the app core, the \
+                shell's effect handler, an HTTP client, the network, an HTTP server \
+                and the server logic. In a test, from the top: the same app core, an \
+                effect handler for the test, and a simplified version of the server \
+                logic. An arrow labelled unchanged goes from the app core at run time \
+                to the app core in the test. An arrow labelled test version goes from \
+                the shell's effect handler to the test's effect handler. The HTTP \
+                client, the network and the HTTP server have dashed outlines, in a \
+                group labelled not in tests. An arrow labelled in-process fake goes \
+                from the server logic to the simplified server logic, which runs in \
+                the test process.";
+    let mut s = String::new();
+    head(&mut s, W, h, title, desc);
+
+    text(&mut s, lx + cw / 2.0, 40.0, "middle", HEADING, "At runtime");
+    text(&mut s, rx + cw / 2.0, 40.0, "middle", HEADING, "In tests");
+
+    // At run time
+    let core = Rect::new(lx, row(0), cw, rh);
+    lines_card(&mut s, core, Kind::Fn, &[(TITLE, 16.0, "App core")]);
+    let handler = Rect::new(lx, row(1), cw, rh);
+    lines_card(
+        &mut s,
+        handler,
+        Kind::Shell,
+        &[(TITLE, 16.0, "Effect handler (shell)")],
+    );
+    group(
+        &mut s,
+        Rect::new(lx - pad, group_top, cw + 2.0 * pad, group_h),
+        Kind::World,
+        "Transport (not in tests)",
+        false,
+    );
+    for (i, name) in ["HTTP client", "Network", "HTTP server"].into_iter().enumerate() {
+        let r = Rect::new(lx, transport_y(i), cw, rh);
+        bold_dashed_card(&mut s, r);
+        text(&mut s, r.cx(), r.cy() + 5.5, "middle", TITLE, name);
+    }
+    let server = Rect::new(lx, server_y, cw, rh);
+    lines_card(&mut s, server, Kind::Model, &[(TITLE, 16.0, "Server logic")]);
+
+    // In tests: the same rows as the core and the handler, and the fake
+    // directly under the handler.
+    let test_core = Rect::new(rx, row(0), cw, rh);
+    lines_card(&mut s, test_core, Kind::Fn, &[(TITLE, 16.0, "App core")]);
+    let test_handler = Rect::new(rx, row(1), cw, rh);
+    lines_card(
+        &mut s,
+        test_handler,
+        Kind::Shell,
+        &[(TITLE, 16.0, "Effect handler (test)")],
+    );
+    let fake = Rect::new(rx, row(2), cw, rh);
+    lines_card(
+        &mut s,
+        fake,
+        Kind::Model,
+        &[(TITLE, 16.0, "Simplified server logic")],
+    );
+
+    // Each arrow has a label that fits in the gap between the columns.
+    let fits = |label: &str| {
+        assert!(
+            text_width(label, 12.5) + 16.0 + 12.0 <= rx - (lx + cw),
+            "{label:?} does not fit between the columns"
+        );
+    };
+    for (r, label) in [(core, "unchanged"), (handler, "test version")] {
+        fits(label);
+        h_arrow(&mut s, lx + cw + 2.0, r.cy(), rx - 2.0);
+        pill(&mut s, gx, r.cy() - 14.0, label, false, 12.5);
+    }
+    // Server logic -> simplified server logic: right, up the gap, then right.
+    let label = "in-process fake";
+    fits(label);
+    let (y0, y1, rad) = (server.cy(), fake.cy(), 16.0);
+    arrow(
+        &mut s,
+        Path::new()
+            .m(lx + cw + 2.0, y0)
+            .h(gx - rad)
+            .q(gx, y0, gx, y0 - rad)
+            .v(y1 + rad)
+            .q(gx, y1, gx + rad, y1)
+            .h(rx - 2.0),
+        Arrow::Solid,
+    );
+    pill(&mut s, gx, (y0 + y1) / 2.0, label, false, 12.5);
+
+    s.push_str("</svg>\n");
+    s
+}
+
+// ---------------------------------------------------------------------------
+// The weather app's state machines (part-2/app_lifecycle.svg and
+// part-2/nested_state_machines.svg)
+// ---------------------------------------------------------------------------
+
+/// A card title or a label on a pill, and whether it is code.
+type Label = (&'static str, bool);
+
+/// A line of text from `x`, in parts. A part that is code is monospace.
+fn mixed_text(out: &mut String, x: f64, y: f64, attrs: &str, parts: &[Label]) {
+    let mut content = String::new();
+    for &(part, mono) in parts {
+        if mono {
+            write!(content, r#"<tspan class="m">{}</tspan>"#, escape(part)).unwrap();
+        } else {
+            content.push_str(&escape(part));
+        }
+    }
+    let (x, y) = (n(x), n(y));
+    emit!(
+        out,
+        r#"<text x="{x}" y="{y}" text-anchor="start" {attrs} xml:space="preserve">{content}</text>"#
+    );
+}
+
+/// The length of an arrowhead: the marker is 8 stroke widths long.
+const HEAD: f64 = 16.0;
+/// The plain line between a pill or a bend and an arrowhead.
+const CLEAR: f64 = 24.0;
+/// The height of a pill with two lines of 12.5px text. Rows of pills use it
+/// to leave room for a path that does not fit on one line.
+const PILL2_H: f64 = 38.0;
+
+/// The lines of a Rust path on a pill. The path is on one line if it fits in
+/// `max_w`. If not, it goes on two lines: the type with `::`, then the
+/// variant.
+fn path_lines(path: &str, max_w: f64) -> Vec<&str> {
+    if text_width(path, 12.5) + 16.0 <= max_w {
+        return vec![path];
+    }
+    let split = path.rfind("::").expect("a path with ::") + 2;
+    let lines = vec![&path[..split], &path[split..]];
+    assert!(
+        lines.iter().all(|l| text_width(l, 12.5) + 16.0 <= max_w),
+        "{path:?} does not fit in {max_w}px"
+    );
+    lines
+}
+
+/// The height of a pill with `count` lines of 12.5px text. A pill with one
+/// line has the height of a `pill`.
+fn pill_height(count: usize) -> f64 {
+    if count == 1 {
+        12.5 + 10.0
+    } else {
+        count as f64 * 15.0 + 8.0
+    }
+}
+
+/// A pill with lines of monospace 12.5px text, centred on (`cx`, `cy`). The
+/// function returns the box of the pill.
+fn code_pill(out: &mut String, cx: f64, cy: f64, lines: &[&str]) -> Bounds {
+    let w = lines.iter().map(|l| text_width(l, 12.5)).fold(0.0, f64::max) + 16.0;
+    let h = pill_height(lines.len());
+    let b = [cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0];
+    emit!(
+        out,
+        r#"<rect x="{}" y="{}" width="{}" height="{}" rx="11" class="pill"/>"#,
+        n(b[0]),
+        n(b[1]),
+        n(w),
+        n(h)
+    );
+    let first = -(lines.len() as f64 - 1.0) / 2.0;
+    for (i, line) in lines.iter().enumerate() {
+        let y = cy + (first + i as f64) * 15.0 + 12.5 * 0.36;
+        text(out, cx, y, "middle", r#"class="l m""#, line);
+    }
+    b
+}
+
+/// The widest pill that each of the vertical lines at `xs` (from left to
+/// right) can have in one row. A pill stops 6px before the middle of the gap
+/// to the next line, and 30px inside the edges of a diagram `w` wide.
+fn pill_widths(xs: &[f64], w: f64) -> Vec<f64> {
+    (0..xs.len())
+        .map(|i| {
+            let left = if i == 0 { xs[0] - 30.0 } else { (xs[i] - xs[i - 1]) / 2.0 - 6.0 };
+            let right = match xs.get(i + 1) {
+                Some(next) => (next - xs[i]) / 2.0 - 6.0,
+                None => w - 30.0 - xs[i],
+            };
+            2.0 * left.min(right)
+        })
+        .collect()
+}
+
+/// A path pill in the middle of a vertical run of line from `from` to an
+/// arrowhead at `tip`, in either direction. The function panics unless the
+/// pill leaves `CLEAR` to the start of the run and to the arrowhead.
+fn v_path_pill(out: &mut String, x: f64, from: f64, tip: f64, path: &str, max_w: f64) -> Bounds {
+    let lines = path_lines(path, max_w);
+    let mid = (from + tip) / 2.0;
+    let half = (tip - from).abs() / 2.0 - pill_height(lines.len()) / 2.0;
+    assert!(
+        half - HEAD >= CLEAR,
+        "the pill {path:?} is too close to the end of its line"
+    );
+    code_pill(out, x, mid, &lines)
+}
+
+/// Panic if two pills overlap or come closer than 8px.
+fn assert_apart(pills: &[Bounds]) {
+    for (i, a) in pills.iter().enumerate() {
+        for b in &pills[i + 1..] {
+            let a = [a[0] - 8.0, a[1] - 8.0, a[2] + 8.0, a[3] + 8.0];
+            assert!(disjoint(&a, b), "the pills {a:?} and {b:?} are too close");
+        }
+    }
+}
+
+/// A state of the lifecycle: the variant name and a short description.
+fn state(out: &mut String, r: Rect, name: &str, sub: &str) {
+    lines_card(out, r, Kind::Model, &[(CODE, 16.0, name), (SMALL, 12.0, sub)]);
+}
+
+/// The phases of the weather app's `Model`, and the transitions between them.
+/// Each label is the event or the transition that moves the app to the next
+/// phase.
+fn app_lifecycle() -> String {
+    const W: f64 = 960.0;
+    let (cw, ch) = (240.0, 56.0); // the state cards
+    // between the rows that a vertical arrow joins
+    let gap = 2.0 * (HEAD + CLEAR) + PILL2_H + 4.0;
+    let rad = 16.0; // the radius of a bend
+    let spine = W / 2.0;
+    let uninit = Rect::new(spine - cw / 2.0, 60.0, cw, ch);
+    let init = Rect::new(spine - cw / 2.0, uninit.y + ch + gap, cw, ch);
+    let row2 = init.cy() + rad + 2.0 + HEAD + CLEAR + PILL2_H + CLEAR + HEAD;
+    let onboard = Rect::new(80.0, row2, cw, ch);
+    let active = Rect::new(W - 80.0 - cw, row2, cw, ch);
+    let failed = Rect::new(onboard.x, onboard.y + ch + gap, cw, ch);
+    let h = failed.y + ch + 33.0;
+
+    let title = "Crux: the weather app's lifecycle";
+    let desc = "The five states of the weather app's Model, with an arrow for each \
+                transition. Event::Start moves the app from Uninitialized to \
+                Initializing. Initializing goes to Onboard with \
+                InitializingTransition::Onboard if no API key is stored, and to Active \
+                with InitializingTransition::Active if the key is stored. Onboard goes to \
+                Active with OnboardTransition::Active, and to Failed with \
+                OnboardTransition::Failed. Active goes back to Onboard with \
+                ActiveTransition::Unauthorized or ActiveTransition::ResetApiKey. Failed \
+                holds the message of an unrecoverable error, and the app stays in \
+                Failed.";
+    let mut s = String::new();
+    head(&mut s, W, h, title, desc);
+    group(
+        &mut s,
+        Rect::new(15.0, 15.0, W - 30.0, h - 30.0),
+        Kind::Model,
+        "Model",
+        true,
+    );
+
+    state(&mut s, uninit, "Uninitialized", "waits for the shell");
+    state(&mut s, init, "Initializing", "loads the key and favourites");
+    state(&mut s, onboard, "Onboard", "asks for an API key");
+    state(&mut s, active, "Active", "home and favourites");
+    state(&mut s, failed, "Failed", "an unrecoverable error");
+
+    let mut pills = Vec::new();
+    // A pill on a vertical line can be as wide as a card.
+    let max_w = cw;
+    // Uninitialized -> Initializing
+    let (from, tip) = (uninit.y + ch + 2.0, init.y - 2.0);
+    arrow(&mut s, Path::new().m(spine, from).v(tip), Arrow::Solid);
+    pills.push(v_path_pill(&mut s, spine, from, tip, "Event::Start", max_w));
+
+    // Initializing -> Onboard and Initializing -> Active: out of the sides of
+    // Initializing, then down into the tops of the two states.
+    for (target, side, dir, label) in [
+        (onboard, init.x - 2.0, -1.0, "InitializingTransition::Onboard"),
+        (active, init.x + cw + 2.0, 1.0, "InitializingTransition::Active"),
+    ] {
+        let x = target.cx();
+        let (y, tip) = (init.cy(), target.y - 2.0);
+        arrow(
+            &mut s,
+            Path::new()
+                .m(side, y)
+                .h(x - dir * rad)
+                .q(x, y, x, y + rad)
+                .v(tip),
+            Arrow::Solid,
+        );
+        pills.push(v_path_pill(&mut s, x, y + rad, tip, label, max_w));
+    }
+
+    // Onboard -> Active above the middle of the cards, and Active -> Onboard
+    // below it. Each pill touches its line: above the upper line and below
+    // the lower line. One pill names both transitions from Active.
+    let (left, right) = (onboard.x + cw + 2.0, active.x - 2.0);
+    let (upper, lower) = (onboard.cy() - 12.0, onboard.cy() + 12.0);
+    let between = right - left - 2.0 * (HEAD + CLEAR);
+    h_arrow(&mut s, left, upper, right);
+    let lines = path_lines("OnboardTransition::Active", between);
+    let cy = upper - 4.0 - pill_height(lines.len()) / 2.0;
+    pills.push(code_pill(&mut s, spine, cy, &lines));
+    h_arrow(&mut s, right, lower, left);
+    let lines = ["ActiveTransition::", "Unauthorized", "ResetApiKey"];
+    let cy = lower + 4.0 + pill_height(lines.len()) / 2.0;
+    pills.push(code_pill(&mut s, spine, cy, &lines));
+    // The pills between the cards keep a clear run to each arrowhead.
+    for b in &pills[pills.len() - 2..] {
+        assert!(b[0] - (left + HEAD) >= CLEAR && (right - HEAD) - b[2] >= CLEAR);
+    }
+
+    // Onboard -> Failed
+    let (from, tip) = (onboard.y + ch + 2.0, failed.y - 2.0);
+    arrow(&mut s, Path::new().m(onboard.cx(), from).v(tip), Arrow::Solid);
+    pills.push(v_path_pill(
+        &mut s,
+        onboard.cx(),
+        from,
+        tip,
+        "OnboardTransition::Failed",
+        max_w,
+    ));
+    // The three-line pill stays above Failed.
+    assert!(pills[4][3] + 12.0 < failed.y);
+
+    assert_apart(&pills);
+    s.push_str("</svg>\n");
+    s
+}
+
+/// The `Active` branch of the weather app's model tree. Events go down from
+/// each parent to its child on solid lines, and transitions come back up on
+/// dashed lines, until `Model` swaps `Active` for `Onboard`.
+fn nested_state_machines() -> String {
+    const W: f64 = 960.0;
+    let ch = 56.0;
+    let (xe, xt) = (240.0, 416.0); // the event and transition lines of the chain
+    let gap = 2.0 * (HEAD + CLEAR) + PILL2_H + 4.0;
+    let (chain_x, chain_w) = (160.0, 320.0);
+    let active = Rect::new(chain_x, 60.0, chain_w, ch);
+    let onboard = Rect::new(740.0, 60.0, 190.0, ch);
+    // The arrow into the bottom of Active crosses the bottom of the group on a
+    // clear run of line, below its arrowhead.
+    let group_bottom = active.y + ch + 2.0 + HEAD + CLEAR + 2.0;
+    let active_model = Rect::new(chain_x, group_bottom + gap, chain_w, ch);
+    let home = Rect::new(30.0, active_model.y + ch + gap, W - 60.0, ch);
+    let local = Rect::new(30.0, home.y + ch + gap, 450.0, ch);
+    let favs = Rect::new(520.0, local.y, W - 30.0 - 520.0, ch);
+    let h = local.y + ch + 22.0;
+
+    let title = "Crux: events go down the model tree, and transitions come back up";
+    let desc = "The Active branch of the weather app's model tree. The Model group holds \
+                the Active and Onboard states. Active holds an ActiveModel. Its screen \
+                is Screen::Home, which holds a HomeScreen. The HomeScreen holds two \
+                children, LocalWeather and Vec<FavoriteWeather>. Solid arrows take \
+                events down from each parent to its child: Event::Active, \
+                ActiveEvent::Home, HomeEvent::Local and HomeEvent::FavoritesWeather. \
+                Dashed arrows take transitions back up in the Outcome that update \
+                returns: LocalWeatherTransition::Unauthorized and \
+                FavoriteWeatherTransition::Unauthorized go to HomeScreen, \
+                HomeTransition::ApiKeyRejected goes to ActiveModel, and \
+                ActiveTransition::Unauthorized goes to Active. Then update_active \
+                changes the Model from Active back to Onboard. Each parent uses map_event to \
+                wrap the events of its child in its own variant.";
+    let mut s = String::new();
+    head(&mut s, W, h, title, desc);
+    group(
+        &mut s,
+        Rect::new(15.0, 15.0, W - 30.0, group_bottom - 15.0),
+        Kind::Model,
+        "Model",
+        true,
+    );
+    state(&mut s, active, "Active", "home and favourites");
+    state(&mut s, onboard, "Onboard", "asks for an API key");
+
+    let machine = |s: &mut String, r: Rect, name: &str, sub: (&str, &str)| {
+        lines_card(s, r, Kind::Model, &[(CODE, 16.0, name), (sub.0, 12.0, sub.1)]);
+    };
+    machine(
+        &mut s,
+        active_model,
+        "ActiveModel",
+        (LINE_SMALL_CODE, "screen: Screen::Home"),
+    );
+    machine(
+        &mut s,
+        home,
+        "HomeScreen",
+        (SMALL, "two sub-workflows that run in parallel"),
+    );
+    machine(
+        &mut s,
+        local,
+        "LocalWeather",
+        (SMALL, "the weather at the current location"),
+    );
+    machine(
+        &mut s,
+        favs,
+        "Vec<FavoriteWeather>",
+        (SMALL, "the weather for each favourite"),
+    );
+
+    // Active -> Onboard, when update_active gets the transition.
+    let (left, right) = (active.x + chain_w + 2.0, onboard.x - 2.0);
+    h_arrow(&mut s, left, active.cy(), right);
+    let label = "back to onboarding";
+    let w = text_width(label, 12.5) + 16.0;
+    let mid = (left + right) / 2.0;
+    assert!(mid - w / 2.0 - left >= CLEAR && right - HEAD - (mid + w / 2.0) >= CLEAR);
+    pill(&mut s, mid, active.cy() - 14.0, label, false, 12.5);
+
+    // Each link: the parent, the child, the x of the event line and of the
+    // transition line, the event and the transition.
+    let links = [
+        (active, active_model, xe, xt, "Event::Active", "ActiveTransition::Unauthorized"),
+        (
+            active_model,
+            home,
+            xe,
+            xt,
+            "ActiveEvent::Home",
+            "HomeTransition::ApiKeyRejected",
+        ),
+        (
+            home,
+            local,
+            120.0,
+            340.0,
+            "HomeEvent::Local",
+            "LocalWeatherTransition::Unauthorized",
+        ),
+        (
+            home,
+            favs,
+            560.0,
+            800.0,
+            "HomeEvent::FavoritesWeather",
+            "FavoriteWeatherTransition::Unauthorized",
+        ),
+    ];
+    // The widths that the pills of each row can have. The last two links
+    // share a row.
+    let chain_row = pill_widths(&[xe, xt], W);
+    let child_row = pill_widths(&[120.0, 340.0, 560.0, 800.0], W);
+    let max_ws = [
+        chain_row.clone(),
+        chain_row,
+        child_row[..2].to_vec(),
+        child_row[2..].to_vec(),
+    ];
+    let mut pills = Vec::new();
+    for (i, &(parent, child, x_event, x_trans, event, transition)) in links.iter().enumerate() {
+        for x in [x_event, x_trans] {
+            assert!(x > parent.x && x < parent.x + parent.w && x > child.x && x < child.x + child.w);
+        }
+        let (top, bottom) = (parent.y + ch + 2.0, child.y - 2.0);
+        // The first link crosses the bottom of the group, so its pills sit
+        // below the group.
+        let from = if i == 0 { group_bottom } else { top };
+        arrow(&mut s, Path::new().m(x_event, top).v(bottom), Arrow::Solid);
+        let (max_event, max_trans) = (max_ws[i][0], max_ws[i][1]);
+        pills.push(v_path_pill(&mut s, x_event, from, bottom, event, max_event));
+        arrow(&mut s, Path::new().m(x_trans, bottom).v(top), Arrow::Dashed);
+        let b = v_path_pill(&mut s, x_trans, bottom, from, transition, max_trans);
+        // The pill of the up arrow keeps a clear run to its arrowhead.
+        assert!(b[1] - (top + HEAD) >= CLEAR);
+        pills.push(b);
+    }
+    assert_apart(&pills);
+
+    // The legend, to the right of ActiveModel.
+    let (lx, ly) = (540.0, active_model.y + 14.0);
+    let attrs = faint(13.0, false);
+    for (i, (kind, parts)) in [
+        (Arrow::Solid, &[("events go down to a child", false)][..]),
+        (
+            Arrow::Dashed,
+            &[("transitions come back up in an ", false), ("Outcome", true)][..],
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let y = ly + i as f64 * 28.0;
+        arrow(&mut s, Path::new().m(lx, y - 4.0).h(lx + 44.0), kind);
+        mixed_text(&mut s, lx + 58.0, y, &attrs, parts);
+    }
+    mixed_text(
+        &mut s,
+        lx,
+        ly + 56.0,
+        &attrs,
+        &[("map_event", true), (" wraps a child's events in a variant", false)],
+    );
+    // The legend is clear of the pills and of HomeScreen.
+    let legend = [lx - 8.0, ly - 14.0, W - 20.0, ly + 62.0];
+    assert!(pills.iter().all(|b| disjoint(&legend, b)) && legend[3] + 12.0 < home.y);
+
+    s.push_str("</svg>\n");
+    s
+}
+
 fn main() -> std::io::Result<()> {
     // Under `-Zscript`, CARGO_MANIFEST_DIR is the directory of this script, so
     // the default output directory does not depend on the current directory.
@@ -1948,5 +2496,11 @@ fn main() -> std::io::Result<()> {
         request_nesting(),
     )?;
     std::fs::write(format!("{out}/part-4/generated_core.svg"), generated_core())?;
+    std::fs::write(format!("{out}/part-2/mocking_layers.svg"), mocking_layers())?;
+    std::fs::write(format!("{out}/part-2/app_lifecycle.svg"), app_lifecycle())?;
+    std::fs::write(
+        format!("{out}/part-2/nested_state_machines.svg"),
+        nested_state_machines(),
+    )?;
     Ok(())
 }
