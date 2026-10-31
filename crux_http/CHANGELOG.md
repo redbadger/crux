@@ -33,6 +33,16 @@ and this project adheres to
   toolchain is present. See
   [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
 
+- **The shipped sources have a file for each platform where the platforms
+  differ.** The Swift `URLSessionHttpHandler` is in `apple/URLSession.swift`
+  and `linux/URLSession.swift`, and only the Linux file imports
+  `FoundationNetworking`. On Android, the Kotlin extension also has
+  `WebkitCookieJar`, a `CookieJar` over `android.webkit.CookieManager`, which
+  keeps cookies after the app stops and shares them with `WebView`. If
+  `WebView` is not available, `WebkitCookieJar` keeps cookies in an
+  `InMemoryCookieJar`. To get the Android files, generate the Kotlin with
+  `generate(Platform::Android, &config)`.
+
 - **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
   response into the `Response` an app sees, with the same semantics a `crux_http`
   request gives it.
