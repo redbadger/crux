@@ -17,7 +17,7 @@ use crux_core::{
     Command as CruxCommand,
     macros::effect,
     render::RenderOperation,
-    type_generation::facet::{CodeGenerator, Config, ShellExtension, TypeRegistry},
+    type_generation::facet::{CodeGenerator, Config, Platform, ShellExtension, TypeRegistry},
 };
 use crux_http::protocol::HttpRequest;
 use facet::Facet;
@@ -105,19 +105,56 @@ fn dotnet_build(dir: &Path) {
     }
 }
 
+/// The Swift platform of the machine the test runs on, so that `swift build`
+/// compiles the files for the platform it builds for.
+const fn host_swift_platform() -> Platform {
+    if cfg!(target_os = "linux") {
+        Platform::Linux
+    } else {
+        Platform::Apple
+    }
+}
+
 #[test]
 fn the_swift_source_compiles() {
     let dir = tempfile::tempdir().expect("should create a temp dir");
     generator(&crux_http::shell::swift::URL_SESSION)
-        .swift(&Config::builder("App", dir.path()).build())
+        .generate(
+            host_swift_platform(),
+            &Config::builder("App", dir.path()).build(),
+        )
         .expect("swift type generation should succeed");
 
-    let shipped = fs::read_to_string(dir.path().join("App/Sources/App/Http.swift"))
+    let sources = dir.path().join("App/Sources/App");
+    let protocol =
+        fs::read_to_string(sources.join("Http.swift")).expect("should write the protocol");
+    assert!(protocol.contains("public protocol HttpHandler: Sendable {"));
+    let handler = fs::read_to_string(sources.join("URLSession.swift"))
         .expect("should write the handler beside the module");
-    assert!(shipped.contains("public protocol HttpHandler: Sendable {"));
-    assert!(shipped.contains("public final class URLSessionHttpHandler: HttpHandler {"));
+    assert!(handler.contains("public final class URLSessionHttpHandler: HttpHandler {"));
 
     swift_build(&dir.path().join("App"));
+}
+
+/// The Linux handler imports `FoundationNetworking`, which has `URLSession`
+/// on Linux. The Apple handler does not import it, because Apple platforms do
+/// not have that module.
+#[test]
+fn each_swift_platform_gets_its_own_url_session_file() {
+    for (platform, imports_networking) in [(Platform::Apple, false), (Platform::Linux, true)] {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator(&crux_http::shell::swift::URL_SESSION)
+            .generate(platform, &Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        let handler = fs::read_to_string(dir.path().join("App/Sources/App/URLSession.swift"))
+            .expect("should write the handler beside the module");
+        assert_eq!(
+            handler.contains("\nimport FoundationNetworking\n"),
+            imports_networking,
+            "the {platform:?} handler imports FoundationNetworking only on Linux"
+        );
+    }
 }
 
 /// Kotlin has no compiler this test can count on — the weather example's

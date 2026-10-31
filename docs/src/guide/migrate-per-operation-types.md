@@ -653,8 +653,8 @@ mechanism; this is the migration.
    implements the whole capability, so `Exists`, `Now` and the rest are
    generated even if your `Effect` never carries them.
 
-2. **Regenerate.** The Swift package gains `Http.swift`, `KeyValue.swift` and
-   `Time.swift`; the Kotlin package and C# namespace gain the same three
+2. **Regenerate.** The Swift package gains `Http.swift`, `URLSession.swift`,
+   `KeyValue.swift` and `Time.swift`; Kotlin and C# gain the matching
    files; the TypeScript module gains the same declarations at its end. Each
    declares a protocol — `HttpHandler`, `KeyValueHandler`, `TimeHandler`
    (`I`-prefixed in C#) — with one method per operation, and an

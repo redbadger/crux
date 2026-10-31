@@ -687,8 +687,9 @@ Type generation fails in these cases:
 
 In Swift, `Http.swift` declares an `HttpHandler` protocol with one method
 per operation, taking the operation and returning what the generated
-`EffectHandler` method for it returns, and an implementation of it,
-`URLSessionHttpHandler`. Your handler holds an instance and delegates:
+`EffectHandler` method for it returns. `URLSession.swift` declares an
+implementation of it, `URLSessionHttpHandler`. Your handler holds an
+instance and delegates:
 
 ```swift
 // Swift
