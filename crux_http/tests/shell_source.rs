@@ -167,11 +167,39 @@ fn the_kotlin_source_is_emitted() {
         .kotlin(&Config::builder("com.example.shared", dir.path()).build())
         .expect("kotlin type generation should succeed");
 
-    let shipped = fs::read_to_string(dir.path().join("com/example/shared/Http.kt"))
+    let package = dir.path().join("com/example/shared");
+    let protocol = fs::read_to_string(package.join("Http.kt"))
+        .expect("should write the protocol beside the module");
+    assert!(protocol.starts_with("package com.example.shared\n"));
+    assert!(protocol.contains("interface HttpHandler {"));
+    assert!(protocol.contains("class InMemoryCookieJar : CookieJar {"));
+    let handler = fs::read_to_string(package.join("UrlConnectionHttp.kt"))
         .expect("should write the handler beside the module");
-    assert!(shipped.starts_with("package com.example.shared\n"));
-    assert!(shipped.contains("interface HttpHandler {"));
-    assert!(shipped.contains("class UrlConnectionHttpHandler("));
+    assert!(handler.starts_with("package com.example.shared\n"));
+    assert!(handler.contains("class UrlConnectionHttpHandler("));
+    // `android.webkit` is not on the JVM.
+    assert!(!package.join("WebkitCookieJar.kt").exists());
+}
+
+/// The Android package also gets `WebkitCookieJar`, which needs the Android
+/// SDK. The weather example's Android shell compiles it.
+#[test]
+fn the_android_source_adds_the_webkit_cookie_jar() {
+    let dir = tempfile::tempdir().expect("should create a temp dir");
+    generator(&crux_http::shell::kotlin::URL_CONNECTION)
+        .generate(
+            Platform::Android,
+            &Config::builder("com.example.shared", dir.path()).build(),
+        )
+        .expect("kotlin type generation should succeed");
+
+    let package = dir.path().join("com/example/shared");
+    assert!(package.join("Http.kt").exists());
+    assert!(package.join("UrlConnectionHttp.kt").exists());
+    let jar = fs::read_to_string(package.join("WebkitCookieJar.kt"))
+        .expect("should write the Android cookie jar beside the module");
+    assert!(jar.starts_with("package com.example.shared\n"));
+    assert!(jar.contains("class WebkitCookieJar private constructor("));
 }
 
 /// `typescript()` runs `tsc` over what it wrote, so generating at all is a

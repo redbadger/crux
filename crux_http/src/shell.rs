@@ -60,6 +60,8 @@ pub mod kotlin {
     use include_dir::include_dir;
 
     /// `HttpHandler`, and `UrlConnectionHttpHandler` over `HttpURLConnection`.
+    /// On Android, also `WebkitCookieJar`, which keeps cookies in
+    /// `android.webkit.CookieManager`.
     pub static URL_CONNECTION: ShellExtension = ShellExtension::kotlin(
         "Http",
         include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/url_connection"),
@@ -72,6 +74,7 @@ pub mod kotlin {
         "CookieJar",
         "InMemoryCookieJar",
         "UrlConnectionHttpHandler",
+        "WebkitCookieJar",
     ]);
 }
 
