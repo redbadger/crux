@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use crux_core::type_generation::facet::{BoltFfi, Config, PackageLocation, TypeRegistry};
+use crux_core::type_generation::facet::{BoltFfi, Config, PackageLocation, Platform, TypeRegistry};
 use log::info;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -69,8 +69,10 @@ fn main() -> Result<()> {
             typegen_app.swift(&config)?;
         }
         Language::Kotlin => {
-            info!("Typegen for Kotlin");
-            typegen_app.kotlin(&config)?;
+            info!("Typegen for Kotlin, for Android");
+            // Android, not the JVM, so that the package also has the shipped
+            // Android files, such as `WebkitCookieJar`.
+            typegen_app.generate(Platform::Android, &config)?;
         }
         Language::Typescript => {
             info!("Typegen for TypeScript");

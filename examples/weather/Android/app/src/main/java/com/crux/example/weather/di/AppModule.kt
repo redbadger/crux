@@ -6,6 +6,7 @@ import com.crux.example.weather.HttpHandler
 import com.crux.example.weather.KeyValueHandler
 import com.crux.example.weather.TimeHandler
 import com.crux.example.weather.UrlConnectionHttpHandler
+import com.crux.example.weather.WebkitCookieJar
 import com.crux.example.weather.core.PreferencesKeyValueHandler
 import dagger.Module
 import dagger.Provides
@@ -18,13 +19,14 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
     /**
-     * The handler that `crux_http` ships, with this app's timeouts. To use OkHttp
-     * or Ktor, implement `HttpHandler` and provide it here.
+     * The handler that `crux_http` ships, with this app's timeouts. It keeps
+     * cookies in Android's `CookieManager`, so they last after the app stops.
+     * To use OkHttp or Ktor, implement `HttpHandler` and provide it here.
      */
     @Provides
     @Singleton
     fun provideHttpHandler(): HttpHandler =
-        UrlConnectionHttpHandler { connection ->
+        UrlConnectionHttpHandler(cookies = WebkitCookieJar()) { connection ->
             connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
             connection.readTimeout = READ_TIMEOUT_MILLIS
         }
