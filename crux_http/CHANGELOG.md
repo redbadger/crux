@@ -10,6 +10,23 @@ and this project adheres to
 
 ### Added
 
+- **The shell protocol of `crux_http` ships with the crate.** A new `shell`
+  module has a `PROTOCOL` static and a `register_types` function.
+  `HttpRequest` names the protocol, so type generation emits `HttpHandler`
+  (`IHttpHandler` in C#) in Swift, Kotlin, TypeScript and C# for every app
+  that uses `crux_http`. The protocol follows the `facet_typegen` feature of
+  `crux_core`, so the app needs no feature of `crux_http` for it.
+
+  `HttpRequest` now derives `Operation`, so that it can name the protocol.
+  The protocol states the rules for a failure: a 4xx or 5xx status is an
+  answer, a transport failure is `Url`, `Timeout` or `Io`, and a `GET` or
+  `HEAD` request with a body is `Io`.
+
+  The protocol registers every operation and output type of `crux_http`. If an
+  app type has the same name as one of these types (for example `HttpHeader`),
+  type generation fails with a name clash. To fix the clash, rename one of
+  the two types with `#[facet(rename = "...")]`.
+
 - **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
   response into the `Response` an app sees, with the same semantics a `crux_http`
   request gives it.
