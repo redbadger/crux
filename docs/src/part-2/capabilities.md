@@ -175,6 +175,54 @@ it becomes an ordinary trait-bound error you see as you type.
 
 The kinds pay off hardest on the shell side. Because each variant's kind is static, [type generation](../part-4/typegen.md) can emit a handler interface where `publish` returns nothing, `subscribe` is handed a sink to send `Message`s into, and a request method returns its output — the shell can't resolve the wrong number of times, because there is no `resolve` for it to call.
 
+## Shipping a shell protocol
+
+Every shell that uses a capability implements its operations, and it must follow the same rules. For example, a 4xx status is an answer and not an error. A capability can state these rules once, as a shell protocol: the handler interface that a shell implements, in Swift, Kotlin, TypeScript and C#. [Type generation](../part-4/typegen.md#shell-protocols) emits the shell protocol for every app that uses an operation of the capability. The app does not register it.
+
+To ship a shell protocol, write one source file for each language. Put each file at `shell/<language>/` in the capability crate, for example `shell/swift/KeyValue.swift`. A file holds the interface, with one method for each operation, and a doc comment that gives the rules. A file must use only the standard library of its language, and must put its imports at the top. Do not name an implementation or show how to construct one, because the shell protocol must be complete without an implementation.
+
+Then declare the shell protocol in a `shell` module. Put the items inside `crux_core::__crux_core_facet_typegen_items!`, so that they exist only when the `facet_typegen` feature of `crux_core` is on:
+
+```rust,ignore
+crux_core::__crux_core_facet_typegen_items! {
+    use crux_core::{
+        capability::Operation as _,
+        type_generation::facet::{ShellProtocol, TypeGenError, TypeRegistry},
+    };
+
+    pub static PROTOCOL: ShellProtocol = ShellProtocol::new("KeyValue")
+        .rust_types(register_types)
+        .swift(include_str!("../shell/swift/KeyValue.swift"), &["KeyValueHandler"])
+        .kotlin(include_str!("../shell/kotlin/KeyValue.kt"), &["KeyValueHandler"])
+        .typescript(include_str!("../shell/typescript/keyValue.ts"), &["KeyValueHandler"])
+        .csharp(include_str!("../shell/csharp/KeyValue.cs"), &["IKeyValueHandler"]);
+
+    /// Registers every operation of the capability, and its output.
+    pub fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+        GetValue::register_types_facet(registry)?;
+        SetValue::register_types_facet(registry)
+    }
+}
+```
+
+Keep the `shell` module itself unconditional, and put only its items inside the macro.
+
+The name (`"KeyValue"`) names the file that type generation writes. The second argument of each language is the list of top-level names that the file declares. Type generation checks each name for a clash with the generated code and with the app's types.
+
+`register_types` registers every operation of the capability, because a shell implements the whole shell protocol. Thus the app's generated code has every type that the shell protocol names, including the types of the operations that the app does not send.
+
+Last, name the shell protocol on every operation, with `protocol =`:
+
+```rust,ignore
+#[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug)]
+#[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
+pub struct GetValue { pub key: String }
+```
+
+The derive then makes the operation register the shell protocol when type generation registers the operation. The derived code is inside the same macro, so the shell protocol follows the `facet_typegen` feature of `crux_core`. An app that turns on `crux_core/facet_typegen` gets the shell protocol, and it needs no feature of the capability crate for it. The capability crate must depend on `facet` and `serde`.
+
+To test the shell protocol, generate the code for a small app that uses some of the operations. Then compile the result with `swift build`, `kotlinc`, `tsc` and `dotnet build`. The `tests/shell_protocol.rs` file in `crux_kv` does this. The `tests/protocol_follows_crux_core.rs` file in `crux_kv` checks that an operation registers the shell protocol when only the `facet_typegen` feature of `crux_core` is on. If a toolchain is not on `PATH`, the test prints a message and does not run that check. If `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set, a missing toolchain is a failure.
+
 ## What capabilities provide
 
 Putting it together, a capability gives you two things:

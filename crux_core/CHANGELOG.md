@@ -332,6 +332,37 @@ and this project adheres to
   would be written beside is rejected when that language is generated. See
   [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
 
+- **A capability can ship its shell protocol, and type generation emits it
+  for every app that uses the capability.** A shell protocol is the handler
+  interface that a shell implements for a capability (`HttpHandler`,
+  `IKeyValueHandler`), with the rules that every implementation must follow.
+  The capability declares a `ShellProtocol` static: a name, a `rust_types`
+  function that registers every operation and output, and for each language
+  one source file and the top-level names that it declares
+  (`.swift(source, &["HttpHandler"])`).
+  Each operation names the protocol with
+  `#[operation(.., protocol = crate::shell::PROTOCOL)]`, and its
+  `register_types_facet` calls the new `TypeRegistry::shell_protocol`. Thus
+  an app that uses one operation of the capability gets the protocol and all
+  the types of the capability, with no registration.
+  `TypeRegistry::shell_protocol` records a protocol once, so the operations
+  of one capability give one protocol.
+
+  The protocol follows the `facet_typegen` feature of `crux_core`, so an app
+  that turns on `crux_core/facet_typegen` gets it. A new hidden macro,
+  `__crux_core_facet_typegen_items!`, emits its input only when that feature
+  is on. The derived `register_types_facet` and the protocol items of a
+  capability crate are inside it.
+
+  For each protocol with a source for the language, the root module gains
+  one companion file with the name of the protocol (`Http.swift`, `Http.kt`,
+  `Http.cs`). In TypeScript, the protocols go in the module footer, after
+  every type. Protocols and shell extensions share the name checks. Type
+  generation rejects two of them with the same name, ignoring case. It also
+  rejects a name that two of them declare, and a declared name that the shell
+  API reserves or that a root type uses. See
+  [Shell protocols](https://redbadger.github.io/crux/part-4/typegen.html#shell-protocols).
+
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` used to be a bare counter. It now packs, from the top, eight
   bits of effect variant index, one bit that is set for a stream and clear for

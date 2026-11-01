@@ -86,6 +86,92 @@ The three delegating lines are the whole of what the shell writes for
 `crux_http` and `crux_time`. The rules live in `Http.swift` and `Time.swift`,
 generated into the package, versioned with the crates.
 
+## Amendment: protocols ship automatically
+
+This amendment proposes to split what a capability ships into two parts:
+
+- The **protocol**: the handler interface (`HttpHandler`, `KeyValueHandler`,
+  `TimeHandler`, and `IHttpHandler` and so on in C#), with the rules that
+  every implementation must follow. For example, a 4xx or 5xx status is an
+  answer, not an error.
+- The **implementation**: a type that conforms to the protocol over a
+  platform client, such as `URLSession` or `fetch`.
+
+The protocol would ship automatically. If an app uses any operation of a
+capability, type generation would emit the protocol of that capability and all
+the types of the capability, with no registration. The implementation would
+stay opt-in, through `TypeRegistry::shell_extension`, as the rest of this RFC
+describes.
+
+The capability declares its protocol as a `ShellProtocol`, with one source file
+for each language and the names that each file declares:
+
+```rust
+// Rust: crux_kv/src/shell.rs
+
+crux_core::__crux_core_facet_typegen_items! {
+    pub static PROTOCOL: ShellProtocol = ShellProtocol::new("KeyValue")
+        .rust_types(register_types)
+        .swift(include_str!("../shell/swift/KeyValue.swift"), &["KeyValueHandler"])
+        .kotlin(include_str!("../shell/kotlin/KeyValue.kt"), &["KeyValueHandler"])
+        .typescript(include_str!("../shell/typescript/keyValue.ts"), &["KeyValueHandler"])
+        .csharp(include_str!("../shell/csharp/KeyValue.cs"), &["IKeyValueHandler"]);
+}
+```
+
+Each operation names the protocol:
+
+```rust
+#[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
+#[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
+pub struct GetValue {
+    pub key: String,
+}
+```
+
+The derive would then override `register_types_facet` to call
+`TypeRegistry::shell_protocol`. The override, and the protocol items of the
+capability crate, would be inside `__crux_core_facet_typegen_items!`. This
+hidden macro of `crux_core` emits its input only when the `facet_typegen`
+feature of `crux_core` is on. Thus the protocol would follow the feature that
+the app already turns on for type generation, and the app would need no
+feature of the capability. The `#[effect]` macro already calls
+`register_types_facet` for every variant, so the `Operation` trait does not
+change. `shell_protocol` would record the protocol once, and run its
+`rust_types`, so that every operation and output of the capability is
+generated.
+
+Type generation would write each protocol into the root module of every
+language: a companion file in Swift, Kotlin and C#, and the module footer in
+TypeScript. The protocols would share the name checks of shell extensions.
+
+### Why discovery through the operation now fits
+
+Under "Alternatives considered", this RFC rejects discovery through the
+operation for two reasons. Neither reason applies to a protocol:
+
+- **Manifest dependencies.** A protocol is an interface, and it uses only the
+  standard library of each language. It has no manifest entries, so nothing
+  lands in the manifest of an app that uses the capability. Implementations,
+  which can need a library, stay opt-in.
+- **A shell concern in the core crate.** The `protocol =` attribute is in the
+  capability crate. Its expansion exists only with the `facet_typegen` feature
+  of `crux_core`, which an app turns on for type generation in any case. The
+  app's core crate does not change. The derive grows by one optional
+  attribute, and the `Operation` trait does not change.
+
+### Why ship the protocol on its own
+
+With protocols that ship automatically, an app that implements a capability
+over its own store no longer registers an implementation only to get the
+protocol. It is also possible to remove implementations later without a
+change to the protocols, because the two are separate.
+
+One risk remains. Every app that uses a capability gets all the type names of
+that capability, including the names of the operations that it does not send.
+If an app type has one of those names, the app must rename its type. The name
+checks report such a clash when the registry is built.
+
 ## Why?
 
 ### The rules are protocol; the client is platform
@@ -595,6 +681,8 @@ stripped, so a capability that ships a library would land it in every app.
 It also puts a shell-side concern on every operation in the core crate, and
 grows the derive for a feature the trait does not know about. The one line in
 the codegen binary is the price of keeping both decisions in the shell.
+The [amendment](#amendment-protocols-ship-automatically) proposes discovery
+through the operation for protocols only, for which neither objection applies.
 
 **Generalising the `render` default.** The generated `Core` RFC gave `render`
 a default body because `Core` handles that variant itself. That is a
