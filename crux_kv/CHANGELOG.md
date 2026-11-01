@@ -30,6 +30,21 @@ and this project adheres to
   type generation fails with a name clash. To fix the clash, rename one of
   the two types with `#[facet(rename = "...")]`.
 
+- **An in-memory implementation of the key-value protocol ships for each
+  language.** `crux_kv::shell` has a `ShellExtension` for each of Swift,
+  Kotlin, TypeScript and C#. Each one carries `InMemoryKeyValueHandler`
+  (`createInMemoryKeyValueHandler` in TypeScript), which implements the
+  protocol and keeps values only for the life of the handler. It is for tests,
+  previews and a shell with no storage. The protocol comes from the
+  operations, as described above. An app gets the implementation only if it
+  registers it in its codegen binary
+  (`registry.shell_extension(&crux_kv::shell::swift::IN_MEMORY)?`). The
+  extensions need the `facet_typegen` feature of `crux_kv`. To keep values
+  after the app stops, implement `KeyValueHandler` over a durable store of
+  your platform. The weather and notes examples have one for `UserDefaults`,
+  `SharedPreferences` and `localStorage`. See
+  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
+
 - **One type per store operation, in the new `crux_kv::operation` module, and a
   `store::KeyValue` capability that sends them.** `KeyValueOperation` has one output
   type — `KeyValueResult` — for all five of its variants, so a `Get` can be answered

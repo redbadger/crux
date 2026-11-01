@@ -17,6 +17,33 @@
 //! `DeleteValue` answer with the value that they replaced or removed. The
 //! protocol states these rules in each language.
 //!
+//! # Implementations
+//!
+//! The crate also ships one implementation of the protocol in each language:
+//! `InMemoryKeyValueHandler` (`createInMemoryKeyValueHandler` in TypeScript),
+//! which keeps values only for the life of the handler. Use it in tests, in
+//! previews and in a shell with no storage. An implementation is a shell
+//! extension, and an app gets one only if it registers it where it configures
+//! type generation:
+//!
+//! ```rust,ignore
+//! // shared/src/bin/codegen.rs
+//! let typegen = TypeRegistry::new()
+//!     .register_app::<MyApp>()?
+//!     .shell_extension(&crux_kv::shell::swift::IN_MEMORY)?
+//!     .shell_extension(&crux_kv::shell::kotlin::IN_MEMORY)?
+//!     .shell_extension(&crux_kv::shell::typescript::IN_MEMORY)?
+//!     .shell_extension(&crux_kv::shell::csharp::IN_MEMORY)?
+//!     .build()?;
+//! ```
+//!
+//! The right durable store is different on each platform, so the shell
+//! chooses it. To keep values after the app stops, implement the protocol
+//! over a store that persists. The weather and notes examples show durable
+//! stores for each platform.
+//!
+//! The implementations need the `facet_typegen` feature of `crux_kv`.
+//!
 //! [`Value::None`]: crate::protocol::Value::None
 
 crux_core::__crux_core_facet_typegen_items! {
@@ -64,4 +91,76 @@ crux_core::__crux_core_facet_typegen_items! {
         KeyExists::register_types_facet(registry)?;
         ListKeys::register_types_facet(registry)
     }
+}
+
+/// The Swift implementation, for an app to register with
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
+#[cfg(feature = "facet_typegen")]
+pub mod swift {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    /// `InMemoryKeyValueHandler`, which keeps values in memory.
+    pub static IN_MEMORY: ShellExtension = ShellExtension::swift(
+        "KeyValue",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/swift/in_memory"),
+    )
+    .platforms(&[Platform::Apple, Platform::Linux])
+    .protocol(&super::PROTOCOL)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["InMemoryKeyValueHandler"]);
+}
+
+/// The Kotlin implementation, for an app to register with
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
+#[cfg(feature = "facet_typegen")]
+pub mod kotlin {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    /// `InMemoryKeyValueHandler`, which keeps values in memory.
+    pub static IN_MEMORY: ShellExtension = ShellExtension::kotlin(
+        "KeyValue",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/in_memory"),
+    )
+    .platforms(&[Platform::Jvm, Platform::Android])
+    .protocol(&super::PROTOCOL)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["InMemoryKeyValueHandler"]);
+}
+
+/// The TypeScript implementation, for an app to register with
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
+#[cfg(feature = "facet_typegen")]
+pub mod typescript {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    /// `createInMemoryKeyValueHandler`, which keeps values in memory.
+    pub static IN_MEMORY: ShellExtension = ShellExtension::typescript(
+        "KeyValue",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/typescript/in_memory"),
+    )
+    .platforms(&[Platform::Web])
+    .protocol(&super::PROTOCOL)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["createInMemoryKeyValueHandler"]);
+}
+
+/// The C# implementation, for an app to register with
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
+#[cfg(feature = "facet_typegen")]
+pub mod csharp {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    /// `InMemoryKeyValueHandler`, which keeps values in memory.
+    pub static IN_MEMORY: ShellExtension = ShellExtension::csharp(
+        "KeyValue",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/csharp/in_memory"),
+    )
+    .platforms(&[Platform::DotNet])
+    .protocol(&super::PROTOCOL)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["InMemoryKeyValueHandler"]);
 }
