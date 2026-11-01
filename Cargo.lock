@@ -483,6 +483,7 @@ dependencies = [
  "futures-util",
  "http",
  "http-types-red-badger-temporary-fork",
+ "include_dir",
  "insta",
  "mime",
  "serde",

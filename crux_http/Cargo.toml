@@ -15,7 +15,7 @@ rust-version.workspace = true
 default = ["encoding"]
 # requires web-sys for TextDecoder on wasm
 encoding = ["encoding_rs", "web-sys"]
-facet_typegen = ["crux_core/facet_typegen"]
+facet_typegen = ["crux_core/facet_typegen", "dep:include_dir"]
 # Enable this feature to interoperate with the legacy `http-types` crate.
 http-types = ["dep:http-types"]
 
@@ -29,6 +29,7 @@ facet-generate-attrs.workspace = true
 futures-util = "0.3"
 http = "1.5"
 http-types = { package = "http-types-red-badger-temporary-fork", version = "6.0", default-features = false, optional = true }
+include_dir = { workspace = true, optional = true }
 mime = "0.3"
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11"
