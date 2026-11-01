@@ -330,6 +330,7 @@ where
         let task = Task {
             finished: Arc::default(),
             aborted: aborted.clone(),
+            abort_waker: Arc::default(),
             future: create_task(context.clone()).boxed(),
             join_handle_wakers: waker_receiver,
         };
@@ -616,6 +617,7 @@ where
     pub fn abort_handle(&self) -> AbortHandle {
         AbortHandle {
             aborted: self.aborted.clone(),
+            host_waker: self.waker.clone(),
         }
     }
 }
