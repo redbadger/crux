@@ -43,14 +43,14 @@ use crate::{
 
 /// Read the bytes stored under `key`.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = ValueResult)]
+#[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
 pub struct GetValue {
     pub key: String,
 }
 
 /// Write `value` under `key`, answering with the value it replaced.
 #[derive(Operation, Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = ValueResult)]
+#[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
 pub struct SetValue {
     pub key: String,
     #[serde(with = "serde_bytes")]
@@ -59,21 +59,21 @@ pub struct SetValue {
 
 /// Remove `key` and its value, answering with the value it removed.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = ValueResult)]
+#[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
 pub struct DeleteValue {
     pub key: String,
 }
 
 /// Test whether `key` is present in the store.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = ExistsResult)]
+#[operation(request, output = ExistsResult, protocol = crate::shell::PROTOCOL)]
 pub struct KeyExists {
     pub key: String,
 }
 
 /// List the keys that start with `prefix`, starting at `cursor`.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = KeysResult)]
+#[operation(request, output = KeysResult, protocol = crate::shell::PROTOCOL)]
 pub struct ListKeys {
     /// The prefix to list keys for, or an empty string to list all keys
     pub prefix: String,

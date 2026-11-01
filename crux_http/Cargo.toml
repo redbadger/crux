@@ -41,10 +41,12 @@ url = "2.5"
 web-sys = { optional = true, version = "0.3", features = ["TextDecoder"] }
 
 [dev-dependencies]
+tempfile = "3.27.0"
 assert_fs = "1.1.4"
 futures-test = "0.3"
 assert_matches = "1.5"
 insta = "1.48.0"
 crux_core = { version = "0.21.0", path = "../crux_core", features = [
+    "facet_typegen",
     "testing",
 ] }

@@ -36,6 +36,7 @@ pub mod command;
 mod compat;
 pub mod middleware;
 pub mod protocol;
+pub mod shell;
 pub mod testing;
 
 use std::marker::PhantomData;

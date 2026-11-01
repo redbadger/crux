@@ -9,6 +9,7 @@ pub mod clock;
 pub mod command;
 pub mod operation;
 pub mod protocol;
+pub mod shell;
 
 use std::{
     collections::HashSet,

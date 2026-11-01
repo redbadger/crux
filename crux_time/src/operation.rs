@@ -33,12 +33,12 @@ use crate::protocol::{Duration, Instant, TimerId};
 
 /// Ask for the current wall-clock time.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[operation(request, output = Instant)]
+#[operation(request, output = Instant, protocol = crate::shell::PROTOCOL)]
 pub struct Now;
 
 /// Ask to be notified when `instant` has arrived, answering with `id`.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[operation(request, output = TimerId)]
+#[operation(request, output = TimerId, protocol = crate::shell::PROTOCOL)]
 pub struct NotifyAt {
     pub id: TimerId,
     pub instant: Instant,
@@ -46,7 +46,7 @@ pub struct NotifyAt {
 
 /// Ask to be notified once `duration` has elapsed, answering with `id`.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[operation(request, output = TimerId)]
+#[operation(request, output = TimerId, protocol = crate::shell::PROTOCOL)]
 pub struct NotifyAfter {
     pub id: TimerId,
     pub duration: Duration,
@@ -59,7 +59,7 @@ pub struct NotifyAfter {
 /// answered after this one — a shell need not race the two. By then the core
 /// has stopped listening for that answer, and ignores it.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[operation(request, output = TimerId)]
+#[operation(request, output = TimerId, protocol = crate::shell::PROTOCOL)]
 pub struct ClearTimer {
     pub id: TimerId,
 }
