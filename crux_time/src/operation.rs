@@ -41,6 +41,9 @@ use crate::protocol::{Duration, Instant, TimerId};
 pub struct Now;
 
 /// Ask to be notified when `instant` has arrived, answering with `id`.
+///
+/// The shell answers once, when the timer fires. If a [`ClearTimer`] for `id`
+/// arrives first, the shell can still answer, and the core ignores the answer.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[operation(request, output = TimerId)]
 pub struct NotifyAt {
@@ -49,6 +52,9 @@ pub struct NotifyAt {
 }
 
 /// Ask to be notified once `duration` has elapsed, answering with `id`.
+///
+/// The shell answers once, when the timer fires. If a [`ClearTimer`] for `id`
+/// arrives first, the shell can still answer, and the core ignores the answer.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[operation(request, output = TimerId)]
 pub struct NotifyAfter {
@@ -59,9 +65,10 @@ pub struct NotifyAfter {
 /// Ask to be notified each time `period` elapses, answering with `id` each time.
 ///
 /// This operation is a stream. The shell answers with `id` once per period.
-/// The shell continues until a [`ClearTimer`] request for `id` arrives, or until a
-/// resolve returns an error. An error tells the shell that the core no longer
-/// listens for the ticks.
+/// The shell continues until a [`ClearTimer`] request for `id` arrives. A tick
+/// that arrives after the core stops listening is ignored. A shell in Rust also
+/// gets an error from the resolve when the core no longer listens for the ticks,
+/// and can stop the timer then.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[operation(stream, output = TimerId)]
 pub struct NotifyEvery {
@@ -72,9 +79,10 @@ pub struct NotifyEvery {
 /// Ask the shell to release the resources behind the timer `id`, because it is
 /// no longer wanted, answering with the same `id`.
 ///
-/// The timer's own [`NotifyAt`] or [`NotifyAfter`] request may still be
-/// answered after this one — a shell need not race the two. By then the core
-/// has stopped listening for that answer, and ignores it.
+/// The shell can still answer the [`NotifyAt`] or [`NotifyAfter`] request of
+/// the timer after this one, so it does not need to race the two. The core
+/// stops listening for that answer before it sends this request, and ignores
+/// it.
 ///
 /// For a [`NotifyEvery`] timer, the shell stops the repeating timer when this
 /// request arrives. The core stops listening for ticks before it sends the

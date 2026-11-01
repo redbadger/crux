@@ -19,6 +19,16 @@ pub struct HttpHeader {
 
 /// A raw HTTP request, as sent to the shell over the protocol boundary.
 ///
+/// The shell answers with an [`HttpResult`]. `Ok` carries every response that
+/// arrives, whatever its status, so a 4xx or 5xx status is `Ok`. `Err` means
+/// that no response arrived, and carries an [`HttpError`]:
+///
+/// - `Url` if the URL does not parse
+/// - `Timeout` if the request timed out
+/// - `Io`, with a description of the failure, for every other failure
+///
+/// The core builds `url` with `url::Url`, so it is absolute.
+///
 /// # No header validation
 ///
 /// All fields are plain strings. Header names and values are carried as-is with no

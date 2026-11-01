@@ -42,6 +42,9 @@ use crate::{
 };
 
 /// Read the bytes stored under `key`.
+///
+/// The shell answers with a [`ValueResult`]. If `key` has no value, the answer
+/// is `Ok` with `Value::None`, not an error.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = ValueResult)]
 pub struct GetValue {
@@ -49,6 +52,9 @@ pub struct GetValue {
 }
 
 /// Write `value` under `key`, answering with the value it replaced.
+///
+/// The shell answers with a [`ValueResult`]. `Ok` carries the value that was
+/// stored under `key` before, or `Value::None` if there was none.
 #[derive(Operation, Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = ValueResult)]
 pub struct SetValue {
@@ -58,6 +64,9 @@ pub struct SetValue {
 }
 
 /// Remove `key` and its value, answering with the value it removed.
+///
+/// The shell answers with a [`ValueResult`]. `Ok` carries the value that it
+/// removed, or `Value::None` if `key` had no value.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = ValueResult)]
 pub struct DeleteValue {
@@ -65,6 +74,9 @@ pub struct DeleteValue {
 }
 
 /// Test whether `key` is present in the store.
+///
+/// The shell answers with an [`ExistsResult`]: `Ok(true)` if `key` has a value,
+/// and `Ok(false)` if it has none.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[operation(request, output = ExistsResult)]
 pub struct KeyExists {
@@ -89,6 +101,9 @@ pub struct ListKeys {
 
 /// The value a [`GetValue`], [`SetValue`] or [`DeleteValue`] answers with, or
 /// the error that prevented it.
+///
+/// A key that has no value is `Ok` with `Value::None`. `Err` is only for a
+/// store that fails, and never for a missing key.
 ///
 /// Note: we can't use [`core::result::Result`] here because it is not
 /// currently supported across the FFI boundary, when using `facet_typegen`.
