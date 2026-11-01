@@ -10,18 +10,25 @@
 //!   structured request id the core issues.
 //! * [`CorePlugin`] emits `CoreBridge` and `Core` — the loop that carries
 //!   events into the core, requests out of it, and the view back to the shell.
+//! * [`ShellProtocolPlugin`] emits the protocols of the capabilities that the
+//!   app uses. It writes source that the capability's author wrote, not source
+//!   that crux generates.
 //!
 //! They act only when the container being emitted is a registered effect enum
 //! (see [`Matched`]), and they write everything through the `after_type` hook,
-//! so the generated declarations land beside the effect they belong to. The
-//! one exception is C#, where the operation-kind accessor is a property *inside*
-//! the `Effect` record and so goes through `type_body` — the emitter does not
-//! declare the record `partial`, so it cannot be re-opened from outside.
+//! so the generated declarations land beside the effect they belong to.
+//! [`ShellProtocolPlugin`] is an exception: it writes companion files beside
+//! the module and, in TypeScript, the module footer. [`CorePlugin`] also writes
+//! the `FfiBridge` companion file. Another exception is C#, where the
+//! operation-kind accessor is a property *inside* the `Effect` record and so
+//! goes through `type_body` — the emitter does not declare the record
+//! `partial`, so it cannot be re-opened from outside.
 
 mod core;
 mod handler;
 mod operation_kind;
 mod request_id;
+mod shell_protocol;
 #[cfg(test)]
 mod tests;
 
@@ -31,10 +38,11 @@ use facet_generate::{
 };
 use heck::ToLowerCamelCase;
 
-pub(super) use core::{CorePlugin, FFI_BRIDGE_FILE};
+pub(super) use core::{COMPANION_FILE_STEMS, CorePlugin, FFI_BRIDGE_FILE};
 pub(super) use handler::EffectHandlerPlugin;
 pub(super) use operation_kind::OperationKindPlugin;
 pub(super) use request_id::RequestIdPlugin;
+pub(super) use shell_protocol::ShellProtocolPlugin;
 
 use super::{EffectMeta, EffectVariantMeta};
 use crate::OperationKind;

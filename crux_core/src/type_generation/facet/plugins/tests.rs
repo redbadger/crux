@@ -20,16 +20,21 @@ use facet_generate::{
         swift::Swift,
         typescript::TypeScript,
     },
+    reflection::format::Namespace,
 };
 
-use super::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin};
+use super::{
+    CorePlugin, EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin, ShellProtocolPlugin,
+};
 use crate::{
     OperationKind,
     capability::Operation,
     // The `render` flag is a `TypeId` comparison with the real operation, so
     // the fixture has to use the real one too.
     render::RenderOperation,
-    type_generation::facet::{AppMeta, BoltFfi, EffectMeta, PackageLocation, TypeRegistry},
+    type_generation::facet::{
+        AppMeta, BoltFfi, EffectMeta, PackageLocation, ShellProtocol, TypeRegistry,
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -412,6 +417,16 @@ fn ffi_bridge_csharp() {
     insta::assert_snapshot!(file.contents);
 }
 
+/// The config of the module generated for namespace `Feature`, as
+/// facet-generate's module split makes it: named after the namespace, nested
+/// under the package, and saying which namespace it generates.
+fn namespaced_config(registry: &Registry) -> CodeGeneratorConfig {
+    let mut config = CodeGeneratorConfig::new("Feature".to_string()).with_parent("Shared");
+    config.namespace = Namespace::Named("Feature".to_string());
+    config.update_from(registry);
+    config
+}
+
 /// TypeScript emits one file per module, so there is no companion — the bridge
 /// is in the module, and the package is imported wholesale because the
 /// `initialized` promise is not in its type declarations.
@@ -753,4 +768,71 @@ fn nothing_is_emitted_for_a_type_that_is_not_the_effect() {
     }
 
     assert!(buffer.is_empty(), "expected nothing, got {buffer:?}");
+}
+
+// ---------------------------------------------------------------------------
+// Shell protocols
+// ---------------------------------------------------------------------------
+
+static STORE: ShellProtocol = ShellProtocol::new("Store")
+    .swift("public protocol StoreHandler {}\n", &["StoreHandler"])
+    .kotlin("interface StoreHandler\n", &["StoreHandler"])
+    .typescript("export interface StoreHandler {}\n", &["StoreHandler"])
+    .csharp("public interface IStoreHandler {}\n", &["IStoreHandler"]);
+
+/// What the TypeScript plugin writes into the footer of a module for `config`.
+fn protocol_footer(plugin: &ShellProtocolPlugin, config: &CodeGeneratorConfig) -> String {
+    let mut buffer = Vec::new();
+    {
+        let mut w = IndentedWriter::new(&mut buffer, IndentConfig::Space(4));
+        EmitterPlugin::<TypeScript>::module_footer(plugin, &mut w, config)
+            .expect("the plugin should write");
+    }
+    String::from_utf8(buffer).expect("the plugin should write valid UTF-8")
+}
+
+/// The names of the companion files that a plugin returns.
+fn file_names(files: Vec<CompanionFile>) -> Vec<String> {
+    files.into_iter().map(|file| file.file_name).collect()
+}
+
+/// The root module gets one companion file for each protocol, with the name
+/// of the protocol, and the TypeScript source in the module footer.
+#[test]
+fn the_root_module_gets_the_shell_protocols() {
+    let (registry, _) = fixture();
+    let mut config = CodeGeneratorConfig::new("Shared".to_string());
+    config.update_from(&registry);
+    let plugin = ShellProtocolPlugin::new(&[&STORE]);
+
+    assert_eq!(
+        file_names(EmitterPlugin::<Swift>::companion_files(&plugin, &config)),
+        ["Store.swift"]
+    );
+    assert_eq!(
+        file_names(EmitterPlugin::<Kotlin>::companion_files(&plugin, &config)),
+        ["Store.kt"]
+    );
+    assert_eq!(
+        file_names(EmitterPlugin::<CSharp>::companion_files(&plugin, &config)),
+        ["Store.cs"]
+    );
+    assert_eq!(
+        protocol_footer(&plugin, &config),
+        "\nexport interface StoreHandler {}\n"
+    );
+}
+
+/// A namespaced module gets no protocol, so the generated package does not
+/// declare a protocol twice.
+#[test]
+fn a_namespaced_module_gets_no_shell_protocols() {
+    let (registry, _) = fixture();
+    let config = namespaced_config(&registry);
+    let plugin = ShellProtocolPlugin::new(&[&STORE]);
+
+    assert!(EmitterPlugin::<Swift>::companion_files(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<Kotlin>::companion_files(&plugin, &config).is_empty());
+    assert!(EmitterPlugin::<CSharp>::companion_files(&plugin, &config).is_empty());
+    assert_eq!(protocol_footer(&plugin, &config), "");
 }

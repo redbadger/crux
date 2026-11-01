@@ -111,10 +111,41 @@
 //! `Core(handler, scope)` in Kotlin, `await Core.create(handler, onView)` in
 //! TypeScript and `new Core(handler)` in C#. A language you do not name is
 //! generated exactly as before.
+//!
+//! ## Shell protocols
+//!
+//! A capability can ship the shell side of its contract as a [`ShellProtocol`]:
+//! the handler interface that a shell implements, in each of the four
+//! languages. An app that uses an operation of the capability gets the
+//! protocol, with no registration. Each operation names the protocol with
+//! `#[operation(.., protocol = path)]`, and its `register_types_facet` calls
+//! [`TypeRegistry::shell_protocol`].
+//!
+//! ```rust
+//! use crux_core::type_generation::facet::{ShellProtocol, TypeGenError, TypeRegistry};
+//!
+//! // Normally `crux_kv::shell::PROTOCOL`, declared by the capability crate,
+//! // whose source is `include_str!` from the crate rather than written inline.
+//! static PROTOCOL: ShellProtocol = ShellProtocol::new("Store")
+//!     .rust_types(register_types)
+//!     .swift("public protocol StoreHandler: Sendable {}\n", &["StoreHandler"]);
+//!
+//! // A real capability registers each of its operations here, so that the
+//! // types its protocol names exist even when the app never sends them.
+//! fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+//!     Ok(registry)
+//! }
+//!
+//! // The operations of the capability make this call. An app does not.
+//! let typegen = TypeRegistry::new().shell_protocol(&PROTOCOL)?.build()?;
+//! # let _ = typegen;
+//! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+//! ```
 mod app;
 mod boltffi;
 mod effects;
 mod plugins;
+mod shell_protocol;
 
 use std::{
     fs::{self, File},
@@ -142,8 +173,11 @@ pub use self::app::AppMeta;
 pub use self::boltffi::{BoltFfi, CSharpFfi, KotlinFfi, SwiftFfi, TypeScriptFfi};
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
 use self::plugins::{
-    CorePlugin, EffectHandlerPlugin, FFI_BRIDGE_FILE, OperationKindPlugin, RequestIdPlugin,
+    COMPANION_FILE_STEMS, CorePlugin, EffectHandlerPlugin, FFI_BRIDGE_FILE, OperationKindPlugin,
+    RequestIdPlugin, ShellProtocolPlugin,
 };
+pub(crate) use self::shell_protocol::Language;
+pub use self::shell_protocol::{ProtocolSource, RegisterTypes, ShellProtocol};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -198,10 +232,39 @@ const RESERVED_TYPE_NAMES: &[&str] = &[
     FFI_BRIDGE_FILE,
 ];
 
+/// Names the generated root module imports from the serialization runtime, in
+/// at least one language: the Swift `Serde` module and what it exports, the
+/// Kotlin imports from `com.novi.serde` and `com.novi.bincode`, the
+/// TypeScript `Serializer` and `Deserializer`, and the C# runtime interfaces.
+/// A shell protocol that declares one of these would shadow the import or
+/// clash with it.
+const RUNTIME_IMPORT_NAMES: &[&str] = &[
+    "Serde",
+    "Serializer",
+    "Deserializer",
+    "ISerializer",
+    "IDeserializer",
+    "BincodeSerializer",
+    "BincodeDeserializer",
+    "SerializationError",
+    "DeserializationError",
+    "Bytes",
+    "Int128",
+    "UInt128",
+];
+
+/// File names Windows reserves for devices, whatever the extension, so a
+/// companion file cannot be called one of them.
+const WINDOWS_DEVICE_NAMES: &[&str] = &[
+    "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+    "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+];
+
 pub struct TypeRegistry {
     builder: RegistryBuilder,
     effects: Vec<EffectMeta>,
     app: Option<AppMeta>,
+    shell_protocols: Vec<&'static ShellProtocol>,
 }
 
 pub struct CodeGenerator {
@@ -211,6 +274,7 @@ pub struct CodeGenerator {
     handlers: bool,
     core: bool,
     boltffi: Option<BoltFfi>,
+    shell_protocols: Vec<&'static ShellProtocol>,
 }
 
 /// The `TypeRegistry` struct stores the registered types so that they can be generated for foreign languages
@@ -223,7 +287,61 @@ impl TypeRegistry {
             builder: RegistryBuilder::new(),
             effects: Vec::new(),
             app: None,
+            shell_protocols: Vec::new(),
         }
+    }
+
+    /// Registers the protocol of a capability, and the types that its sources
+    /// name.
+    ///
+    /// You do not usually call this function. An operation that declares
+    /// `#[operation(.., protocol = path)]` calls it from its
+    /// `register_types_facet`, and the `#[effect]` macro calls that function
+    /// for every variant. Thus an app that uses one operation of a capability
+    /// gets the protocol of that capability.
+    ///
+    /// The source of each language is emitted unchanged: into a companion file
+    /// with the name of the protocol (`Http.swift`, `Http.kt` and `Http.cs`)
+    /// beside the module, and into the module footer in TypeScript.
+    ///
+    /// A shell implements the whole protocol, so this function also runs the
+    /// [`rust_types`](ShellProtocol::rust_types) of the protocol. That
+    /// registers every operation and output of the capability, including
+    /// the ones that this app never sends.
+    ///
+    /// A protocol that is already registered is not registered again. That
+    /// is, a call with the same `static` does nothing. A different protocol
+    /// with the same name is recorded, and [`build`](Self::build) reports the
+    /// clash.
+    ///
+    /// # Errors
+    /// Returns a [`TypeGenError`] if one of the types of the protocol cannot be
+    /// registered. [`build`](Self::build) reports a protocol name that cannot
+    /// be used as a file name or that is already taken, and a declared name
+    /// that clashes with the generated shell API, another protocol or a type
+    /// of yours.
+    pub fn shell_protocol(
+        &mut self,
+        protocol: &'static ShellProtocol,
+    ) -> Result<&mut Self, TypeGenError> {
+        if self
+            .shell_protocols
+            .iter()
+            .any(|registered| std::ptr::eq(*registered, protocol))
+        {
+            return Ok(self);
+        }
+
+        // Record the protocol before its types are registered. Each operation
+        // of the capability calls this function again from its
+        // `register_types_facet`, and the record stops that recursion.
+        self.shell_protocols.push(protocol);
+
+        if let Some(register) = protocol.rust_types {
+            register(self)?;
+        }
+
+        Ok(self)
     }
 
     /// Register all the types used in app `A` to be shared with the Shell.
@@ -360,10 +478,12 @@ impl TypeRegistry {
     /// Builds the type registry and returns a [`CodeGenerator`] instance.
     /// # Errors
     /// Returns a [`TypeGenError`] if the type registration fails, or if a
-    /// registered type or effect variant claims a name that is already taken.
+    /// registered type, effect variant or shell protocol claims a name that is
+    /// already taken.
     pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
         let builder = std::mem::take(&mut self.builder);
         let effects: Arc<[EffectMeta]> = std::mem::take(&mut self.effects).into();
+        let shell_protocols = std::mem::take(&mut self.shell_protocols);
         let registry = builder
             .build()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
@@ -371,6 +491,8 @@ impl TypeRegistry {
         if !effects.is_empty() {
             validate_names(&registry, &effects)?;
         }
+        validate_shell_protocols(&shell_protocols)?;
+        validate_foreign_types(&registry, &shell_protocols)?;
 
         Ok(CodeGenerator {
             registry,
@@ -379,6 +501,7 @@ impl TypeRegistry {
             handlers: true,
             core: true,
             boltffi: None,
+            shell_protocols,
         })
     }
 }
@@ -411,6 +534,178 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
     Ok(())
 }
 
+/// Rejects registered shell protocols whose names cannot be used.
+///
+/// The `name` of a protocol names its companion files (`Http.swift`), so crux
+/// checks it as a file name: its shape, and that it does not overwrite the
+/// file of another protocol or a file that crux generates.
+fn validate_shell_protocols(protocols: &[&'static ShellProtocol]) -> Result<(), TypeGenError> {
+    for (index, protocol) in protocols.iter().enumerate() {
+        let name = protocol.name;
+
+        validate_protocol_name(name)?;
+
+        // Compared ignoring case, because `Http.swift` overwrites
+        // `http.swift` on APFS and NTFS.
+        if let Some(earlier) = protocols[..index]
+            .iter()
+            .find(|earlier| earlier.name.eq_ignore_ascii_case(name))
+        {
+            return Err(TypeGenError::Generation(format!(
+                "shell protocol `{name}` is registered after shell protocol `{}`, and the two names are the same, ignoring case, so their files would overwrite each other. Two crates may ship a protocol with that name, but only one of them can be registered.",
+                earlier.name
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+/// Rejects a name that a protocol declares, if the name is taken.
+///
+/// The names in `foreign_types` go into the generated module. Crux checks them
+/// against the generated shell API, the serialization runtime's imports, the
+/// app's namespaces, the names that the other protocols declare, and the types
+/// registered in the root namespace.
+///
+/// Crux makes these checks whatever language it generates. Whether a shared
+/// type clashes does not depend on which shell you build today.
+fn validate_foreign_types(
+    registry: &Registry,
+    protocols: &[&'static ShellProtocol],
+) -> Result<(), TypeGenError> {
+    use facet_generate::reflection::format::Namespace;
+    use heck::ToUpperCamelCase as _;
+
+    let namespaces: Vec<&str> = registry
+        .keys()
+        .filter_map(|registered| match &registered.namespace {
+            Namespace::Named(namespace) => Some(namespace.as_str()),
+            Namespace::Root => None,
+        })
+        .collect();
+
+    for (index, protocol) in protocols.iter().enumerate() {
+        let name = protocol.name;
+
+        for declared in protocol.foreign_types() {
+            if RESERVED_TYPE_NAMES.contains(&declared) {
+                return Err(TypeGenError::Generation(format!(
+                    "shell protocol `{name}` needs the name `{declared}`, which is reserved for other use in the shell API. Please choose a different name for the type."
+                )));
+            }
+
+            if RUNTIME_IMPORT_NAMES.contains(&declared) {
+                return Err(TypeGenError::Generation(format!(
+                    "shell protocol `{name}` needs the name `{declared}`, which the generated module imports from the serialization runtime. Please choose a different name for the type."
+                )));
+            }
+
+            if namespaces.iter().any(|namespace| {
+                *namespace == declared || namespace.to_upper_camel_case() == declared
+            }) {
+                return Err(TypeGenError::Generation(format!(
+                    "shell protocol `{name}` needs the name `{declared}`, which is the name of a namespace the app's types are generated into. Please choose a different name for the type, or rename the namespace."
+                )));
+            }
+
+            if let Some(earlier) = protocols[..index]
+                .iter()
+                .find(|earlier| earlier.foreign_types().contains(&declared))
+            {
+                return Err(TypeGenError::Generation(format!(
+                    "shell protocols `{}` and `{name}` both declare `{declared}`, so the generated module would declare it twice. Only one of them can be registered.",
+                    earlier.name
+                )));
+            }
+        }
+    }
+
+    for registered in registry.keys() {
+        if registered.namespace != Namespace::Root {
+            continue;
+        }
+        for protocol in protocols {
+            if protocol.foreign_types().contains(&registered.name.as_str()) {
+                return Err(TypeGenError::Generation(format!(
+                    "`{}` is declared by the `{}` shell protocol, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
+                    registered.name, protocol.name
+                )));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Whether `name` starts with an ASCII letter and contains only ASCII letters,
+/// digits and `_`.
+fn is_identifier(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic())
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// Rejects a protocol name that cannot be used as a file stem in every
+/// language and on every file system. It has to be an identifier, it cannot
+/// be a name that Windows reserves for a device, and it cannot be the name of
+/// a file that crux generates.
+fn validate_protocol_name(name: &str) -> Result<(), TypeGenError> {
+    if !is_identifier(name) {
+        return Err(TypeGenError::Generation(format!(
+            "shell protocol `{name}` has a name that cannot be used as a file name. The name is written as `{name}.swift`, `{name}.kt` and `{name}.cs`, so it has to start with an ASCII letter and contain only ASCII letters, digits and `_`."
+        )));
+    }
+
+    if WINDOWS_DEVICE_NAMES
+        .iter()
+        .any(|device| device.eq_ignore_ascii_case(name))
+    {
+        return Err(TypeGenError::Generation(format!(
+            "shell protocol `{name}` has a name Windows reserves for a device, so its files could not be written there. Please choose a different name for the shell protocol."
+        )));
+    }
+
+    if let Some(file) = COMPANION_FILE_STEMS
+        .iter()
+        .find(|file| file.eq_ignore_ascii_case(name))
+    {
+        return Err(TypeGenError::Generation(format!(
+            "shell protocol `{name}` would be written over the generated `{file}` file, which is reserved for other use in the shell API. Please choose a different name for the shell protocol."
+        )));
+    }
+
+    Ok(())
+}
+
+/// The base name of the file a package or namespace writes its own module
+/// into, for the languages that derive it from the last dotted segment
+/// (Kotlin and C#).
+///
+/// Swift does not: see [`swift_module_file_stem`].
+fn module_file_stem(package_name: &str) -> String {
+    use heck::ToUpperCamelCase as _;
+
+    package_name
+        .rsplit('.')
+        .next()
+        .unwrap_or(package_name)
+        .to_upper_camel_case()
+}
+
+/// The base name of the file the Swift package writes its own module into.
+///
+/// facet-generate's Swift installer names the module's directory and its
+/// file after the whole package name in `UpperCamelCase`, so a package called
+/// `shared_types` writes `Sources/SharedTypes/SharedTypes.swift`.
+fn swift_module_file_stem(package_name: &str) -> String {
+    use heck::ToUpperCamelCase as _;
+
+    package_name.to_upper_camel_case()
+}
+
 impl Default for TypeRegistry {
     fn default() -> Self {
         Self::new()
@@ -436,7 +731,11 @@ impl CodeGenerator {
     /// Errors that can occur during type generation.
     pub fn swift(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Swift types");
+        // Swift's module is a directory named for the package, holding a file
+        // of the same name, both in `UpperCamelCase`.
         self.check_boltffi()?;
+        let module_file = swift_module_file_stem(&config.package_name);
+        let shell_protocols = self.shell_protocol_plugin(Language::Swift, Some(&module_file))?;
         let path = config.out_dir.join(&config.package_name);
 
         fs::create_dir_all(&path)?;
@@ -451,6 +750,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_protocols) = shell_protocols {
+            installer = installer.plugin(shell_protocols);
         }
         installer
             .external_packages(&config.external_packages)
@@ -479,6 +781,8 @@ impl CodeGenerator {
     pub fn kotlin(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Kotlin types");
         self.check_boltffi()?;
+        let module_file = module_file_stem(&config.package_name);
+        let shell_protocols = self.shell_protocol_plugin(Language::Kotlin, Some(&module_file))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -496,6 +800,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_protocols) = shell_protocols {
+            installer = installer.plugin(shell_protocols);
         }
         installer
             .external_packages(&config.external_packages)
@@ -523,6 +830,8 @@ impl CodeGenerator {
     pub fn csharp(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating C# types");
         self.check_boltffi()?;
+        let module_file = module_file_stem(&config.package_name);
+        let shell_protocols = self.shell_protocol_plugin(Language::CSharp, Some(&module_file))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -540,6 +849,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_protocols) = shell_protocols {
+            installer = installer.plugin(shell_protocols);
         }
         installer
             .external_packages(&config.external_packages)
@@ -566,6 +878,7 @@ impl CodeGenerator {
     pub fn typescript(&self, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating TypeScript types");
         self.check_boltffi()?;
+        let shell_protocols = self.shell_protocol_plugin(Language::TypeScript, None)?;
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
@@ -579,6 +892,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_protocols) = shell_protocols {
+            installer = installer.plugin(shell_protocols);
         }
         installer
             .external_packages(&config.external_packages)
@@ -737,5 +1053,53 @@ impl CodeGenerator {
         self.app
             .clone()
             .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
+    }
+
+    /// The plugin that emits the registered protocols that have a source in
+    /// `language`, if there are any.
+    ///
+    /// The source of a protocol is written beside the module as
+    /// `<Name>.swift`, `<Name>.kt` or `<Name>.cs`, and the module names its
+    /// own file after the last segment of the package or namespace.
+    /// `module_file` is that name. A package called `Crux.Http` would
+    /// therefore have the `Http` protocol overwrite `Crux/Http/Http.cs` (the
+    /// types themselves), so crux rejects it for every registered protocol.
+    /// Names are compared ignoring case, because `Http.swift` overwrites
+    /// `http.swift` on APFS and NTFS. TypeScript passes `None`, because its
+    /// protocols go in the module footer.
+    ///
+    /// The plugin is installed outside the `handlers` flag. A protocol is
+    /// plain code, and a shell can implement it with a hand-written `switch`
+    /// on `Effect` as well as with the generated dispatcher.
+    fn shell_protocol_plugin(
+        &self,
+        language: Language,
+        module_file: Option<&str>,
+    ) -> Result<Option<ShellProtocolPlugin>, TypeGenError> {
+        let protocols: Vec<&'static ShellProtocol> = self
+            .shell_protocols
+            .iter()
+            .filter(|protocol| protocol.source(language).is_some())
+            .copied()
+            .collect();
+        // Every registered protocol is checked, including one with no source
+        // in this language, as `build` checks the names of every protocol.
+        if let Some(module_file) = module_file
+            && let Some(protocol) = self
+                .shell_protocols
+                .iter()
+                .find(|protocol| protocol.name.eq_ignore_ascii_case(module_file))
+        {
+            return Err(TypeGenError::Generation(format!(
+                "the `{name}` shell protocol is written beside the generated module, which names its own file `{module_file}`. That is the same name, ignoring case, and one file overwrites the other on a case-insensitive file system. The package or namespace ends in `{module_file}`. Generate into a package of another name.",
+                name = protocol.name
+            )));
+        }
+
+        if protocols.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(ShellProtocolPlugin::new(&protocols)))
     }
 }
