@@ -16,6 +16,7 @@ chrono = { version = "0.4", features = ["serde"], optional = true }
 crux_core = { version = "0.21.0", path = "../crux_core" }
 facet.workspace = true
 futures = "0.3"
+include_dir = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 
@@ -28,4 +29,4 @@ crux_core = { version = "0.21.0", path = "../crux_core", features = [
 ] }
 
 [features]
-facet_typegen = ["crux_core/facet_typegen"]
+facet_typegen = ["crux_core/facet_typegen", "dep:include_dir"]
