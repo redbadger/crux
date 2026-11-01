@@ -68,6 +68,9 @@ pub struct Variant<'a> {
     /// Whether the operation is `crux_core::render::RenderOperation`, which the
     /// generated `Core` handles itself.
     pub render: bool,
+    /// The doc comment of the operation type, which the handler method
+    /// carries.
+    pub doc: &'a [String],
 }
 
 /// The effect enum a plugin hook was called for.
@@ -112,6 +115,7 @@ pub fn matched<'a>(effects: &'a [EffectMeta], ctx: &EmitContext<'a>) -> Option<M
             output: output_of(meta),
             operation: operation.as_ref(),
             render: meta.render,
+            doc: &meta.doc,
         });
     }
 

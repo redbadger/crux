@@ -30,7 +30,13 @@ interface EffectHandler {
      * only if you drive `EffectDispatcher` yourself.
      */
     fun render(operation: RenderOperation) {}
+    /**
+     * Fetch `url`.
+     *
+     * The handler method for this operation carries this doc, in each language.
+     */
     suspend fun http(operation: HttpRequest): HttpResult
+    /** Receive a message each time one arrives. */
     fun subscribe(operation: Subscribe, sink: EffectSink<Message>)
     fun legacy(operation: LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
 }

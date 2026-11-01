@@ -64,6 +64,11 @@ fn emit_handler(
     for variant in &m.variants {
         let method = lower_camel(variant.name);
         let operation = render_type(variant.operation, config);
+        // `Core` handles the render operation, and its method has a doc of its
+        // own, so only the other operations carry the operation's doc.
+        if !variant.render {
+            write_doc(w, variant.doc)?;
+        }
         if variant.is_legacy() {
             writeln!(
                 w,

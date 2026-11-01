@@ -9,6 +9,10 @@
 //!
 //! Operations that declare no kind keep the old shape: the handler method is
 //! handed the request id and a `resolve` callback taking raw bytes.
+//!
+//! Each handler method carries the doc comment of its operation type. Thus the
+//! contract that a capability writes on its operation in Rust reaches the
+//! shell author in each language.
 
 mod csharp;
 mod kotlin;

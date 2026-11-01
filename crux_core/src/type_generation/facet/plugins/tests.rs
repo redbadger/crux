@@ -36,6 +36,9 @@ use crate::{
 // A fixture effect covering all four shapes a variant can have
 // ---------------------------------------------------------------------------
 
+/// Fetch `url`.
+///
+/// The handler method for this operation carries this doc, in each language.
 #[derive(Facet)]
 struct HttpRequest {
     url: String,
@@ -53,6 +56,7 @@ enum HttpResult {
     Err(String),
 }
 
+/// Receive a message each time one arrives.
 #[derive(Facet)]
 struct Subscribe;
 

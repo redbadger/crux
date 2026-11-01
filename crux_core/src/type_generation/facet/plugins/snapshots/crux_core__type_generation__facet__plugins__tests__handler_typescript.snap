@@ -24,7 +24,13 @@ export interface EffectHandler {
      * only if you drive `EffectDispatcher` yourself.
      */
     render?(operation: RenderOperation): void;
+    /**
+     * Fetch `url`.
+     *
+     * The handler method for this operation carries this doc, in each language.
+     */
     http(operation: HttpRequest): Promise<HttpResult>;
+    /** Receive a message each time one arrives. */
     subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
     legacy(operation: LegacyOperation, requestId: uint32, resolve: (bytes: Uint8Array) => void): void;
 }
