@@ -18,6 +18,16 @@ and this project adheres to
 
 ### 🚀 Features
 
+- **`#[derive(Operation)]` takes `protocol = path`**, which names the
+  `ShellProtocol` of the capability that the operation belongs to. The derive
+  then overrides `Operation::register_types_facet` to register the operation
+  and its output, as before, and then the protocol, with
+  `TypeRegistry::shell_protocol`. The override is inside
+  `crux_core::__crux_core_facet_typegen_items!`, so it exists only when the
+  `facet_typegen` feature of `crux_core` is on. The compiler evaluates that
+  feature in `crux_core`, so the crate that derives the operation needs no
+  feature for it. That crate must depend on `facet` and `serde`.
+
 - **`#[derive(Operation)]` declares an operation and what the shell does with
   it.** An operation used to need a hand-written `Operation` implementation, and
   now — with `Operation::KIND` and the `crux_core::operation` marker traits —

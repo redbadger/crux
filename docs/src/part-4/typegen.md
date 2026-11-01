@@ -165,6 +165,10 @@ Enable `facet_typegen` in `crux_core`:
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen}}
 ```
 
+If your app uses `crux_http`, `crux_kv` or `crux_time`, type generation also
+emits the protocol of each one. You do not need a feature of these crates for
+it. See [Shell protocols](#shell-protocols).
+
 And add `facet` as a dependency — all types that cross the FFI
 boundary derive `Facet`:
 
@@ -583,6 +587,53 @@ Setting `boltffi(..)` when there is no `Core` to bridge — no registered
 app, no `Render` variant, or `without_core()` — is reported as an error
 rather than silently ignored.
 
+### Shell protocols
+
+A capability can ship the shell side of its contract as a protocol: the
+handler interface that a shell implements, with the rules that every
+implementation must follow. `crux_http`, `crux_kv` and `crux_time` each ship
+one, in Swift, Kotlin, TypeScript and C#.
+
+You do not register a protocol. If your `Effect` uses an operation of a
+capability, type generation emits the protocol of that capability. It also
+emits every operation and output of the capability, including the ones that
+your `Effect` does not use, because a shell implements the whole protocol.
+
+The protocol follows the `facet_typegen` feature of `crux_core`. Your shared
+crate already turns on `crux_core/facet_typegen` in the feature that runs type
+generation, so you get the protocols with no other feature.
+
+For each protocol, and for each language in which the protocol has a source,
+the root module gains one file with the name of the protocol (`Http.swift` in
+the Swift target, `Http.kt` in the Kotlin package, `Http.cs` in the C#
+namespace). A TypeScript module is a single file, so the protocols go at the
+end of the module, after every type.
+
+In Swift, `Http.swift` declares the `HttpHandler` protocol. It has one method
+for each operation, which takes the operation and returns what the matching
+`EffectHandler` method returns. Your handler can hold any type that conforms
+to the protocol and delegate to it in one line:
+
+```swift
+struct WeatherHandler: EffectHandler {
+    let http: any HttpHandler
+
+    func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
+    // the app's own operations…
+}
+```
+
+The other languages follow the same pattern, with the naming conventions of
+each language (C# adds an `I` to the name of the interface).
+
+A protocol declares top-level names in your generated module, such as
+`HttpHandler` or `IKeyValueHandler`. The build fails if one of your registered
+types has one of those names. The same applies to the types of a capability:
+`crux_kv` brings its `DeleteValue`, and if your app also has a `DeleteValue`,
+rename one of them with `#[facet(rename = "...")]`. A type in your shell with
+the same name as a protocol does not cause a build failure, but it can be
+confusing. If that is a problem, rename your type.
+
 ### Reading a request id
 
 The `id` on a `Request` is not a bare counter. It packs, from the top,
@@ -655,7 +706,8 @@ variant index is eight bits — `#[effect]` rejects a larger one.
   only on an adapter of your own.
 - `OperationKind`, `EffectKind`, `RequestId`, `EffectSink`,
   `EffectHandler`, `EffectDispatcher`, `Core`, `CoreBridge` and
-  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names.
+  `FfiBridge` (and their C# `I`-prefixed forms) are reserved names, and
+  so is every name that a shell protocol declares.
   `TypeRegistry::build` fails if one of your shared types or effect
   variants claims one.
 - `CodeGenerator::without_core()` turns off `Core` and `CoreBridge`, and
