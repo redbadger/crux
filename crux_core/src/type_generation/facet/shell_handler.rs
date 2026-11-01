@@ -32,17 +32,7 @@
 //! implementation, and which platform client to use it with) in the shell,
 //! where they belong.
 
-use std::result::Result;
-
-use crate::type_generation::facet::{TypeGenError, TypeRegistry};
-
-/// How an extension registers the types its shipped sources name.
-///
-/// The same shape as
-/// [`Export::register_types`](crate::type_generation::facet::Export::register_types)
-/// and as an operation's own `register_types_facet`, so a capability with one
-/// operation can name that directly.
-pub type RegisterTypes = fn(&mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError>;
+use crate::type_generation::facet::shell_protocol::RegisterTypes;
 
 /// Source a crate ships for the shell, in the languages it ships it for.
 ///
@@ -70,7 +60,7 @@ pub struct ShellExtension {
     /// the module's own file is rejected when that language is generated.
     pub name: &'static str,
     /// Registers the Rust types the shipped sources name, run by
-    /// [`TypeRegistry::shell_extension`].
+    /// [`TypeRegistry::shell_extension`](crate::type_generation::facet::TypeRegistry::shell_extension).
     ///
     /// A capability's handler implements the whole capability, so crux must
     /// generate every operation and output, including the ones this app

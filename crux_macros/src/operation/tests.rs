@@ -185,3 +185,36 @@ fn enums_are_not_operations() {
         "expected a shape error, got: {actual}"
     );
 }
+
+#[test]
+fn request_with_a_protocol() {
+    let input = parse_quote! {
+        #[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
+        pub struct GetValue {
+            pub key: String,
+        }
+    };
+
+    let actual = operation_impl(&input);
+
+    insta::assert_snapshot!(pretty_print(&actual), @"
+    impl ::crux_core::capability::Operation for GetValue {
+        type Output = ValueResult;
+        const KIND: ::core::option::Option<::crux_core::OperationKind> = ::core::option::Option::Some(
+            ::crux_core::OperationKind::Request,
+        );
+        ::crux_core::__crux_core_facet_typegen_items! {
+            fn register_types_facet < 'a > (generator : & mut
+            ::crux_core::type_generation::facet::TypeRegistry,) -> ::core::result::Result < &
+            mut ::crux_core::type_generation::facet::TypeRegistry,
+            ::crux_core::type_generation::facet::TypeGenError, > where Self : ::facet::Facet
+            < 'a > + ::serde::Serialize + for < 'de > ::serde::de::Deserialize < 'de >, <
+            Self as ::crux_core::capability::Operation > ::Output : ::facet::Facet < 'a > +
+            for < 'de > ::serde::de::Deserialize < 'de >, { generator.register_type:: < Self
+            > () ? .register_type:: << Self as ::crux_core::capability::Operation > ::Output
+            > () ? .shell_protocol(& crate ::shell::PROTOCOL) }
+        }
+    }
+    impl ::crux_core::operation::Request for GetValue {}
+    ");
+}

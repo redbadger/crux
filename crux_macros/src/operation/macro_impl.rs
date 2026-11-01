@@ -5,7 +5,7 @@
 use darling::{FromDeriveInput, FromMeta, ToTokens, ast::MetaNameValueInvalidExpr};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DeriveInput, Generics, Ident, Meta, Type};
+use syn::{DeriveInput, Generics, Ident, Meta, Path, Type};
 
 /// The `output = T` value, absent unless declared.
 ///
@@ -76,6 +76,11 @@ struct OperationReceiver {
     /// The `Operation::Output` type. Forbidden for `notify`, required otherwise.
     #[darling(default)]
     output: MaybeOutput,
+    /// `protocol = path`: the `ShellProtocol` of the capability that the
+    /// operation belongs to. Type generation emits it for every app that uses
+    /// the operation.
+    #[darling(default)]
+    protocol: Option<Path>,
 }
 
 pub fn operation_impl(input: &DeriveInput) -> TokenStream {
@@ -145,6 +150,7 @@ impl OperationReceiver {
         let ident = &self.ident;
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
         let kind_ident = kind.ident();
+        let register_types = self.protocol.as_ref().map(register_types_facet);
 
         Ok(quote! {
             impl #impl_generics ::crux_core::capability::Operation for #ident #ty_generics #where_clause {
@@ -152,9 +158,42 @@ impl OperationReceiver {
 
                 const KIND: ::core::option::Option<::crux_core::OperationKind> =
                     ::core::option::Option::Some(::crux_core::OperationKind::#kind_ident);
+
+                #register_types
             }
 
             impl #impl_generics ::crux_core::operation::#kind_ident for #ident #ty_generics #where_clause {}
         })
+    }
+}
+
+/// The `register_types_facet` override for an operation that names its
+/// capability's protocol. It registers the operation and its output, as the
+/// default does, and then the protocol.
+///
+/// The override is inside `crux_core::__crux_core_facet_typegen_items!`, so it
+/// exists only when the `facet_typegen` feature of `crux_core` is on. The
+/// compiler evaluates that feature in `crux_core`, and not in the capability
+/// crate, so an app that turns on `crux_core/facet_typegen` gets the protocol.
+fn register_types_facet(protocol: &Path) -> TokenStream {
+    quote! {
+        ::crux_core::__crux_core_facet_typegen_items! {
+            fn register_types_facet<'a>(
+                generator: &mut ::crux_core::type_generation::facet::TypeRegistry,
+            ) -> ::core::result::Result<
+                &mut ::crux_core::type_generation::facet::TypeRegistry,
+                ::crux_core::type_generation::facet::TypeGenError,
+            >
+            where
+                Self: ::facet::Facet<'a> + ::serde::Serialize + for<'de> ::serde::de::Deserialize<'de>,
+                <Self as ::crux_core::capability::Operation>::Output:
+                    ::facet::Facet<'a> + for<'de> ::serde::de::Deserialize<'de>,
+            {
+                generator
+                    .register_type::<Self>()?
+                    .register_type::<<Self as ::crux_core::capability::Operation>::Output>()?
+                    .shell_protocol(&#protocol)
+            }
+        }
     }
 }
