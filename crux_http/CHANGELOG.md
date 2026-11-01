@@ -27,6 +27,37 @@ and this project adheres to
   type generation fails with a name clash. To fix the clash, rename one of
   the two types with `#[facet(rename = "...")]`.
 
+- **An implementation of the HTTP protocol ships for each language.**
+  `crux_http::shell` has a `ShellExtension` for each of Swift, Kotlin,
+  TypeScript and C#: `URLSessionHttpHandler`, `UrlConnectionHttpHandler`,
+  `createFetchHttpHandler` and `HttpClientHttpHandler`. Each one implements
+  the protocol (`HttpHandler`, `IHttpHandler` in C#) over the platform's own
+  client, and the protocol comes from the operation, as described above. An
+  app gets an implementation only if it registers it in its codegen binary
+  (`registry.shell_extension(&crux_http::shell::swift::URL_SESSION)?`). The
+  app's `EffectHandler` then delegates `http` in one line. The extensions need
+  the `facet_typegen` feature of `crux_http`.
+
+  Each implementation follows redirects and keeps cookies, so a session
+  survives between requests on every platform. `URLSession` and `HttpClient`
+  keep cookies already. `UrlConnectionHttpHandler` keeps them in an
+  `InMemoryCookieJar`. Pass `cookies = null` to keep none, or a `CookieJar` of
+  your own to persist them. The handler does not use `java.net.CookieManager`,
+  because it writes a `Max-Age` cookie in RFC 2965 form, which servers do not
+  read. The sources are under `shell/`. `tests/shell_source.rs` builds the
+  Swift, TypeScript and C# sources where a toolchain is present. See
+  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
+
+- **The shipped sources have a file for each platform where the platforms
+  differ.** The Swift `URLSessionHttpHandler` is in `apple/URLSession.swift`
+  and `linux/URLSession.swift`, and only the Linux file imports
+  `FoundationNetworking`. On Android, the Kotlin extension also has
+  `WebkitCookieJar`, a `CookieJar` over `android.webkit.CookieManager`. It
+  keeps cookies after the app stops and shares them with `WebView`. If
+  `WebView` is not available, `WebkitCookieJar` keeps cookies in an
+  `InMemoryCookieJar`. To get the Android files, generate the Kotlin with
+  `generate(Platform::Android, &config)`.
+
 - **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
   response into the `Response` an app sees, with the same semantics a `crux_http`
   request gives it.
