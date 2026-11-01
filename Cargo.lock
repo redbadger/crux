@@ -538,6 +538,7 @@ dependencies = [
  "crux_core",
  "facet 0.46.5",
  "futures",
+ "include_dir",
  "serde",
  "serde_json",
  "tempfile",

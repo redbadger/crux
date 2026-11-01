@@ -16,6 +16,33 @@
 //! A timer is answered exactly once, with its own id, and `ClearTimer` is
 //! answered with the id of the timer that it cancels. The protocol states
 //! these rules in each language.
+//!
+//! # Implementations
+//!
+//! The crate also ships an implementation of the protocol in each language,
+//! over the platform's own timers: `TaskTimeHandler` over a sleeping `Task`
+//! in Swift, `CoroutineTimeHandler` over a coroutine that calls `delay` in
+//! Kotlin, `TimeoutTimeHandler` over `setTimeout` in TypeScript, and
+//! `TaskTimeHandler` over `Task.Delay` in C#. An implementation is a shell
+//! extension, and an app gets one only if it registers it where it configures
+//! type generation:
+//!
+//! ```rust,ignore
+//! // shared/src/bin/codegen.rs
+//! let typegen = TypeRegistry::new()
+//!     .register_app::<MyApp>()?
+//!     .shell_extension(&crux_time::shell::swift::TASK)?
+//!     .shell_extension(&crux_time::shell::kotlin::COROUTINE)?
+//!     .shell_extension(&crux_time::shell::typescript::TIMEOUT)?
+//!     .shell_extension(&crux_time::shell::csharp::TASK)?
+//!     .build()?;
+//! ```
+//!
+//! The timer table is state, so the shell constructs one instance of the
+//! emitted type where it constructs its handler, and delegates each operation
+//! to it in one line.
+//!
+//! The implementations need the `facet_typegen` feature of `crux_time`.
 
 crux_core::__crux_core_facet_typegen_items! {
     use crux_core::{
@@ -52,4 +79,74 @@ crux_core::__crux_core_facet_typegen_items! {
         NotifyAfter::register_types_facet(registry)?;
         ClearTimer::register_types_facet(registry)
     }
+}
+
+/// The Swift implementation, for an app to register with
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
+#[cfg(feature = "facet_typegen")]
+pub mod swift {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    /// `TaskTimeHandler`, over a sleeping `Task`.
+    pub static TASK: ShellExtension =
+        ShellExtension::swift("Time", include_dir!("$CARGO_MANIFEST_DIR/shell/swift/task"))
+            .platforms(&[Platform::Apple, Platform::Linux])
+            .protocol(&super::PROTOCOL)
+            // The names the shipped sources declare at module scope.
+            .foreign_types(&["TaskTimeHandler"]);
+}
+
+/// The Kotlin implementation, for an app to register with
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
+#[cfg(feature = "facet_typegen")]
+pub mod kotlin {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    /// `CoroutineTimeHandler`, over a coroutine that calls `delay`.
+    pub static COROUTINE: ShellExtension = ShellExtension::kotlin(
+        "Time",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/kotlin/coroutine"),
+    )
+    .platforms(&[Platform::Jvm, Platform::Android])
+    .protocol(&super::PROTOCOL)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["CoroutineTimeHandler"]);
+}
+
+/// The TypeScript implementation, for an app to register with
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
+#[cfg(feature = "facet_typegen")]
+pub mod typescript {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    /// `TimeoutTimeHandler`, over `setTimeout`.
+    pub static TIMEOUT: ShellExtension = ShellExtension::typescript(
+        "Time",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/typescript/timeout"),
+    )
+    .platforms(&[Platform::Web])
+    .protocol(&super::PROTOCOL)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["MAX_TIMEOUT", "TimeoutTimeHandler"]);
+}
+
+/// The C# implementation, for an app to register with
+/// [`TypeRegistry::shell_extension`](crux_core::type_generation::facet::TypeRegistry::shell_extension).
+#[cfg(feature = "facet_typegen")]
+pub mod csharp {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    /// `TaskTimeHandler`, over `Task.Delay`.
+    pub static TASK: ShellExtension = ShellExtension::csharp(
+        "Time",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/csharp/task"),
+    )
+    .platforms(&[Platform::DotNet])
+    .protocol(&super::PROTOCOL)
+    // The names the shipped sources declare at module scope.
+    .foreign_types(&["TaskTimeHandler"]);
 }

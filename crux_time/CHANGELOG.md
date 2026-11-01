@@ -60,6 +60,19 @@ and this project adheres to
   type generation fails with a name clash. To fix the clash, rename one of
   the two types with `#[facet(rename = "...")]`.
 
+- **An implementation of the timer protocol ships for each language.**
+  `crux_time::shell` has a `ShellExtension` for each of Swift, Kotlin,
+  TypeScript and C#. Each one carries an implementation of the protocol over
+  the platform's own timers: `TaskTimeHandler` (Swift and C#),
+  `CoroutineTimeHandler` (Kotlin) and `TimeoutTimeHandler` (TypeScript). The
+  implementations follow the rules of the protocol, and the protocol comes
+  from the operations, as described above. An app gets an implementation only
+  if it registers it in its codegen binary
+  (`registry.shell_extension(&crux_time::shell::swift::TASK)?`). The app then
+  delegates each operation in one line. The extensions need the
+  `facet_typegen` feature of `crux_time`. See
+  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
+
 - **One type per time operation, in the new `crux_time::operation` module, and a
   `clock::Time` capability that sends them.** `TimeRequest` has one output type —
   `TimeResponse` — for all four of its variants, so the capability has to check that
