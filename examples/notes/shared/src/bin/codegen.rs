@@ -27,8 +27,17 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let args = Args::parse();
 
-    let typegen_app = TypeRegistry::new()
-        .register_app::<NoteEditor>()?
+    let mut registry = TypeRegistry::new();
+    registry.register_app::<NoteEditor>()?;
+    // The app's operations bring the protocols of `crux_kv` and `crux_time`.
+    // Register the timer implementations that `crux_time` ships. Each shell
+    // implements the key-value protocol over its own store.
+    registry
+        .shell_extension(&crux_time::shell::swift::TASK)?
+        .shell_extension(&crux_time::shell::kotlin::COROUTINE)?
+        .shell_extension(&crux_time::shell::typescript::TIMEOUT)?;
+
+    let typegen_app = registry
         .build()?
         // Only the web shell is built from this example, so only TypeScript
         // names where `boltffi pack` put its bindings.
