@@ -1,46 +1,74 @@
-import type { ClearTimer, NotifyAfter, TimerId } from "shared_types/app";
+import type {
+  ClearTimer,
+  NotifyAfter,
+  NotifyAt,
+  TimeHandler,
+  TimerId,
+} from "shared_types/app";
+import { Instant } from "shared_types/app";
 
-/// Live timeouts, so a `ClearTimer` can cancel the one it names — each paired with
-/// the `resolve` of the `NotifyAfter` promise it belongs to.
-const timers = new Map<
-  bigint,
-  { handle: number; resolve: (id: TimerId) => void }
->();
+/**
+ * The app's `TimeHandler`, over `window.setTimeout`.
+ *
+ * The handler answers each timer exactly once, with the id of the timer. If a
+ * `ClearTimer` arrives first, the handler cancels the timeout and settles the
+ * pending promise immediately. The core ignores that answer, because it no
+ * longer listens for it.
+ */
+export class WindowTimeHandler implements TimeHandler {
+  /**
+   * The live timeouts, so that a `ClearTimer` can cancel the timeout that it
+   * names. Each entry also holds the `resolve` of its pending promise.
+   */
+  private readonly timers = new Map<
+    bigint,
+    { handle: number; resolve: (id: TimerId) => void }
+  >();
 
-/// `NotifyAfter` is answered exactly once, with the id of the timer that
-/// fired.
-///
-/// If `ClearTimer` arrives first the timeout is cancelled and this promise settles
-/// there and then, answering anyway. That is harmless: the core stops
-/// listening for this request the moment it clears the timer, and ignores the
-/// answer.
-export function notifyAfter(operation: NotifyAfter): Promise<TimerId> {
-  const millis = Number(operation.duration.nanos / BigInt(1_000_000));
-  const timerId = operation.id.value;
-  console.debug(`time: notify_after ${millis}ms (id=${timerId})`);
-
-  return new Promise((resolve) => {
-    const handle = window.setTimeout(() => {
-      timers.delete(timerId);
-      console.debug(`time: duration elapsed (id=${timerId})`);
-      resolve(operation.id);
-    }, millis);
-    timers.set(timerId, { handle, resolve });
-  });
-}
-
-/// `ClearTimer` is a request: drop the timer and answer with the id it named.
-export function clear(operation: ClearTimer): Promise<TimerId> {
-  const timerId = operation.id.value;
-  console.debug(`time: clear (id=${timerId})`);
-  const timer = timers.get(timerId);
-  if (timer !== undefined) {
-    window.clearTimeout(timer.handle);
-    timers.delete(timerId);
-    // Settle the `NotifyAfter` promise rather than leaving it pending. Nothing
-    // acts on it — the core is no longer listening for that request.
-    timer.resolve(operation.id);
+  async now(): Promise<Instant> {
+    const millis = Date.now();
+    return new Instant(
+      BigInt(Math.floor(millis / 1000)),
+      (millis % 1000) * 1_000_000,
+    );
   }
 
-  return Promise.resolve(operation.id);
+  notifyAt(operation: NotifyAt): Promise<TimerId> {
+    const { seconds, nanos } = operation.instant;
+    const at = Number(seconds) * 1000 + nanos / 1_000_000;
+    return this.start(operation.id, Math.max(0, at - Date.now()));
+  }
+
+  notifyAfter(operation: NotifyAfter): Promise<TimerId> {
+    return this.start(
+      operation.id,
+      Number(operation.duration.nanos / BigInt(1_000_000)),
+    );
+  }
+
+  async clear(operation: ClearTimer): Promise<TimerId> {
+    const timerId = operation.id.value;
+    console.debug(`time: clear (id=${timerId})`);
+    const timer = this.timers.get(timerId);
+    if (timer !== undefined) {
+      window.clearTimeout(timer.handle);
+      this.timers.delete(timerId);
+      timer.resolve(operation.id);
+    }
+    return operation.id;
+  }
+
+  private start(id: TimerId, millis: number): Promise<TimerId> {
+    const timerId = id.value;
+    console.debug(`time: start ${millis}ms (id=${timerId})`);
+
+    return new Promise((resolve) => {
+      const handle = window.setTimeout(() => {
+        this.timers.delete(timerId);
+        console.debug(`time: elapsed (id=${timerId})`);
+        resolve(id);
+      }, millis);
+      this.timers.set(timerId, { handle, resolve });
+    });
+  }
 }

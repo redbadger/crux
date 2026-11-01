@@ -69,7 +69,7 @@ What the shell writes is the handler, `WeatherHandler`, whose methods are one-li
 `httpHandler.request(...)` is the `suspend` function that wraps OkHttp:
 
 ```kotlin
-{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/HttpHandler.kt:request}}
+{{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/OkHttpHttpHandler.kt:request}}
 ```
 
 Because the handler interface owns the response types, the per-capability handlers lost their `when` blocks too: `KeyValueHandler.get(operation: GetValue): ValueResult` takes exactly the operation it serves and returns exactly its output, rather than matching a wide operation enum and constructing a matching response variant.

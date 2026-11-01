@@ -1,57 +1,56 @@
 import App
 import Foundation
+import Synchronization
 
 private nonisolated let logger = Log.time
 
-nonisolated extension WeatherHandler {
-    /// `TimeNotifyAfter` is a request: it is answered exactly once, with the
-    /// id of the timer that fired.
-    ///
-    /// If `timeClear` arrives first the sleeping task is cancelled, and this
-    /// method returns early and answers anyway. That is harmless: the core
-    /// stopped listening for this request the moment it cleared the timer, and
-    /// ignores the answer.
-    public func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId {
-        let id = operation.id.value
-        let nanoseconds = UInt64(operation.duration.nanos)
-        logger.debug("scheduling timer (\(id)) for \(nanoseconds)ns")
+/// The app's `TimeHandler`, over `Task.sleep`.
+///
+/// The handler answers each timer exactly once, with the id of the timer. If
+/// `clear` arrives first, it cancels the sleeping task, and the pending call
+/// then answers immediately. The core ignores that answer, because it no
+/// longer listens for it.
+nonisolated final class TaskSleepTimeHandler: TimeHandler {
+    /// The sleeping tasks, so that `clear` can cancel the task that it names.
+    private let activeTimers = Mutex<[UInt64: Task<Void, Never>]>([:])
 
-        let sleeping = Task<Void, Never> { try? await Task.sleep(nanoseconds: nanoseconds) }
-        await store(timer: sleeping, id: id)
-        await sleeping.value
-        await forget(id: id)
-
-        logger.debug("timer (\(id)) finished")
-        return operation.id
+    func now(_ operation: Now) async -> Instant {
+        let since = Date().timeIntervalSince1970
+        let seconds = since.rounded(.down)
+        return Instant(seconds: UInt64(seconds), nanos: UInt32((since - seconds) * 1_000_000_000))
     }
 
-    /// `TimeClear` is a request: cancel the timer, release what it was holding,
-    /// and answer with the id it named.
-    public func timeClear(_ operation: ClearTimer) async -> TimerId {
+    func notifyAt(_ operation: NotifyAt) async -> TimerId {
+        let instant = operation.instant
+        let target = Double(instant.seconds) + Double(instant.nanos) / 1_000_000_000
+        let delay = max(0, target - Date().timeIntervalSince1970)
+        return await sleep(nanoseconds: UInt64(delay * 1_000_000_000), id: operation.id)
+    }
+
+    func notifyAfter(_ operation: NotifyAfter) async -> TimerId {
+        await sleep(nanoseconds: UInt64(operation.duration.nanos), id: operation.id)
+    }
+
+    func clear(_ operation: ClearTimer) async -> TimerId {
         let id = operation.id.value
         logger.debug("clearing timer (\(id))")
-        await cancelTimer(id: id)
-
+        let sleeping = activeTimers.withLock { $0.removeValue(forKey: id) }
+        sleeping?.cancel()
         return operation.id
     }
 
-    /// The timer table lives on the main actor, so the handler methods hop to
-    /// reach it.
-    @MainActor
-    private func store(timer: Task<Void, Never>, id: UInt64) {
-        activeTimers[id] = timer
-    }
-
-    @MainActor
-    private func forget(id: UInt64) {
-        activeTimers.removeValue(forKey: id)
-    }
-
-    /// Cancelling the sleeping task wakes `timeNotifyAfter`, which then returns
-    /// and answers its own request. Nothing acts on that answer — the core is
-    /// no longer listening for it.
-    @MainActor
-    private func cancelTimer(id: UInt64) {
-        activeTimers.removeValue(forKey: id)?.cancel()
+    private func sleep(nanoseconds: UInt64, id: TimerId) async -> TimerId {
+        let key = id.value
+        logger.debug("scheduling timer (\(key)) for \(nanoseconds)ns")
+        let sleeping = Task<Void, Never> { try? await Task.sleep(nanoseconds: nanoseconds) }
+        activeTimers.withLock { $0[key] = sleeping }
+        await sleeping.value
+        activeTimers.withLock { timers in
+            if timers[key] == sleeping {
+                timers.removeValue(forKey: key)
+            }
+        }
+        logger.debug("timer (\(key)) finished")
+        return id
     }
 }

@@ -23,9 +23,6 @@ let package = Package(
             dependencies: [
                 .product(name: "App", package: "App")
             ],
-            resources: [
-                .process("Core/KeyValueModel.xcdatamodeld")
-            ],
             swiftSettings: [
                 .swiftLanguageMode(.v6),
                 .defaultIsolation(MainActor.self)
