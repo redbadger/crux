@@ -4,11 +4,13 @@ import com.crux.example.weather.ClearTimer
 import com.crux.example.weather.DeleteSecret
 import com.crux.example.weather.EffectHandler
 import com.crux.example.weather.FetchSecret
-import com.crux.example.weather.GetValue
 import com.crux.example.weather.GetLocation
+import com.crux.example.weather.GetValue
+import com.crux.example.weather.HttpHandler
 import com.crux.example.weather.HttpRequest
 import com.crux.example.weather.HttpResult
 import com.crux.example.weather.IsLocationEnabled
+import com.crux.example.weather.KeyValueHandler
 import com.crux.example.weather.Location
 import com.crux.example.weather.NotifyAfter
 import com.crux.example.weather.SecretDeleteResponse
@@ -16,19 +18,22 @@ import com.crux.example.weather.SecretFetchResponse
 import com.crux.example.weather.SecretStoreResponse
 import com.crux.example.weather.SetValue
 import com.crux.example.weather.StoreSecret
+import com.crux.example.weather.TimeHandler
 import com.crux.example.weather.TimerId
 import com.crux.example.weather.ValueResult
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/// The shell's side of the effect protocol: one method per operation the app
-/// declares, each returning the single output that operation is answered with.
-/// Nothing here calls `resolve` — the generated `EffectDispatcher` does that,
-/// exactly as often as the operation's kind says.
-///
-/// There is no `render` override: the generated `Core` intercepts `Render`
-/// before the dispatcher sees it and refreshes its `view` flow, so the
-/// interface's default no-op stands.
+/**
+ * The shell's side of the effect protocol: one method per operation the app
+ * declares, each returning the single output that operation is answered with.
+ * Nothing here calls `resolve` — the generated `EffectDispatcher` does that,
+ * exactly as often as the operation's kind says.
+ *
+ * There is no `render` override: the generated `Core` intercepts `Render`
+ * before the dispatcher sees it and refreshes its `view` flow, so the
+ * interface's default no-op stands.
+ */
 @Singleton
 class WeatherHandler
     @Inject

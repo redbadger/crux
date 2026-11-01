@@ -218,6 +218,8 @@ impl App for NoteEditor {
             }
             Event::Open => KeyValue::get("note".to_string()).then_send(Event::Load),
             Event::Load(Ok(value)) => {
+                // An empty value has no document in it, so treat it as no value.
+                let value = value.filter(|bytes| !bytes.is_empty());
                 let mut commands = Vec::new();
                 if value.is_none() {
                     model.note = Note::new();
@@ -600,6 +602,24 @@ mod save_load_tests {
         assert_effect!(cmd, Effect::Render(_));
 
         assert_eq!(app.view(&model).text, "LOADED");
+    }
+
+    #[test]
+    fn creates_a_document_if_the_stored_value_is_empty() {
+        let app = NoteEditor;
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::Load(Ok(Some(vec![]))), &mut model);
+        let request = cmd.effects().find_map(Effect::into_kv_set).unwrap();
+
+        assert_eq!(
+            request.operation,
+            kv::SetValue {
+                key: "note".to_string(),
+                value: model.note.save(),
+            }
+        );
+        assert_eq!(model.note.text(), "");
     }
 
     #[test]
