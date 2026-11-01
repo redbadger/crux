@@ -23,7 +23,11 @@ codegen = [
     "dep:pretty_env_logger",
     "facet_typegen",
 ]
-facet_typegen = ["crux_core/facet_typegen"]
+facet_typegen = [
+    "crux_core/facet_typegen",
+    "crux_kv/facet_typegen",
+    "crux_time/facet_typegen",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]

@@ -12,9 +12,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
-/// `Core` is generated, so it has no `@Inject` constructor for Hilt to find —
-/// this module builds it instead. The bridge over the Rust core is generated
-/// too, so nothing here mentions the FFI.
+/**
+ * `Core` is generated, so it has no `@Inject` constructor for Hilt to find —
+ * this module builds it instead. The bridge over the Rust core is generated
+ * too, so nothing here mentions the FFI.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object CoreModule {
