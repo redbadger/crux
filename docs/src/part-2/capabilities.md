@@ -11,6 +11,7 @@ Capabilities don't return a `Command` directly — they return a command *builde
 The weather app's current-weather fetch shows the same pattern in production code:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/http/weather/mod.rs:fetch}}
 ```
 
@@ -27,6 +28,7 @@ Before we write any code, one rule shapes everything that follows: **an operatio
 The `Operation` trait has always said the first half:
 
 ```rust,ignore
+// Rust
 pub trait Operation: Send + 'static {
     type Output: Send + Unpin + 'static;
 }
@@ -47,6 +49,7 @@ That used to be decided by which `Command` constructor you called, so the same o
 You declare both with `#[derive(Operation)]`:
 
 ```rust,ignore
+// Rust
 use crux_core::macros::Operation;
 
 /// Told to the shell, never answered.
@@ -73,6 +76,7 @@ Outputs must be types type generation can emit, which rules out
 concrete two-variant enum in the style of `crux_http`'s `HttpResult`:
 
 ```rust,ignore
+// Rust
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
 pub enum ValueResult {
@@ -99,6 +103,7 @@ A capability is two things:
 Here's the whole protocol for Location:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/location/mod.rs}}
 ```
 
@@ -109,6 +114,7 @@ Two operations, two outputs, and nothing shared between them. `IsLocationEnabled
 The developer API is equally small:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/location/command.rs}}
 ```
 
@@ -125,6 +131,7 @@ Fetching a secret either finds it or doesn't. Storing one either succeeds or fai
 Now each operation names only its own outcomes:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/secret/mod.rs}}
 ```
 
@@ -135,6 +142,7 @@ The operation names carry the capability's name for a reason that has nothing to
 The developer API is correspondingly plain:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/secret/command.rs}}
 ```
 
@@ -147,6 +155,7 @@ Using these builders looks no different from the location ones: call `secret::co
 Both capabilities above are requests. The notes example's pub/sub capability has one of each of the other two kinds, which makes it the best place to see them.
 
 ```rust
+// Rust
 {{#include ../../../examples/notes/shared/src/capabilities/pub_sub.rs:operations}}
 ```
 
@@ -155,6 +164,7 @@ Both capabilities above are requests. The notes example's pub/sub capability has
 The builders differ in the same way:
 
 ```rust
+// Rust
 {{#include ../../../examples/notes/shared/src/capabilities/pub_sub.rs:builders}}
 ```
 

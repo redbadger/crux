@@ -4,21 +4,23 @@ The Android shell talks to the Rust core the same way the iOS shell does — ser
 
 ## Booting the Core with Hilt
 
-The Android app uses [Dagger Hilt](https://dagger.dev/hilt/) to wire up the core and its dependencies. `WeatherApplication` is annotated `@HiltAndroidApp`, which bootstraps the DI graph, and `MainActivity` is `@AndroidEntryPoint`, which lets it receive `@Inject` field injection. Handlers use constructor injection, so the module that provides the app's own dependencies is small:
+The Android app uses [Dagger Hilt](https://dagger.dev/hilt/) to wire up the core and its dependencies. `WeatherApplication` is annotated `@HiltAndroidApp`, which bootstraps the DI graph, and `MainActivity` is `@AndroidEntryPoint`, which lets it receive `@Inject` field injection. The module that provides the app's own dependencies constructs the `OkHttpClient` and the handlers that implement the shell protocols:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/AppModule.kt}}
 ```
 
-The only explicit provider here is `OkHttpClient`, since it isn't under our control; every handler gets `@Inject constructor(...)` and Hilt figures out the graph from there. The generated `Core` is the other thing Hilt can't construct on its own — it has no `@Inject` constructor — so a second module builds it:
+The module provides the app's own implementations of the shell protocols: `OkHttpHttpHandler` over an `OkHttpClient`, `PreferencesKeyValueHandler` over `SharedPreferences`, and `DelayTimeHandler`. Each provider returns the shell protocol (`HttpHandler`, `KeyValueHandler` or `TimeHandler`). Type generation emits these shell protocols, because the app uses operations of their capabilities. Each shell protocol states the rules that an implementation must follow. See [Shell protocols](../../part-4/typegen.md#shell-protocols). The app's other handlers get `@Inject constructor(...)` and Hilt figures out the graph from there. Hilt cannot construct the generated `Core`, because it has no `@Inject` constructor, so a second module builds it:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/di/CoreModule.kt:start}}
 ```
 
 `Core` takes the two things a shell supplies: an `EffectHandler` and a `CoroutineScope` on the main dispatcher. The `.also` sends the same `Event.Start` we saw in chapter 3 the moment the core exists — it fetches the API key and favourites before anything is drawn.
 
-The handler is `WeatherHandler`, which takes five injected dependencies — one per capability that needs a real-world implementation: `HttpHandler` (OkHttp), `LocationHandler` (Fused Location Provider + permission flow), `KeyValueHandler` (DataStore-backed), `SecretStore` (AndroidKeyStore-backed), and `TimeHandler` (coroutine timers).
+The handler is `WeatherHandler`. Hilt injects one dependency for each capability that needs a real-world implementation: the three handlers above, `LocationHandler` (Fused Location Provider and the permission flow) and `SecretStore` (AndroidKeyStore).
 
 One thing to flag upfront: the word "ViewModel" shows up in two senses on Android. Crux's own `ViewModel` is the state projection produced by the core — what the UI ultimately consumes. Android's `androidx.lifecycle.ViewModel` is the lifecycle-aware class that survives configuration changes. The per-screen Android VMs (`HomeViewModel`, `FavoritesViewModel`, `OnboardViewModel`) sit between them: they observe a flow of Crux view models from `Core` and map each one to a Compose-friendly UI state. All three are `@HiltViewModel @Inject constructor(...)`.
 
@@ -27,6 +29,7 @@ One thing to flag upfront: the word "ViewModel" shows up in two senses on Androi
 Underneath the two-argument constructor, `Core` talks to Rust through a `CoreBridge` interface with three byte-level methods, and the generated package implements it over BoltFFI's `CoreFfi` in `FfiBridge.kt`:
 
 ```kotlin
+// Kotlin
 class FfiBridge(private val ffi: CoreFfi = CoreFfi()) : CoreBridge, AutoCloseable {
     override fun update(event: ByteArray): ByteArray = ffi.update(event)
 
@@ -47,6 +50,7 @@ One build detail: `Core` uses `StateFlow` and `launch`, so the `shared` Gradle m
 The loop is the generated `Core`:
 
 ```kotlin
+// Kotlin
 class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
     constructor(handler: EffectHandler, scope: CoroutineScope)
     val view: StateFlow<ViewModel>
@@ -61,24 +65,27 @@ class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
 What the shell writes is the handler, `WeatherHandler`, whose methods are one-liners that delegate to the injected handlers. HTTP, for example:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/WeatherHandler.kt:handle_http}}
 ```
 
-`suspend fun http(operation: HttpRequest): HttpResult` — the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `WeatherHandler` calls `resolve`. There is no `render` override either, because `Core` owns it. `timeClear` returns the `TimerId` once the coroutine running the timer has been cancelled, like every other request.
+`suspend fun http(operation: HttpRequest): HttpResult` is the whole contract in one signature. The operation declares that it is answered exactly once with an `HttpResult`, so the method returns one, and nothing in `WeatherHandler` calls `resolve`. There is no `render` override either, because `Core` owns it. `timeClear` returns the `TimerId` once the timer is cancelled, like every other request.
 
-`httpHandler.request(...)` is the `suspend` function that wraps OkHttp:
+`httpHandler.request(...)` is the `suspend` function of the `HttpHandler` shell protocol. `OkHttpHttpHandler` implements it over OkHttp:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/core/OkHttpHttpHandler.kt:request}}
 ```
 
-Because the handler interface owns the response types, the per-capability handlers lost their `when` blocks too: `KeyValueHandler.get(operation: GetValue): ValueResult` takes exactly the operation it serves and returns exactly its output, rather than matching a wide operation enum and constructing a matching response variant.
+Every response is an `HttpResult.Ok`, whatever its status. Only a transport failure is an `HttpResult.Err`. Each method of a shell protocol takes exactly the operation that it serves and returns exactly its output, so each `WeatherHandler` method is one expression. `LocationHandler` and `SecretStore`, which serve the app's own capabilities, follow the same pattern.
 
 ## Views driven by the Crux view model
 
 The generated `Core` exposes the current view model as `view: StateFlow<ViewModel>`, so Compose can collect it with `collectAsState()` and recompose when it changes; `core/Projections.kt` adds per-screen extension functions (`core.homeViewModel()` and friends) that narrow it to one branch. The root of the view tree lives in `MainActivity.onCreate`:
 
 ```kotlin
+// Kotlin
 {{#include ../../../../examples/weather/Android/app/src/main/java/com/crux/example/weather/MainActivity.kt:content_view}}
 ```
 
