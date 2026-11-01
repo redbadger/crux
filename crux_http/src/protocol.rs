@@ -5,6 +5,7 @@
 //! This module defines the protocol for `crux_http` to communicate with the shell.
 
 use async_trait::async_trait;
+use crux_core::macros::Operation;
 use derive_builder::Builder;
 use facet_generate_attrs as typegen;
 use serde::{Deserialize, Serialize};
@@ -32,7 +33,12 @@ pub struct HttpHeader {
 ///
 /// For the ergonomic Rust-side builder that *does* validate header values (and panics
 /// on invalid input), see [`crate::command::RequestBuilder`].
-#[derive(facet::Facet, Serialize, Deserialize, Default, Clone, PartialEq, Eq, Builder)]
+///
+/// An `HttpRequest` is answered exactly once, with an [`HttpResult`].
+#[derive(
+    facet::Facet, Serialize, Deserialize, Default, Clone, PartialEq, Eq, Builder, Operation,
+)]
+#[operation(request, output = HttpResult, protocol = crate::shell::PROTOCOL)]
 #[builder(
     custom_constructor,
     build_fn(private, name = "fallible_build"),
@@ -291,15 +297,6 @@ impl From<Result<HttpResponse>> for HttpResult {
         }
     }
 }
-
-impl crux_core::capability::Operation for HttpRequest {
-    type Output = HttpResult;
-
-    const KIND: Option<crux_core::OperationKind> = Some(crux_core::OperationKind::Request);
-}
-
-/// An `HttpRequest` is answered exactly once, with an [`HttpResult`].
-impl crux_core::operation::Request for HttpRequest {}
 
 #[async_trait]
 pub(crate) trait EffectSender {
