@@ -30,9 +30,10 @@ Otherwise, in this order:
    operations you use in your `Effect` enum.
 3. **Your `Effect` enum** — one variant per operation, which renames the
    generated `is_` / `into_` / `expect_*` test helpers.
-4. **Regenerate your shells** and let the generated `Core` drive the loop, or
-   adopt just the generated `EffectHandler`, or widen the match you already
-   have.
+4. **Regenerate your shells** and adopt the handler API: implement
+   `EffectHandler` and let the generated `Core` drive the loop. If that cannot
+   work for you, you can implement only the handler, or widen the match that
+   you already have.
 5. **Check the [traps](#traps-worth-knowing-about)** — Swift actor isolation
    and what a late timer does.
 
@@ -45,6 +46,7 @@ writes the `Operation` implementation, its `Output`, the kind and the matching
 marker trait so the three cannot disagree:
 
 ```rust
+// Rust
 use crux_core::macros::Operation;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
@@ -96,6 +98,7 @@ to migrate your own capabilities to take `crux_core` 0.21.
 If you'd rather not use the derive, declare the kind and the marker together:
 
 ```rust,ignore
+// Rust
 impl Operation for Get {
     type Output = ValueResult;
     const KIND: Option<OperationKind> = Some(OperationKind::Request);
@@ -117,7 +120,7 @@ six-variant response, so every call site had to rule out the four variants that
 could not apply to it:
 
 ```rust,ignore
-// Before
+// Rust: before
 pub enum SecretRequest {
     Fetch(String),
     Store(String, String),
@@ -155,7 +158,7 @@ After, each operation is its own type and the narrow response types it already
 had become its output:
 
 ```rust,ignore
-// After
+// Rust: after
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(request, output = SecretFetchResponse)]
 pub struct FetchSecret(pub String);
@@ -204,7 +207,7 @@ with the same signatures and the same `DataResult` / `StatusResult` /
 changes is the `Effect` enum.
 
 ```rust,ignore
-// Before
+// Rust: before
 use crux_kv::{KeyValue, KeyValueOperation, error::KeyValueError};
 
 #[effect(facet_typegen)]
@@ -217,7 +220,7 @@ KeyValue::get("note").then_send(Event::Load)
 ```
 
 ```rust,ignore
-// After
+// Rust: after
 use crux_kv::{error::KeyValueError, operation as kv, store::KeyValue};
 
 #[effect(facet_typegen)]
@@ -241,6 +244,7 @@ The operations and their outputs:
 | `operation::ListKeys` | `prefix: String, cursor: u64` | `KeysResult` | request |
 
 ```rust,ignore
+// Rust
 pub enum ValueResult  { Ok(Value), Err(KeyValueError) }
 pub enum ExistsResult { Ok(bool),  Err(KeyValueError) }
 pub enum KeysResult   { Ok(Keys),  Err(KeyValueError) }
@@ -279,7 +283,7 @@ the root type is deprecated, and the breaking release re-exports `clock::Time`
 in its place.
 
 ```rust,ignore
-// Before
+// Rust: before
 use crux_time::{TimeRequest, command::{Time, TimerHandle, TimerOutcome}};
 
 #[effect(facet_typegen)]
@@ -291,7 +295,7 @@ let (notify_after, handle) = Time::notify_after(duration);
 ```
 
 ```rust,ignore
-// After
+// Rust: after
 use crux_time::{TimerHandle, TimerOutcome, clock::Time, operation as time};
 
 #[effect(facet_typegen)]
@@ -342,6 +346,7 @@ Renaming variants renames the test helpers `#[effect]` generates from them, whic
 is usually the largest mechanical diff in an app's test suite:
 
 ```rust,ignore
+// Rust
 // Before                              // After
 effects.next().unwrap()                effects.next().unwrap()
     .expect_key_value()                    .expect_kv_get()
@@ -364,9 +369,13 @@ a notification, once for a request, once per sink item for a stream. See
 [Type generation](../part-4/typegen.md#operation-kinds-and-the-effect-handler-api)
 for the exact shapes in each language.
 
-Adopting it is optional. **Matching on `Effect` and calling `resolve` by hand
-keeps working**, and is the right choice for Rust shells — see
-[keeping a flat match](#keeping-a-flat-match).
+**Adopt it.** One method per operation, with the operation and output types
+already correct and the resolving done for you, is what makes the per-operation
+design worth having on the shell side, and it is what both examples and the rest
+of this guide do. It cannot work for every shell, for example if you own the
+concurrency, or if your deployment target is below that of `Core`. Then you
+can match on `Effect` and call `resolve` yourself. That is also the right
+choice for Rust shells. See [keeping a flat match](#keeping-a-flat-match).
 
 ### Letting the generated Core own the loop
 
@@ -385,6 +394,7 @@ The bridge between `Core` and BoltFFI's `CoreFfi` is generated too, once the
 codegen knows where BoltFFI put its output:
 
 ```rust,ignore
+// Rust
 TypeRegistry::new()
     .register_app::<Weather>()?
     .build()?
@@ -417,6 +427,7 @@ Implement the handler on the class that already owned the effect loop, and let
 the dispatcher replace the nested `switch`. From the notes example:
 
 ```typescript
+// TypeScript
 // Before — nested match helpers, hand-built responses, and an id in a ref
 private processEffect(id: number, effect: Effect) {
   matchEffect(effect, {
@@ -439,6 +450,7 @@ private processEffect(id: number, effect: Effect) {
 ```
 
 ```typescript
+// TypeScript
 // After — a handler with one method per operation, and the generated Core
 // owning the loop and the bridge to the wasm module
 export class NotesHandler implements EffectHandler {
@@ -478,6 +490,7 @@ around that untyped promise goes too. Construct the core in an effect, not in a
 ### Swift
 
 ```swift
+// Swift
 // Before — a switch, and a resolve call per capability
 func processEffect(_ request: Request) {
     switch request.effect {
@@ -493,6 +506,7 @@ func processEffect(_ request: Request) {
 ```
 
 ```swift
+// Swift
 // After — a handler with one method per operation, and the generated Core
 // owning the loop and the bridge to CoreFfi
 @MainActor public final class WeatherHandler {
@@ -534,6 +548,7 @@ a `platforms:` floor at least as high as `Shared` declares — set it on the
 A handler that delegates, and the generated `Core` provided by Hilt:
 
 ```kotlin
+// Kotlin
 @Singleton
 class WeatherHandler @Inject constructor(/* … */) : EffectHandler {
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
@@ -582,6 +597,7 @@ output that request resolves with. The weather Leptos shell just grew from six
 arms to eleven:
 
 ```rust,ignore
+// Rust
 fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
     match effect {
         Effect::Render(_) => render.set(core.view()),
@@ -596,8 +612,11 @@ fn process_effect(core: &Core, effect: Effect, render: WriteSignal<ViewModel>) {
 }
 ```
 
-The same applies to a non-Rust shell that wants full control over its own
-concurrency: the emission is additive, and ignoring it costs nothing.
+A non-Rust shell that wants full control over its own concurrency can do the
+same. The emission is additive, so you lose nothing if you ignore it. But a
+flat match is the fallback, not the recommendation. A match that you write
+yourself must give everything that the handler API gives, and you must update
+it each time a capability adds an operation.
 
 ---
 
@@ -633,6 +652,7 @@ pattern that works is a `nonisolated` extension that hops to the main actor only
 where it touches main-actor state:
 
 ```swift
+// Swift
 nonisolated extension WeatherHandler: EffectHandler {
     public func kvGet(_ operation: GetValue) async -> ValueResult {
         await MainActor.run { keyValueStore.get(operation.key) }
