@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A harness beside the generated project, referencing it by path.
+
+    Nothing here is generated: the test writes this file and `Program.cs` next
+    to whatever `csharp()` emitted, so that the shipped source is exercised
+    exactly as an app would exercise it — through the project's public API.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Harness</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../generated/Example.Shared.csproj" />
+  </ItemGroup>
+
+</Project>
