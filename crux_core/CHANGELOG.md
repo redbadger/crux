@@ -290,6 +290,14 @@ and this project adheres to
   an error rather than a no-op. Requires `facet_generate` with the
   companion-file and manifest hooks.
 
+- **Each `EffectHandler` method carries the doc comment of its operation.**
+  Type generation writes the doc of the operation type on its method in the
+  generated `EffectHandler`, in Swift, Kotlin, TypeScript and C#. A capability
+  states its contract with the shell in that doc, so the shell author reads
+  it where they implement the method. `EffectBuilder::variant` reads the doc
+  from the operation's `Shape`, so it now requires `Op: Facet`. Every
+  operation that an effect carries already implements `Facet`.
+
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` used to be a bare counter. It now packs, from the top, eight
   bits of effect variant index, one bit that is set for a stream and clear for

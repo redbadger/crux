@@ -10,6 +10,11 @@ and this project adheres to
 
 ### Added
 
+- **The doc of `HttpRequest` says what the shell answers with.** `Ok` carries
+  every response that arrives, whatever its status. `Err` means that no
+  response arrived, and is `Url`, `Timeout` or `Io`. The generated
+  `EffectHandler` shows this doc on the method for the operation.
+
 - **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
   response into the `Response` an app sees, with the same semantics a `crux_http`
   request gives it.

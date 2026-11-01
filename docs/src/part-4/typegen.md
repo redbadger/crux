@@ -266,6 +266,10 @@ The `resolve` you hand the dispatcher is your own
 `(requestId, bytes) -> ()` callback around the core's `resolve` FFI —
 the same one you would have called by hand.
 
+Each `EffectHandler` method carries the doc comment of its operation type. A
+capability states its contract with the shell in that doc (for example, what
+each value of the output means), so you read it where you implement the method.
+
 Here is what that looks like for an effect with one variant of each
 kind, plus a `Legacy` operation that declares nothing.
 

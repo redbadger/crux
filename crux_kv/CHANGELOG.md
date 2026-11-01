@@ -17,6 +17,11 @@ and this project adheres to
 
 ### 🚀 Features
 
+- **The doc of each operation says what the shell answers with.** A key with
+  no value is `Ok` with `Value::None`, and `SetValue` and `DeleteValue`
+  answer with the value that they replaced or removed. The generated
+  `EffectHandler` shows this doc on the method for each operation.
+
 - **One type per store operation, in the new `crux_kv::operation` module, and a
   `store::KeyValue` capability that sends them.** `KeyValueOperation` has one output
   type — `KeyValueResult` — for all five of its variants, so a `Get` can be answered
