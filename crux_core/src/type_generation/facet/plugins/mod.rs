@@ -10,6 +10,9 @@
 //!   structured request id the core issues.
 //! * [`CorePlugin`] emits `CoreBridge` and `Core` — the loop that carries
 //!   events into the core, requests out of it, and the view back to the shell.
+//! * [`ShellProtocolPlugin`] emits the protocols of the capabilities that the
+//!   app uses. It writes source that the capability's author wrote, not source
+//!   that crux generates.
 //! * [`ShellExtensionPlugin`] emits the shell extensions the app registered,
 //!   such as a capability's shipped handler. It writes source the extension's
 //!   author wrote, not source we generate.
@@ -26,6 +29,7 @@ mod handler;
 mod operation_kind;
 mod request_id;
 mod shell_handler;
+mod shell_protocol;
 #[cfg(test)]
 mod tests;
 
@@ -40,6 +44,7 @@ pub(super) use handler::EffectHandlerPlugin;
 pub(super) use operation_kind::OperationKindPlugin;
 pub(super) use request_id::RequestIdPlugin;
 pub(super) use shell_handler::ShellExtensionPlugin;
+pub(super) use shell_protocol::ShellProtocolPlugin;
 
 use super::{EffectMeta, EffectVariantMeta};
 use crate::OperationKind;
