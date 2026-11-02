@@ -1,14 +1,27 @@
 use serde::Serialize;
 
-use crate::bridge::{FfiFormat, ResolveSerialized};
+use crate::{
+    OperationKind,
+    bridge::{FfiFormat, ResolveSerialized},
+};
 
 /// Implemented automatically with the effect macro from `crux_macros`.
-/// This is a marker trait to ensure the macro generated traits are present on the effect type.
+/// Exposes runtime information about the request carried by an effect.
 ///
 /// You should annotate your type with `#[effect]` to implement this trait.
 // used in docs/internals/bridge.md
 // ANCHOR: effect
-pub trait Effect: Send + 'static {}
+pub trait Effect: Send + 'static {
+    /// The app-defined effect variant name, used as its observability label.
+    /// The effect macro returns the variant's Rust identifier.
+    fn name(&self) -> &'static str;
+
+    /// How many times the effect's request currently expects to be resolved.
+    ///
+    /// Read this before resolving: an answered one-shot handle reports
+    /// [`OperationKind::Notify`].
+    fn kind(&self) -> OperationKind;
+}
 // ANCHOR_END: effect
 
 /// Implemented automatically with the effect macro from `crux_macros`.
