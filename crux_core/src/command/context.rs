@@ -223,6 +223,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let task = Task {
             finished: Arc::default(),
             aborted: Arc::default(),
+            abort_waker: Arc::default(),
             future: future.boxed(),
             join_handle_wakers: receiver,
         };
@@ -230,6 +231,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let handle = JoinHandle {
             finished: task.finished.clone(),
             aborted: task.aborted.clone(),
+            abort_waker: task.abort_waker.clone(),
             register_waker: sender,
         };
 
