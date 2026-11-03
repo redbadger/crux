@@ -305,27 +305,34 @@ shell over `examples/counter/shared`; see section 15.)
 
 ### Memory layout and its uncertainty
 
-`memory.x` mirrors Adafruit's own Arduino linker script for this chip,
+`memory-s140-v6.x` mirrors Adafruit's own Arduino linker script for this chip,
 `cores/nRF5/linker/nrf52840_s140_v6.ld` (fetched, not remembered):
 `FLASH ORIGIN = 0x26000, LENGTH = 0xED000 - 0x26000`,
 `RAM ORIGIN = 0x20006000, LENGTH = 0x20040000 - 0x20006000`.
+`memory-s140-v7.x` is the same with `FLASH ORIGIN = 0x27000` (it still ends at 0xED000).
+The cargo features `sd-v6` (the default) and `sd-v7` choose between them, and `build.rs`
+copies the chosen file to `OUT_DIR/memory.x`. It stops the build if both features or neither
+are on.
 
 - The MBR forwards reset and interrupts to the SoftDevice, which (never
   enabled here) forwards them to the application at the address where *it*
   ends. So the flash origin is dictated by the SoftDevice version, not chosen:
   0x26000 for S140 6.1.1 (what the CPB ships with, and what Adafruit's current
-  Arduino core still links for), 0x27000 for S140 7.x. **Confirmed: S140 6.1.1**
-  (test board: UF2 bootloader 0.9.0, Board-ID nRF52840-CircuitPlayground-revD,
+  Arduino core still links for), 0x27000 for S140 7.x. Both versions work. The test
+  board has S140 6.1.1 (UF2 bootloader 0.9.0, Board-ID nRF52840-CircuitPlayground-revD,
   dated May 9 2024).
-  `INFO_UF2.TXT` on the CPLAYBTBOOT drive names the SoftDevice. If it says 7.x,
-  change both `memory.x` and the `-b` address below to 0x27000.
+  `INFO_UF2.TXT` on the CPLAYBTBOOT drive names the SoftDevice. `just flash` and
+  `just uf2` read its `SoftDevice: S140 x.y.z` line (6.x gives `sd-v6` and base 0x26000,
+  7.x gives `sd-v7` and base 0x27000, anything else stops with an error). The argument
+  overrides the detection (`just flash v7`), and `just board` prints the detection only.
+  The v7 layout is built and checked in the ELF and the UF2 base, but no 7.x board has run it.
 - 0xED000..0xF4000 is left for the bootloader's user-data area, 0xF4000 up is
   the bootloader.
 - RAM below 0x20006000 is left for the SoftDevice even though it is never
   enabled (strictly only the MBR's first 8 bytes are needed then). That costs
   24 KB of 256 KB, which does not matter here.
-- The vector table is at 0x26000; the initial SP is 0x20040000 and the reset
-  vector 0x26101 (checked in the binary).
+- With `sd-v6` the vector table is at 0x26000, the initial SP is 0x20040000 and the reset
+  vector is 0x26101 (checked in the binary). With `sd-v7` the vector table is at 0x27000.
 
 ### Size
 
@@ -431,8 +438,11 @@ facet change upstream. Out of scope for a first pass.
 
 ## 11. Rebuild and flash
 
-`just flash` (see README.md) does all of this: build, UF2 conversion, and the copy onto
-`CPLAYBTBOOT`. The steps by hand:
+`just flash` (see README.md) does all of this: it reads the board's SoftDevice, builds with
+the matching feature, converts to UF2 with the matching base, and copies the UF2 onto
+`CPLAYBTBOOT`. The steps by hand for S140 6.1.1 (for S140 7.x add
+`--no-default-features --features sd-v7` to the two `cargo` commands that build, and use
+`-b 0x27000`):
 
 ```sh
 cd examples/counter/cpb
@@ -459,8 +469,8 @@ Drag and drop:
 1. Plug the CPB in over USB (a data cable).
 2. Double-press the small reset button in the middle of the board. The ring
    of NeoPixels turns green and a drive called **CPLAYBTBOOT** appears.
-3. Optional: open `INFO_UF2.TXT` and check the SoftDevice is S140 6.x. If it
-   is 7.x, rebuild with 0x27000 (memory.x and `-b`).
+3. Optional: run `just board`, or open `INFO_UF2.TXT`, to see the SoftDevice. `just flash`
+   builds for the version it finds.
 4. Copy `target/cpb-counter.uf2` onto CPLAYBTBOOT. The drive ejects itself and
    the board resets into the app.
 5. Button A (left) adds a pixel, button B (right) removes one (negative counts

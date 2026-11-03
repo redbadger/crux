@@ -41,7 +41,7 @@ embassy-sync = "0.8"
 embassy-time = "0.5.1"
 
 # BLE: TrouBLE host + Nordic's SoftDevice Controller, linked into this image. The board's
-# resident S140 6.1.1 stays disabled (nrf-softdevice would need S140 7.x).
+# resident S140 (6.1.1 or 7.x) stays disabled.
 trouble-host = { version = "0.8", default-features = false, features = ["derive", "gatt", "peripheral", "default-packet-pool"] }
 nrf-sdc = { version = "0.4", default-features = false, features = ["nrf52840", "peripheral"] }
 # Provides the critical-section implementation, so cortex-m must not
@@ -54,6 +54,13 @@ heapless = "0.9"
 cortex-m = { version = "0.7.7", features = ["inline-asm"] }
 cortex-m-rt = "0.7.5"
 panic-halt = "1.0"
+
+# The board's SoftDevice version sets the flash origin (see memory-s140-v6.x and
+# memory-s140-v7.x). Enable exactly one. The firmware never enables the SoftDevice.
+[features]
+default = ["sd-v6"]
+sd-v6 = []
+sd-v7 = []
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }

@@ -169,6 +169,12 @@ just flash    # build a UF2 and copy it onto the board
 To flash the board, plug it in, double-press its reset button so that the
 `CPLAYBTBOOT` drive appears, and run `just flash`.
 
+The board starts the application at the end of its SoftDevice, which is at 0x26000 for S140
+6.1.1 (what boards ship with) and at 0x27000 for S140 7.x. The firmware never enables the
+SoftDevice, so only this address differs. `just flash` reads the `SoftDevice` line in
+`INFO_UF2.TXT` on the drive and builds for the matching layout. To choose the layout yourself,
+run `just flash v6` or `just flash v7`.
+
 ```admonish success
 The ring of LEDs shows the count: button A adds a green LED, button B takes
 one away, and below zero they turn red.
