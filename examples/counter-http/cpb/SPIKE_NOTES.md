@@ -131,6 +131,16 @@ So **MPSL's timing-critical RADIO/TIMER0/RTC0 interrupts survive the MBR → dis
 S140 forwarding**, as GPIOTE did in cpb-counter. The resident SoftDevice can stay; the
 board needs no bootloader or SoftDevice update.
 
+Both S140 versions work, because the firmware never enables the SoftDevice and only the flash
+origin differs: 0x26000 with S140 6.1.1 (cargo feature `sd-v6`, the default, with
+`memory-s140-v6.x`) and 0x27000 with S140 7.x (`sd-v7`, with `memory-s140-v7.x`). `build.rs`
+copies the chosen file to `OUT_DIR/memory.x` and stops the build if both features or neither
+are on. `just flash` and `just uf2` read the `SoftDevice: S140 x.y.z` line in `INFO_UF2.TXT` on
+the `CPLAYBTBOOT` drive (6.x gives `sd-v6` and base 0x26000, 7.x gives `sd-v7` and base 0x27000,
+anything else stops with an error). The `sd` argument overrides the detection
+(`just flash cpb-counter-http v7`), and `just board` prints the detection only. Only the 6.1.1
+layout has run on a board. The 7.x layout is built, and its ELF origin and UF2 base are checked.
+
 - Manifest differences from cpb-counter: `cortex-m` loses `critical-section-single-core`
   (`nrf-mpsl/critical-section-impl` provides it), and embassy-nrf gains `unstable-pac`, `rt`.
   HFCLK is no longer forced to the crystal in `embassy_nrf::init`, because MPSL owns CLOCK;

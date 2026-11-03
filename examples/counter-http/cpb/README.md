@@ -56,7 +56,7 @@ and the colours are presentation, so they live in the shell.
 | `src/link.rs` | radio set-up (MPSL, SDC), the GATT service, framing; channels to the shell |
 | `src/neopixel.rs` | WS2812 over PWM |
 | `src/bin/` | `link-check` and `ble-probe`, bring-up binaries without the core |
-| `memory.x`, `build.rs`, `.cargo/config.toml` | flash at 0x26000 and RAM at 0x20006000, leaving room for the bootloader's MBR and SoftDevice; target `thumbv7em-none-eabihf` |
+| `memory-s140-v6.x`, `memory-s140-v7.x`, `build.rs`, `.cargo/config.toml` | flash at 0x26000 (S140 6.1.1) or 0x27000 (S140 7.x) and RAM at 0x20006000, leaving room for the bootloader's MBR and SoftDevice; target `thumbv7em-none-eabihf` |
 | `heap-probe/` | runs the core on the host, as the firmware builds it, with a counting allocator, and reports peak heap |
 | `tools/ble-probe.html` | a Web Bluetooth page for `ble-probe` |
 
@@ -79,6 +79,7 @@ just build            # the three binaries: cpb-counter-http, link-check, ble-pr
 just size             # section sizes (just size link-check, …)
 just heap-probe       # peak heap on the host (8-byte pointers, so an upper bound)
 just heap-probe-wasm  # the same as wasm32-wasip1 under Node: 4-byte pointers, as on the board
+just board            # print the board's SoftDevice and its memory layout (flashes nothing)
 just uf2              # target/cpb-counter-http.uf2, ready to copy onto the board
 ```
 
@@ -94,9 +95,32 @@ Then, to run it end to end:
 3. In the gateway page, click **Connect** and choose "CPB Counter". The board shows the shared
    count from crux-counter.fly.dev, and the gateway logs each request it forwards.
 
-`just flash` builds a UF2 at 0x26000 (downloading Microsoft's `uf2conv.py` into `target/` the
-first time) and copies it to `CPLAYBTBOOT`. That's `/Volumes/CPLAYBTBOOT` on macOS and
-`/media/$USER/CPLAYBTBOOT` elsewhere; set `CPB_DRIVE` to override.
+`just flash` reads the board's SoftDevice, builds a UF2 for the matching layout (downloading
+Microsoft's `uf2conv.py` into `target/` the first time), and copies it to `CPLAYBTBOOT`. That's
+`/Volumes/CPLAYBTBOOT` on macOS and `/media/$USER/CPLAYBTBOOT` elsewhere; set `CPB_DRIVE` to
+override.
+
+## SoftDevice versions
+
+The board starts the application at the end of its SoftDevice. This firmware brings its own
+radio controller (`nrf-sdc`) and never enables the board's SoftDevice, so only the flash origin
+depends on its version. Both versions work:
+
+| SoftDevice | Cargo feature | Flash origin | Memory file |
+|---|---|---|---|
+| S140 6.1.1 (what boards ship with) | `sd-v6` (the default) | 0x26000 | `memory-s140-v6.x` |
+| S140 7.x | `sd-v7` | 0x27000 | `memory-s140-v7.x` |
+
+`just flash` and `just uf2` read the `SoftDevice: S140 x.y.z` line in `INFO_UF2.TXT` on the
+`CPLAYBTBOOT` drive. A 6.x version selects `sd-v6` and a 7.x version selects `sd-v7`. Any other
+version stops the recipe with an error. `just board` prints the detected version and layout and
+does nothing else.
+
+To choose the layout without reading the board, pass it after the binary name:
+`just flash cpb-counter-http v7` or `just uf2 link-check v6`. `just build` and `just size`
+build `v6` by default, and `just build v7` builds the other layout. Without `just`, build with
+`cargo build --release` (v6) or `cargo build --release --no-default-features --features sd-v7`
+(v7).
 
 Changes made from any other counter-http client (for example `../web-leptos`) appear on the
 board, and presses on the board appear there.
@@ -116,7 +140,7 @@ There's no debug probe, so the NeoPixels are the debug output. `just flash link-
 
 Board details that matter here:
 - The radio is TrouBLE (the BLE host) with Nordic's SoftDevice Controller (`nrf-sdc`) linked
-  into the image. The board's own SoftDevice (S140 6.1.1) stays resident but is never
+  into the image. The board's own SoftDevice (S140 6.1.1 or 7.x) stays resident but is never
   enabled, so the board needs no bootloader or SoftDevice update.
 - The CPB has no 32 kHz crystal, so the radio's low-frequency clock runs from the RC oscillator.
 - MPSL owns RTC0, TIMER0, TEMP, RADIO, CLOCK, EGU0, the RNG and PPI channels 17–31.
