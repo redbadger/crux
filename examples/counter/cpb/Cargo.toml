@@ -25,6 +25,13 @@ cortex-m-rt = "0.7.5"
 embedded-alloc = "0.7"
 panic-halt = "1.0"
 
+# The board's SoftDevice version sets the flash origin (see memory-s140-v6.x and
+# memory-s140-v7.x). Enable exactly one. The firmware never enables the SoftDevice.
+[features]
+default = ["sd-v6"]
+sd-v6 = []
+sd-v7 = []
+
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
