@@ -33,8 +33,8 @@ Otherwise, in this order:
 4. **Regenerate your shells** and let the generated `Core` drive the loop, or
    adopt just the generated `EffectHandler`, or widen the match you already
    have.
-5. **Check the [traps](#traps-worth-knowing-about)** — Swift actor isolation,
-   `Set` name collisions, and what a late timer does.
+5. **Check the [traps](#traps-worth-knowing-about)** — Swift actor isolation
+   and what a late timer does.
 
 ---
 
@@ -158,22 +158,22 @@ had become its output:
 // After
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(request, output = SecretFetchResponse)]
-pub struct Fetch(pub String);
+pub struct FetchSecret(pub String);
 
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(request, output = SecretStoreResponse)]
-pub struct Store(pub String, pub String);
+pub struct StoreSecret(pub String, pub String);
 
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize)]
 #[operation(request, output = SecretDeleteResponse)]
-pub struct Delete(pub String);
+pub struct DeleteSecret(pub String);
 
 pub fn fetch<Ef, Ev>(key: impl Into<String>)
     -> RequestBuilder<Ef, Ev, impl Future<Output = SecretFetchResponse>>
 where
-    Ef: From<Request<Fetch>> + Send + 'static,
+    Ef: From<Request<FetchSecret>> + Send + 'static,
 {
-    Command::request_from_shell(Fetch(key.into()))
+    Command::request_from_shell(FetchSecret(key.into()))
 }
 ```
 
@@ -184,9 +184,9 @@ method takes one operation and returns one output.
 
 Three things to watch:
 
-- **Bound per operation, not per capability.** `Ef: From<Request<Fetch>>` rather
+- **Bound per operation, not per capability.** `Ef: From<Request<FetchSecret>>` rather
   than `Ef: From<Request<SecretRequest>>`, so an app that only fetches never has
-  to carry `Store` and `Delete`.
+  to carry `StoreSecret` and `DeleteSecret`.
 - **Outputs must be types type generation can emit**, which rules out
   `std::result::Result`. Where an operation can fail, use a concrete two-variant
   enum in the style of `crux_http`'s `HttpResult` — `Ok(T) | Err(E)` — and keep a
@@ -223,8 +223,8 @@ use crux_kv::{error::KeyValueError, operation as kv, store::KeyValue};
 #[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
-    KvGet(kv::Get),
-    KvSet(kv::Set),
+    KvGet(kv::GetValue),
+    KvSet(kv::SetValue),
 }
 
 KeyValue::get("note").then_send(Event::Load)
@@ -234,16 +234,16 @@ The operations and their outputs:
 
 | Operation | Fields | Output | Kind |
 | --- | --- | --- | --- |
-| `operation::Get` | `key: String` | `ValueResult` | request |
-| `operation::Set` | `key: String, value: Vec<u8>` | `ValueResult` | request |
-| `operation::Delete` | `key: String` | `ValueResult` | request |
-| `operation::Exists` | `key: String` | `BoolResult` | request |
+| `operation::GetValue` | `key: String` | `ValueResult` | request |
+| `operation::SetValue` | `key: String, value: Vec<u8>` | `ValueResult` | request |
+| `operation::DeleteValue` | `key: String` | `ValueResult` | request |
+| `operation::KeyExists` | `key: String` | `ExistsResult` | request |
 | `operation::ListKeys` | `prefix: String, cursor: u64` | `KeysResult` | request |
 
 ```rust,ignore
-pub enum ValueResult { Ok(Value), Err(KeyValueError) }
-pub enum BoolResult  { Ok(bool),  Err(KeyValueError) }
-pub enum KeysResult  { Ok(Keys),  Err(KeyValueError) }
+pub enum ValueResult  { Ok(Value), Err(KeyValueError) }
+pub enum ExistsResult { Ok(bool),  Err(KeyValueError) }
+pub enum KeysResult   { Ok(Keys),  Err(KeyValueError) }
 
 pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
 ```
@@ -297,7 +297,7 @@ use crux_time::{TimerHandle, TimerOutcome, clock::Time, operation as time};
 #[effect(facet_typegen)]
 pub enum Effect {
     TimeNotifyAfter(time::NotifyAfter),
-    TimeClear(time::Clear),
+    TimeClear(time::ClearTimer),
 }
 
 let (notify_after, handle) = Time::notify_after(duration);
@@ -308,13 +308,13 @@ let (notify_after, handle) = Time::notify_after(duration);
 | `operation::Now` | — | `Instant` | request |
 | `operation::NotifyAt` | `id: TimerId, instant: Instant` | `TimerId` | request |
 | `operation::NotifyAfter` | `id: TimerId, duration: Duration` | `TimerId` | request |
-| `operation::Clear` | `id: TimerId` | `TimerId` | request |
+| `operation::ClearTimer` | `id: TimerId` | `TimerId` | request |
 
 One difference to carry across: **every timer operation is answered with the
 bare `TimerId`** it was given, rather than a `TimeResponse::DurationElapsed { id
 }` or `TimeResponse::Cleared { id }`. The core still checks it against the timer
 it started. Clearing works as it always has: `TimerHandle::clear` sends an
-`operation::Clear` request, and the timer's future resolves with
+`operation::ClearTimer` request, and the timer's future resolves with
 `TimerOutcome::Cleared` once the shell has answered it.
 
 Note that if you list `TimeClear` in your `Effect` but not `TimeNotifyAfter`,
@@ -328,9 +328,9 @@ of the handle it returns.
 The convention the examples follow:
 
 - **Third-party operations** get a capability prefix: `KvGet`, `KvSet`,
-  `TimeNotifyAfter`, `TimeClear`. Without it, `Get` and `Set` on their own read
-  as if they belonged to the app, and `Set` collides with a standard library type
-  in three of the four shell languages.
+  `TimeNotifyAfter`, `TimeClear`. The variant name becomes the generated
+  handler method (`kvGet`, `timeClear`), so the prefix says which capability
+  serves it. A bare `GetValue` variant would read as if the app defined it.
 - **Your own operations** are verb-first and unprefixed: `Publish`, `Subscribe`,
   `IsLocationEnabled`, `GetLocation`, `FetchSecret`, `StoreSecret`,
   `DeleteSecret`.
@@ -452,7 +452,7 @@ export class NotesHandler implements EffectHandler {
     this.subscription.current = sink;
   }
 
-  kvGet(operation: Get): Promise<ValueResult> {
+  kvGet(operation: GetValue): Promise<ValueResult> {
     const data = window.localStorage.getItem(operation.key);
     const bytes: number[] = data == null ? [] : JSON.parse(data);
     return Promise.resolve(valueResultOk(bytes.length === 0 ? valueNone() : valueBytes(bytes)));
@@ -505,7 +505,7 @@ nonisolated extension WeatherHandler: EffectHandler {
         await performHttpRequest(operation)
     }
 
-    public func fetchSecret(_ operation: Fetch) async -> SecretFetchResponse {
+    public func fetchSecret(_ operation: FetchSecret) async -> SecretFetchResponse {
         keychainGet(key: operation.value).map { .fetched($0) } ?? .missing(operation.value)
     }
 }
@@ -537,8 +537,8 @@ A handler that delegates, and the generated `Core` provided by Hilt:
 @Singleton
 class WeatherHandler @Inject constructor(/* … */) : EffectHandler {
     override suspend fun http(operation: HttpRequest): HttpResult = httpHandler.request(operation)
-    override suspend fun kvGet(operation: Get): ValueResult = keyValueHandler.get(operation)
-    override suspend fun timeClear(operation: Clear): TimerId = timeHandler.clear(operation)
+    override suspend fun kvGet(operation: GetValue): ValueResult = keyValueHandler.get(operation)
+    override suspend fun timeClear(operation: ClearTimer): TimerId = timeHandler.clear(operation)
 }
 
 @Module @InstallIn(SingletonComponent::class)
@@ -563,7 +563,7 @@ generated `build.gradle.kts` declares it, but if you pull the sources in with
 `srcDirs`, add it yourself.
 
 The injected handlers lose their `when` blocks too: `KeyValueHandler.get` takes a
-`Get` and returns a `ValueResult`, rather than matching a wide operation enum and
+`GetValue` and returns a `ValueResult`, rather than matching a wide operation enum and
 constructing the matching response variant.
 
 ### C#
@@ -607,16 +607,16 @@ These are the things that actually caught us out migrating the two examples.
 
 ### A cleared timer can still fire
 
-`Clear` is a request like any other: the shell cancels the timer and answers
+`ClearTimer` is a request like any other: the shell cancels the timer and answers
 with the `TimerId`, and only then does the core's timer future resolve with
 `TimerOutcome::Cleared`. Between the core clearing a timer and the shell acting
-on the `Clear`, the timer can fire, and the shell may answer the original
+on the `ClearTimer`, the timer can fire, and the shell may answer the original
 `NotifyAfter` as well. That is harmless. The core stopped waiting for that
 request when the timer was cleared, and it ignores the late answer, with no
 event and no error.
 
 So a shell has two obligations, and neither is about safety: cancel the timer,
-so it does not sit there until it fires, and answer the `Clear`. Under `Time`
+so it does not sit there until it fires, and answer the `ClearTimer`. Under `Time`
 that answer was `TimeResponse::Cleared { id }`; now it is the bare `TimerId`.
 
 What a shell must not do is answer the same request twice, which is a
@@ -634,7 +634,7 @@ where it touches main-actor state:
 
 ```swift
 nonisolated extension WeatherHandler: EffectHandler {
-    public func kvGet(_ operation: Get) async -> ValueResult {
+    public func kvGet(_ operation: GetValue) async -> ValueResult {
         await MainActor.run { keyValueStore.get(operation.key) }
     }
 }
@@ -651,19 +651,6 @@ a `CoreBridge` of your own, for a preview or another binding generator, do the
 same, and declare it `nonisolated` if your target defaults to `MainActor`
 isolation.
 
-### `Set` collides with the standard library
-
-`crux_kv`'s `Set` operation generates a type called `Set` in every language, and
-Swift, Kotlin and TypeScript all have one already. Alias it at the import:
-
-```kotlin
-import com.example.weather.Set as KeyValueSet
-```
-
-```typescript
-import type { Set as SetValue } from "shared_types/app";
-```
-
 ---
 
 ## Deprecations
@@ -674,11 +661,11 @@ named. All of it is removed in the next breaking release.
 | Item | Since | Use instead |
 | --- | --- | --- |
 | `crux_kv::KeyValue` | `crux_kv` 0.15.0 | `crux_kv::store::KeyValue` |
-| `crux_kv::KeyValueOperation` | `crux_kv` 0.15.0 | `crux_kv::operation::{Get, Set, Delete, Exists, ListKeys}` |
-| `crux_kv::KeyValueResult` | `crux_kv` 0.15.0 | `crux_kv::operation::{ValueResult, BoolResult, KeysResult}` |
+| `crux_kv::KeyValueOperation` | `crux_kv` 0.15.0 | `crux_kv::operation::{GetValue, SetValue, DeleteValue, KeyExists, ListKeys}` |
+| `crux_kv::KeyValueResult` | `crux_kv` 0.15.0 | `crux_kv::operation::{ValueResult, ExistsResult, KeysResult}` |
 | `crux_kv::KeyValueResponse` | `crux_kv` 0.15.0 | the output type of the operation you sent |
 | `crux_time::Time` | `crux_time` 0.19.0 | `crux_time::clock::Time` |
-| `crux_time::TimeRequest` | `crux_time` 0.19.0 | `crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear}` |
+| `crux_time::TimeRequest` | `crux_time` 0.19.0 | `crux_time::operation::{Now, NotifyAt, NotifyAfter, ClearTimer}` |
 | `crux_time::TimeResponse` | `crux_time` 0.19.0 | `Instant` for `Now`, `TimerId` for the rest |
 | `crux_time::TimerFuture` | `crux_time` 0.19.0 | nothing — an implementation detail of `Time` |
 

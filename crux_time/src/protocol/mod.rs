@@ -24,7 +24,7 @@ pub use instant::Instant;
 #[allow(deprecated)]
 #[deprecated(
     since = "0.19.0",
-    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear} and crux_time::clock::Time; removed in the next breaking release"
+    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, ClearTimer} and crux_time::clock::Time; removed in the next breaking release"
 )]
 pub enum TimeRequest {
     Now,
@@ -42,7 +42,7 @@ pub struct TimerId(pub usize);
 #[allow(deprecated)]
 #[deprecated(
     since = "0.19.0",
-    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, Clear} and crux_time::clock::Time; removed in the next breaking release"
+    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, ClearTimer} and crux_time::clock::Time; removed in the next breaking release"
 )]
 pub enum TimeResponse {
     Now { instant: Instant },
