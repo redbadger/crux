@@ -11,6 +11,7 @@ Capabilities don't return a `Command` directly — they return a command *builde
 The weather app's current-weather fetch shows the same pattern in production code:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/http/weather/mod.rs:fetch}}
 ```
 
@@ -27,6 +28,7 @@ Before we write any code, one rule shapes everything that follows: **an operatio
 The `Operation` trait has always said the first half:
 
 ```rust,ignore
+// Rust
 pub trait Operation: Send + 'static {
     type Output: Send + Unpin + 'static;
 }
@@ -47,6 +49,7 @@ That used to be decided by which `Command` constructor you called, so the same o
 You declare both with `#[derive(Operation)]`:
 
 ```rust,ignore
+// Rust
 use crux_core::macros::Operation;
 
 /// Told to the shell, never answered.
@@ -73,6 +76,7 @@ Outputs must be types type generation can emit, which rules out
 concrete two-variant enum in the style of `crux_http`'s `HttpResult`:
 
 ```rust,ignore
+// Rust
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
 pub enum ValueResult {
@@ -99,6 +103,7 @@ A capability is two things:
 Here's the whole protocol for Location:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/location/mod.rs}}
 ```
 
@@ -109,6 +114,7 @@ Two operations, two outputs, and nothing shared between them. `IsLocationEnabled
 The developer API is equally small:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/location/command.rs}}
 ```
 
@@ -125,6 +131,7 @@ Fetching a secret either finds it or doesn't. Storing one either succeeds or fai
 Now each operation names only its own outcomes:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/secret/mod.rs}}
 ```
 
@@ -135,6 +142,7 @@ The operation names carry the capability's name for a reason that has nothing to
 The developer API is correspondingly plain:
 
 ```rust
+// Rust
 {{#include ../../../examples/weather/shared/src/effects/secret/command.rs}}
 ```
 
@@ -147,6 +155,7 @@ Using these builders looks no different from the location ones: call `secret::co
 Both capabilities above are requests. The notes example's pub/sub capability has one of each of the other two kinds, which makes it the best place to see them.
 
 ```rust
+// Rust
 {{#include ../../../examples/notes/shared/src/capabilities/pub_sub.rs:operations}}
 ```
 
@@ -155,6 +164,7 @@ Both capabilities above are requests. The notes example's pub/sub capability has
 The builders differ in the same way:
 
 ```rust
+// Rust
 {{#include ../../../examples/notes/shared/src/capabilities/pub_sub.rs:builders}}
 ```
 
@@ -231,5 +241,58 @@ Putting it together, a capability gives you two things:
 - **A developer API** — small command-builder functions that speak in convenient Rust types rather than the raw protocol.
 
 In [ports-and-adapters](https://en.wikipedia.org/wiki/Hexagonal_architecture) vocabulary, capabilities are the ports; the shell-side code that actually carries out each operation is the adapter. The core expresses *what* it wants done; the shell decides *how* to do it. Keeping that separation tight is what makes the core portable.
+
+## Shipping an implementation
+
+A capability can also ship an implementation of its shell protocol in each language, as source embedded in the crate. `crux_http`, `crux_kv` and `crux_time` all do. The shell protocol is automatic, but an implementation is opt-in: an app gets one only if it registers it in its codegen binary. The app's handler then delegates to it in one line for each operation. See [Shell extensions](../part-4/typegen.md#shell-extensions) for the app's side. This section is about what the capability author writes.
+
+The shell protocol gives the rules. An implementation applies them to one platform client, for example when it decides which `URLError` is a timeout. If the capability ships the implementation, these decisions are in one place, next to the Rust that defines the operations, and a change to one is reviewed with the other. The capability does not decide if an app uses the implementation. For example, a bank with a hardened HTTP stack keeps its own. So the shipped file is a plain type in the app's module, and no generated code calls it.
+
+An implementation is a shell extension. Declare a `static` for each language, in a module for that language, behind the crate's `facet_typegen` feature. Thus the source text is compiled into the app's codegen binary and never into its core:
+
+```rust,ignore
+// Rust: crux_time/src/shell.rs
+#[cfg(feature = "facet_typegen")]
+pub mod swift {
+    use crux_core::type_generation::facet::{Platform, ShellExtension};
+    use include_dir::include_dir;
+
+    pub static TASK: ShellExtension = ShellExtension::swift(
+        "Time",
+        include_dir!("$CARGO_MANIFEST_DIR/shell/swift/task"),
+    )
+    .platforms(&[Platform::Apple, Platform::Linux])
+    .protocol(&super::PROTOCOL)
+    .foreign_types(&["TaskTimeHandler"]);
+}
+
+// `kotlin::COROUTINE`, `typescript::TIMEOUT` and `csharp::TASK` are the same.
+```
+
+`include_dir!` expands to a path in the `include_dir` crate, so the capability depends on `include_dir` itself, as an optional dependency that its `facet_typegen` feature turns on. `name` is the name of the capability (`Time`), and the extensions of all languages share it. The directory holds the source. Crux emits each file in its `common/` directory, and each file in the directory of the platform for which the app generates code, as a file of the same name (`TaskTime.swift`). Name each file after the implementation, because a file must not have the same name as the file of the shell protocol (`Time.swift`). `platforms` lists the platforms on which the source runs. `protocol` names the shell protocol that the source implements. When the app registers the extension, crux also registers that shell protocol, so the implementation always arrives with its shell protocol and with every type that it names. A language for which you ship no extension gets only the shell protocol, and the app implements it.
+
+Each file declares at least one implementation of the shell protocol. The file does not declare the shell protocol again, because the shell protocol comes with the operations:
+
+```swift
+// Swift: crux_time/shell/swift/task/common/TaskTime.swift
+public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
+    /* a table of running timers, keyed by id, guarded by a lock */
+}
+```
+
+The source refers to the generated types such as `Now`, `Instant` and `TimerId` unqualified, because type generation emits it into the same module as those types. It carries its own imports, after the module header that type generation writes first. `foreign_types` lists every name that the extension's sources declare at module scope: the implementations, and in TypeScript any top-level helper or constant, exported or not, because the source is appended to the module file. Do not list the names of the shell protocol. When the app builds its registry, crux checks each of those names against the generated shell API, the imports of the serialization runtime, the app's root types and namespaces, the names that extensions of other capabilities declare, and the names that the shell protocols declare. Thus a clash is a generation error, not a module that fails to compile. Keep the list complete when you add a declaration. A test can check the list. It scans the sources for module-scope declarations and compares them with `foreign_types`. The bundled crates each have one, in `tests/shell_foreign_types.rs`.
+
+A few constraints keep a shipped file safe to drop into any app:
+
+- **Standard library only.** Use Foundation, the JDK and `kotlinx-coroutines-core`, the browser or Node globals, or the BCL, and nothing that the generated module does not already require. The Kotlin source in `common/` is JVM, not Android: the generated package for the JVM is a `kotlin("jvm")` library, so `android.*` would not compile there. Code that needs `android.*` goes in `android/`. A capability that truly needs a library adds it with `.dependencies(&[..])`, and every app that registers the extension then pays for it, so the bar is high.
+- **Say where the lowest common denominator ends.** A platform with something better than the standard library (`DataStore` or Room on Android, Cronet for HTTP, a database anywhere) beats what you shipped. That is fine: the shell implements your shell protocol itself, and registers no extension. What is not fine is to leave an app to discover it. If the right store is different on each platform, ship less. `crux_kv` ships only an in-memory store, for tests, previews and a shell with no storage. A durable store is the app's choice (`UserDefaults`, `DataStore` or `localStorage`, for example), so the app implements `KeyValueHandler` over it. The weather and notes examples each have one in the app's own code. The handlers of `crux_time` document how precise `now` and the timers are, because that varies by platform.
+- **A file for each platform, not a compiler directive.** Swift's standard library differs between Apple platforms and corelibs-foundation. On Linux, `URLSession` and its companions are in `FoundationNetworking`, which Apple platforms do not have. So `crux_http` puts its `URLSessionHttpHandler` in two files, `apple/URLSession.swift` and `linux/URLSession.swift`. The two files differ only in their imports. A test in `tests/shell_url_session.rs` compares the two files, so that a change to one file must also go into the other. The `tests/shell_source.rs` file builds the Swift for the platform of the machine, which is Linux in CI. A shell protocol has no platform directories, because it is the same on every platform.
+- **Locks, not actors, in Swift.** The generated operation and output types are not `Sendable`, so an actor cannot return one across its isolation boundary. A shipped implementation that holds state guards it with a lock and declares itself `@unchecked Sendable`, as `TaskTimeHandler` does above.
+- **Configuration through the initialiser.** Where there is a sensible default, give an implementation an initialiser with no arguments, which uses the platform's shared client where there is one (`URLSessionHttpHandler()` sends with `URLSession.shared`). Always give it one that takes the configuration (`URLSessionHttpHandler(session:)`). Ship no shared instance and no globals to mutate: an app has one core, so a shared instance gives nothing, and the shell constructs what it holds.
+- **Say where the state lives.** For `crux_http`, the state is the cookies. `URLSessionHttpHandler()` keeps them in the process-wide `HTTPCookieStorage.shared`, and `new HttpClientHttpHandler()` keeps them in the one static `HttpClient` that every handler made that way shares, so both are process-wide. `UrlConnectionHttpHandler()` keeps them in an `InMemoryCookieJar` of that handler's own, so two handlers have two sessions. `createFetchHttpHandler()` leaves them to the runtime's `fetch`: in a browser that is the browser's cookie store, for same-origin requests, because the handler sets no `credentials`, and under Node there are none.
+- **Quiet.** Do not log through an app-specific logger. Stay silent, or give the implementation a hook.
+- **Compiled somewhere on every change.** `cargo test` cannot compile Swift. A `tests/shell_source.rs` in each bundled crate generates a package for a small app and runs `swift build`, `tsc` and `dotnet build` when the toolchain is present. The weather and notes example shells also compile the HTTP and timer implementations. Give your own capability the same.
+
+Put the files that every platform gets under `shell/<language>/<implementation>/common/`, beside the file of the shell protocol. Put the files for one platform only in a directory for that platform, beside `common/`. If `Cargo.toml` lists what to `include`, make sure that it packages these files.
 
 Speaking of the shell — it's time to look at how these operations get carried out on each platform. That's the next chapter.

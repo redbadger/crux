@@ -70,10 +70,12 @@ with `Serialize` and `Deserialize` for the FFI serialization). Here's
 the counter example:
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter/shared/src/app.rs:10:16}}
 ```
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter/shared/src/app.rs:29:32}}
 ```
 
@@ -87,6 +89,7 @@ tells the `#[effect]` macro to generate the type registration code
 that the codegen binary needs:
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter/shared/src/app.rs:18:22}}
 ```
 
@@ -104,6 +107,7 @@ events (ones the shell never sends) can be excluded from the generated
 output with `#[facet(skip)]`:
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter-middleware/shared/src/app.rs:38:60}}
 ```
 
@@ -123,6 +127,7 @@ Each shared crate includes a small binary that drives the type
 generation. Here's the one from the counter example:
 
 ```rust,no_run,noplayground
+// Rust
 {{#include ../../../examples/counter/shared/src/bin/codegen.rs}}
 ```
 
@@ -156,12 +161,14 @@ The codegen binary needs a few additions to your `shared/Cargo.toml`.
 Declare the binary, gated on a `codegen` feature:
 
 ```toml
+# TOML
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen_bin}}
 ```
 
 Enable `facet_typegen` in `crux_core`:
 
 ```toml
+# TOML
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen}}
 ```
 
@@ -173,6 +180,7 @@ And add `facet` as a dependency — all types that cross the FFI
 boundary derive `Facet`:
 
 ```toml
+# TOML
 {{#include ../../../examples/counter/shared/Cargo.toml:typegen_deps}}
 ```
 
@@ -276,6 +284,7 @@ kind, plus a `Legacy` operation that declares nothing.
 **Swift**
 
 ```swift
+// Swift
 public enum OperationKind: Hashable, Sendable { case notify, request, stream }
 
 extension Effect {
@@ -306,6 +315,7 @@ public struct EffectDispatcher: Sendable {
 **Kotlin**
 
 ```kotlin
+// Kotlin
 enum class OperationKind { NOTIFY, REQUEST, STREAM }
 
 val Effect.operationKind: OperationKind?
@@ -331,6 +341,7 @@ for instance — so the rest are not held up behind it.
 **TypeScript**
 
 ```typescript
+// TypeScript
 export type OperationKind = "notify" | "request" | "stream";
 export function effectOperationKind(effect: Effect): OperationKind | undefined;
 
@@ -358,6 +369,7 @@ property.
 **C#**
 
 ```csharp
+// C#
 public enum OperationKind { Notify, Request, Stream }
 
 // emitted inside the generated Effect record, which is not partial
@@ -408,6 +420,7 @@ whatever produces the bytes, and hand it to `Core` with your
 `EffectHandler`:
 
 ```swift
+// Swift
 public protocol CoreBridge: Sendable {
     func update(_ event: [UInt8]) -> [UInt8]
     func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8]
@@ -428,6 +441,7 @@ public final class Core {
 ```
 
 ```kotlin
+// Kotlin
 interface CoreBridge {
     fun update(event: ByteArray): ByteArray
     fun resolve(id: UInt, output: ByteArray): ByteArray
@@ -444,6 +458,7 @@ class Core(bridge: CoreBridge, handler: EffectHandler, scope: CoroutineScope) {
 ```
 
 ```typescript
+// TypeScript
 export interface CoreBridge {
     update(event: Uint8Array): Uint8Array;
     resolve(id: uint32, output: Uint8Array): Uint8Array;
@@ -509,6 +524,7 @@ decisions you made in `boltffi.toml` and `ffi.rs`. Repeat them in the
 codegen and type generation emits the bridge for you:
 
 ```rust,ignore
+// Rust
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
     .build()?
@@ -533,18 +549,22 @@ Swift `Data` conversion and the `@unchecked Sendable` declaration where
 they belong — and `Core` gains a constructor that takes only the handler:
 
 ```swift
+// Swift
 let core = Core(handler: WeatherHandler())
 ```
 
 ```kotlin
+// Kotlin
 val core = Core(handler, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 ```
 
 ```typescript
+// TypeScript
 const core = await Core.create(new WeatherHandler(), setView);
 ```
 
 ```csharp
+// C#
 var core = new Core(new CounterHandler());
 ```
 
@@ -566,6 +586,7 @@ Two consequences for the build:
   package a `platforms:` floor to match through the `Config`:
 
   ```rust,ignore
+  // Rust
   Config::builder("App", &out_dir)
       .platform(".iOS(.v16)")
       .platform(".macOS(.v13)")
@@ -656,6 +677,7 @@ register the extensions for the languages you generate, on the registry
 before you build it:
 
 ```rust,ignore
+// Rust
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
     .shell_extension(&crux_http::shell::swift::URL_SESSION)?
@@ -719,13 +741,14 @@ Type generation fails in these cases:
 A protocol is not an extension, so these rules do not count it. Crux emits
 the protocols for every platform of the language.
 
-In Swift, the protocol `HttpHandler` is in `Http.swift`, and the extension
-adds an implementation of it, `URLSessionHttpHandler`. Your handler holds an
-instance and delegates:
+In Swift, the protocol `HttpHandler` is in `Http.swift`. The extension adds
+`URLSession.swift`, with an implementation of the protocol,
+`URLSessionHttpHandler`. Your handler holds an instance and delegates:
 
 ```swift
+// Swift
 struct WeatherHandler: EffectHandler {
-    let http = URLSessionHttpHandler.shared
+    let http = URLSessionHttpHandler()
     let time = TaskTimeHandler()
 
     func http(_ operation: HttpRequest) async -> HttpResult { await http.request(operation) }
@@ -735,15 +758,25 @@ struct WeatherHandler: EffectHandler {
 }
 ```
 
-Those lines are the whole of what you write for the capability. The protocol
-rules — how a `URLError` maps onto `HttpResult`, what a cleared timer answers
-— live in the shipped file, written once by the capability author. Because the
-delegation is yours, so is the choice: construct the shipped implementation
-with a pinned `URLSession` or a storage directory, write your own conformer of
-the protocol behind a hardened HTTP stack, override one method and delegate
-the rest, or leave the registration out and get only the protocol. When a
-capability gains an operation, your handler stops compiling until you add its
-line, which is the right moment to read what the new operation does.
+Those lines are all that you write for the capability. The protocol gives
+the rules, such as what a cleared timer answers. The shipped implementation
+applies them to its platform client. For example, it decides which
+`URLError` is a timeout, and it keeps a session cookie between requests.
+
+Each of the HTTP handlers that owns a client keeps cookies by default.
+`URLSession` and `HttpClient` do this already. Without it, the Kotlin handler
+would lose a session that the same core keeps on every other platform.
+`UrlConnectionHttpHandler` carries an `InMemoryCookieJar`, which you can
+replace or switch off. Do not use `java.net.CookieManager` in its place. The
+documentation of `InMemoryCookieJar` tells why it cannot do this job.
+
+The delegation is yours, so the choice is also yours. You can construct the
+shipped implementation with a pinned `URLSession`. You can implement the
+protocol yourself over a hardened HTTP stack. You can override one method and
+delegate the rest. You can also leave out the registration, and get only the
+protocol. When a capability gains an operation, your handler does not compile
+until you add its line. That is the right time to read what the new operation
+does.
 
 The other languages follow the same pattern, with each language's own
 conventions for the names (C#, for example, prefixes the interface with
@@ -796,6 +829,7 @@ generated from the same effect metadata the core builds ids from rather
 than written by hand in each shell:
 
 ```swift
+// Swift
 public enum EffectKind: UInt8, Hashable, Sendable { case render = 0, http = 1 /* ... */ }
 
 public struct RequestId: Hashable, Sendable {
