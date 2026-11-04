@@ -17,6 +17,19 @@ and this project adheres to
 
 ### 🚀 Features
 
+- **The shell protocol of `crux_time` ships with the crate.** A new `shell`
+  module has a `PROTOCOL` static and a `register_types` function. Every
+  operation in `crux_time::operation` names the protocol, so type generation
+  emits `TimeHandler` (`ITimeHandler` in C#) in Swift, Kotlin, TypeScript and
+  C# for every app that uses `crux_time`. The protocol follows the
+  `facet_typegen` feature of `crux_core`, so the app needs no feature of
+  `crux_time` for it.
+
+  The protocol registers every operation and output type of `crux_time`. If an
+  app type has the same name as one of these types (for example `NotifyAt`),
+  type generation fails with a name clash. To fix the clash, rename one of
+  the two types with `#[facet(rename = "...")]`.
+
 - **One type per time operation, in the new `crux_time::operation` module, and a
   `clock::Time` capability that sends them.** `TimeRequest` has one output type —
   `TimeResponse` — for all four of its variants, so the capability has to check that

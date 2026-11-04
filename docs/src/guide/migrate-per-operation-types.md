@@ -241,11 +241,11 @@ The operations and their outputs:
 | `operation::ListKeys` | `prefix: String, cursor: u64` | `KeysResult` | request |
 
 ```rust,ignore
-pub enum ValueResult  { Ok(Value), Err(KeyValueError) }
-pub enum ExistsResult { Ok(bool),  Err(KeyValueError) }
-pub enum KeysResult   { Ok(Keys),  Err(KeyValueError) }
+pub enum ValueResult  { Ok(Value),   Err(KeyValueError) }
+pub enum ExistsResult { Ok(bool),    Err(KeyValueError) }
+pub enum KeysResult   { Ok(KeyPage), Err(KeyValueError) }
 
-pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
+pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
 ```
 
 `KeyValueError`, `Value`, `DataResult`, `StatusResult` and `ListResult` are

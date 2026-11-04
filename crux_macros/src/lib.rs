@@ -102,6 +102,34 @@ pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
 ///     NotFound,
 /// }
 /// ```
+///
+/// ## The protocol of the capability
+///
+/// A capability crate can also name the `ShellProtocol` of the capability with
+/// `protocol = path`. The path names a `ShellProtocol` value that lives for
+/// the whole program, normally a `static`:
+///
+/// ```rust,ignore
+/// #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+/// #[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
+/// pub struct GetValue {
+///     pub key: String,
+/// }
+/// ```
+///
+/// The derive then overrides `Operation::register_types_facet`. The override
+/// registers the operation and its output, as the default does, and then calls
+/// `TypeRegistry::shell_protocol`. Thus an app that uses the operation gets the
+/// protocol in its generated code, with no registration.
+///
+/// The override exists only when the `facet_typegen` feature of `crux_core` is
+/// on. The compiler evaluates that feature in `crux_core`, and not in the crate
+/// that derives the operation. Thus an app that turns on
+/// `crux_core/facet_typegen` gets the protocol, and the capability crate needs
+/// no feature of its own for it. The capability crate must depend on `facet`
+/// and `serde`. Declare the protocol inside
+/// `crux_core::__crux_core_facet_typegen_items!`, so that it exists under the
+/// same condition.
 #[proc_macro_derive(Operation, attributes(operation))]
 pub fn operation(input: TokenStream) -> TokenStream {
     operation::macro_impl::operation_impl(&parse_macro_input!(input)).into()

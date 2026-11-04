@@ -112,6 +112,36 @@
 //! TypeScript and `new Core(handler)` in C#. A language you do not name is
 //! generated exactly as before.
 //!
+//! ## Shell protocols
+//!
+//! A capability can ship the shell side of its contract as a [`ShellProtocol`]:
+//! the handler interface that a shell implements, in each of the four
+//! languages. An app that uses an operation of the capability gets the
+//! protocol, with no registration. Each operation names the protocol with
+//! `#[operation(.., protocol = path)]`, and its `register_types_facet` calls
+//! [`TypeRegistry::shell_protocol`].
+//!
+//! ```rust
+//! use crux_core::type_generation::facet::{ShellProtocol, TypeGenError, TypeRegistry};
+//!
+//! // Normally `crux_kv::shell::PROTOCOL`, declared by the capability crate,
+//! // whose source is `include_str!` from the crate rather than written inline.
+//! static PROTOCOL: ShellProtocol = ShellProtocol::new("Store")
+//!     .rust_types(register_types)
+//!     .swift("public protocol StoreHandler: Sendable {}\n", &["StoreHandler"]);
+//!
+//! // A real capability registers each of its operations here, so that the
+//! // types its protocol names exist even when the app never sends them.
+//! fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+//!     Ok(registry)
+//! }
+//!
+//! // The operations of the capability make this call. An app does not.
+//! let typegen = TypeRegistry::new().shell_protocol(&PROTOCOL)?.build()?;
+//! # let _ = typegen;
+//! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+//! ```
+//!
 //! ## Shell extensions
 //!
 //! A crate can ship source for the shell, in any of the four languages, as a
@@ -154,6 +184,7 @@ mod boltffi;
 mod effects;
 mod plugins;
 mod shell_handler;
+mod shell_protocol;
 
 use std::{
     fs::{self, File},
@@ -182,9 +213,10 @@ pub use self::boltffi::{BoltFfi, CSharpFfi, KotlinFfi, SwiftFfi, TypeScriptFfi};
 pub use self::effects::{EffectBuilder, EffectMeta, EffectVariantMeta};
 use self::plugins::{
     COMPANION_FILE_STEMS, CorePlugin, EffectHandlerPlugin, FFI_BRIDGE_FILE, OperationKindPlugin,
-    RequestIdPlugin, ShellExtensionPlugin,
+    RequestIdPlugin, ShellExtensionPlugin, ShellProtocolPlugin,
 };
-pub use self::shell_handler::{RegisterTypes, ShellExtension, ShellSource};
+pub use self::shell_handler::{ShellExtension, ShellSource};
+pub use self::shell_protocol::{ProtocolSource, RegisterTypes, ShellProtocol};
 use crate::App;
 
 #[derive(Error, Debug)]
@@ -271,6 +303,7 @@ pub struct TypeRegistry {
     builder: RegistryBuilder,
     effects: Vec<EffectMeta>,
     app: Option<AppMeta>,
+    shell_protocols: Vec<&'static ShellProtocol>,
     shell_extensions: Vec<&'static ShellExtension>,
 }
 
@@ -281,6 +314,7 @@ pub struct CodeGenerator {
     handlers: bool,
     core: bool,
     boltffi: Option<BoltFfi>,
+    shell_protocols: Vec<&'static ShellProtocol>,
     shell_extensions: Vec<&'static ShellExtension>,
 }
 
@@ -294,8 +328,62 @@ impl TypeRegistry {
             builder: RegistryBuilder::new(),
             effects: Vec::new(),
             app: None,
+            shell_protocols: Vec::new(),
             shell_extensions: Vec::new(),
         }
+    }
+
+    /// Registers the protocol of a capability, and the types that its sources
+    /// name.
+    ///
+    /// You do not usually call this function. An operation that declares
+    /// `#[operation(.., protocol = path)]` calls it from its
+    /// `register_types_facet`, and the `#[effect]` macro calls that function
+    /// for every variant. Thus an app that uses one operation of a capability
+    /// gets the protocol of that capability.
+    ///
+    /// The source of each language is emitted unchanged: into a companion file
+    /// with the name of the protocol (`Http.swift`, `Http.kt` and `Http.cs`)
+    /// beside the module, and into the module footer in TypeScript.
+    ///
+    /// A shell implements the whole protocol, so this function also runs the
+    /// [`rust_types`](ShellProtocol::rust_types) of the protocol. That
+    /// registers every operation and output of the capability, including
+    /// the ones that this app never sends.
+    ///
+    /// A protocol that is already registered is not registered again. That
+    /// is, a call with the same `static` does nothing. A different protocol
+    /// with the same name is recorded, and [`build`](Self::build) reports the
+    /// clash.
+    ///
+    /// # Errors
+    /// Returns a [`TypeGenError`] if one of the types of the protocol cannot be
+    /// registered. [`build`](Self::build) reports a protocol name that cannot
+    /// be used as a file name or that is already taken, and a declared name
+    /// that clashes with the generated shell API, a shell extension or a type
+    /// of yours.
+    pub fn shell_protocol(
+        &mut self,
+        protocol: &'static ShellProtocol,
+    ) -> Result<&mut Self, TypeGenError> {
+        if self
+            .shell_protocols
+            .iter()
+            .any(|registered| std::ptr::eq(*registered, protocol))
+        {
+            return Ok(self);
+        }
+
+        // Record the protocol before its types are registered. Each operation
+        // of the capability calls this function again from its
+        // `register_types_facet`, and the record stops that recursion.
+        self.shell_protocols.push(protocol);
+
+        if let Some(register) = protocol.rust_types {
+            register(self)?;
+        }
+
+        Ok(self)
     }
 
     /// Registers a shell extension, and the types its sources name.
@@ -492,6 +580,7 @@ impl TypeRegistry {
     pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
         let builder = std::mem::take(&mut self.builder);
         let effects: Arc<[EffectMeta]> = std::mem::take(&mut self.effects).into();
+        let shell_protocols = std::mem::take(&mut self.shell_protocols);
         let shell_extensions = std::mem::take(&mut self.shell_extensions);
         let registry = builder
             .build()
@@ -500,7 +589,10 @@ impl TypeRegistry {
         if !effects.is_empty() {
             validate_names(&registry, &effects)?;
         }
-        validate_shell_extensions(&registry, &shell_extensions)?;
+        validate_shipped_sources(
+            &registry,
+            &shipped_sources(&shell_protocols, &shell_extensions),
+        )?;
 
         Ok(CodeGenerator {
             registry,
@@ -509,6 +601,7 @@ impl TypeRegistry {
             handlers: true,
             core: true,
             boltffi: None,
+            shell_protocols,
             shell_extensions,
         })
     }
@@ -542,22 +635,51 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
     Ok(())
 }
 
-/// Rejects registered shell extensions whose names cannot be used.
+/// A registered protocol or shell extension, as the name checks see it.
 ///
-/// An extension's `name` only names its companion files, so it is checked as
-/// a file name: its shape, and that it does not overwrite another
-/// extension's file or one crux generates. The names in `foreign_types` go into
-/// the generated module, so they are checked against the generated shell
-/// API, the serialization runtime's imports, the app's namespaces, the other
-/// extensions' declarations, and the types registered in the root namespace.
+/// Protocols and extensions both write companion files beside the module and
+/// both declare names in it, so the checks treat them as one list.
+struct Shipped {
+    /// `"shell protocol"` or `"shell extension"`, for the error messages.
+    kind: &'static str,
+    name: &'static str,
+    foreign_types: Vec<&'static str>,
+}
+
+/// The registered protocols, then the registered extensions, in registration
+/// order.
+fn shipped_sources(
+    protocols: &[&'static ShellProtocol],
+    extensions: &[&'static ShellExtension],
+) -> Vec<Shipped> {
+    let protocols = protocols.iter().map(|protocol| Shipped {
+        kind: "shell protocol",
+        name: protocol.name,
+        foreign_types: protocol.foreign_types(),
+    });
+    let extensions = extensions.iter().map(|extension| Shipped {
+        kind: "shell extension",
+        name: extension.name,
+        foreign_types: extension.foreign_types.to_vec(),
+    });
+    protocols.chain(extensions).collect()
+}
+
+/// Rejects registered protocols and shell extensions whose names cannot be
+/// used.
+///
+/// The `name` of a protocol or extension only names its companion files, so
+/// it is checked as a file name: its shape, and that it does not overwrite
+/// the file of another protocol or extension, or a file that crux generates.
+/// The names in `foreign_types` go into the generated module, so they are
+/// checked against the generated shell API, the serialization runtime's
+/// imports, the app's namespaces, the declarations of the other protocols and
+/// extensions, and the types registered in the root namespace.
 ///
 /// The names are checked whatever language is generated and whether or not
 /// that language has source, because whether a shared type clashes should not
 /// depend on which shell you build today.
-fn validate_shell_extensions(
-    registry: &Registry,
-    extensions: &[&'static ShellExtension],
-) -> Result<(), TypeGenError> {
+fn validate_shipped_sources(registry: &Registry, shipped: &[Shipped]) -> Result<(), TypeGenError> {
     use facet_generate::reflection::format::Namespace;
     use heck::ToUpperCamelCase as _;
 
@@ -569,20 +691,20 @@ fn validate_shell_extensions(
         })
         .collect();
 
-    for (index, extension) in extensions.iter().enumerate() {
-        let name = extension.name;
+    for (index, source) in shipped.iter().enumerate() {
+        let Shipped { kind, name, .. } = *source;
 
-        validate_extension_name(name)?;
+        validate_extension_name(kind, name)?;
 
         // Compared ignoring case, because `Http.swift` overwrites
         // `http.swift` on APFS and NTFS.
-        if let Some(earlier) = extensions[..index]
+        if let Some(earlier) = shipped[..index]
             .iter()
             .find(|earlier| earlier.name.eq_ignore_ascii_case(name))
         {
             return Err(TypeGenError::Generation(format!(
-                "shell extension `{name}` is registered after shell extension `{}`, and the two names are the same, ignoring case, so their files would overwrite each other. Two crates may ship an extension with that name, but only one of them can be registered.",
-                earlier.name
+                "{kind} `{name}` is registered after {} `{}`, and the two names are the same, ignoring case, so their files would overwrite each other. Two crates may ship sources with that name, but only one of them can be registered.",
+                earlier.kind, earlier.name
             )));
         }
 
@@ -591,20 +713,20 @@ fn validate_shell_extensions(
             .find(|file| file.eq_ignore_ascii_case(name))
         {
             return Err(TypeGenError::Generation(format!(
-                "shell extension `{name}` would be written over the generated `{file}` file, which is reserved for other use in the shell API. Please choose a different name for the extension."
+                "{kind} `{name}` would be written over the generated `{file}` file, which is reserved for other use in the shell API. Please choose a different name for the {kind}."
             )));
         }
 
-        for declared in extension.foreign_types {
+        for declared in &source.foreign_types {
             if RESERVED_TYPE_NAMES.contains(declared) {
                 return Err(TypeGenError::Generation(format!(
-                    "shell extension `{name}` needs the name `{declared}`, which is reserved for other use in the shell API. Please choose a different name for the extension's type."
+                    "{kind} `{name}` needs the name `{declared}`, which is reserved for other use in the shell API. Please choose a different name for the type."
                 )));
             }
 
             if RUNTIME_IMPORT_NAMES.contains(declared) {
                 return Err(TypeGenError::Generation(format!(
-                    "shell extension `{name}` needs the name `{declared}`, which the generated module imports from the serialization runtime. Please choose a different name for the extension's type."
+                    "{kind} `{name}` needs the name `{declared}`, which the generated module imports from the serialization runtime. Please choose a different name for the type."
                 )));
             }
 
@@ -612,17 +734,21 @@ fn validate_shell_extensions(
                 namespace == declared || namespace.to_upper_camel_case() == *declared
             }) {
                 return Err(TypeGenError::Generation(format!(
-                    "shell extension `{name}` needs the name `{declared}`, which is the name of a namespace the app's types are generated into. Please choose a different name for the extension's type, or rename the namespace."
+                    "{kind} `{name}` needs the name `{declared}`, which is the name of a namespace the app's types are generated into. Please choose a different name for the type, or rename the namespace."
                 )));
             }
 
-            if let Some(earlier) = extensions[..index]
+            if let Some(earlier) = shipped[..index]
                 .iter()
                 .find(|earlier| earlier.foreign_types.contains(declared))
             {
+                let kinds = if earlier.kind == kind {
+                    format!("{kind}s `{}` and `{name}`", earlier.name)
+                } else {
+                    format!("{} `{}` and {kind} `{name}`", earlier.kind, earlier.name)
+                };
                 return Err(TypeGenError::Generation(format!(
-                    "shell extensions `{}` and `{name}` both declare `{declared}`, so the generated module would declare it twice. Only one of them can be registered.",
-                    earlier.name
+                    "{kinds} both declare `{declared}`, so the generated module would declare it twice. Only one of them can be registered."
                 )));
             }
         }
@@ -632,11 +758,11 @@ fn validate_shell_extensions(
         if registered.namespace != Namespace::Root {
             continue;
         }
-        for extension in extensions {
-            if extension.foreign_types.contains(&registered.name.as_str()) {
+        for source in shipped {
+            if source.foreign_types.contains(&registered.name.as_str()) {
                 return Err(TypeGenError::Generation(format!(
-                    "`{}` is declared by the `{}` shell extension, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
-                    registered.name, extension.name
+                    "`{}` is declared by the `{}` {}, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`.",
+                    registered.name, source.name, source.kind
                 )));
             }
         }
@@ -645,11 +771,11 @@ fn validate_shell_extensions(
     Ok(())
 }
 
-/// Rejects an extension name that cannot be used as a file stem in every
-/// language and on every file system: it has to look like an identifier
+/// Rejects a protocol or extension name that cannot be used as a file stem in
+/// every language and on every file system: it has to look like an identifier
 /// (an ASCII letter, then ASCII letters, digits or `_`), and it cannot be a
-/// name Windows reserves for a device.
-fn validate_extension_name(name: &str) -> Result<(), TypeGenError> {
+/// name Windows reserves for a device. `kind` says which of the two it is.
+fn validate_extension_name(kind: &str, name: &str) -> Result<(), TypeGenError> {
     let mut chars = name.chars();
     let identifier = chars
         .next()
@@ -657,7 +783,7 @@ fn validate_extension_name(name: &str) -> Result<(), TypeGenError> {
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_');
     if !identifier {
         return Err(TypeGenError::Generation(format!(
-            "shell extension `{name}` has a name that cannot be used as a file name. The name is written as `{name}.swift`, `{name}.kt` and `{name}.cs`, so it has to start with an ASCII letter and contain only ASCII letters, digits and `_`."
+            "{kind} `{name}` has a name that cannot be used as a file name. The name is written as `{name}.swift`, `{name}.kt` and `{name}.cs`, so it has to start with an ASCII letter and contain only ASCII letters, digits and `_`."
         )));
     }
 
@@ -666,7 +792,7 @@ fn validate_extension_name(name: &str) -> Result<(), TypeGenError> {
         .any(|device| device.eq_ignore_ascii_case(name))
     {
         return Err(TypeGenError::Generation(format!(
-            "shell extension `{name}` has a name Windows reserves for a device, so its files could not be written there. Please choose a different name for the extension."
+            "{kind} `{name}` has a name Windows reserves for a device, so its files could not be written there. Please choose a different name for the {kind}."
         )));
     }
 
@@ -742,6 +868,9 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
+        if let Some(shell_protocols) = self.shell_protocol_plugin() {
+            installer = installer.plugin(shell_protocols);
+        }
         if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
             installer = installer.plugin(shell_extensions);
         }
@@ -790,6 +919,9 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
+        if let Some(shell_protocols) = self.shell_protocol_plugin() {
+            installer = installer.plugin(shell_protocols);
+        }
         if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
             installer = installer.plugin(shell_extensions);
         }
@@ -837,6 +969,9 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
+        if let Some(shell_protocols) = self.shell_protocol_plugin() {
+            installer = installer.plugin(shell_protocols);
+        }
         if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
             installer = installer.plugin(shell_extensions);
         }
@@ -878,6 +1013,9 @@ impl CodeGenerator {
             if let Some(core) = self.core_plugin() {
                 installer = installer.plugin(core);
             }
+        }
+        if let Some(shell_protocols) = self.shell_protocol_plugin() {
+            installer = installer.plugin(shell_protocols);
         }
         if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
             installer = installer.plugin(shell_extensions);
@@ -1057,17 +1195,26 @@ impl CodeGenerator {
             .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
     }
 
-    /// An extension's source is written beside the module as `<Name>.swift`,
-    /// `<Name>.kt` or `<Name>.cs`, and the module names its own file after the
-    /// last segment of the package or namespace. A package called `Crux.Http`
-    /// would therefore have the `Http` extension overwrite `Crux/Http/Http.cs`
-    /// (the types themselves), so it is rejected while both files still
-    /// exist. Names are compared ignoring case, because `Http.swift`
-    /// overwrites `http.swift` on APFS and NTFS.
+    /// The source of a protocol or extension is written beside the module as
+    /// `<Name>.swift`, `<Name>.kt` or `<Name>.cs`, and the module names its own
+    /// file after the last segment of the package or namespace. A package
+    /// called `Crux.Http` would therefore have the `Http` protocol overwrite
+    /// `Crux/Http/Http.cs` (the types themselves), so it is rejected while
+    /// both files still exist. Names are compared ignoring case, because
+    /// `Http.swift` overwrites `http.swift` on APFS and NTFS.
     ///
     /// This is the one check that needs the [`Config`], so it is made here and
-    /// not in [`validate_shell_extensions`].
+    /// not in [`validate_shipped_sources`].
     fn check_shell_extension_files(&self, module_file: &str) -> Result<(), TypeGenError> {
+        for protocol in &self.shell_protocols {
+            if protocol.name.eq_ignore_ascii_case(module_file) {
+                return Err(TypeGenError::Generation(format!(
+                    "the `{name}` shell protocol is written beside the generated module, which names its own file `{module_file}`. That is the same name, ignoring case, and one file overwrites the other on a case-insensitive file system. The package or namespace ends in `{module_file}`. Generate into a package of another name.",
+                    name = protocol.name
+                )));
+            }
+        }
+
         for extension in &self.shell_extensions {
             if extension.name.eq_ignore_ascii_case(module_file) {
                 return Err(TypeGenError::Generation(format!(
@@ -1078,6 +1225,20 @@ impl CodeGenerator {
         }
 
         Ok(())
+    }
+
+    /// The plugin that emits the registered protocols, if any were
+    /// registered.
+    ///
+    /// It is installed outside the `handlers` flag, as the extension plugin
+    /// is. A protocol is plain code, and a shell can implement it with a
+    /// hand-written `switch` on `Effect` as well as with the generated
+    /// dispatcher.
+    fn shell_protocol_plugin(&self) -> Option<ShellProtocolPlugin> {
+        if self.shell_protocols.is_empty() {
+            return None;
+        }
+        Some(ShellProtocolPlugin::new(&self.shell_protocols))
     }
 
     /// The plugin that emits the registered shell extensions, if any were

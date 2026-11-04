@@ -987,8 +987,9 @@ dependencies = [
 
 [[package]]
 name = "facet-generate-attrs"
-version = "0.18.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9748acb73b45dbcbc3fd9b61cc2e6b678ec6e05d6ada20775851e798764e566e"
 dependencies = [
  "facet",
 ]
@@ -1040,9 +1041,11 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.21.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
+version = "0.22.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f89e743a60f1e1d79bdddfb7b599278ab35095532b9ba9848827b1be8a98616"
 dependencies = [
+ "anyhow",
  "derive_builder",
  "facet",
  "facet-generate-attrs",

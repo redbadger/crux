@@ -17,6 +17,19 @@ and this project adheres to
 
 ### 🚀 Features
 
+- **The shell protocol of `crux_kv` ships with the crate.** A new `shell`
+  module has a `PROTOCOL` static and a `register_types` function. Every
+  operation in `crux_kv::operation` names the protocol, so type generation
+  emits `KeyValueHandler` (`IKeyValueHandler` in C#) in Swift, Kotlin,
+  TypeScript and C# for every app that uses `crux_kv`. The protocol follows
+  the `facet_typegen` feature of `crux_core`, so the app needs no feature of
+  `crux_kv` for it.
+
+  The protocol registers every operation and output type of `crux_kv`. If an
+  app type has the same name as one of these types (for example `GetValue`),
+  type generation fails with a name clash. To fix the clash, rename one of
+  the two types with `#[facet(rename = "...")]`.
+
 - **One type per store operation, in the new `crux_kv::operation` module, and a
   `store::KeyValue` capability that sends them.** `KeyValueOperation` has one output
   type — `KeyValueResult` — for all five of its variants, so a `Get` can be answered
@@ -71,11 +84,11 @@ and this project adheres to
   FFI boundary:
 
   ```rust
-  pub enum ValueResult  { Ok(Value), Err(KeyValueError) }
-  pub enum ExistsResult { Ok(bool),  Err(KeyValueError) }
-  pub enum KeysResult   { Ok(Keys),  Err(KeyValueError) }
+  pub enum ValueResult  { Ok(Value),   Err(KeyValueError) }
+  pub enum ExistsResult { Ok(bool),    Err(KeyValueError) }
+  pub enum KeysResult   { Ok(KeyPage), Err(KeyValueError) }
 
-  pub struct Keys { pub keys: Vec<String>, pub next_cursor: u64 }
+  pub struct KeyPage { pub keys: Vec<String>, pub next_cursor: u64 }
   ```
 
   Each converts to and from the `Result` alias an app sees (`ValueResult` ↔

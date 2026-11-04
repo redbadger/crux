@@ -43,14 +43,14 @@ use crate::{
 
 /// Read the bytes stored under `key`.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = ValueResult)]
+#[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
 pub struct GetValue {
     pub key: String,
 }
 
 /// Write `value` under `key`, answering with the value it replaced.
 #[derive(Operation, Facet, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = ValueResult)]
+#[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
 pub struct SetValue {
     pub key: String,
     #[serde(with = "serde_bytes")]
@@ -59,21 +59,21 @@ pub struct SetValue {
 
 /// Remove `key` and its value, answering with the value it removed.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = ValueResult)]
+#[operation(request, output = ValueResult, protocol = crate::shell::PROTOCOL)]
 pub struct DeleteValue {
     pub key: String,
 }
 
 /// Test whether `key` is present in the store.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = ExistsResult)]
+#[operation(request, output = ExistsResult, protocol = crate::shell::PROTOCOL)]
 pub struct KeyExists {
     pub key: String,
 }
 
 /// List the keys that start with `prefix`, starting at `cursor`.
 #[derive(Operation, Facet, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[operation(request, output = KeysResult)]
+#[operation(request, output = KeysResult, protocol = crate::shell::PROTOCOL)]
 pub struct ListKeys {
     /// The prefix to list keys for, or an empty string to list all keys
     pub prefix: String,
@@ -111,13 +111,17 @@ pub enum ExistsResult {
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum KeysResult {
-    Ok(Keys),
+    Ok(KeyPage),
     Err(KeyValueError),
 }
 
 /// A page of keys, and the cursor to continue from.
+///
+/// The type is called `KeyPage`, not `Keys`, because a generated C# class
+/// cannot have a member with its own name (CS0542), and the first field of
+/// this type is `keys`.
 #[derive(Facet, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct Keys {
+pub struct KeyPage {
     pub keys: Vec<String>,
     /// The cursor to continue listing keys, or 0 if there are no more keys.
     pub next_cursor: u64,
@@ -182,7 +186,7 @@ impl From<StatusResult> for ExistsResult {
 impl From<KeysResult> for ListResult {
     fn from(result: KeysResult) -> Self {
         match result {
-            KeysResult::Ok(Keys { keys, next_cursor }) => Ok((keys, next_cursor)),
+            KeysResult::Ok(KeyPage { keys, next_cursor }) => Ok((keys, next_cursor)),
             KeysResult::Err(error) => Err(error),
         }
     }
@@ -191,7 +195,7 @@ impl From<KeysResult> for ListResult {
 impl From<ListResult> for KeysResult {
     fn from(result: ListResult) -> Self {
         match result {
-            Ok((keys, next_cursor)) => Self::Ok(Keys { keys, next_cursor }),
+            Ok((keys, next_cursor)) => Self::Ok(KeyPage { keys, next_cursor }),
             Err(error) => Self::Err(error),
         }
     }

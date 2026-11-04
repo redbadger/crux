@@ -236,6 +236,29 @@ macro_rules! __crux_core_testing_items {
     ($($tokens:tt)*) => {};
 }
 
+/// Emits its input only when the `facet_typegen` feature of `crux_core` is on.
+///
+/// `#[derive(Operation)]` wraps the protocol registration in this macro, and a
+/// capability crate wraps its protocol items in it. The compiler then evaluates
+/// the feature in `crux_core`, and not in the capability crate. Thus an app
+/// that turns on `crux_core/facet_typegen` gets the protocol of each capability
+/// that it uses.
+#[doc(hidden)]
+#[macro_export]
+#[cfg(feature = "facet_typegen")]
+macro_rules! __crux_core_facet_typegen_items {
+    ($($tokens:tt)*) => {
+        $($tokens)*
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+#[cfg(not(feature = "facet_typegen"))]
+macro_rules! __crux_core_facet_typegen_items {
+    ($($tokens:tt)*) => {};
+}
+
 mod capabilities;
 mod core;
 
