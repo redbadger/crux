@@ -51,7 +51,7 @@ match err {
     _ => { … }
 }
 
-// After — compare against the u16 directly …
+// After: compare against the u16 directly …
 match err {
     HttpError::Http { code, .. } if code == 401 => { … }
     _ => { … }
@@ -102,7 +102,7 @@ The new `crux_http::Body` is always in-memory (`Vec<u8>` backed). The
 streaming / `AsyncRead` interface of `http_types::Body` is not carried over.
 
 **If you need to stream a large or chunked HTTP response**, the correct Crux
-pattern is a dedicated streaming capability — not `AsyncRead` on `RawResponse`.
+pattern is a dedicated streaming capability, not `AsyncRead` on `RawResponse`.
 `AsyncRead` was a leaky abstraction that pushed network I/O mechanics into the
 core; the streaming capability pattern keeps the boundary clean.
 
@@ -110,8 +110,9 @@ The `examples/counter-http/shared/src/sse.rs` file shows exactly this pattern
 for Server-Sent Events, but the same skeleton works for any chunked HTTP body:
 
 ```rust
-// 1. Define the protocol
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+// 1. Define the protocol: a stream operation, answered once per item
+#[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[operation(stream, output = StreamingHttpResponse)]
 pub struct StreamingHttpRequest { pub url: String }
 
 #[derive(Facet, Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -119,10 +120,6 @@ pub struct StreamingHttpRequest { pub url: String }
 pub enum StreamingHttpResponse {
     Chunk(Vec<u8>),
     Done,
-}
-
-impl Operation for StreamingHttpRequest {
-    type Output = StreamingHttpResponse;
 }
 
 // 2. Build a StreamBuilder capability method
@@ -145,9 +142,11 @@ where
 }
 ```
 
-The shell sends `Chunk(bytes)` for each network chunk and `Done` at EOF. The
-core processes the resulting `Stream<Item = Vec<u8>>` with normal async stream
-combinators. This pattern is clean, avoids any I/O in the core, and no `AsyncRead` is required.
+The shell sends `Chunk(bytes)` for each network chunk and `Done` at EOF.
+Declaring the operation a stream means the generated `EffectHandler` hands the
+shell an `EffectSink` to send those items into. The core processes the
+resulting `Stream<Item = Vec<u8>>` with normal async stream combinators. This
+pattern is clean, avoids any I/O in the core, and no `AsyncRead` is required.
 
 ---
 
@@ -158,10 +157,10 @@ conversions between `crux_http` types and the `http` crate's types. Those
 conversions are now **built in and unconditional**:
 
 ```rust
-// From http::Request<Body> to crux_http::Request — always available
+// From http::Request<Body> to crux_http::Request (always available)
 let req: crux_http::Request = http_request.into();
 
-// From crux_http::Response<T> to http::Response<T> — always available
+// From crux_http::Response<T> to http::Response<T> (always available)
 let http_resp = http::Response::<Vec<u8>>::try_from(crux_response)?;
 ```
 
@@ -215,14 +214,14 @@ let values: Vec<String> = response
     .map(|v| v.to_string())
     .collect();
 
-// After — on a response
+// After: on a response
 let values: Vec<String> = response
     .header_all("set-cookie")
     .iter()
     .map(|v| v.to_str().unwrap_or("").to_string())
     .collect();
 
-// After — on a request (e.g. in middleware)
+// After: on a request (e.g. in middleware)
 let accepted: Vec<&str> = request
     .header_all("accept")
     .iter()
@@ -244,17 +243,17 @@ The low-level header mutation methods on `Request`, `RawResponse`, and
 any) and `append_header` returns `bool`.
 
 The high-level builder `.header(name, value)` on `RequestBuilder` and
-`ResponseBuilder` is **unchanged** — it still accepts any `impl AsRef<str>` for
+`ResponseBuilder` is **unchanged**: it still accepts any `impl AsRef<str>` for
 convenience and panics on invalid values. Only direct calls to `insert_header`
 or `append_header` on the types themselves need updating.
 
 ```rust
 use crux_http::http::HeaderValue;
 
-// Static value — use from_static (zero-cost, panics at compile time on invalid input)
+// Static value: use from_static (zero-cost, panics at compile time on invalid input)
 req.insert_header(http::header::CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
-// Dynamic value — use from_str, which returns Result
+// Dynamic value: use from_str, which returns Result
 let token = get_token();
 req.insert_header(
     http::header::AUTHORIZATION,
@@ -268,7 +267,7 @@ let had_prior = req.append_header(
 );
 ```
 
-`Request::set_header` is now **deprecated** — it was an `http-types`-era alias
+`Request::set_header` is now **deprecated**, because it was an `http-types`-era alias
 for `insert_header`. Replace all uses:
 
 ```rust
@@ -284,7 +283,7 @@ req.insert_header("x-trace-id", value);
 
 The intermediate response type that flows through the middleware chain has been
 renamed. `ResponseAsync` was misleading because nothing about the type is
-asynchronous — it holds a plain `(StatusCode, HeaderMap, Vec<u8>)`. `RawResponse`
+asynchronous; it holds a plain `(StatusCode, HeaderMap, Vec<u8>)`. `RawResponse`
 describes its actual role: the unvalidated response from the shell, before the
 4xx/5xx error check that happens inside `Response::new()`.
 
@@ -331,7 +330,7 @@ let text   = res.body_string().await?;
 let value  = res.body_json::<MyType>().await?;
 let form   = res.body_form::<MyForm>().await?;
 
-// After — drop the .await
+// After: drop the .await
 let bytes  = res.body_bytes()?;
 let text   = res.body_string()?;
 let value  = res.body_json::<MyType>()?;
@@ -357,6 +356,6 @@ req.set_content_type(&mime::APPLICATION_JSON);
 ```
 
 The high-level builder methods (`.content_type(…)` on `RequestBuilder`
-and `command::RequestBuilder`) are **unchanged** — they still accept any
+and `command::RequestBuilder`) are **unchanged**: they still accept any
 `impl Into<Mime>` by value. Only direct calls to `Request::set_content_type`
 need updating.

@@ -22,8 +22,14 @@ clean:
 # local development workflow
 dev: build
 
+# Fail if any `{{#include path:anchor}}` in the book names a file or anchor
+# that does not exist. See scripts/check-includes.sh.
+check-includes:
+    @echo '{{ style("command") }}check-includes:{{ NORMAL }}'
+    @scripts/check-includes.sh
+
 # CI workflow
-ci: build
+ci: build check-includes
 
 # serve the book locally
 serve:
