@@ -680,6 +680,7 @@ dependencies = [
  "facet_generate",
  "futures",
  "heck",
+ "include_dir",
  "log",
  "serde",
  "serde_json",

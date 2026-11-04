@@ -642,39 +642,86 @@ type generation copies its source into your generated package when you ask
 for it. It does nothing else: the generated `EffectHandler`,
 `EffectDispatcher` and `Core` are exactly as described above.
 
-The main use is a capability's shell handler, the shell side of its
-protocol. `crux_http`, `crux_kv` and `crux_time` each ship one, as an
-implementation of their operations in all four languages.
+The main use is an implementation of a capability's protocol. The protocol
+ships automatically (see [Shell protocols](#shell-protocols)). An extension
+adds an implementation of the protocol over a platform client, such as
+`URLSession` or `fetch`. `crux_http`, `crux_kv` and `crux_time` each ship
+implementations in all four languages.
 
-You ask in the codegen binary, per extension, on the registry before you
-build it:
+A shell extension is one language. A capability exports one `static` for
+each language it ships, in a module for that language, behind its
+`facet_typegen` feature: for example, `crux_http::shell::swift::URL_SESSION`
+and `crux_http::shell::kotlin::URL_CONNECTION`. In the codegen binary,
+register the extensions for the languages you generate, on the registry
+before you build it:
 
 ```rust,ignore
 let typegen = TypeRegistry::new()
     .register_app::<Weather>()?
-    .shell_extension(&crux_http::shell::EXTENSION)?
-    .shell_extension(&crux_kv::shell::EXTENSION)?
-    .shell_extension(&crux_time::shell::EXTENSION)?
+    .shell_extension(&crux_http::shell::swift::URL_SESSION)?
+    .shell_extension(&crux_http::shell::kotlin::URL_CONNECTION)?
+    .shell_extension(&crux_time::shell::swift::TASK)?
+    .shell_extension(&crux_time::shell::kotlin::COROUTINE)?
     .build()?;
 ```
 
-Each `ShellExtension` is a `static` the crate exports behind its
-`facet_typegen` feature. Registering a capability's extension also
-registers every operation and output its sources name, including operations
-your `Effect` never carries, because the shipped file implements the whole
-capability and so all of its types have to exist. For every extension you
-register, and every language it has source for, the generated module gains
-one file named after the extension (`Http.swift` in the Swift target,
-`Http.kt` in the Kotlin package, `Http.cs` in the C# namespace), with the
-module's header prepended and the source otherwise verbatim. TypeScript
-modules are a single file, so there the source is appended after the types,
-as `Core` is. A language the extension does not ship gets nothing, and you
-implement those methods as you would have anyway.
+An extension names the protocol that it implements. When you register the
+extension, crux also registers that protocol, so an implementation always
+arrives with its protocol. The protocol brings every operation and output of
+the capability, including operations your `Effect` never carries, because the
+shipped files implement the whole capability. Crux registers each protocol
+once, however many languages you register.
 
-In Swift, `Http.swift` declares an `HttpHandler` protocol with one method
-per operation, taking the operation and returning what the generated
-`EffectHandler` method for it returns, and an implementation of it,
-`URLSessionHttpHandler`. Your handler holds an instance and delegates:
+A language does not identify a platform. Kotlin runs on the JVM and on
+Android, and Swift runs on Apple platforms and on Linux. For this reason, the
+source of an extension is a directory of source sets. The `common/`
+directory holds the files for every platform, and a directory named after a
+platform (`apple`, `linux`, `jvm`, `android`, `web` or `dotnet`) holds the
+files for that platform only:
+
+```text
+crux_http/shell/kotlin/url_connection/
+  common/   UrlConnectionHttp.kt
+  android/  WebkitCookieJar.kt
+```
+
+The `swift`, `kotlin`, `typescript` and `csharp` methods generate for the
+language's default platform: Apple for Swift, the JVM for Kotlin, the web for
+TypeScript and .NET for C#. To generate for another platform, call
+`generate` with the platform:
+
+```rust,ignore
+typegen.generate(Platform::Android, &config)?;
+```
+
+`generate` generates the language of the platform. One generator can
+generate for several platforms, for example Kotlin for the JVM and for
+Android, into two output directories.
+
+For each capability, crux emits the registered extension of the language that
+lists the platform. From that extension, it emits every file in `common/` and
+every file in the platform's directory. Each file becomes a file of the same
+name in the generated module (`URLSession.swift` in the Swift target,
+`WebkitCookieJar.kt` in the Kotlin package). Crux puts the module's header
+first and copies the source verbatim. A TypeScript module is a single file, so
+crux puts the sources at the end of the module, in the order of their paths,
+after every type and after the protocols (and after `Core`, when it is in this
+module). If you register no extension of a language for a capability, that
+language gets only the protocol, and you implement it yourself.
+
+Type generation fails in these cases:
+
+- More than one registered extension of a capability lists the platform, so
+  crux cannot choose one.
+- You registered extensions of the language for a capability, but none of
+  them lists the platform.
+
+A protocol is not an extension, so these rules do not count it. Crux emits
+the protocols for every platform of the language.
+
+In Swift, the protocol `HttpHandler` is in `Http.swift`, and the extension
+adds an implementation of it, `URLSessionHttpHandler`. Your handler holds an
+instance and delegates:
 
 ```swift
 struct WeatherHandler: EffectHandler {
@@ -688,16 +735,15 @@ struct WeatherHandler: EffectHandler {
 }
 ```
 
-Those lines are the whole of what you write for the capability. The
-protocol rules — how a `URLError` maps onto `HttpResult`, what a cleared
-timer answers — live in the shipped file, written once by the capability
-author. Because the delegation is yours, so is the choice: construct the
-shipped implementation with a pinned `URLSession` or a storage directory,
-write your own conformer of the protocol behind a hardened HTTP stack,
-override one method and delegate the rest, or leave the registration out
-and get a package with nothing extra in it. When a capability gains an
-operation, your handler stops compiling until you add its line, which is
-the right moment to read what the new operation does.
+Those lines are the whole of what you write for the capability. The protocol
+rules — how a `URLError` maps onto `HttpResult`, what a cleared timer answers
+— live in the shipped file, written once by the capability author. Because the
+delegation is yours, so is the choice: construct the shipped implementation
+with a pinned `URLSession` or a storage directory, write your own conformer of
+the protocol behind a hardened HTTP stack, override one method and delegate
+the rest, or leave the registration out and get only the protocol. When a
+capability gains an operation, your handler stops compiling until you add its
+line, which is the right moment to read what the new operation does.
 
 The other languages follow the same pattern, with each language's own
 conventions for the names (C#, for example, prefixes the interface with
@@ -705,20 +751,30 @@ conventions for the names (C#, for example, prefixes the interface with
 
 Registration is where an extension's manifest dependencies, if it declares
 any, reach your `Package.swift`, `build.gradle.kts` or `package.json`. The
-bundled capabilities depend on nothing beyond the platform standard
-library. An extension lists the top-level names its sources declare
-(`HttpHandler`, `IHttpHandler`, `URLSessionHttpHandler` and so on), and
-the build fails if one of those is a name the generated shell API uses, a
-name the generated module imports from the serialization runtime (such as
-`Serializer`), the name of one of your namespaces, a name another
-registered extension declares, or the name of a type registered in the
-root namespace. The same goes for a type a capability registers: `crux_kv`
-brings its `DeleteValue` with it, and an app with a `DeleteValue` of its own
-renames one of them with `#[facet(rename = "...")]`. The extension's own name only
-names its files, so it has to work as a file name (an ASCII letter, then
-ASCII letters, digits or `_`), and two extensions with the same name,
-ignoring case, cannot both be registered, because their files would
-overwrite each other.
+bundled capabilities depend on nothing beyond the platform standard library.
+An extension lists the top-level names its sources declare
+(`URLSessionHttpHandler` and so on), and the build fails if one of those is a
+name the generated shell API uses, a name the generated module imports from
+the serialization runtime (such as `Serializer`), the name of one of your
+namespaces, a name that an extension of another capability declares, a name
+that a protocol declares, or the name of a type registered in the root
+namespace. The protocol declares its own names (`HttpHandler`), so an
+extension does not list them. The same applies to a type a capability
+registers: `crux_kv` brings its `DeleteValue` with it, and an app with a
+`DeleteValue` of its own renames one of them with `#[facet(rename = "...")]`.
+The extensions of one capability declare the same names, and that is not a
+clash.
+
+Each source file is written beside the module under its own name, so the
+name must work as a file name in every language: an ASCII letter, then
+ASCII letters, digits or `_`. Two emitted files cannot have the same name,
+ignoring case, because one would overwrite the other. This includes the
+file of a protocol: an extension cannot have a file called `Http.swift`
+when the `Http` protocol has a Swift source.
+
+The build also fails for a source directory that contains anything other
+than `common/` and the directories of the language's platforms. Thus a
+misspelled `andriod/` is an error.
 
 [Building capabilities](../part-2/capabilities.md) covers the other side:
 how a capability declares what it ships.
