@@ -21,7 +21,7 @@ commands and the body passes information about the outside world back to it
 with Events.
 
 In this chapter we will explore how commands are created and used; we'll come back
-to capabilities, which provide a convenient way to create common commands, in chapter 7.
+to capabilities, which provide a convenient way to create common commands, in [Building Capabilities](./capabilities.md).
 
 ## Note on intent and execution
 
@@ -81,7 +81,7 @@ Crux expects a Command to be returned by the `update` function. A basic Command 
 
 Let's look closer at Effects. Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
 
-Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output and to an *operation kind* — how many times the request expects to be resolved: never (a notification), exactly once (a request), or any number of times (a stream). In practice you declare all of that with `#[derive(Operation)]`, which we'll come to in chapter 7. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
+Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output and, optionally, to an *operation kind* — how many times the request expects to be resolved: never (a notification), exactly once (a request), or any number of times (a stream). In practice you declare both with `#[derive(Operation)]`, which we'll come to in [Building Capabilities](./capabilities.md). These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
 
 The `Effect` type is typically defined with the help of the `#[effect]` macro. Here is the Weather app's effect again:
 
@@ -96,7 +96,7 @@ The eleven operations it carries come from six different _Capabilities_ — `Ren
 Capabilities are developer-friendly, ergonomic APIs to construct commands, from
 very basic ones all the way to complex stateful orchestrations. Capabilities are an abstraction layer that bundles related operations together with code to create them, and cover one kind of a side-effect (e.g. HTTP, or timers).
 
-We will look at writing capabilities in chapter 7, but for now, it's useful to know that their API often doesn't return `Commands` straight away, but instead returns command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
+We will look at writing capabilities in [Building Capabilities](./capabilities.md), but for now, it's useful to know that their API often doesn't return `Commands` straight away, but instead returns command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
 
 To help that make more sense, let's look at how Commands are typically used.
 
@@ -140,7 +140,7 @@ We've seen an example of this already, but here it is again:
 The two capability calls each produce a command, and we want to run them concurrently. `Command::all` combines them into a single `Command`, which `start()` returns as part of its `Started` bundle.
 
 ```admonish note
-Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in chapter 7, when we look at building Capabilities.
+Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in [Building Capabilities](./capabilities.md).
 ```
 
 You might also want to run effects in a sequence, passing output of one as the input of another. This is another thing the command builders can facilitate. Let's look at that.
@@ -153,7 +153,7 @@ Command builders come in three flavours:
 - [StreamBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.StreamBuilder.html) - builds a request expecting a (possibly infinite) sequence of responses from the shell (think WebSockets)
 - [NotificationBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.NotificationBuilder.html) - builds a shell notification, which does not expect a response. The best example is notifying the shell that a new view model is available
 
-Those three flavours are exactly the three kinds an operation declares, so which builder you get is decided by the operation rather than by the call site: `Command::request_from_shell` only accepts an operation declared `request`, and so on for the other two. Passing the wrong one is a compile error.
+Those three flavours are exactly the three kinds an operation can declare. Where it declares one — as `#[derive(Operation)]` always does, and as `Render`, `crux_http`, `crux_kv` and `crux_time` all do — which builder you get is decided by the operation rather than by the call site: `Command::request_from_shell` only accepts an operation declared `request`, and so on for the other two. Passing the wrong one is a compile error, reported by `cargo build` and `cargo test` but not by `cargo check`. An operation that declares no kind is accepted by all three.
 
 All builders share a common API. Request and stream builder can be converted into commands with a `.then_send`.
 
@@ -196,7 +196,7 @@ Command::new(|ctx| async move {
 });
 ```
 
-(`One` and `Two` here are two operation types, each with its own output — see chapter 7. The type of `output` differs between the two `.await`s, and the compiler knows which is which.)
+(`One` and `Two` here are two operation types, each with its own output — see [Building Capabilities](./capabilities.md). The type of `output` differs between the two `.await`s, and the compiler knows which is which.)
 
 `Command::new` takes a closure, which receives the CommandContext and returns a future, which will become the Command's main task (it is not expected to return anything, its `Output` is `()`. The provided context can be used to start shell requests, streams, and send events back to the app.
 

@@ -6,7 +6,7 @@ security, and more joy from better tools.
 
 It splits the application into two distinct parts, a Core built in Rust, which
 drives as much of the business logic as possible, and a Shell, built in the
-platform native language (Swift, Kotlin, TypeScript), which provides all
+platform native language (Swift, Kotlin, TypeScript, C#), which provides all
 interfaces with the external world, including the human user, and acts as a
 platform on which the core runs.
 

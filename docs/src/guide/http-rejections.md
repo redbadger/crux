@@ -98,6 +98,55 @@ reach for the accessors above for the rest.
 
 ---
 
+## Your own operations that answer with `HttpResult`
+
+Sometimes the shell makes an HTTP request the core can't make through
+`crux_http`. An upload is the usual case: the shell holds the file, so the core
+never has the body to put in a request. You can still have the shell answer
+with the same `HttpResult` it uses for `crux_http`, by declaring an operation of
+your own with that output.
+
+The shell's `HttpResult::Ok` carries the response whatever its status, so a 409
+arrives there too. Don't read the status yourself. Convert the response with
+`Response::try_from`, which is the conversion `crux_http` requests go through,
+and a rejection becomes `Err(HttpError::Http { .. })` in the same way:
+
+```rust
+// Rust
+use crux_core::{Command, macros::Operation};
+use crux_http::{Response, protocol::HttpResult};
+use facet::Facet;
+use serde::{Deserialize, Serialize};
+
+/// Uploads a file the shell holds, and answers like an HTTP request.
+#[derive(Operation, Facet, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[operation(request, output = HttpResult)]
+pub struct Upload {
+    pub path: String,
+    pub url: String,
+}
+
+fn into_response(result: HttpResult) -> crux_http::Result<Response<Vec<u8>>> {
+    match result {
+        HttpResult::Ok(response) => Response::try_from(response),
+        HttpResult::Err(error) => Err(error),
+    }
+}
+
+fn upload(path: String, url: String) -> Command<Effect, Event> {
+    Command::request_from_shell(Upload { path, url })
+        .map(into_response)
+        .then_send(Event::Uploaded)
+}
+```
+
+`Event::Uploaded` carries a `crux_http::Result<Response<Vec<u8>>>`, so it
+handles a rejection with the same code as the rest of this page. A transport
+failure, such as a timeout, arrives as `HttpResult::Err` and is passed straight
+through. A status outside 100–999 becomes `HttpError::InvalidStatusCode`.
+
+---
+
 ## Testing a rejection
 
 There are exactly two values a feature can receive, and `crux_http::testing` has one
@@ -109,7 +158,8 @@ builder for each:
   when the rejection's headers are what your feature acts on.
 
 Both run the same conversion a real shell response takes, so what they produce is what
-your app is really handed.
+your app is really handed. That's also the conversion `Response::try_from` runs, so they
+build the values an event like `Event::Uploaded` above carries too.
 
 ```rust
 // before — asserts a state the app can never observe, so the test passes

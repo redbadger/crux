@@ -6,7 +6,7 @@ In practice, apps need a fairly limited number of capabilities — typically aro
 
 ## Using a capability
 
-Capabilities don't return a `Command` directly — they return a command *builder*, which lets you chain behaviour before committing to a specific event. We saw the abstract shape in chapter 5: `Http::get(...).expect_json().build().then_send(Event::ReceivedResponse)`.
+Capabilities don't return a `Command` directly — they return a command *builder*, which lets you chain behaviour before committing to a specific event. We saw the abstract shape in [Managed Effects](./effects.md): `Http::get(...).expect_json().build().then_send(Event::ReceivedResponse)`.
 
 The weather app's current-weather fetch shows the same pattern in production code:
 
@@ -60,7 +60,7 @@ pub struct Publish(pub Vec<u8>);
 /// Answered exactly once.
 #[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug)]
 #[operation(request, output = ValueResult)]
-pub struct Get { pub key: String }
+pub struct GetValue { pub key: String }
 
 /// Answered a sequence of times.
 #[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug)]
@@ -176,11 +176,12 @@ OperationKind::Request; send it with notify_shell or stream_from_shell instead
 ```
 
 ```admonish note title="Where that error appears"
-In this release the check is a `const` assertion evaluated after
-monomorphisation, so it fires on `cargo build`, `cargo test` or
-`cargo clippy --all-targets` — but *not* on `cargo check` or in your editor.
-The next breaking release moves the kind to an associated type, at which point
-it becomes an ordinary trait-bound error you see as you type.
+The check is a `const` assertion evaluated after monomorphisation, so it fires
+on `cargo build`, `cargo test` or `cargo clippy --all-targets` — but *not* on
+`cargo check` or in your editor. The
+[operation-kind traits RFC](../rfcs/operation-kind-traits.md) proposes making
+the kind an associated type of `Operation`, which would turn this into an
+ordinary trait-bound error you see as you type.
 ```
 
 The kinds pay off hardest on the shell side. Because each variant's kind is static, [type generation](../part-4/typegen.md) can emit a handler interface where `publish` returns nothing, `subscribe` is handed a sink to send `Message`s into, and a request method returns its output — the shell can't resolve the wrong number of times, because there is no `resolve` for it to call.
@@ -291,7 +292,7 @@ A few constraints keep a shipped file safe to drop into any app:
 - **Configuration through the initialiser.** Where there is a sensible default, give an implementation an initialiser with no arguments, which uses the platform's shared client where there is one (`URLSessionHttpHandler()` sends with `URLSession.shared`). Always give it one that takes the configuration (`URLSessionHttpHandler(session:)`). Ship no shared instance and no globals to mutate: an app has one core, so a shared instance gives nothing, and the shell constructs what it holds.
 - **Say where the state lives.** For `crux_http`, the state is the cookies. `URLSessionHttpHandler()` keeps them in the process-wide `HTTPCookieStorage.shared`, and `new HttpClientHttpHandler()` keeps them in the one static `HttpClient` that every handler made that way shares, so both are process-wide. `UrlConnectionHttpHandler()` keeps them in an `InMemoryCookieJar` of that handler's own, so two handlers have two sessions. `createFetchHttpHandler()` leaves them to the runtime's `fetch`: in a browser that is the browser's cookie store, for same-origin requests, because the handler sets no `credentials`, and under Node there are none.
 - **Quiet.** Do not log through an app-specific logger. Stay silent, or give the implementation a hook.
-- **Compiled somewhere on every change.** `cargo test` cannot compile Swift. A `tests/shell_source.rs` in each bundled crate generates a package for a small app and runs `swift build`, `tsc` and `dotnet build` when the toolchain is present. The weather and notes example shells also compile the HTTP and timer implementations. Give your own capability the same.
+- **Compiled somewhere on every change.** `cargo test` cannot compile Swift. A `tests/shell_source.rs` in each bundled crate generates a package for a small app and builds it with `swift build`, `kotlinc`, `tsc` and `dotnet build`. If a toolchain is missing, the test prints a skip. CI sets `CRUX_REQUIRE_SHELL_TOOLCHAINS`, which turns the skip into a failure. The weather and notes example shells also compile the HTTP and timer implementations. Give your own capability the same.
 
 Put the files that every platform gets under `shell/<language>/<implementation>/common/`, beside the file of the shell protocol. Put the files for one platform only in a directory for that platform, beside `common/`. If `Cargo.toml` lists what to `include`, make sure that it packages these files.
 
