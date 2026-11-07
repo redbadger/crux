@@ -358,6 +358,7 @@ mod tests {
         "#);
     }
 
+    // ANCHOR: sse_test
     #[test]
     fn server_sent_events() {
         let app = Counter;
@@ -415,4 +416,5 @@ mod tests {
             })
         );
     }
+    // ANCHOR_END: sse_test
 }
