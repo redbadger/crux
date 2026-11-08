@@ -1,4 +1,4 @@
-use crux_core::{App, Command, Core, Request, capability::Operation, command::AbortHandle};
+use crux_core::{App, Command, Core, capability::Operation, command::AbortHandle};
 
 #[derive(Debug, PartialEq, Eq)]
 struct Fetch;
@@ -25,25 +25,13 @@ impl Operation for After {
 }
 
 #[allow(dead_code)]
+#[crux_core::macros::effect]
 enum Effect {
-    Fetch(Request<Fetch>),
-    Save(Request<Save>),
-    Subscribe(Request<Subscribe>),
-    After(Request<After>),
+    Fetch(Fetch),
+    Save(Save),
+    Subscribe(Subscribe),
+    After(After),
 }
-
-impl crux_core::Effect for Effect {}
-
-macro_rules! from_request {
-    ($($op:ident),*) => {$(
-        impl From<Request<$op>> for Effect {
-            fn from(value: Request<$op>) -> Self {
-                Self::$op(value)
-            }
-        }
-    )*};
-}
-from_request!(Fetch, Save, Subscribe, After);
 
 #[derive(Debug)]
 enum Event {
