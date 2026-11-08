@@ -1,7 +1,7 @@
 //! Kept in its own test binary because the failure is a stack overflow,
 //! which aborts the whole process.
 
-use crux_core::{App, Command, Core, Request, capability::Operation};
+use crux_core::{App, Command, Core, capability::Operation};
 
 #[derive(Default)]
 struct TickApp;
@@ -18,16 +18,9 @@ impl Operation for Op {
     type Output = ();
 }
 
+#[crux_core::macros::effect]
 enum Effect {
-    Op(Request<Op>),
-}
-
-impl crux_core::Effect for Effect {}
-
-impl From<Request<Op>> for Effect {
-    fn from(value: Request<Op>) -> Self {
-        Self::Op(value)
-    }
+    Op(Op),
 }
 
 impl App for TickApp {
@@ -45,12 +38,9 @@ impl App for TickApp {
     fn view(&self, _model: &()) {}
 }
 
-/// Each follow-up command is spawned inside the command that emitted the event,
-/// so a command that re-arms itself on every tick nests one level deeper each
-/// time. A long-running loop of this kind overflows the stack. The loop must
-/// run in constant stack space.
+/// A command that re-arms itself on every tick must run and tear down without
+/// consuming stack space in proportion to the number of ticks.
 #[test]
-#[ignore = "finding 1: self-re-arming follow-up loop nests commands and overflows the stack"]
 fn a_self_re_arming_follow_up_loop_does_not_nest() {
     let core = Core::new_with(TickApp, ());
 

@@ -58,7 +58,7 @@ impl crate::App for TestApp {
 }
 
 #[test]
-fn follow_up_commands_are_hosted_in_the_command_that_emitted_the_event() {
+fn emitting_command_joins_follow_up_work_before_starting_then() {
     let core = Core::new_with(TestApp, ());
 
     let mut effects = core.process_event(Event::Start);

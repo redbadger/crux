@@ -9,7 +9,10 @@ pub use effect::{Effect, EffectFFI};
 pub use request::Request;
 pub use resolve::{EffectVariant, OperationKind, RequestHandle, Resolvable, ResolveError};
 
-use crate::{App, Command};
+use crate::{
+    App, Command,
+    command::{ChildTracker, ParentCompletionGuard},
+};
 
 /// The Crux core. Create an instance of this type with your App type as the type parameter
 ///
@@ -158,9 +161,18 @@ where
             let command = self.app.update(event_from_commands, &mut model);
             drop(model);
 
-            // the follow-up command is spawned on the owner to be a logical
-            // part of the original command process
-            event_owner.spawn(|ctx| command.into_future(ctx));
+            // Run the child at the root; track its completion and cancellation
+            // on the parent without nesting their executors.
+            let child_abort = command.abort_handle();
+            let parent_guard = ParentCompletionGuard::new(event_owner.clone());
+            let child_join = root_command.spawn(|ctx| {
+                let child = command.into_future(ctx);
+                async move {
+                    child.await;
+                    drop(parent_guard);
+                }
+            });
+            event_owner.spawn(move |_| ChildTracker::new(child_join, child_abort));
             drop(event_owner);
 
             events.extend(root_command.events_with_origin());
