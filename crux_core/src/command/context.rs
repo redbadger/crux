@@ -12,7 +12,7 @@ use futures::task::AtomicWaker;
 use futures::{FutureExt as _, Stream, StreamExt};
 
 use crate::capability::Operation;
-use crate::{OperationKind, Request};
+use crate::{OperationKind, Request, core::RuntimeContextId};
 
 use super::executor::{JoinHandle, Task};
 
@@ -20,7 +20,7 @@ use super::executor::{JoinHandle, Task};
 /// specifically submit effects, events and spawn further tasks
 // ANCHOR: command_context
 pub struct CommandContext<Effect, Event> {
-    pub(crate) effects: Sender<Effect>,
+    pub(crate) effects: Sender<CommandEffect<Effect>>,
     pub(crate) events: Sender<CommandEvent<Effect, Event>>,
     pub(crate) tasks: Sender<Task>,
     pub(crate) rc: Arc<()>,
@@ -28,18 +28,44 @@ pub struct CommandContext<Effect, Event> {
 }
 // ANCHOR_END: command_context
 
+/// Effect emitted by a command. The nearest event host assigns its parent ID;
+/// combinators and outer event hosts preserve that attribution.
+pub struct CommandEffect<Effect> {
+    pub(crate) effect: Effect,
+    /// None until this output crosses an event host; distinct from ROOT.
+    pub(crate) parent_context_id: Option<RuntimeContextId>,
+}
+
+impl<Effect> CommandEffect<Effect> {
+    pub(crate) fn into_effect(self) -> Effect {
+        self.effect
+    }
+
+    pub(crate) fn map<NewEffect>(
+        self,
+        map: impl FnOnce(Effect) -> NewEffect,
+    ) -> CommandEffect<NewEffect> {
+        CommandEffect {
+            effect: map(self.effect),
+            parent_context_id: self.parent_context_id,
+        }
+    }
+}
+
 /// Event emitted by a Command, alongside the `CommandContext` of the
 /// Command which emitted it, so that a sentinel task can join follow-up work
 /// on behalf of that command.
 #[allow(clippy::redundant_pub_crate)]
 pub(crate) struct CommandEvent<Effect, Event> {
     pub(crate) event: Event,
+    /// None until this output crosses an event host; distinct from ROOT.
+    pub(crate) parent_context_id: Option<RuntimeContextId>,
     pub(crate) owner: CommandContext<Effect, Event>,
 }
 
 impl<Effect, Event> CommandEvent<Effect, Event> {
     pub(crate) fn into_event(self) -> Event {
-        let Self { event, owner } = self;
+        let Self { event, owner, .. } = self;
         owner.host_waker.wake();
         drop(owner);
 
@@ -85,7 +111,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let request = Request::resolves_never(operation);
 
         self.effects
-            .send(request.into())
+            .send(CommandEffect {
+                effect: request.into(),
+                parent_context_id: None,
+            })
             .expect("Command could not send notification, effect channel disconnected");
     }
 
@@ -121,17 +150,19 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
         let (output_sender, output_receiver) = mpsc::unbounded();
 
-        let request = Request::resolves_once(operation, move |output| {
-            // If the channel is closed, the associated task has been cancelled
-            let _ = output_sender.unbounded_send(output);
-        });
-
         let send_request = {
-            let effect = request.into();
             let effects = self.effects.clone();
             move || {
+                let request = Request::resolves_once(operation, move |output| {
+                    // If the channel is closed, the associated task has been cancelled
+                    let _ = output_sender.unbounded_send(output);
+                });
+
                 effects
-                    .send(effect)
+                    .send(CommandEffect {
+                        effect: request.into(),
+                        parent_context_id: None,
+                    })
                     .expect("Command could not send request effect, effect channel disconnected");
             }
         };
@@ -171,19 +202,21 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 
         let (output_sender, output_receiver) = mpsc::unbounded();
 
-        let request = Request::resolves_many_times(operation, move |output| {
-            output_sender.unbounded_send(output).map_err(|_| ())?;
-
-            // TODO: revisit the error handling in here
-            Ok(())
-        });
-
         let send_request = {
-            let effect = request.into();
             let effects = self.effects.clone();
             move || {
+                let request = Request::resolves_many_times(operation, move |output| {
+                    output_sender.unbounded_send(output).map_err(|_| ())?;
+
+                    // TODO: revisit the error handling in here
+                    Ok(())
+                });
+
                 effects
-                    .send(effect)
+                    .send(CommandEffect {
+                        effect: request.into(),
+                        parent_context_id: None,
+                    })
                     .expect("Command could not send stream effect, effect channel disconnected");
             }
         };
@@ -198,6 +231,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         self.events
             .send(CommandEvent {
                 event,
+                parent_context_id: None,
                 owner: self.clone(),
             })
             .expect("Command could not send event, event channel disconnected");
