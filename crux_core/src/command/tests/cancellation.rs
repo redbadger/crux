@@ -344,3 +344,38 @@ fn aborting_a_suspended_task_wakes_its_joiner() {
     assert!(cmd.is_done());
     drop(request);
 }
+
+#[test]
+fn try_spawn_on_dropped_command_drops_the_future_without_polling() {
+    let command: Command<(), ()> = Command::done();
+    let context = command.context.clone();
+    drop(command);
+
+    let (sender, mut receiver) = futures::channel::oneshot::channel::<()>();
+    let result = context.try_spawn(move |_| async move {
+        let _sender = sender;
+        panic!("a rejected task must never be polled");
+    });
+
+    assert!(result.is_err());
+    assert!(
+        receiver.try_recv().is_err(),
+        "the rejected future must be dropped"
+    );
+}
+
+#[test]
+fn try_spawn_returns_a_joinable_task() {
+    let mut command: Command<(), usize> = Command::new(|ctx| async move {
+        let child = ctx
+            .try_spawn(|ctx| async move {
+                ctx.send_event(1);
+            })
+            .expect("command is alive");
+        child.await;
+        ctx.send_event(2);
+    });
+
+    assert_eq!(command.events().collect::<Vec<_>>(), [1, 2]);
+    assert!(command.is_done());
+}

@@ -41,12 +41,14 @@ enum Event {
     Fetched,
     Init,
     Tick,
+    StopSubscription,
     Done,
 }
 
 #[derive(Default)]
 struct Model {
     handle: Option<AbortHandle>,
+    fetched: bool,
 }
 
 /// Which scenario `Start` sets up.
@@ -62,7 +64,7 @@ struct TestApp(Scenario);
 impl App for TestApp {
     type Event = Event;
     type Model = Model;
-    type ViewModel = ();
+    type ViewModel = bool;
     type Effect = Effect;
 
     fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
@@ -85,6 +87,7 @@ impl App for TestApp {
                 }
                 Command::done()
             }
+            (Scenario::QueuedEvents, Event::E2) => Command::notify_shell(Save).into(),
             (Scenario::AbortThenFollowUp, Event::Start) => {
                 let x = Command::all([
                     Command::request_from_shell(Fetch).then_send(|()| Event::Fetched)
@@ -93,6 +96,7 @@ impl App for TestApp {
                 x
             }
             (Scenario::AbortThenFollowUp, Event::Fetched) => {
+                model.fetched = true;
                 if let Some(handle) = model.handle.take() {
                     handle.abort();
                 }
@@ -101,34 +105,47 @@ impl App for TestApp {
             (Scenario::LongLivedThen, Event::Start) => Command::event(Event::Init)
                 .then(Command::request_from_shell(After).then_send(|()| Event::Done)),
             (Scenario::LongLivedThen, Event::Init) => {
-                Command::stream_from_shell(Subscribe).then_send(|()| Event::Tick)
+                let subscription =
+                    Command::stream_from_shell(Subscribe).then_send(|()| Event::Tick);
+                model.handle = Some(subscription.abort_handle());
+                subscription
+            }
+            (Scenario::LongLivedThen, Event::StopSubscription) => {
+                model
+                    .handle
+                    .take()
+                    .expect("subscription has started")
+                    .abort();
+                Command::done()
             }
             _ => Command::done(),
         }
     }
 
-    fn view(&self, _model: &Model) {}
+    fn view(&self, model: &Model) -> bool {
+        model.fetched
+    }
 }
 
-/// When a command is aborted while it still has events queued, the follow-up
-/// command for a queued event is spawned onto the aborted command. Its task
-/// channel is already closed, so `Core::process` panics. Dropping the emitting
-/// command must not panic.
+/// Queued events can outlive their emitting command. Rejecting their child
+/// trackers must cancel follow-up work without panicking.
 #[test]
-#[ignore = "finding 2: follow-up spawned onto a dropped emitter panics with 'tasks channel disconnected'"]
 fn dropping_the_emitting_command_with_queued_events_does_not_panic() {
     let core = Core::new_with(TestApp(Scenario::QueuedEvents), Model::default());
 
-    let _effects = core.process_event(Event::Start);
+    let effects = core.process_event(Event::Start);
+    assert!(
+        !effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::Save(_))),
+        "follow-up work from the cancelled emitter must not send Save"
+    );
 }
 
-/// A follow-up command returned by an event handler is spawned onto the command
-/// that emitted the event. If the handler aborts that command, the follow-up
-/// is dropped with it. The follow-up must still run, because the app asked
-/// for it.
+/// Follow-up work belongs to the emitting command's lifetime, even when the
+/// event handler aborts that lifetime before returning the follow-up.
 #[test]
-#[ignore = "finding 3: follow-up returned after aborting its emitter is spawned onto the aborted command and lost"]
-fn a_follow_up_returned_after_aborting_the_emitter_still_runs() {
+fn a_follow_up_returned_after_aborting_the_emitter_is_cancelled() {
     let core = Core::new_with(TestApp(Scenario::AbortThenFollowUp), Model::default());
 
     let mut effects = core.process_event(Event::Start);
@@ -140,30 +157,49 @@ fn a_follow_up_returned_after_aborting_the_emitter_still_runs() {
     let effects = core.resolve(&mut request, ()).expect("resolve");
 
     assert!(
-        effects.iter().any(|e| matches!(e, Effect::Save(_))),
-        "expected a Save notification, got {} effects",
-        effects.len()
+        core.view(),
+        "the event's model update must still take effect"
+    );
+    assert!(
+        effects.is_empty(),
+        "the cancelled follow-up must not send Save"
     );
 }
 
-/// A follow-up command that is long lived (here a subscription that never
-/// ends) is hosted in the emitting command. `.then` waits for that command to
-/// finish, so the command chained after it never starts. It must start once
-/// the event has been handled.
+/// `.then` waits for the follow-up subscription's command to finish. Aborting
+/// just that subscription releases the continuation after cancellation cleanup.
 #[test]
-#[ignore = "finding 4: .then waits for a never-ending follow-up so the next command never starts"]
-fn a_long_lived_follow_up_does_not_block_then() {
+fn then_waits_until_the_follow_up_subscription_is_aborted() {
     let core = Core::new_with(TestApp(Scenario::LongLivedThen), Model::default());
 
-    let effects = core.process_event(Event::Start);
+    let mut effects = core.process_event(Event::Start);
+    assert_eq!(effects.len(), 1, "only the subscription should start");
+    let Effect::Subscribe(mut subscription) = effects.remove(0) else {
+        panic!("expected the Subscribe stream request");
+    };
 
+    // Delivering a stream item does not finish the subscription or release `.then`.
     assert!(
-        effects.iter().any(|e| matches!(e, Effect::Subscribe(_))),
-        "expected the Subscribe stream request"
+        core.resolve(&mut subscription, ())
+            .expect("stream item")
+            .is_empty()
     );
+
+    // Keep the shell's subscription handle alive so cancellation must come from
+    // the command's abort handle, rather than dropping the shell handle.
+    let mut effects = core.process_event(Event::StopSubscription);
+    assert_eq!(
+        effects.len(),
+        1,
+        "aborting the subscription should release .then"
+    );
+    let Effect::After(mut after) = effects.remove(0) else {
+        panic!("expected the After request");
+    };
     assert!(
-        effects.iter().any(|e| matches!(e, Effect::After(_))),
-        "expected the After request, got {} effects",
-        effects.len()
+        core.resolve(&mut after, ())
+            .expect("resolve After")
+            .is_empty()
     );
+    drop(subscription);
 }

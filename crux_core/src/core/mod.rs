@@ -172,7 +172,8 @@ where
                     drop(parent_guard);
                 }
             });
-            event_owner.spawn(move |_| ChildTracker::new(child_join, child_abort));
+            // A rejected tracker is dropped, cancelling the child before it runs.
+            let _ = event_owner.try_spawn(move |_| ChildTracker::new(child_join, child_abort));
             drop(event_owner);
 
             events.extend(root_command.events_with_origin());
