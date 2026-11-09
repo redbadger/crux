@@ -255,8 +255,8 @@ use slab::Slab;
 use stream::CommandStreamExt as _;
 
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
-pub use context::CommandContext;
 pub(crate) use context::CommandEvent;
+pub use context::{CommandContext, SpawnError};
 pub use executor::{AbortHandle, JoinHandle};
 pub use stream::CommandOutput;
 pub(crate) use structured_concurrency::{ChildTracker, ParentCompletionGuard};

@@ -84,7 +84,32 @@ impl Wake for CommandWaker {
 }
 // ANCHOR_END: command_waker
 
-/// A handle used to abort a Command remotely before it is complete
+/// A handle used to abort a Command remotely before it is complete.
+///
+/// Aborting a top-level command returned by [`App::update`](crate::App::update)
+/// also cancels its follow-up commands. This is not advised, because it can have
+/// unexpected consequences when an update aborts the command that produced the
+/// event update is currently handling:  the model changes still take effect, but
+/// the command returned by that update belongs to the aborted chain and is cancelled
+/// before it runs.
+///
+/// For example, suppose a fetch command emits `Fetched(value)` and the model
+/// holds that command's abort handle. An update arm like this changes the model,
+/// but its returned save command will not execute:
+///
+/// ```text
+/// Event::Fetched(value) => {
+///     model.value = value;
+///     model.fetch_abort.take().unwrap().abort();
+///     save(value)
+/// }
+/// ```
+///
+/// Events already emitted by the aborted command are still delivered to
+/// `update`; cancellation does not undo model changes or retract those events.
+/// Commands returned while handling those events remain part of the cancelled
+/// chain. Aborting only a child command, such as a subscription, does not abort
+/// its parent or the parent's pending `.then` continuation.
 #[derive(Clone)]
 pub struct AbortHandle {
     pub(crate) aborted: Arc<AtomicBool>,
