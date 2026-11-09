@@ -11,11 +11,15 @@ use std::task::{Context, Poll};
 
 use std::pin::Pin;
 
+use crate::core::{
+    Effect as EffectTrait, OperationKind, RuntimeContextId, RuntimeObservationContext,
+};
+
 use futures::{Sink, Stream, StreamExt as _};
 
 use thiserror::Error;
 
-use super::{Command, CommandContext, CommandEvent};
+use super::{Command, CommandContext, CommandEffect, CommandEvent};
 
 impl<Effect, Event> Command<Effect, Event>
 where
@@ -36,6 +40,46 @@ where
         IntoCommandStreamWithOrigin { command: self }
     }
 
+    /// Host this command inside another command context, observing its work as
+    /// part of the event identified by `event_context_id`.
+    ///
+    /// Like [`Self::host`], forwards effects and structured command events into
+    /// `host_context`, preserving event ownership so follow-up commands run in
+    /// the same command subtree.
+    ///
+    /// Additionally, assigns `event_context_id` as the parent of outputs that
+    /// have no identity yet, reporting effect starts and notifications before
+    /// forwarding them. Outputs already attributed by a nested event host keep
+    /// their identity and are not observed again.
+    ///
+    /// Reports the event's end after its command has been cleaned up. During
+    /// execution, sentinel links keep it alive until follow-up work finishes.
+    /// Core uses this for commands returned by `App::update`; combinators use
+    /// ordinary hosting.
+    pub(crate) fn host_observably(
+        self,
+        host_context: CommandContext<Effect, Event>,
+        event_context_id: RuntimeContextId,
+        observation_context: RuntimeObservationContext,
+    ) -> impl Future<Output = ()>
+    where
+        Effect: EffectTrait,
+    {
+        // Construct before the first poll so even an unpolled host owns its
+        // completion notification. The stream drops its command before reporting.
+        let stream = ObservableCommandStream {
+            command: Some(self),
+            event_context_id,
+            observation_context,
+        };
+        async move {
+            stream
+                .host(host_context)
+                .await
+                .expect("event host must be able to forward its outputs");
+        }
+    }
+
     /// Host this command inside another command context.
     ///
     /// Effects and structured command events emitted by `self` are forwarded
@@ -44,6 +88,83 @@ where
     /// command subtree.
     pub(crate) fn host(self, context: CommandContext<Effect, Event>) -> impl Future {
         self.into_stream_with_origin().host(context)
+    }
+}
+
+/// Attributes and observes outputs at an event's hosting boundary, preserving
+/// outputs already attributed by a nested event host.
+///
+/// Normal stream completion requires `Command::is_done()`, including joined
+/// follow-up work. On teardown, drop the command before reporting its end.
+struct ObservableCommandStream<Effect, Event> {
+    /// Always Some during execution. Drop takes the command out so its owned
+    /// tasks are destroyed before the observer receives the event-end notification.
+    command: Option<Command<Effect, Event>>,
+    /// Identity of the event whose command is hosted by this stream.
+    event_context_id: RuntimeContextId,
+    /// Shared observer and ID generator for this runtime's observations.
+    observation_context: RuntimeObservationContext,
+}
+
+impl<Effect, Event> Stream for ObservableCommandStream<Effect, Event>
+where
+    Effect: EffectTrait + Unpin,
+    Event: Unpin + Send + 'static,
+{
+    type Item = CommandOutput<CommandEffect<Effect>, CommandEvent<Effect, Event>>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+        let output = std::task::ready!(
+            this.command
+                .as_mut()
+                .expect("event command exists until stream teardown")
+                .stream_with_origin()
+                .poll_next_unpin(cx)
+        );
+        let Some(mut output) = output else {
+            return Poll::Ready(None);
+        };
+
+        match &mut output {
+            CommandOutput::Event(event) => {
+                event.parent_context_id.get_or_insert(this.event_context_id);
+            }
+            CommandOutput::Effect(effect) if effect.parent_context_id.is_none() => {
+                effect.parent_context_id = Some(this.event_context_id);
+                match effect.effect.kind() {
+                    OperationKind::Notify => {
+                        this.observation_context
+                            .observer
+                            .notification(this.event_context_id, effect.effect.name());
+                    }
+                    OperationKind::Request | OperationKind::Stream => {
+                        this.observation_context.observer.effect_started(
+                            this.observation_context
+                                .shared_context_id_generator
+                                .next_context_id(),
+                            this.event_context_id,
+                            effect.effect.name(),
+                        );
+                    }
+                }
+            }
+            CommandOutput::Effect(_) => {}
+        }
+        Poll::Ready(Some(output))
+    }
+}
+
+impl<Effect, Event> Drop for ObservableCommandStream<Effect, Event> {
+    fn drop(&mut self) {
+        // Do not rely on field drop order: owned tasks must be gone before
+        // notifying the observer. Sentinels request cancellation of follow-ups;
+        // during execution, child-held contexts keep this command alive until
+        // that cleanup finishes. Core teardown can drop hosts in any order.
+        drop(self.command.take());
+        self.observation_context
+            .observer
+            .event_ended(self.event_context_id);
     }
 }
 
@@ -74,7 +195,7 @@ where
             .poll_next_unpin(cx)
             .map(|output| {
                 output.map(|output| match output {
-                    CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
+                    CommandOutput::Effect(effect) => CommandOutput::Effect(effect.into_effect()),
                     CommandOutput::Event(event) => CommandOutput::Event(event.into_event()),
                 })
             })
@@ -96,7 +217,7 @@ where
     Effect: Unpin + Send + 'static,
     Event: Unpin + Send + 'static,
 {
-    type Item = CommandOutput<Effect, CommandEvent<Effect, Event>>;
+    type Item = CommandOutput<CommandEffect<Effect>, CommandEvent<Effect, Event>>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.command.waker.register(cx.waker());
@@ -135,7 +256,7 @@ where
     Effect: Unpin + Send + 'static,
     Event: Unpin + Send + 'static,
 {
-    type Item = CommandOutput<Effect, CommandEvent<Effect, Event>>;
+    type Item = CommandOutput<CommandEffect<Effect>, CommandEvent<Effect, Event>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -169,7 +290,7 @@ pub(crate) enum HostedCommandError {
     CannotSendEvent,
 }
 
-impl<Effect, Event> Sink<CommandOutput<Effect, CommandEvent<Effect, Event>>>
+impl<Effect, Event> Sink<CommandOutput<CommandEffect<Effect>, CommandEvent<Effect, Event>>>
     for CommandSink<Effect, Event>
 {
     type Error = HostedCommandError;
@@ -180,7 +301,7 @@ impl<Effect, Event> Sink<CommandOutput<Effect, CommandEvent<Effect, Event>>>
 
     fn start_send(
         self: Pin<&mut Self>,
-        item: CommandOutput<Effect, CommandEvent<Effect, Event>>,
+        item: CommandOutput<CommandEffect<Effect>, CommandEvent<Effect, Event>>,
     ) -> Result<(), Self::Error> {
         match item {
             CommandOutput::Effect(effect) => self
@@ -206,13 +327,16 @@ impl<Effect, Event> Sink<CommandOutput<Effect, CommandEvent<Effect, Event>>>
 }
 
 pub(crate) trait CommandStreamExt<Effect, Event>:
-    Stream<Item = CommandOutput<Effect, CommandEvent<Effect, Event>>>
+    Stream<Item = CommandOutput<CommandEffect<Effect>, CommandEvent<Effect, Event>>>
 {
     /// Forward this origin-preserving command stream into a command context.
     ///
     /// This is used to multiplex hosted or mapped commands into the effect and
     /// event queues of their host command.
-    fn host(self, context: CommandContext<Effect, Event>) -> impl Future
+    fn host(
+        self,
+        context: CommandContext<Effect, Event>,
+    ) -> impl Future<Output = Result<(), HostedCommandError>>
     where
         Self: Send + Sized,
     {
@@ -221,6 +345,6 @@ pub(crate) trait CommandStreamExt<Effect, Event>:
 }
 
 impl<S, Effect, Event> CommandStreamExt<Effect, Event> for S where
-    S: Stream<Item = CommandOutput<Effect, CommandEvent<Effect, Event>>>
+    S: Stream<Item = CommandOutput<CommandEffect<Effect>, CommandEvent<Effect, Event>>>
 {
 }
