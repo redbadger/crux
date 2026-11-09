@@ -29,8 +29,8 @@ pub struct CommandContext<Effect, Event> {
 // ANCHOR_END: command_context
 
 /// Event emitted by a Command, alongside the `CommandContext` of the
-/// Command which emitted it, so that follow-up commands can be
-/// spawned back on the same command.
+/// Command which emitted it, so that a sentinel task can join follow-up work
+/// on behalf of that command.
 #[allow(clippy::redundant_pub_crate)]
 pub(crate) struct CommandEvent<Effect, Event> {
     pub(crate) event: Event,
@@ -223,6 +223,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let task = Task {
             finished: Arc::default(),
             aborted: Arc::default(),
+            abort_waker: Arc::default(),
             future: future.boxed(),
             join_handle_wakers: receiver,
         };
@@ -230,6 +231,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let handle = JoinHandle {
             finished: task.finished.clone(),
             aborted: task.aborted.clone(),
+            abort_waker: task.abort_waker.clone(),
             register_waker: sender,
         };
 

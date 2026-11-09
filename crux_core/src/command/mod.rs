@@ -240,6 +240,7 @@ mod builder;
 mod context;
 mod executor;
 mod stream;
+mod structured_concurrency;
 
 use std::future::Future;
 use std::sync::Arc;
@@ -256,8 +257,9 @@ use stream::CommandStreamExt as _;
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
 pub use context::CommandContext;
 pub(crate) use context::CommandEvent;
-pub use executor::AbortHandle;
+pub use executor::{AbortHandle, JoinHandle};
 pub use stream::CommandOutput;
+pub(crate) use structured_concurrency::{ChildTracker, ParentCompletionGuard};
 
 use crate::Request;
 use crate::capability::Operation;
@@ -330,6 +332,7 @@ where
         let task = Task {
             finished: Arc::default(),
             aborted: aborted.clone(),
+            abort_waker: Arc::default(),
             future: create_task(context.clone()).boxed(),
             join_handle_wakers: waker_receiver,
         };
@@ -494,12 +497,8 @@ where
     /// Create a command running `self` and `other` in sequence.
     ///
     /// `other` starts after `self` settles. If `self` emits events and the app
-    /// returns follow-up commands from `App::update` for those events, those
-    /// follow-up commands are hosted by `self` and must also settle before
-    /// `other` starts.
-    // RFC: is this actually _useful_? Unlike `.then` on `CommandBuilder` this doesn't allow using
-    // the output of the first command in building the second one, it just runs them in sequence,
-    // and the benefit is unclear.
+    /// returns follow-up commands from `App::update` for those events, `self`
+    /// joins those commands and they must also settle before `other` starts.
     pub fn then(self, other: Self) -> Self
     where
         Effect: Unpin,
@@ -599,12 +598,14 @@ where
     ///
     /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
     /// events back to the app, and to spawn additional tasks. The closure is expected to return a future.
-    pub fn spawn<F, Fut>(&mut self, create_task: F)
+    ///
+    /// Returns a handle for awaiting or aborting the spawned task.
+    pub fn spawn<F, Fut>(&mut self, create_task: F) -> JoinHandle
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        self.context.spawn(create_task);
+        self.context.spawn(create_task)
     }
 
     /// Returns an abort handle which can be used to remotely terminate a running Command
@@ -616,6 +617,7 @@ where
     pub fn abort_handle(&self) -> AbortHandle {
         AbortHandle {
             aborted: self.aborted.clone(),
+            host_waker: self.waker.clone(),
         }
     }
 }
