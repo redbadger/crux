@@ -9,12 +9,12 @@ fail-fast = false
 # under `/tmp/.dotnet/shm`. The .NET PAL puts the mutex there whatever
 # `TMPDIR` and `DOTNET_CLI_HOME` say. If two builds start together, they race
 # for the mutex, and the loser stops before it compiles anything. The C#
-# protocol tests (each named for what it compiles) and the crux_core test that
-# compiles a protocol in every language run `dotnet build`, so they run one at
-# a time.
+# protocol tests (each named for what it compiles) and the crux_core tests that
+# compile a protocol in every language run `dotnet build`, so they run one at a
+# time.
 [test-groups]
 dotnet = { max-threads = 1 }
 
 [[profile.default.overrides]]
-filter = 'test(/csharp.*(compiles|behaves)/) | test(an_app_that_uses_one_operation_gets_the_protocol)'
+filter = 'test(/csharp.*(compiles|behaves)/) | test(an_app_that_uses_one_operation_gets_the_protocol) | test(/facet_shell_protocol_test::a_protocol_.*sink$/)'
 test-group = 'dotnet'

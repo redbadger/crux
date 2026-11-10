@@ -9,6 +9,11 @@
 //!
 //! Operations that declare no kind keep the old shape: the handler method is
 //! handed the request id and a `resolve` callback taking raw bytes.
+//!
+//! The sink is the same for every app, and a shell protocol can name it too.
+//! Thus [`EmitSink`] is also available to the
+//! [`ShellProtocolPlugin`](super::ShellProtocolPlugin), which emits the sink
+//! in the root module when this plugin does not emit it there.
 
 mod csharp;
 mod kotlin;
@@ -32,6 +37,44 @@ use facet_generate::{
 
 use super::{Matched, Requalify, bincode_import_path, matched, output_types, serializes_output};
 use crate::type_generation::facet::EffectMeta;
+
+/// Writes the generic `EffectSink` (`IEffectSink` in C#) in one language.
+///
+/// The text is the same for every app. [`EffectHandlerPlugin`] writes the
+/// sink after the primary effect. The
+/// [`ShellProtocolPlugin`](super::ShellProtocolPlugin) writes the sink in the
+/// root module when [`EffectHandlerPlugin`] does not write it there.
+pub trait EmitSink {
+    /// Writes the sink, after a blank line.
+    ///
+    /// # Errors
+    /// Returns an error if the write fails.
+    fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()>;
+}
+
+impl EmitSink for Swift {
+    fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
+        swift::emit_sink(w)
+    }
+}
+
+impl EmitSink for Kotlin {
+    fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
+        kotlin::emit_sink(w)
+    }
+}
+
+impl EmitSink for TypeScript {
+    fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
+        typescript::emit_sink(w)
+    }
+}
+
+impl EmitSink for CSharp {
+    fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
+        csharp::emit_sink(w)
+    }
+}
 
 /// Emits `EffectSink`, `EffectHandler` and `EffectDispatcher`.
 #[derive(Debug, Clone)]
