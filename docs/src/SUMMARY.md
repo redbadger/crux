@@ -11,6 +11,7 @@
 1. [The shell](./part-1/shell.md)
    1. [iOS/macOS](./part-1/shell/apple/index.md)
    1. [Android](./part-1/shell/android/index.md)
+      1. [Reducing APK size](./part-1/shell/android/android-apk-shrink.md)
    1. [React](./part-1/shell/web/react.md)
    1. [Leptos](./part-1/shell/web/leptos.md)
 
@@ -46,6 +47,7 @@
 
 # Guides
 
+1. [Upgrading from 0.20 to 0.21](./guide/upgrade-0.21.md)
 1. [Migrating crux_http to native http types](./guide/migrate-crux-http.md)
 1. [Handling crux_http rejections](./guide/http-rejections.md)
 1. [Migrating to per-operation types](./guide/migrate-per-operation-types.md)
