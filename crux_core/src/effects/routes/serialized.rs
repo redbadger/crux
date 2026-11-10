@@ -91,6 +91,9 @@ where
 
     /// Resume a serialized request and route any follow-up effects.
     ///
+    /// If the core no longer listens to a stream, the route ignores a new item
+    /// for that stream and returns `Ok(())`.
+    ///
     /// # Errors
     ///
     /// Returns an error if the request could not be resumed.
