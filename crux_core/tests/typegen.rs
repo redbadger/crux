@@ -416,8 +416,8 @@ mod facet_test {
                 "public Example.Shared.OperationKind? OperationKind => this switch",
                 "public interface IEffectSink<in T>",
                 "public interface IEffectHandler",
-                "Task<GetResult> Get(Example.Shared.Get operation);",
-                "void Subscribe(Example.Shared.Subscribe operation, IEffectSink<Message> sink);",
+                "Task<Example.Shared.GetResult> Get(Example.Shared.Get operation);",
+                "void Subscribe(Example.Shared.Subscribe operation, IEffectSink<Example.Shared.Message> sink);",
                 "void Legacy(Example.Shared.Legacy operation, uint requestId, Action<byte[]> resolve);",
                 "public sealed class EffectDispatcher",
                 "public void Dispatch(Example.Shared.Request request)",
@@ -433,7 +433,7 @@ mod facet_test {
                 "public sealed class Core : INotifyPropertyChanged",
                 "public event PropertyChangedEventHandler? PropertyChanged;",
                 "public Core(ICoreBridge bridge, IEffectHandler handler)",
-                "public void Update(Event @event)",
+                "public void Update(Example.Shared.Event @event)",
                 "public void Process(byte[] bytes)",
                 "public void Process(IReadOnlyList<Example.Shared.Request> requests)",
             ],
@@ -1932,5 +1932,660 @@ public sealed class InMemoryStoreHandler : IStoreHandler
             .expect("c# type generation should succeed");
 
         dotnet_build(dir.path());
+    }
+}
+
+#[cfg(feature = "facet_typegen")]
+mod facet_shell_protocol_test {
+    // `#[derive(Facet)]` generates `unsafe` methods.
+    #![allow(clippy::unsafe_derive_deserialize)]
+
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        process::Command,
+    };
+
+    use crux_core::{
+        Command as CruxCommand,
+        macros::{Operation, effect},
+        render::RenderOperation,
+        type_generation::facet::{
+            CodeGenerator, Config, ShellExtension, ShellProtocol, ShellSource, TypeGenError,
+            TypeRegistry,
+        },
+    };
+    use facet::Facet;
+    use serde::{Deserialize, Serialize};
+
+    // -----------------------------------------------------------------------
+    // A capability with a protocol: two operations that name it, and an output
+    // -----------------------------------------------------------------------
+
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(
+        request,
+        output = StoreResult,
+        protocol = crate::facet_shell_protocol_test::STORE
+    )]
+    pub struct StoreGet {
+        pub key: String,
+    }
+
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(
+        request,
+        output = StoreResult,
+        protocol = crate::facet_shell_protocol_test::STORE
+    )]
+    pub struct StoreRemove {
+        pub key: String,
+    }
+
+    #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+    pub struct StoreResult {
+        pub value: Vec<u8>,
+    }
+
+    /// What the capability crate does in its `shell` module: register every
+    /// operation, so that the protocol's types exist whichever ones the app
+    /// uses.
+    fn register_store(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+        use crux_core::capability::Operation as _;
+
+        StoreGet::register_types_facet(registry)?;
+        StoreRemove::register_types_facet(registry)
+    }
+
+    const SWIFT_PROTOCOL: &str = r"import Foundation
+
+public protocol StoreHandler: Sendable {
+    func get(_ operation: StoreGet) async -> StoreResult
+    func remove(_ operation: StoreRemove) async -> StoreResult
+}
+";
+
+    const KOTLIN_PROTOCOL: &str = r"interface StoreHandler {
+    suspend fun get(operation: StoreGet): StoreResult
+    suspend fun remove(operation: StoreRemove): StoreResult
+}
+";
+
+    const TYPESCRIPT_PROTOCOL: &str = r"export interface StoreHandler {
+  get(operation: StoreGet): Promise<StoreResult>;
+  remove(operation: StoreRemove): Promise<StoreResult>;
+}
+";
+
+    const CSHARP_PROTOCOL: &str = r"using System.Threading.Tasks;
+
+public interface IStoreHandler
+{
+    Task<StoreResult> Get(StoreGet operation);
+    Task<StoreResult> Remove(StoreRemove operation);
+}
+";
+
+    pub static STORE: ShellProtocol = ShellProtocol::new("Store")
+        .rust_types(register_store)
+        .swift(SWIFT_PROTOCOL, &["StoreHandler"])
+        .kotlin(KOTLIN_PROTOCOL, &["StoreHandler"])
+        .typescript(TYPESCRIPT_PROTOCOL, &["StoreHandler"])
+        .csharp(CSHARP_PROTOCOL, &["IStoreHandler"]);
+
+    // -----------------------------------------------------------------------
+    // A second capability with a protocol, which the app does not use
+    // -----------------------------------------------------------------------
+
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(notify, protocol = crate::facet_shell_protocol_test::BEEPER)]
+    pub struct Beep;
+
+    fn register_beeper(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+        use crux_core::capability::Operation as _;
+
+        Beep::register_types_facet(registry)
+    }
+
+    pub static BEEPER: ShellProtocol = ShellProtocol::new("Beeper")
+        .rust_types(register_beeper)
+        .swift(
+            "public protocol BeeperHandler { func beep(_ operation: Beep) async }\n",
+            &["BeeperHandler"],
+        )
+        .typescript(
+            "export interface BeeperHandler { beep(operation: Beep): Promise<void>; }\n",
+            &["BeeperHandler"],
+        );
+
+    // -----------------------------------------------------------------------
+    // Apps
+    // -----------------------------------------------------------------------
+
+    #[derive(Facet)]
+    #[repr(C)]
+    pub enum Event {
+        None,
+    }
+
+    #[derive(Facet)]
+    pub struct ViewModel;
+
+    /// Uses one operation of the capability.
+    pub mod one_op {
+        use super::{CruxCommand, Event, RenderOperation, StoreGet, ViewModel, effect};
+
+        #[effect(facet_typegen)]
+        pub enum Effect {
+            Render(RenderOperation),
+            Get(StoreGet),
+        }
+
+        #[derive(Default)]
+        pub struct App;
+
+        impl crux_core::App for App {
+            type Event = Event;
+            type Model = ();
+            type ViewModel = ViewModel;
+            type Effect = Effect;
+
+            fn update(&self, _event: Event, _model: &mut ()) -> CruxCommand<Effect, Event> {
+                CruxCommand::done()
+            }
+
+            fn view(&self, _model: &()) -> ViewModel {
+                ViewModel
+            }
+        }
+    }
+
+    /// Uses both operations of the capability.
+    pub mod two_ops {
+        use super::{
+            CruxCommand, Event, RenderOperation, StoreGet, StoreRemove, ViewModel, effect,
+        };
+
+        #[effect(facet_typegen)]
+        pub enum Effect {
+            Render(RenderOperation),
+            Get(StoreGet),
+            Remove(StoreRemove),
+        }
+
+        #[derive(Default)]
+        pub struct App;
+
+        impl crux_core::App for App {
+            type Event = Event;
+            type Model = ();
+            type ViewModel = ViewModel;
+            type Effect = Effect;
+
+            fn update(&self, _event: Event, _model: &mut ()) -> CruxCommand<Effect, Event> {
+                CruxCommand::done()
+            }
+
+            fn view(&self, _model: &()) -> ViewModel {
+                ViewModel
+            }
+        }
+    }
+
+    /// Uses no operation that has a protocol.
+    pub mod no_ops {
+        use super::{CruxCommand, Event, RenderOperation, ViewModel, effect};
+
+        #[effect(facet_typegen)]
+        pub enum Effect {
+            Render(RenderOperation),
+        }
+
+        #[derive(Default)]
+        pub struct App;
+
+        impl crux_core::App for App {
+            type Event = Event;
+            type Model = ();
+            type ViewModel = ViewModel;
+            type Effect = Effect;
+
+            fn update(&self, _event: Event, _model: &mut ()) -> CruxCommand<Effect, Event> {
+                CruxCommand::done()
+            }
+
+            fn view(&self, _model: &()) -> ViewModel {
+                ViewModel
+            }
+        }
+    }
+
+    /// A type in a namespace of its own, so that the generated package has
+    /// more than one module.
+    #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+    #[facet(facet_generate_attrs::namespace = "Kit")]
+    pub struct Tag {
+        pub label: String,
+    }
+
+    /// A type with the name that the protocol declares, for the clash test.
+    #[derive(Facet)]
+    pub struct StoreHandler {
+        pub whoops: String,
+    }
+
+    /// An extension with the name of the protocol, for the clash test.
+    static STORE_EXTENSION: ShellExtension = ShellExtension::new("store")
+        .foreign_types(&["InMemoryStore"])
+        .swift(ShellSource::stdlib("public struct InMemoryStore {}\n"));
+
+    /// An extension that declares the name the protocol declares.
+    static HANDLER_EXTENSION: ShellExtension = ShellExtension::new("Handlers")
+        .foreign_types(&["StoreHandler"])
+        .swift(ShellSource::stdlib("public protocol StoreHandler {}\n"));
+
+    fn one_op() -> CodeGenerator {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<one_op::App>()
+            .expect("should register the app");
+        registry.build().expect("should build the registry")
+    }
+
+    fn message_of(result: Result<CodeGenerator, TypeGenError>) -> String {
+        match result {
+            Ok(_) => panic!("should reject the registry"),
+            Err(TypeGenError::Generation(message)) => message,
+            Err(error) => panic!("expected a generation error, got {error:?}"),
+        }
+    }
+
+    fn has_type(generator: CodeGenerator, name: &str) -> bool {
+        generator.registry().keys().any(|key| key.name == name)
+    }
+
+    // -----------------------------------------------------------------------
+    // Toolchains
+    // -----------------------------------------------------------------------
+
+    /// Whether a toolchain that this test cannot find is a failure, not a
+    /// skip. Set `CRUX_REQUIRE_SHELL_TOOLCHAINS` where every toolchain is
+    /// installed, so that a skip cannot hide a source that does not compile.
+    fn toolchains_required() -> bool {
+        std::env::var_os("CRUX_REQUIRE_SHELL_TOOLCHAINS").is_some_and(|value| !value.is_empty())
+    }
+
+    /// Reports a toolchain that the test did not find: a failure when
+    /// `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set, and a printed skip if not.
+    fn unavailable(missing: &str, consequence: &str) {
+        assert!(
+            !toolchains_required(),
+            "{missing}, so {consequence}. CRUX_REQUIRE_SHELL_TOOLCHAINS is set, so a missing \
+             toolchain fails rather than skips: install it, or unset the variable."
+        );
+        println!("skipping: {missing}, so {consequence}");
+    }
+
+    /// Runs `program` in `dir` and asserts that it succeeded. A program that
+    /// is not on `PATH` goes to [`unavailable`].
+    fn build(program: &str, args: &[&std::ffi::OsStr], dir: &Path) {
+        match Command::new(program).current_dir(dir).args(args).output() {
+            Ok(output) => assert!(
+                output.status.success(),
+                "`{program}` failed:\n{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                unavailable(
+                    &format!("`{program}` is not on PATH"),
+                    "the generated code is not compiled",
+                );
+            }
+            Err(e) => panic!("could not run `{program}`: {e}"),
+        }
+    }
+
+    /// Compiles the generated Kotlin package directories under `dir` with
+    /// `kotlinc`. It does not compile `dir` itself, because `kotlinc` would
+    /// then try to compile the `build.gradle.kts` file in it.
+    fn kotlinc_build(dir: &Path) {
+        let Some(coroutines) = coroutines_jar() else {
+            unavailable(
+                "there is no kotlinx-coroutines-core jar in KOTLINX_COROUTINES_JAR or under \
+                 ~/.gradle or ~/.m2, and `kotlinc` ships only the standard library",
+                "the generated Kotlin is not compiled",
+            );
+            return;
+        };
+
+        let mut args: Vec<std::ffi::OsString> = fs::read_dir(dir)
+            .expect("should read the generated package")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .map(PathBuf::into_os_string)
+            .collect();
+        args.sort();
+        args.extend([
+            "-classpath".into(),
+            coroutines.into_os_string(),
+            "-d".into(),
+            dir.join("classes.jar").into_os_string(),
+        ]);
+        let args: Vec<&std::ffi::OsStr> = args.iter().map(std::ffi::OsString::as_os_str).collect();
+        build("kotlinc", &args, dir);
+    }
+
+    /// Finds a `kotlinx-coroutines-core` jar, which the generated Kotlin
+    /// imports. Gradle and Maven keep one under the home directory after a
+    /// build that uses it. Set `KOTLINX_COROUTINES_JAR` to use a jar in a
+    /// different location.
+    fn coroutines_jar() -> Option<PathBuf> {
+        if let Ok(jar) = std::env::var("KOTLINX_COROUTINES_JAR") {
+            return Some(PathBuf::from(jar));
+        }
+
+        let home = PathBuf::from(std::env::var("HOME").ok()?);
+        [
+            home.join(
+                ".gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm",
+            ),
+            home.join(".m2/repository/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm"),
+        ]
+        .iter()
+        .find_map(|root| find_jar(root, 4))
+    }
+
+    /// The first jar under `dir`, no deeper than `depth`, without the
+    /// `-sources` jars.
+    fn find_jar(dir: &Path, depth: usize) -> Option<PathBuf> {
+        if depth == 0 {
+            return None;
+        }
+
+        let mut entries: Vec<_> = fs::read_dir(dir)
+            .ok()?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .collect();
+        entries.sort();
+
+        entries.iter().find_map(|path| {
+            let name = path.file_name()?.to_str()?;
+            if path.is_dir() {
+                find_jar(path, depth - 1)
+            } else {
+                let jar = path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("jar"));
+                (jar && !name.ends_with("-sources.jar")).then(|| path.clone())
+            }
+        })
+    }
+
+    /// Type-checks a generated TypeScript package again with `tsc`, and
+    /// asserts that it succeeded. `typescript()` runs `tsc` too, but it does
+    /// not check the exit status.
+    fn tsc_build(dir: &Path) {
+        build(
+            "pnpm",
+            &["exec", "tsc", "--build", "--force"].map(std::ffi::OsStr::new),
+            dir,
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Emission
+    // -----------------------------------------------------------------------
+
+    /// An app that uses one operation of a capability gets the protocol of
+    /// the capability in every language, with no registration, and the
+    /// result compiles.
+    #[test]
+    fn an_app_that_uses_one_operation_gets_the_protocol() {
+        let generator = one_op();
+
+        let swift = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .swift(&Config::builder("App", swift.path()).build())
+            .expect("swift type generation should succeed");
+        let shipped = fs::read_to_string(swift.path().join("App/Sources/App/Store.swift"))
+            .expect("should write the protocol beside the module");
+        assert!(
+            shipped.contains(SWIFT_PROTOCOL),
+            "expected the protocol unchanged:\n{shipped}"
+        );
+        assert!(
+            shipped.contains("import Serde"),
+            "no module header:\n{shipped}"
+        );
+        build(
+            "swift",
+            &["build"].map(std::ffi::OsStr::new),
+            &swift.path().join("App"),
+        );
+
+        let kotlin = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .kotlin(&Config::builder("com.example.shared", kotlin.path()).build())
+            .expect("kotlin type generation should succeed");
+        let shipped = fs::read_to_string(kotlin.path().join("com/example/shared/Store.kt"))
+            .expect("should write the protocol beside the module");
+        assert!(shipped.starts_with("package com.example.shared\n"));
+        assert!(shipped.contains(KOTLIN_PROTOCOL));
+        kotlinc_build(kotlin.path());
+
+        let csharp = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .csharp(&Config::builder("Example.Shared", csharp.path()).build())
+            .expect("c# type generation should succeed");
+        let shipped = fs::read_to_string(csharp.path().join("Example/Shared/Store.cs"))
+            .expect("should write the protocol beside the module");
+        assert!(shipped.contains(CSHARP_PROTOCOL));
+        build(
+            "dotnet",
+            &["build", "--nologo"].map(std::ffi::OsStr::new),
+            csharp.path(),
+        );
+
+        let typescript = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .typescript(&Config::builder("shared_types", typescript.path()).build())
+            .expect("typescript type generation should succeed");
+        let module = fs::read_to_string(typescript.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+        assert!(module.contains(TYPESCRIPT_PROTOCOL));
+        tsc_build(typescript.path());
+    }
+
+    /// The protocol names every operation of the capability, so the app gets
+    /// all of their types, including the ones that it never sends.
+    #[test]
+    fn an_app_that_uses_one_operation_gets_every_type_of_the_capability() {
+        assert!(has_type(one_op(), "StoreRemove"));
+    }
+
+    #[test]
+    fn an_app_that_does_not_use_the_capability_gets_nothing() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<no_ops::App>()
+            .expect("should register the app");
+        let generator = registry.build().expect("should build the registry");
+
+        let swift = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .swift(&Config::builder("App", swift.path()).build())
+            .expect("swift type generation should succeed");
+        assert!(!swift.path().join("App/Sources/App/Store.swift").exists());
+        assert!(!swift.path().join("App/Sources/App/Beeper.swift").exists());
+
+        let typescript = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .typescript(&Config::builder("shared_types", typescript.path()).build())
+            .expect("typescript type generation should succeed");
+        let module = fs::read_to_string(typescript.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+        assert!(
+            !module.contains("StoreHandler"),
+            "unexpected module:\n{module}"
+        );
+
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<no_ops::App>()
+            .expect("should register the app");
+        assert!(!has_type(
+            registry.build().expect("should build the registry"),
+            "StoreGet"
+        ));
+    }
+
+    /// Each operation registers the protocol, and the protocol registers each
+    /// operation. The protocol is still recorded once, and emitted once.
+    #[test]
+    fn two_operations_of_one_capability_give_one_protocol() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<two_ops::App>()
+            .expect("should register the app")
+            .shell_protocol(&STORE)
+            .expect("should register the protocol again");
+        let generator = registry.build().expect("should build the registry");
+
+        let typescript = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .typescript(&Config::builder("shared_types", typescript.path()).build())
+            .expect("typescript type generation should succeed");
+        let module = fs::read_to_string(typescript.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+        assert_eq!(
+            module.matches("export interface StoreHandler").count(),
+            1,
+            "expected the protocol once:\n{module}"
+        );
+        tsc_build(typescript.path());
+    }
+
+    /// The protocol goes once into the footer of the root module, after every
+    /// type, and not into a namespaced module.
+    #[test]
+    fn typescript_writes_the_protocol_after_the_types_of_the_root_module() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<one_op::App>()
+            .expect("should register the app")
+            .register_type::<Tag>()
+            .expect("should register the namespaced type");
+        let generator = registry.build().expect("should build the registry");
+
+        let typescript = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .typescript(&Config::builder("shared_types", typescript.path()).build())
+            .expect("typescript type generation should succeed");
+
+        let module = fs::read_to_string(typescript.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+        let protocol = module
+            .find(TYPESCRIPT_PROTOCOL)
+            .expect("expected the protocol in the root module");
+        assert_eq!(module.matches(TYPESCRIPT_PROTOCOL).count(), 1);
+        for declaration in [
+            "export class StoreGet",
+            "export class StoreRemove",
+            "export class StoreResult",
+            "export class Core",
+        ] {
+            let at = module
+                .find(declaration)
+                .unwrap_or_else(|| panic!("expected `{declaration}`:\n{module}"));
+            assert!(
+                at < protocol,
+                "the protocol should come after `{declaration}`:\n{module}"
+            );
+        }
+
+        let kit = fs::read_to_string(typescript.path().join("Kit.ts"))
+            .expect("should write the namespaced module");
+        assert!(!kit.contains("StoreHandler"), "unexpected module:\n{kit}");
+
+        let swift = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .swift(&Config::builder("App", swift.path()).build())
+            .expect("swift type generation should succeed");
+        assert!(swift.path().join("App/Sources/App/Store.swift").exists());
+        assert!(!swift.path().join("App/Sources/Kit/Store.swift").exists());
+
+        tsc_build(typescript.path());
+    }
+
+    // -----------------------------------------------------------------------
+    // Name checks
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn a_type_cannot_take_a_name_that_the_protocol_declares() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<one_op::App>()
+            .expect("should register the app")
+            .register_type::<StoreHandler>()
+            .expect("should register the type");
+
+        let message = message_of(registry.build());
+        assert!(
+            message.contains("`StoreHandler` is declared by the `Store` shell protocol"),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn a_protocol_and_an_extension_cannot_share_a_file_name() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<one_op::App>()
+            .expect("should register the app")
+            .shell_extension(&STORE_EXTENSION)
+            .expect("should register the extension");
+
+        let message = message_of(registry.build());
+        assert!(
+            message.contains("shell extension `store` is registered after shell protocol `Store`"),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn a_protocol_and_an_extension_cannot_declare_the_same_name() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<one_op::App>()
+            .expect("should register the app")
+            .shell_extension(&HANDLER_EXTENSION)
+            .expect("should register the extension");
+
+        let message = message_of(registry.build());
+        assert!(
+            message.contains(
+                "shell protocol `Store` and shell extension `Handlers` both declare `StoreHandler`"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn a_protocol_cannot_be_named_after_the_module_it_is_written_beside() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let error = one_op()
+            .csharp(&Config::builder("Example.Store", dir.path()).build())
+            .expect_err("should reject the package that would be overwritten");
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains("`Store` shell protocol"),
+            "unexpected message: {message}"
+        );
     }
 }

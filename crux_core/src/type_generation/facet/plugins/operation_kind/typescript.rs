@@ -6,7 +6,7 @@
 
 use std::io;
 
-use facet_generate::generation::{indent::IndentWrite, plugin::EmitContext};
+use facet_generate::generation::{indent::IndentWrite, plugin::EmitContext, typescript::write_doc};
 
 use super::Matched;
 use crate::type_generation::facet::plugins::lower_camel;
@@ -20,13 +20,12 @@ pub(super) fn emit(w: &mut dyn IndentWrite, m: &Matched<'_>, _ctx: &EmitContext)
 
 fn emit_kind(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// How many times the shell is expected to resolve a request:"
-    )?;
-    writeln!(
-        w,
-        "/// `notify` never, `request` exactly once, `stream` any number of times."
+        &[
+            "How many times the shell is expected to resolve a request:",
+            "`notify` never, `request` exactly once, `stream` any number of times.",
+        ],
     )?;
     writeln!(
         w,
@@ -41,13 +40,12 @@ fn emit_accessor(w: &mut dyn IndentWrite, m: &Matched<'_>) -> io::Result<()> {
     let function = format!("{}OperationKind", lower_camel(effect));
 
     writeln!(w)?;
-    writeln!(
+    write_doc(
         w,
-        "/// How many times the shell resolves a request carrying this effect,"
-    )?;
-    writeln!(
-        w,
-        "/// or `undefined` when the operation leaves that to the call site."
+        &[
+            "How many times the shell resolves a request carrying this effect,",
+            "or `undefined` when the operation leaves that to the call site.",
+        ],
     )?;
     writeln!(
         w,
