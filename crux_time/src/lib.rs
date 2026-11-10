@@ -111,9 +111,7 @@ where
         // in the shell.
         let builder = RequestBuilder::new(move |ctx| {
             async move {
-                if let Ok(Some(cleared_id)) = receiver.try_recv()
-                    && cleared_id == timer_id
-                {
+                if receiver.try_recv() == Ok(Some(())) {
                     return TimerOutcome::Cleared;
                 }
 
@@ -138,14 +136,14 @@ where
                         // which signals `is_terminated` true in that case,
                         // so this branch of the select will
                         // never run for the Err case
-                        let cleared_id = cleared.unwrap();
+                        cleared.unwrap();
 
                         // Follow up by asking the shell to clear the timer
-                        let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: cleared_id }).await else {
+                        let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: timer_id }).await else {
                             panic!("Unexpected response to TimeRequest::Clear");
                         };
 
-                        assert!(id == cleared_id, "Cleared with unexpected timer ID");
+                        assert!(id == timer_id, "Cleared with unexpected timer ID");
 
                         TimerOutcome::Cleared
                     }
@@ -181,9 +179,7 @@ where
         let completed_handle = CompletedTimerHandle { timer_id };
 
         let builder = RequestBuilder::new(move |ctx| async move {
-            if let Ok(Some(cleared_id)) = receiver.try_recv()
-                && cleared_id == timer_id
-            {
+            if receiver.try_recv() == Ok(Some(())) {
                 return TimerOutcome::Cleared;
             }
 
@@ -208,17 +204,14 @@ where
                     // which signals `is_terminated` true in that case,
                     // so this branch of the select will
                     // never run for the Err case
-                    let cleared_id = cleared.unwrap();
-                    if cleared_id != timer_id {
-                        unreachable!("Cleared with the wrong ID");
-                    }
+                    cleared.unwrap();
 
                     // Follow up by asking the shell to clear the timer
-                    let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: cleared_id }).await else {
+                    let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: timer_id }).await else {
                         panic!("Unexpected response to TimeRequest::Clear");
                     };
 
-                    assert!(id == cleared_id, "Cleared resolved with unexpected timer ID");
+                    assert!(id == timer_id, "Cleared resolved with unexpected timer ID");
 
                     TimerOutcome::Cleared
                 }
@@ -234,7 +227,7 @@ where
 #[derive(Debug)]
 pub struct TimerHandle {
     timer_id: TimerId,
-    abort: Sender<TimerId>,
+    abort: Sender<()>,
 }
 
 impl TimerHandle {
@@ -256,7 +249,7 @@ impl TimerHandle {
     /// request. The stream yields [`TimerOutcome::Cleared`] once the shell has
     /// answered, and then ends.
     pub fn clear(self) {
-        let _ = self.abort.send(self.timer_id);
+        let _ = self.abort.send(());
     }
 }
 

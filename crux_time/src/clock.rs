@@ -112,9 +112,7 @@ where
         // they are a developer error and suggest something quite wrong with the time
         // implementation in the shell.
         let builder = RequestBuilder::new(move |ctx| async move {
-            if let Ok(Some(cleared_id)) = receiver.try_recv()
-                && cleared_id == timer_id
-            {
+            if receiver.try_recv() == Ok(Some(())) {
                 return TimerOutcome::Cleared;
             }
 
@@ -135,15 +133,13 @@ where
                     // which signals `is_terminated` true in that case,
                     // so this branch of the select will
                     // never run for the Err case
-                    let cleared_id = cleared.unwrap();
-
-                    assert_eq!(cleared_id, timer_id, "cleared with an unexpected timer ID");
+                    cleared.unwrap();
 
                     // Ask the shell to clear the timer, so it can clean up, and
                     // wait for it to say it has.
-                    let id = ctx.request_from_shell(operation::Clear { id: cleared_id }).await;
+                    let id = ctx.request_from_shell(operation::Clear { id: timer_id }).await;
 
-                    assert_eq!(id, cleared_id, "Clear resolved with an unexpected timer ID");
+                    assert_eq!(id, timer_id, "Clear resolved with an unexpected timer ID");
 
                     TimerOutcome::Cleared
                 }
@@ -180,9 +176,7 @@ where
         let completed_handle = CompletedTimerHandle { timer_id };
 
         let builder = RequestBuilder::new(move |ctx| async move {
-            if let Ok(Some(cleared_id)) = receiver.try_recv()
-                && cleared_id == timer_id
-            {
+            if receiver.try_recv() == Ok(Some(())) {
                 return TimerOutcome::Cleared;
             }
 
@@ -203,15 +197,13 @@ where
                     // which signals `is_terminated` true in that case,
                     // so this branch of the select will
                     // never run for the Err case
-                    let cleared_id = cleared.unwrap();
-
-                    assert_eq!(cleared_id, timer_id, "cleared with an unexpected timer ID");
+                    cleared.unwrap();
 
                     // Ask the shell to clear the timer, so it can clean up, and
                     // wait for it to say it has.
-                    let id = ctx.request_from_shell(operation::Clear { id: cleared_id }).await;
+                    let id = ctx.request_from_shell(operation::Clear { id: timer_id }).await;
 
-                    assert_eq!(id, cleared_id, "Clear resolved with an unexpected timer ID");
+                    assert_eq!(id, timer_id, "Clear resolved with an unexpected timer ID");
 
                     TimerOutcome::Cleared
                 }
@@ -295,8 +287,7 @@ where
             let timer = async move {
                 // If the app cleared the timer before the first poll, the shell
                 // never hears of it.
-                if let Ok(Some(cleared_id)) = receiver.try_recv() {
-                    assert_eq!(cleared_id, timer_id, "cleared with an unexpected timer ID");
+                if receiver.try_recv() == Ok(Some(())) {
                     let _ = items.unbounded_send(TimerOutcome::Cleared);
                     return;
                 }
@@ -318,8 +309,7 @@ where
                         // If the app dropped the handle, `cleared` resolves with an
                         // error and is then terminated, so the loop waits for
                         // ticks only.
-                        cleared_id = cleared => if let Ok(cleared_id) = cleared_id {
-                            assert_eq!(cleared_id, timer_id, "cleared with an unexpected timer ID");
+                        cleared = cleared => if cleared.is_ok() {
                             break;
                         },
                     }
