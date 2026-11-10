@@ -1,7 +1,9 @@
 import type {
   ClearTimer,
+  EffectSink,
   NotifyAfter,
   NotifyAt,
+  NotifyEvery,
   TimeHandler,
   TimerId,
 } from "shared_types/app";
@@ -10,20 +12,21 @@ import { Instant } from "shared_types/app";
 /**
  * The app's `TimeHandler`, over `window.setTimeout`.
  *
- * The handler answers each timer exactly once, with the id of the timer. If a
- * `ClearTimer` arrives first, the handler cancels the timeout and settles the
- * pending promise immediately. The core ignores that answer, because it no
- * longer listens for it.
+ * The handler answers each one-shot timer exactly once, with the id of the
+ * timer. If a `ClearTimer` arrives first, the handler cancels the timeout and
+ * settles the pending promise immediately. The core ignores that answer,
+ * because it no longer listens for it.
+ *
+ * A repeating timer is a `window.setInterval` that sends the id of the timer
+ * into the sink once per period, until a `ClearTimer` cancels the interval.
  */
 export class WindowTimeHandler implements TimeHandler {
   /**
-   * The live timeouts, so that a `ClearTimer` can cancel the timeout that it
-   * names. Each entry also holds the `resolve` of its pending promise.
+   * The live timers, so that a `ClearTimer` can cancel the timer that it
+   * names. Each entry is the function that cancels its timer. For a one-shot
+   * timer, that function also settles the pending promise.
    */
-  private readonly timers = new Map<
-    bigint,
-    { handle: number; resolve: (id: TimerId) => void }
-  >();
+  private readonly timers = new Map<bigint, () => void>();
 
   async now(): Promise<Instant> {
     const millis = Date.now();
@@ -46,14 +49,27 @@ export class WindowTimeHandler implements TimeHandler {
     );
   }
 
+  notifyEvery(operation: NotifyEvery, sink: EffectSink<TimerId>): void {
+    const id = operation.id;
+    const timerId = id.value;
+    // A period under one millisecond becomes one millisecond.
+    const millis = Math.max(
+      1,
+      Number(operation.period.nanos / BigInt(1_000_000)),
+    );
+    console.debug(`time: start every ${millis}ms (id=${timerId})`);
+
+    const handle = window.setInterval(() => sink.send(id), millis);
+    this.timers.set(timerId, () => window.clearInterval(handle));
+  }
+
   async clear(operation: ClearTimer): Promise<TimerId> {
     const timerId = operation.id.value;
     console.debug(`time: clear (id=${timerId})`);
-    const timer = this.timers.get(timerId);
-    if (timer !== undefined) {
-      window.clearTimeout(timer.handle);
+    const cancel = this.timers.get(timerId);
+    if (cancel !== undefined) {
       this.timers.delete(timerId);
-      timer.resolve(operation.id);
+      cancel();
     }
     return operation.id;
   }
@@ -68,7 +84,10 @@ export class WindowTimeHandler implements TimeHandler {
         console.debug(`time: elapsed (id=${timerId})`);
         resolve(id);
       }, millis);
-      this.timers.set(timerId, { handle, resolve });
+      this.timers.set(timerId, () => {
+        window.clearTimeout(handle);
+        resolve(id);
+      });
     });
   }
 }

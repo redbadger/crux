@@ -36,6 +36,12 @@ and this project adheres to
   The shell answers with `id` once per period until a `ClearTimer` request for that
   `id` arrives, or until a resolve returns an error.
 
+  `NotifyEvery` is part of the shell protocol. `TimeHandler` (`ITimeHandler` in
+  C#) has a `notifyEvery` method (`NotifyEvery` in C#) with the shape of the
+  generated `EffectHandler` method for a stream: it takes the operation and an
+  `EffectSink<TimerId>` (`IEffectSink<TimerId>` in C#), and returns nothing. A
+  shell that implements `TimeHandler` must add this method.
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_time-v0.18.0...crux_time-v0.19.0) - 2026-09-06
 
 ### 💥 Breaking Changes

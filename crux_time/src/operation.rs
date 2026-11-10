@@ -61,9 +61,10 @@ pub struct NotifyAfter {
 /// This operation is a stream. The shell answers with `id` once per period.
 /// The shell continues until a [`ClearTimer`] request for `id` arrives, or until a
 /// resolve returns an error. An error tells the shell that the core no longer
-/// listens for the ticks.
+/// listens for the ticks. Only a Rust shell that holds the request sees that
+/// error, and a shell behind the bridge sees none.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[operation(stream, output = TimerId)]
+#[operation(stream, output = TimerId, protocol = crate::shell::PROTOCOL)]
 pub struct NotifyEvery {
     pub id: TimerId,
     pub period: Duration,

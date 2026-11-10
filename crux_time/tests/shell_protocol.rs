@@ -70,8 +70,8 @@ const KOTLIN: (&str, &str) = ("Time.kt", "interface TimeHandler {");
 const TYPESCRIPT: &str = "export interface TimeHandler {";
 const CSHARP: (&str, &str) = ("Time.cs", "public interface ITimeHandler");
 
-/// A type of an operation that the app does not send.
-const UNSENT: &str = "ClearTimer";
+/// Types of operations that the app does not send.
+const UNSENT: &[&str] = &["ClearTimer", "NotifyEvery"];
 
 /// The declaration of the sink in each language.
 const SINK_DECLARATIONS: &[&str] = &[
@@ -332,5 +332,10 @@ fn the_csharp_protocol_compiles() {
 #[test]
 fn the_app_gets_every_type_of_the_capability() {
     let registry = generator().registry();
-    assert!(registry.keys().any(|name| name.name == UNSENT));
+    for unsent in UNSENT {
+        assert!(
+            registry.keys().any(|name| name.name == *unsent),
+            "the app should get `{unsent}`"
+        );
+    }
 }

@@ -6,12 +6,16 @@ private nonisolated let logger = Log.time
 
 /// The app's `TimeHandler`, over `Task.sleep`.
 ///
-/// The handler answers each timer exactly once, with the id of the timer. If
-/// `clear` arrives first, it cancels the sleeping task, and the pending call
-/// then answers immediately. The core ignores that answer, because it no
-/// longer listens for it.
+/// The handler answers each one-shot timer exactly once, with the id of the
+/// timer. If `clear` arrives first, it cancels the sleeping task, and the
+/// pending call then answers immediately. The core ignores that answer,
+/// because it no longer listens for it.
+///
+/// A repeating timer is a task that sleeps for one period, then sends the id
+/// of the timer into the sink, until `clear` cancels the task.
 nonisolated final class TaskSleepTimeHandler: TimeHandler {
-    /// The sleeping tasks, so that `clear` can cancel the task that it names.
+    /// The sleeping tasks and the repeating timers, so that `clear` can cancel
+    /// the task that it names.
     private let activeTimers = Mutex<[UInt64: Task<Void, Never>]>([:])
 
     func now(_ operation: Now) async -> Instant {
@@ -29,6 +33,25 @@ nonisolated final class TaskSleepTimeHandler: TimeHandler {
 
     func notifyAfter(_ operation: NotifyAfter) async -> TimerId {
         await sleep(nanoseconds: UInt64(operation.duration.nanos), id: operation.id)
+    }
+
+    func notifyEvery(_ operation: NotifyEvery, into sink: EffectSink<TimerId>) {
+        // The task captures the raw id, because the generated `TimerId` is not
+        // `Sendable`. A period of 0 would make the loop spin.
+        let key = operation.id.value
+        let period = max(operation.period.nanos, 1)
+        logger.debug("scheduling repeating timer (\(key)) every \(period)ns")
+        activeTimers.withLock { timers in
+            timers[key] = Task<Void, Never> {
+                while true {
+                    try? await Task.sleep(nanoseconds: period)
+                    // `clear` cancels the task, which also ends the sleep.
+                    if Task.isCancelled { break }
+                    sink.send(TimerId(value: key))
+                }
+                logger.debug("repeating timer (\(key)) stopped")
+            }
+        }
     }
 
     func clear(_ operation: ClearTimer) async -> TimerId {

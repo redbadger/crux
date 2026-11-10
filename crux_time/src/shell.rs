@@ -13,9 +13,11 @@
 //! `crux_core/facet_typegen` for type generation gets the protocol, and needs
 //! no feature of `crux_time` for it.
 //!
-//! A timer is answered exactly once, with its own id, and `ClearTimer` is
-//! answered with the id of the timer that it cancels. The protocol states
-//! these rules in each language.
+//! A one-shot timer is answered exactly once, with its own id. A repeating
+//! timer (`NotifyEvery`) is a stream: the shell sends its id once per period,
+//! until a `ClearTimer` for that id arrives. `ClearTimer` is answered with the
+//! id of the timer that it cancels. The protocol states these rules in each
+//! language.
 
 crux_core::__crux_core_facet_typegen_items! {
     use crux_core::{
@@ -23,7 +25,7 @@ crux_core::__crux_core_facet_typegen_items! {
         type_generation::facet::{ShellProtocol, TypeGenError, TypeRegistry},
     };
 
-    use crate::operation::{ClearTimer, NotifyAfter, NotifyAt, Now};
+    use crate::operation::{ClearTimer, NotifyAfter, NotifyAt, NotifyEvery, Now};
 
     /// The protocol of `crux_time`, in each of the four languages.
     pub static PROTOCOL: ShellProtocol = ShellProtocol::new("Time")
@@ -50,6 +52,7 @@ crux_core::__crux_core_facet_typegen_items! {
         Now::register_types_facet(registry)?;
         NotifyAt::register_types_facet(registry)?;
         NotifyAfter::register_types_facet(registry)?;
+        NotifyEvery::register_types_facet(registry)?;
         ClearTimer::register_types_facet(registry)
     }
 }
