@@ -2,7 +2,10 @@
 //!
 //! The app uses `NotifyAfter` and registers no shell extension.
 //! Type generation must still emit the protocol of `crux_time` and every type
-//! that it names, and the generated package must compile.
+//! that it names, and the generated package must compile. The protocol names
+//! `EffectSink` (`IEffectSink` in C#), so each test also generates without the
+//! effect handler API. The package must then still declare the sink once and
+//! compile.
 //!
 //! `cargo test` cannot compile Swift, Kotlin, TypeScript or C#, so each test
 //! gives the generated package to the toolchain on `PATH`. A missing toolchain
@@ -70,6 +73,14 @@ const CSHARP: (&str, &str) = ("Time.cs", "public interface ITimeHandler");
 /// A type of an operation that the app does not send.
 const UNSENT: &str = "ClearTimer";
 
+/// The declaration of the sink in each language.
+const SINK_DECLARATIONS: &[&str] = &[
+    "public struct EffectSink<",
+    "fun interface EffectSink<",
+    "export interface EffectSink<",
+    "public interface IEffectSink<",
+];
+
 /// The app, with no shell extension and no other registration.
 fn generator() -> CodeGenerator {
     let mut registry = TypeRegistry::new();
@@ -77,6 +88,52 @@ fn generator() -> CodeGenerator {
         .register_app::<App>()
         .expect("should register the app");
     registry.build().expect("should build the registry")
+}
+
+/// The generators that each test runs: with the effect handler API, and
+/// without it.
+fn generators() -> [(&'static str, CodeGenerator); 2] {
+    [
+        ("with the handler API", generator()),
+        (
+            "without the handler API",
+            generator().without_effect_handlers(),
+        ),
+    ]
+}
+
+/// How many times the files under `dir` with the extension `extension`
+/// declare the sink. The TypeScript declarations that `tsc` emits and the
+/// dependencies that `pnpm` installs do not count.
+fn sinks(dir: &Path, extension: &str) -> usize {
+    let mut entries: Vec<PathBuf> = fs::read_dir(dir)
+        .expect("should read the generated package")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .collect();
+    entries.sort();
+
+    entries
+        .iter()
+        .map(|path| {
+            let name = path.file_name().and_then(OsStr::to_str).unwrap_or_default();
+            if path.is_dir() {
+                if name == "node_modules" || name.starts_with('.') {
+                    0
+                } else {
+                    sinks(path, extension)
+                }
+            } else if name.ends_with(extension) && !name.ends_with(".d.ts") {
+                let source = fs::read_to_string(path).expect("should read a source");
+                SINK_DECLARATIONS
+                    .iter()
+                    .map(|declaration| source.matches(declaration).count())
+                    .sum()
+            } else {
+                0
+            }
+        })
+        .sum()
 }
 
 /// Whether a toolchain that this test cannot find is a failure, not a skip.
@@ -163,27 +220,37 @@ fn find_jar(dir: &Path, depth: usize) -> Option<PathBuf> {
 
 #[test]
 fn the_swift_protocol_compiles() {
-    let dir = tempfile::tempdir().expect("should create a temp dir");
-    generator()
-        .swift(&Config::builder("App", dir.path()).build())
-        .expect("swift type generation should succeed");
+    for (configuration, generator) in generators() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
 
-    let protocol = fs::read_to_string(dir.path().join("App/Sources/App").join(SWIFT.0))
-        .expect("should write the protocol beside the module");
-    assert!(
-        protocol.contains(SWIFT.1),
-        "unexpected protocol:\n{protocol}"
-    );
+        let protocol = fs::read_to_string(dir.path().join("App/Sources/App").join(SWIFT.0))
+            .expect("should write the protocol beside the module");
+        assert!(
+            protocol.contains(SWIFT.1),
+            "unexpected protocol:\n{protocol}"
+        );
+        assert_eq!(sinks(dir.path(), ".swift"), 1, "{configuration}");
 
-    build("swift", &["build"], &dir.path().join("App"));
+        build("swift", &["build"], &dir.path().join("App"));
+    }
 }
 
 #[test]
 fn the_kotlin_protocol_compiles() {
+    for (configuration, generator) in generators() {
+        kotlin_protocol_compiles(configuration, &generator);
+    }
+}
+
+fn kotlin_protocol_compiles(configuration: &str, generator: &CodeGenerator) {
     let dir = tempfile::tempdir().expect("should create a temp dir");
-    generator()
+    generator
         .kotlin(&Config::builder("com.example.shared", dir.path()).build())
         .expect("kotlin type generation should succeed");
+    assert_eq!(sinks(dir.path(), ".kt"), 1, "{configuration}");
 
     let protocol = fs::read_to_string(dir.path().join("com/example/shared").join(KOTLIN.0))
         .expect("should write the protocol beside the module");
@@ -225,31 +292,39 @@ fn the_kotlin_protocol_compiles() {
 /// success means that the protocol compiles.
 #[test]
 fn the_typescript_protocol_compiles() {
-    let dir = tempfile::tempdir().expect("should create a temp dir");
-    generator()
-        .typescript(&Config::builder("shared_types", dir.path()).build())
-        .expect("typescript type generation should succeed");
+    for (configuration, generator) in generators() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("typescript type generation should succeed");
 
-    let module = fs::read_to_string(dir.path().join("shared_types.ts"))
-        .expect("should write a TypeScript module");
-    assert!(module.contains(TYPESCRIPT), "unexpected module:\n{module}");
+        let module = fs::read_to_string(dir.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+        assert!(module.contains(TYPESCRIPT), "unexpected module:\n{module}");
+        // `tsc` merges two declarations of one interface, so only a count
+        // finds a sink that is declared twice.
+        assert_eq!(sinks(dir.path(), ".ts"), 1, "{configuration}");
+    }
 }
 
 #[test]
 fn the_csharp_protocol_compiles() {
-    let dir = tempfile::tempdir().expect("should create a temp dir");
-    generator()
-        .csharp(&Config::builder("Example.Shared", dir.path()).build())
-        .expect("c# type generation should succeed");
+    for (configuration, generator) in generators() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
 
-    let protocol = fs::read_to_string(dir.path().join("Example/Shared").join(CSHARP.0))
-        .expect("should write the protocol beside the module");
-    assert!(
-        protocol.contains(CSHARP.1),
-        "unexpected protocol:\n{protocol}"
-    );
+        let protocol = fs::read_to_string(dir.path().join("Example/Shared").join(CSHARP.0))
+            .expect("should write the protocol beside the module");
+        assert!(
+            protocol.contains(CSHARP.1),
+            "unexpected protocol:\n{protocol}"
+        );
+        assert_eq!(sinks(dir.path(), ".cs"), 1, "{configuration}");
 
-    build("dotnet", &["build", "--nologo"], dir.path());
+        build("dotnet", &["build", "--nologo"], dir.path());
+    }
 }
 
 /// The protocol names every operation of the capability, so the app gets the

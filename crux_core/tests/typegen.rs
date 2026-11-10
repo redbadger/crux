@@ -3752,4 +3752,304 @@ public interface IStoreHandler
             "unexpected message: {message}"
         );
     }
+
+    // -----------------------------------------------------------------------
+    // A protocol that names the sink
+    // -----------------------------------------------------------------------
+
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(
+        stream,
+        output = Tick,
+        protocol = crate::facet_shell_protocol_test::TICKER
+    )]
+    pub struct StartTicks {
+        pub period_ms: u32,
+    }
+
+    #[derive(Facet, Debug, Clone, Serialize, Deserialize)]
+    pub struct Tick {
+        pub count: u32,
+    }
+
+    fn register_ticker(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
+        use crux_core::capability::Operation as _;
+
+        StartTicks::register_types_facet(registry)
+    }
+
+    /// A capability with a stream. Its protocol names the generic sink in
+    /// every language, as the protocol of `crux_time` does.
+    pub static TICKER: ShellProtocol = ShellProtocol::new("Ticker")
+        .rust_types(register_ticker)
+        .swift(
+            "public protocol TickerHandler: Sendable {\n    func start(_ operation: StartTicks, into sink: EffectSink<Tick>)\n}\n",
+            &["TickerHandler"],
+        )
+        .kotlin(
+            "interface TickerHandler {\n    fun start(operation: StartTicks, sink: EffectSink<Tick>)\n}\n",
+            &["TickerHandler"],
+        )
+        .typescript(
+            "export interface TickerHandler {\n  start(operation: StartTicks, sink: EffectSink<Tick>): void;\n}\n",
+            &["TickerHandler"],
+        )
+        .csharp(
+            "public interface ITickerHandler\n{\n    void Start(StartTicks operation, IEffectSink<Tick> sink);\n}\n",
+            &["ITickerHandler"],
+        );
+
+    /// Uses the stream of the capability.
+    pub mod ticker {
+        use super::{CruxCommand, Event, RenderOperation, StartTicks, ViewModel, effect};
+
+        #[effect(facet_typegen)]
+        pub enum Effect {
+            Render(RenderOperation),
+            Ticks(StartTicks),
+        }
+
+        #[derive(Default)]
+        pub struct App;
+
+        impl crux_core::App for App {
+            type Event = Event;
+            type Model = ();
+            type ViewModel = ViewModel;
+            type Effect = Effect;
+
+            fn update(&self, _event: Event, _model: &mut ()) -> CruxCommand<Effect, Event> {
+                CruxCommand::done()
+            }
+
+            fn view(&self, _model: &()) -> ViewModel {
+                ViewModel
+            }
+        }
+    }
+
+    /// A type with the name of the generic sink, for the clash test.
+    pub mod sink_clash {
+        use facet::Facet;
+
+        #[derive(Facet)]
+        pub struct EffectSink {
+            pub whoops: String,
+        }
+    }
+
+    /// The declaration of the sink in each language.
+    const SINK_DECLARATIONS: &[&str] = &[
+        "public struct EffectSink<",
+        "fun interface EffectSink<",
+        "export interface EffectSink<",
+        "public interface IEffectSink<",
+    ];
+
+    /// The declarations of the effect handler API, without the sink.
+    const HANDLER_DECLARATIONS: &[&str] = &[
+        "protocol EffectHandler",
+        "interface EffectHandler",
+        "interface IEffectHandler",
+        "EffectDispatcher",
+    ];
+
+    /// The package of one language, generated into a temporary directory.
+    struct Generated {
+        language: &'static str,
+        dir: tempfile::TempDir,
+        extension: &'static str,
+    }
+
+    impl Generated {
+        /// All source files with the extension of the language, as one
+        /// string. It does not read the TypeScript declarations that `tsc`
+        /// emits, or the dependencies that `pnpm` installs.
+        fn sources(&self) -> String {
+            fn walk(dir: &Path, extension: &str, out: &mut String) {
+                let mut entries: Vec<PathBuf> = fs::read_dir(dir)
+                    .expect("should read the generated package")
+                    .filter_map(Result::ok)
+                    .map(|entry| entry.path())
+                    .collect();
+                entries.sort();
+                for path in entries {
+                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    if path.is_dir() {
+                        if name != "node_modules" && !name.starts_with('.') {
+                            walk(&path, extension, out);
+                        }
+                    } else if name.ends_with(extension) && !name.ends_with(".d.ts") {
+                        out.push_str(&fs::read_to_string(&path).expect("should read a source"));
+                        out.push('\n');
+                    }
+                }
+            }
+
+            let mut out = String::new();
+            walk(self.dir.path(), self.extension, &mut out);
+            out
+        }
+
+        /// How many times the sources declare the sink.
+        fn sinks(&self) -> usize {
+            let sources = self.sources();
+            SINK_DECLARATIONS
+                .iter()
+                .map(|declaration| sources.matches(declaration).count())
+                .sum()
+        }
+
+        /// Asserts that the sources do not declare the handler API.
+        fn assert_no_handler_api(&self) {
+            let sources = self.sources();
+            for declaration in HANDLER_DECLARATIONS {
+                assert!(
+                    !sources.contains(declaration),
+                    "{}: expected no `{declaration}`:\n{sources}",
+                    self.language
+                );
+            }
+        }
+
+        /// Gives the package to the toolchain of the language. `typescript()`
+        /// already ran `tsc`, so TypeScript needs nothing more.
+        fn compile(&self) {
+            let dir = self.dir.path();
+            match self.language {
+                "swift" => build(
+                    "swift",
+                    &["build"].map(std::ffi::OsStr::new),
+                    &dir.join("App"),
+                ),
+                "kotlin" => kotlinc_build(dir),
+                "csharp" => build(
+                    "dotnet",
+                    &["build", "--nologo"].map(std::ffi::OsStr::new),
+                    dir,
+                ),
+                _ => {}
+            }
+        }
+    }
+
+    /// Generates the package of every language.
+    fn generate_all(generator: &CodeGenerator) -> Vec<Generated> {
+        let swift = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .swift(&Config::builder("App", swift.path()).build())
+            .expect("swift type generation should succeed");
+        let kotlin = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .kotlin(&Config::builder("com.example.shared", kotlin.path()).build())
+            .expect("kotlin type generation should succeed");
+        let typescript = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .typescript(&Config::builder("shared_types", typescript.path()).build())
+            .expect("tsc should type-check the generated module");
+        let csharp = tempfile::tempdir().expect("should create a temp dir");
+        generator
+            .csharp(&Config::builder("Example.Shared", csharp.path()).build())
+            .expect("c# type generation should succeed");
+
+        vec![
+            Generated {
+                language: "swift",
+                dir: swift,
+                extension: ".swift",
+            },
+            Generated {
+                language: "kotlin",
+                dir: kotlin,
+                extension: ".kt",
+            },
+            Generated {
+                language: "typescript",
+                dir: typescript,
+                extension: ".ts",
+            },
+            Generated {
+                language: "csharp",
+                dir: csharp,
+                extension: ".cs",
+            },
+        ]
+    }
+
+    fn ticker() -> CodeGenerator {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<ticker::App>()
+            .expect("should register the app");
+        registry.build().expect("should build the registry")
+    }
+
+    /// Without the effect handler API, the protocol still names the sink, so
+    /// crux emits the sink once, and the package compiles.
+    #[test]
+    fn a_protocol_without_the_handler_api_gets_the_sink() {
+        for generated in generate_all(&ticker().without_effect_handlers()) {
+            assert_eq!(generated.sinks(), 1, "{}", generated.language);
+            generated.assert_no_handler_api();
+            generated.compile();
+        }
+    }
+
+    /// The effect handler API and the protocol share one sink.
+    #[test]
+    fn a_protocol_with_the_handler_api_gets_one_sink() {
+        for generated in generate_all(&ticker()) {
+            assert_eq!(generated.sinks(), 1, "{}", generated.language);
+            generated.compile();
+        }
+    }
+
+    /// With no protocol and no effect handler API, nothing needs the sink.
+    #[test]
+    fn no_protocol_and_no_handler_api_get_no_sink() {
+        let mut registry = TypeRegistry::new();
+        registry
+            .register_app::<no_ops::App>()
+            .expect("should register the app");
+        let generator = registry
+            .build()
+            .expect("should build the registry")
+            .without_effect_handlers();
+
+        for generated in generate_all(&generator) {
+            assert_eq!(generated.sinks(), 0, "{}", generated.language);
+        }
+    }
+
+    /// A registry with a protocol and no effect gets the sink too, and the
+    /// package compiles.
+    #[test]
+    fn a_protocol_with_no_effect_gets_the_sink() {
+        let mut registry = TypeRegistry::new();
+        register_ticker(&mut registry).expect("should register the capability");
+        let generator = registry.build().expect("should build the registry");
+
+        for generated in generate_all(&generator) {
+            assert_eq!(generated.sinks(), 1, "{}", generated.language);
+            generated.assert_no_handler_api();
+            generated.compile();
+        }
+    }
+
+    /// A protocol brings the sink with it, so the name of the sink is
+    /// reserved also when the registry has no effect.
+    #[test]
+    fn a_type_cannot_be_called_effect_sink_next_to_a_protocol() {
+        let mut registry = TypeRegistry::new();
+        register_ticker(&mut registry).expect("should register the capability");
+        registry
+            .register_type::<sink_clash::EffectSink>()
+            .expect("should register the type");
+
+        let message = message_of(registry.build());
+        assert!(
+            message.contains("`EffectSink` is generated for the shell API"),
+            "unexpected message: {message}"
+        );
+    }
 }

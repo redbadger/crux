@@ -612,7 +612,8 @@ impl TypeRegistry {
             .build()
             .map_err(|e| TypeGenError::Generation(e.to_string()))?;
 
-        if !effects.is_empty() {
+        // A shell protocol brings `EffectSink` with it, even with no effect.
+        if !effects.is_empty() || !shell_protocols.is_empty() {
             validate_names(&registry, &effects)?;
         }
         validate_shell_protocols(&shell_protocols)?;
@@ -637,6 +638,9 @@ impl TypeRegistry {
 
 /// Rejects registered types and effect variants that would collide with the
 /// generated effect handler API.
+///
+/// Crux makes this check if the app registers an effect or a shell protocol.
+/// A shell protocol brings `EffectSink` with it, also with no effect.
 fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), TypeGenError> {
     use facet_generate::reflection::format::Namespace;
 
@@ -1411,9 +1415,13 @@ impl CodeGenerator {
         self.app.as_ref()
     }
 
-    /// Turns off emission of the effect handler API — `EffectSink`,
-    /// `EffectHandler` and `EffectDispatcher` — and, because they are built
-    /// on the dispatcher, the generated `CoreBridge` and `Core`.
+    /// Turns off emission of the effect handler API (`EffectHandler` and
+    /// `EffectDispatcher`) and, because they are built on the dispatcher, the
+    /// generated `CoreBridge` and `Core`.
+    ///
+    /// The generic `EffectSink` (`IEffectSink` in C#) stays if crux emits a
+    /// shell protocol for the language, because a protocol method for a
+    /// stream takes a sink. Without a shell protocol, the sink goes too.
     ///
     /// Use this if your shell dispatches effects by hand and the handler
     /// declarations are in the way. The `OperationKind` type and the
@@ -1598,6 +1606,10 @@ impl CodeGenerator {
     /// plugin is. A protocol is plain code, and a shell can implement it with
     /// a hand-written `switch` on `Effect` as well as with the generated
     /// dispatcher.
+    ///
+    /// A protocol can name `EffectSink`, so the plugin also writes the sink
+    /// in the root module, unless the effect handler API writes it there (see
+    /// [`handlers_emit_sink_in_root`](Self::handlers_emit_sink_in_root)).
     fn shell_protocol_plugin(
         &self,
         language: Language,
@@ -1627,7 +1639,25 @@ impl CodeGenerator {
             return Ok(None);
         }
 
-        Ok(Some(ShellProtocolPlugin::new(&protocols)))
+        Ok(Some(ShellProtocolPlugin::new(
+            &protocols,
+            !self.handlers_emit_sink_in_root(),
+        )))
+    }
+
+    /// Whether the effect handler API writes `EffectSink` in the root module.
+    ///
+    /// The handler plugin writes the sink after the primary effect, which is
+    /// the first registered effect. Thus the sink is in the root module only
+    /// if the handler API is on and the primary effect has no namespace.
+    fn handlers_emit_sink_in_root(&self) -> bool {
+        use facet_generate::reflection::format::Namespace;
+
+        self.handlers
+            && self
+                .effects
+                .first()
+                .is_some_and(|effect| effect.effect.namespace == Namespace::Root)
     }
 
     /// The plugin that emits the shell extensions selected for `platform`, if

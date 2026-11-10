@@ -25,7 +25,7 @@ use facet_generate::{
 
 use super::{
     CorePlugin, EffectHandlerPlugin, OperationKindPlugin, Requalify, ShellExtensionPlugin,
-    output_types,
+    ShellProtocolPlugin, output_types,
 };
 use crate::{
     OperationKind,
@@ -34,8 +34,8 @@ use crate::{
     // the fixture has to use the real one too.
     render::RenderOperation,
     type_generation::facet::{
-        AppMeta, BoltFfi, EffectMeta, EffectVariantMeta, PackageLocation, TypeRegistry,
-        shell_extension::SourceFile,
+        AppMeta, BoltFfi, CodeGenerator, EffectMeta, EffectVariantMeta, Language, PackageLocation,
+        ShellProtocol, TypeRegistry, shell_extension::SourceFile,
     },
 };
 
@@ -958,6 +958,199 @@ fn a_namespaced_module_gets_no_shell_extensions() {
         Vec::<String>::new()
     );
     assert_eq!(footer(&config), "");
+}
+
+// ---------------------------------------------------------------------------
+// Shell protocols and the sink
+// ---------------------------------------------------------------------------
+
+/// A protocol with source in every language. The plugin tests need only its
+/// presence, so the sources are empty.
+static TICKER: ShellProtocol = ShellProtocol::new("Ticker")
+    .swift("public protocol TickerHandler {}\n", &["TickerHandler"])
+    .kotlin("interface TickerHandler\n", &["TickerHandler"])
+    .typescript("export interface TickerHandler {}\n", &["TickerHandler"])
+    .csharp("public interface ITickerHandler {}\n", &["ITickerHandler"]);
+
+/// What the protocol plugin writes into the footer of the module that
+/// `config` generates.
+fn protocol_footer<Language>(sink: bool, config: &CodeGeneratorConfig) -> String
+where
+    ShellProtocolPlugin: EmitterPlugin<Language>,
+{
+    let plugin = ShellProtocolPlugin::new(&[&TICKER], sink);
+    let mut buffer = Vec::new();
+    {
+        let mut w = IndentedWriter::new(&mut buffer, IndentConfig::Space(4));
+        EmitterPlugin::<Language>::module_footer(&plugin, &mut w, config)
+            .expect("the plugin should write");
+    }
+    String::from_utf8(buffer).expect("the plugin should write valid UTF-8")
+}
+
+/// The config of the root module of the fixture.
+fn root_config() -> CodeGeneratorConfig {
+    let (registry, _) = fixture();
+    let mut config = CodeGeneratorConfig::new("Shared".to_string());
+    config.update_from(&registry);
+    config
+}
+
+/// Asserts that the sink in the protocol footer is the sink of the handler
+/// API, with the same text, and that the footer declares it once.
+fn assert_same_sink<Language: Requalify>(declaration: &str)
+where
+    ShellProtocolPlugin: EmitterPlugin<Language>,
+    EffectHandlerPlugin: EmitterPlugin<Language>,
+{
+    let footer = protocol_footer::<Language>(true, &root_config());
+    let sink = footer
+        .split_once(declaration)
+        .map(|(before, after)| {
+            let end = after.find("\n}\n").expect("the sink should end") + 3;
+            format!("{before}{declaration}{}", &after[..end])
+        })
+        .expect("the footer should declare the sink");
+
+    assert_eq!(footer.matches(declaration).count(), 1, "{footer}");
+    assert!(
+        handler::<Language>().starts_with(&sink),
+        "the handler API should start with the same sink:\n{sink}"
+    );
+}
+
+/// Without the handler API in the root module, the protocol plugin writes the
+/// sink there, with the text that the handler API uses.
+#[test]
+fn the_protocol_plugin_writes_the_sink_of_the_handler_api() {
+    assert_same_sink::<Swift>("public struct EffectSink<Item>: Sendable {");
+    assert_same_sink::<Kotlin>("fun interface EffectSink<in T> {");
+    assert_same_sink::<TypeScript>("export interface EffectSink<T> {");
+    assert_same_sink::<CSharp>("public interface IEffectSink<in T>");
+}
+
+/// In TypeScript, the sink comes before the protocol sources in the footer.
+#[test]
+fn typescript_writes_the_sink_before_the_protocols() {
+    let footer = protocol_footer::<TypeScript>(true, &root_config());
+    let sink = footer
+        .find("export interface EffectSink<T> {")
+        .expect("the footer should declare the sink");
+    let protocol = footer
+        .find("export interface TickerHandler {}")
+        .expect("the footer should hold the protocol");
+    assert!(sink < protocol, "{footer}");
+}
+
+/// If the handler API writes the sink in the root module, the protocol plugin
+/// does not write it again.
+#[test]
+fn the_protocol_plugin_writes_no_sink_when_told_not_to() {
+    let config = root_config();
+
+    assert_eq!(protocol_footer::<Swift>(false, &config), "");
+    assert_eq!(protocol_footer::<Kotlin>(false, &config), "");
+    assert_eq!(protocol_footer::<CSharp>(false, &config), "");
+    assert_eq!(
+        protocol_footer::<TypeScript>(false, &config),
+        "\nexport interface TickerHandler {}\n"
+    );
+}
+
+/// The protocols go in the root module only, so the sink does too.
+#[test]
+fn a_namespaced_module_gets_no_sink_from_the_protocol_plugin() {
+    let (registry, _) = fixture();
+    let config = namespaced_config(&registry);
+
+    assert_eq!(protocol_footer::<Swift>(true, &config), "");
+    assert_eq!(protocol_footer::<Kotlin>(true, &config), "");
+    assert_eq!(protocol_footer::<CSharp>(true, &config), "");
+    assert_eq!(protocol_footer::<TypeScript>(true, &config), "");
+}
+
+/// The fixture, built into a generator with the protocol registered.
+fn generator_with_protocol() -> CodeGenerator {
+    let mut registry = TypeRegistry::new();
+    registry
+        .register_type::<EffectFfi>()
+        .expect("should register the effect");
+    registry
+        .register_effect::<EffectFfi>()
+        .expect("should start recording the effect")
+        .variant::<RenderOperation>("Render")
+        .expect("Render")
+        .variant::<HttpRequest>("Http")
+        .expect("Http")
+        .variant::<Subscribe>("Subscribe")
+        .expect("Subscribe")
+        .variant::<LegacyOperation>("Legacy")
+        .expect("Legacy")
+        .finish();
+    registry
+        .shell_protocol(&TICKER)
+        .expect("should register the protocol");
+    registry.build().expect("should build the registry")
+}
+
+/// Whether the protocol plugin for `language` writes the sink, as the
+/// generator installs it.
+fn protocol_writes_sink(generator: &CodeGenerator, language: Language) -> bool {
+    generator
+        .shell_protocol_plugin(language, None)
+        .expect("should make the plugin")
+        .expect("the protocol has source in every language")
+        .writes_sink()
+}
+
+const LANGUAGES: [Language; 4] = [
+    Language::Swift,
+    Language::Kotlin,
+    Language::TypeScript,
+    Language::CSharp,
+];
+
+/// The root module gets the sink exactly once in each configuration: from the
+/// handler API if it writes the sink there, and from the protocol plugin if
+/// not.
+#[test]
+fn the_sink_comes_from_one_plugin_only() {
+    // With the handler API, the handler plugin writes the sink after the
+    // effect, in the root module.
+    let generator = generator_with_protocol();
+    assert!(generator.handlers_emit_sink_in_root());
+    for language in LANGUAGES {
+        assert!(!protocol_writes_sink(&generator, language), "{language:?}");
+    }
+
+    // Without the handler API, the protocol plugin writes it.
+    let generator = generator_with_protocol().without_effect_handlers();
+    assert!(!generator.handlers_emit_sink_in_root());
+    for language in LANGUAGES {
+        assert!(protocol_writes_sink(&generator, language), "{language:?}");
+    }
+
+    // With no effect, the protocol plugin writes it.
+    let mut registry = TypeRegistry::new();
+    registry
+        .shell_protocol(&TICKER)
+        .expect("should register the protocol");
+    let generator = registry.build().expect("should build the registry");
+    assert!(!generator.handlers_emit_sink_in_root());
+    for language in LANGUAGES {
+        assert!(protocol_writes_sink(&generator, language), "{language:?}");
+    }
+
+    // With the effect in a namespace, the handler plugin writes its sink in
+    // that module, so the root module gets one from the protocol plugin.
+    let mut generator = generator_with_protocol();
+    let mut effects = generator.effects.to_vec();
+    effects[0].effect = QualifiedTypeName::namespaced("Feature".to_string(), "Effect".to_string());
+    generator.effects = effects.into();
+    assert!(!generator.handlers_emit_sink_in_root());
+    for language in LANGUAGES {
+        assert!(protocol_writes_sink(&generator, language), "{language:?}");
+    }
 }
 
 // ---------------------------------------------------------------------------
