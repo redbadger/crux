@@ -8,13 +8,19 @@
  * ## What a timer answers with, and when
  *
  * The shell answers `notifyAt` and `notifyAfter` exactly once, with the id of
- * the timer, when the timer fires. `clear` cancels the timer that it names, and
- * answers with the same id.
+ * the timer, when the timer fires. `notifyEvery` is a stream: the shell sends
+ * the id of the timer into the sink once per period. `clear` cancels the timer
+ * that it names, and answers with the same id.
  *
  * The pending `notifyAt` or `notifyAfter` of a cleared timer can still answer,
  * so a shell does not need to race the two. The core no longer listens for that
  * answer, and ignores it. An implementation must still finish the pending call,
  * so that the call does not stay suspended for the life of the process.
+ *
+ * A repeating timer stops only when a `clear` for its id arrives. A tick that
+ * started before the `clear` can still reach the core after it, and the core
+ * ignores that tick. If the app aborts the command without a `clear`, the shell
+ * is not told. The timer then continues, and the core ignores its ticks.
  */
 interface TimeHandler {
     /** The current wall-clock time. */
@@ -25,6 +31,15 @@ interface TimeHandler {
 
     /** Answer with `operation.id` once `operation.duration` has elapsed. */
     suspend fun notifyAfter(operation: NotifyAfter): TimerId
+
+    /**
+     * Send `operation.id` into `sink` once per `operation.period`, until a
+     * `clear` for that id arrives.
+     */
+    fun notifyEvery(
+        operation: NotifyEvery,
+        sink: EffectSink<TimerId>,
+    )
 
     /** Cancel the timer `operation.id` names, and answer with it. */
     suspend fun clear(operation: ClearTimer): TimerId

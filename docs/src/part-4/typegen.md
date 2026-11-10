@@ -892,7 +892,9 @@ rejects a larger one.
   it; `CodeGenerator::without_effect_handlers()` turns off those and the
   handler API too, leaving the types you registered and the
   operation-kind accessor, because a shell that dispatches by hand still
-  has to know how many times to resolve.
+  has to know how many times to resolve. If type generation emits a shell
+  protocol, `EffectSink` (`IEffectSink` in C#) stays too, because a
+  protocol method for a stream takes a sink.
 - The generated Kotlin module declares a dependency on
   `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
   `StateFlow` and coroutine launches need.

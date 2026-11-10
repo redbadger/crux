@@ -5,6 +5,9 @@
 //! capability (`KeyValueHandler`, `HttpHandler`), with the rules that every
 //! implementation must follow. The capability crate writes it once in each
 //! language, and the protocol uses only the standard library of that language.
+//! A protocol method for a stream can also name the generic `EffectSink`
+//! (`IEffectSink` in C#). Crux declares the sink in the root module of every
+//! package that has a protocol.
 //!
 //! The app does not register a protocol. Each operation of the capability
 //! names the protocol with `#[operation(.., protocol = path)]`, and the

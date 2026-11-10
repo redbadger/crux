@@ -89,6 +89,55 @@ const main = async () => {
   const unknown = await time.clear(new shared.ClearTimer(new shared.TimerId(99n)));
   expect("clear of an unknown timer answers with the id it was given", unknown.value, 99n);
 
+  // A repeating timer sends its own id once per period. The `n`th tick comes no
+  // earlier than `n` periods after the start, so no tick is early.
+  const ticks = (sent) => ({ send: (id) => sent.push({ id: id.value, at: performance.now() }) });
+  const repeating = [];
+  const period = 20;
+  const repeatingStart = performance.now();
+  time.notifyEvery(new shared.NotifyEvery(new shared.TimerId(10n), new shared.Duration(20_000_000n)), ticks(repeating));
+  await pause(130);
+  expect(`notifyEvery sends several ticks, got ${repeating.length}`, repeating.length >= 3, true);
+  expect("notifyEvery sends its own id each time", [...new Set(repeating.map((t) => t.id))], [10n]);
+  expect(
+    "notifyEvery does not send a tick before its deadline",
+    repeating.every((tick, n) => tick.at - repeatingStart >= (n + 1) * period),
+    true,
+  );
+
+  // `clear` answers with the id, and no tick follows the answer.
+  const clearedRepeating = await time.clear(new shared.ClearTimer(new shared.TimerId(10n)));
+  expect("clear of a repeating timer answers with the id it was given", clearedRepeating.value, 10n);
+  const countAtClear = repeating.length;
+  await pause(70);
+  expect("a cleared repeating timer sends no more ticks", repeating.length, countAtClear);
+
+  // A one-shot timer and a repeating timer side by side, each with its own id.
+  const beside = [];
+  time.notifyEvery(new shared.NotifyEvery(new shared.TimerId(11n), new shared.Duration(10_000_000n)), ticks(beside));
+  const oneShot = await time.notifyAfter(
+    new shared.NotifyAfter(new shared.TimerId(12n), new shared.Duration(50_000_000n)),
+  );
+  expect("a one-shot timer beside a repeating one answers with its own id", oneShot.value, 12n);
+  expect(`a repeating timer beside a one-shot one ticks, got ${beside.length}`, beside.length >= 2, true);
+  expect("a repeating timer beside a one-shot one sends its own id", [...new Set(beside.map((t) => t.id))], [11n]);
+  await time.clear(new shared.ClearTimer(new shared.TimerId(11n)));
+  const besideAtClear = beside.length;
+  await pause(40);
+  expect("the repeating timer beside a one-shot one stops when it is cleared", beside.length, besideAtClear);
+
+  // A `clear` that the sink runs, as the generated dispatcher does, stops the
+  // timer before its next tick.
+  const reentrant = [];
+  time.notifyEvery(new shared.NotifyEvery(new shared.TimerId(13n), new shared.Duration(10_000_000n)), {
+    send: (id) => {
+      reentrant.push(id.value);
+      void time.clear(new shared.ClearTimer(id));
+    },
+  });
+  await pause(60);
+  expect("a clear inside send stops the repeating timer", reentrant, [13n]);
+
   // A timer past `setTimeout`'s limit of 2^31 - 1 ms (about 24.8 days), which
   // treats a longer delay as 0 and would fire it at once. The clocks and the
   // timers are stubbed so that no real time is spent: a stubbed timer only
@@ -159,6 +208,47 @@ const main = async () => {
     await Promise.resolve();
     expect("a timer is not extended when the wall clock goes back", unmoved?.value, 7n);
     jump = 0;
+
+    // A repeating timer that wakes late sends one tick, not one for each
+    // period that it missed, and then waits for the next deadline. The real
+    // clock still moves a little under the stub, so delays are rounded.
+    scheduled = [];
+    const late = [];
+    time.notifyEvery(new shared.NotifyEvery(new shared.TimerId(20n), new shared.Duration(100_000_000n)), {
+      send: (id) => late.push(id.value),
+    });
+    expect("a repeating timer waits one period for its first tick", scheduled.map((t) => Math.round(t.delay)), [100]);
+    // The timeout fires after three and a half periods.
+    offset += 250;
+    fireNext("a repeating timer schedules its first tick");
+    expect("a late repeating timer sends one tick, not a burst", late, [20n]);
+    expect(
+      "a late repeating timer waits for the next deadline that is still ahead",
+      scheduled.filter((t) => !t.cleared).map((t) => Math.round(t.delay)),
+      [50],
+    );
+    fireNext("a late repeating timer schedules its next tick");
+    expect("a late repeating timer then ticks on its deadline", late, [20n, 20n]);
+    await time.clear(new shared.ClearTimer(new shared.TimerId(20n)));
+    expect("clear cancels the pending tick of a repeating timer", scheduled.every((t) => t.cleared), true);
+
+    // A repeating timer with a period past `setTimeout`'s limit waits in
+    // chunks, and does not tick before its deadline.
+    const slow = [];
+    time.notifyEvery(new shared.NotifyEvery(new shared.TimerId(21n), new shared.Duration(thirtyDays)), {
+      send: (id) => slow.push(id.value),
+    });
+    fireNext("a 30-day repeating timer schedules its first wait within setTimeout's limit");
+    expect("a 30-day repeating timer does not tick after its first chunk", slow, []);
+    fireNext("a 30-day repeating timer re-arms after its first chunk");
+    expect("a 30-day repeating timer ticks once its period has elapsed", slow, [21n]);
+    expect(
+      "a 30-day repeating timer waits for its next period within setTimeout's limit",
+      scheduled.filter((t) => !t.cleared).map((t) => t.delay <= limit),
+      [true],
+    );
+    await time.clear(new shared.ClearTimer(new shared.TimerId(21n)));
+    scheduled = [];
   } finally {
     Date.now = realNow;
     performance.now = realPerformanceNow;

@@ -189,7 +189,9 @@ and this project adheres to
   working. If the handler API is in the way, turn it off with
   `CodeGenerator::without_effect_handlers()`; `OperationKind` and the
   `operationKind` accessor are emitted regardless, because a shell dispatching
-  by hand still has to know how many times to resolve each effect. The
+  by hand still has to know how many times to resolve each effect.
+  `EffectSink` (`IEffectSink` in C#) also stays if crux emits a shell protocol
+  for the language, because a protocol method for a stream takes a sink. The
   generated names (`OperationKind`, `EffectSink`/`IEffectSink`,
   `EffectHandler`/`IEffectHandler`, `EffectDispatcher`) are now reserved:
   `TypeRegistry::build` reports an error if a shared type or an effect variant
@@ -405,6 +407,11 @@ and this project adheres to
   names. Type generation rejects a name that two of them declare, and a
   declared name that the shell API reserves or that a root type uses. See
   [Shell protocols](https://redbadger.github.io/crux/part-4/typegen.html#shell-protocols).
+
+  If crux emits a protocol for a language, the root module declares the
+  generic `EffectSink` once, also when the registry has no effect. If the
+  registry has a protocol but no effect, `TypeRegistry::build` still rejects
+  a root type that uses a reserved name.
 
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` used to be a bare counter. It now packs, from the top, eight

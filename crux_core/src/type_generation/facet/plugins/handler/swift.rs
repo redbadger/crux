@@ -22,7 +22,7 @@ pub(super) fn emit(
     emit_dispatcher(w, m, config)
 }
 
-fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
+pub(super) fn emit_sink(w: &mut dyn IndentWrite) -> io::Result<()> {
     writeln!(w)?;
     write_doc(
         w,

@@ -10,7 +10,9 @@
 //!   events into the core, requests out of it, and the view back to the shell.
 //! * [`ShellProtocolPlugin`] emits the protocols of the capabilities that the
 //!   app uses. It writes source that the capability's author wrote, not source
-//!   that crux generates.
+//!   that crux generates. A protocol can name `EffectSink`, so this plugin
+//!   also emits the sink in the root module if [`EffectHandlerPlugin`] does
+//!   not emit it there.
 //! * [`ShellExtensionPlugin`] emits the shell extensions the app registered,
 //!   such as a capability's shipped handler. It writes source the extension's
 //!   author wrote, not source we generate.
@@ -20,8 +22,9 @@
 //! so the generated declarations land beside the effect they belong to.
 //! [`ShellProtocolPlugin`] and [`ShellExtensionPlugin`] are exceptions: they
 //! write companion files beside the module and, in TypeScript, the module
-//! footer. [`CorePlugin`] also writes the `FfiBridge` companion file. Another
-//! exception is C#, where the operation-kind accessor is a property *inside*
+//! footer. The sink that [`ShellProtocolPlugin`] emits goes in the module
+//! footer in every language. [`CorePlugin`] also writes the `FfiBridge`
+//! companion file. Another exception is C#, where the operation-kind accessor is a property *inside*
 //! the `Effect` record and so goes through `type_body` — the emitter does not
 //! declare the record `partial`, so it cannot be re-opened from outside.
 
@@ -49,7 +52,7 @@ use facet_generate::{
 use heck::ToLowerCamelCase;
 
 pub(super) use core::{COMPANION_FILE_STEMS, CorePlugin, FFI_BRIDGE_FILE};
-pub(super) use handler::EffectHandlerPlugin;
+pub(super) use handler::{EffectHandlerPlugin, EmitSink};
 pub(super) use operation_kind::OperationKindPlugin;
 pub(super) use shell_extension::ShellExtensionPlugin;
 pub(super) use shell_protocol::ShellProtocolPlugin;

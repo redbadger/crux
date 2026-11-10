@@ -6,6 +6,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.nanoseconds
@@ -34,6 +35,20 @@ import kotlin.time.Duration.Companion.seconds
  * same name twice. `kotlin.time.Duration` is written out in full because the
  * generated module has a `Duration` of its own.
  *
+ * ## Repeating timers
+ *
+ * `notifyEvery` runs a coroutine that waits until each deadline and then sends
+ * a tick. Each deadline is the start time plus a whole number of periods, on
+ * the monotonic `System.nanoTime` clock, so the timer does not drift. If the
+ * coroutine wakes after one or more deadlines have passed, it sends one tick
+ * and waits for the next deadline that is still ahead.
+ *
+ * The timer runs until a `clear` for its id arrives. The coroutine checks for
+ * the cancel before each tick, but a tick that started before the `clear` can
+ * still reach the core after it. The core ignores that tick. If the app aborts
+ * the command without a `clear`, the timer continues, and the core ignores its
+ * ticks.
+ *
  * ## Precision
  *
  * `now` reads `System.currentTimeMillis`, so it has a resolution of one
@@ -41,7 +56,8 @@ import kotlin.time.Duration.Companion.seconds
  * millisecond up, so a timer does not fire early. It can fire late.
  *
  * If [scope] is cancelled, each pending `notifyAt` and `notifyAfter` throws
- * the `CancellationException`, and does not answer.
+ * the `CancellationException`, and does not answer. Each repeating timer
+ * stops, and sends no more ticks.
  *
  * @param scope the scope the timers run in. The default one outlives every
  *   request, which is what a timer has to do; pass a scope of your own — an
@@ -67,9 +83,48 @@ class CoroutineTimeHandler(
     override suspend fun notifyAfter(operation: NotifyAfter): TimerId =
         sleep(operation.id, clamp(operation.duration.nanos).nanoseconds)
 
+    /**
+     * Send `operation.id` into [sink] once per `operation.period`, until a
+     * `clear` for that id arrives.
+     *
+     * If the app aborts the command without a `clear`, the timer continues,
+     * and the core ignores its ticks.
+     */
+    override fun notifyEvery(
+        operation: NotifyEvery,
+        sink: EffectSink<TimerId>,
+    ) {
+        val id = operation.id
+        // A period of 0 would make the loop spin.
+        val period = clamp(operation.period.nanos).coerceAtLeast(1L)
+        // Lazy, as in `sleep`, so that the timer is in the table before it
+        // can complete and ask to be taken out again.
+        val timer =
+            scope.async(start = CoroutineStart.LAZY) {
+                val start = System.nanoTime()
+                var tick = 1L
+                while (true) {
+                    val wait = deadline(tick, period) - (System.nanoTime() - start)
+                    if (wait > 0L) {
+                        delay(wait.nanoseconds)
+                        continue
+                    }
+                    if (!isActive) return@async
+                    sink.send(id)
+                    // The next deadline that is still ahead, so a late wake
+                    // sends one tick, not one for each period it missed.
+                    tick = (System.nanoTime() - start) / period + 1L
+                }
+            }
+        timers[id.value] = timer
+        timer.invokeOnCompletion { timers.remove(id.value, timer) }
+        timer.start()
+    }
+
     override suspend fun clear(operation: ClearTimer): TimerId {
         // Cancelling completes the timer's job, which settles the call waiting
-        // on it, so that it answers too. Nothing acts on that answer.
+        // on it, so that it answers too. Nothing acts on that answer. A
+        // repeating timer checks for the cancel before each tick.
         timers.remove(operation.id.value)?.cancel()
         return operation.id
     }
@@ -101,6 +156,15 @@ class CoroutineTimeHandler(
 
         return fired.await()
     }
+
+    /**
+     * [tick] periods of [period] nanoseconds, or `Long.MAX_VALUE` if that
+     * does not fit.
+     */
+    private fun deadline(
+        tick: Long,
+        period: Long,
+    ): Long = if (tick > Long.MAX_VALUE / period) Long.MAX_VALUE else tick * period
 
     /**
      * [count] as a `Long`, or `Long.MAX_VALUE` if it does not fit. Even in

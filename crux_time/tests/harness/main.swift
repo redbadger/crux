@@ -10,6 +10,46 @@ import Foundation
 /// duration here is tens of milliseconds, except the one that is meant to be
 /// cleared long before it fires.
 
+/// An app's handler, which delegates each operation in one line. It compiles
+/// only if each method of `TimeHandler` has the shape of the method of the
+/// generated `EffectHandler`.
+struct Delegating: EffectHandler {
+    let time: TaskTimeHandler
+
+    func timeNow(_ operation: Now) async -> Instant { await time.now(operation) }
+    func timeNotifyAt(_ operation: NotifyAt) async -> TimerId { await time.notifyAt(operation) }
+    func timeNotifyAfter(_ operation: NotifyAfter) async -> TimerId { await time.notifyAfter(operation) }
+    func timeNotifyEvery(_ operation: NotifyEvery, into sink: EffectSink<TimerId>) { time.notifyEvery(operation, into: sink) }
+    func timeClear(_ operation: ClearTimer) async -> TimerId { await time.clear(operation) }
+}
+
+/// The ticks of a repeating timer: the id each one sent, and when, in
+/// nanoseconds on the monotonic clock.
+final class Ticks: @unchecked Sendable {
+    private let lock = NSLock()
+    private var ticks: [(id: UInt64, at: UInt64)] = []
+
+    var sink: EffectSink<TimerId> {
+        EffectSink { id in self.record(id.value) }
+    }
+
+    func record(_ id: UInt64) {
+        lock.lock()
+        defer { lock.unlock() }
+        ticks.append((id, DispatchTime.now().uptimeNanoseconds))
+    }
+
+    var all: [(id: UInt64, at: UInt64)] {
+        lock.lock()
+        defer { lock.unlock() }
+        return ticks
+    }
+}
+
+func pause(_ millis: UInt64) async {
+    try? await Task.sleep(nanoseconds: millis * 1_000_000)
+}
+
 // A hung answer would otherwise wait for the test's own timeout, with nothing
 // to say for itself.
 Thread.detachNewThread {
@@ -77,6 +117,51 @@ expect("a cleared timer's notifyAfter settles rather than waiting out its durati
 // a timer that has already fired.
 let unknown = await time.clear(ClearTimer(id: TimerId(value: 99)))
 expect("clear of an unknown timer answers with the id it was given", unknown.value, 99)
+
+// A repeating timer sends its own id once per period. The `n`th tick comes no
+// earlier than `n` periods after the start, so no tick is early and the ticks
+// never come in a burst.
+let repeating = Ticks()
+let period: UInt64 = 20_000_000
+let repeatingStart = DispatchTime.now().uptimeNanoseconds
+Delegating(time: time).timeNotifyEvery(
+    NotifyEvery(id: TimerId(value: 10), period: Duration(nanos: period)),
+    into: repeating.sink
+)
+await pause(130)
+let sent = repeating.all
+expect("notifyEvery sends several ticks, got \(sent.count)", sent.count >= 3)
+expect("notifyEvery sends its own id each time", Set(sent.map(\.id)), [10])
+expect(
+    "notifyEvery does not send a tick before its deadline",
+    sent.enumerated().allSatisfy { n, tick in tick.at - repeatingStart >= UInt64(n + 1) * period }
+)
+
+// `clear` answers with the id, and the timer stops. A tick that started
+// before the `clear` can still arrive, so one more tick is allowed, and then
+// the count must stay the same.
+let clearedRepeating = await time.clear(ClearTimer(id: TimerId(value: 10)))
+expect("clear of a repeating timer answers with the id it was given", clearedRepeating.value, 10)
+let countAtClear = repeating.all.count
+await pause(30)
+let countAfterClear = repeating.all.count
+expect("a cleared repeating timer sends at most one more tick", countAfterClear <= countAtClear + 1)
+await pause(70)
+expect("a cleared repeating timer sends no more ticks", repeating.all.count, countAfterClear)
+
+// A one-shot timer and a repeating timer side by side, each with its own id.
+let beside = Ticks()
+time.notifyEvery(NotifyEvery(id: TimerId(value: 11), period: Duration(nanos: 10_000_000)), into: beside.sink)
+let oneShot = await time.notifyAfter(NotifyAfter(id: TimerId(value: 12), duration: Duration(nanos: 50_000_000)))
+expect("a one-shot timer beside a repeating one answers with its own id", oneShot.value, 12)
+let besideTicks = beside.all
+expect("a repeating timer beside a one-shot one ticks, got \(besideTicks.count)", besideTicks.count >= 2)
+expect("a repeating timer beside a one-shot one sends its own id", Set(besideTicks.map(\.id)), [11])
+_ = await time.clear(ClearTimer(id: TimerId(value: 11)))
+await pause(20)
+let besideAtClear = beside.all.count
+await pause(40)
+expect("the repeating timer beside a one-shot one stops when it is cleared", beside.all.count, besideAtClear)
 
 if failures.isEmpty {
     print("HARNESS OK")

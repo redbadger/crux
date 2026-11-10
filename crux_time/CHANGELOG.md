@@ -36,6 +36,22 @@ and this project adheres to
   The shell answers with `id` once per period until a `ClearTimer` request for that
   `id` arrives, or until a resolve returns an error.
 
+  `NotifyEvery` is part of the shell protocol. `TimeHandler` (`ITimeHandler` in
+  C#) has a `notifyEvery` method (`NotifyEvery` in C#) with the shape of the
+  generated `EffectHandler` method for a stream: it takes the operation and an
+  `EffectSink<TimerId>` (`IEffectSink<TimerId>` in C#), and returns nothing. A
+  shell that implements `TimeHandler` itself must add this method.
+
+  The shipped `TaskTimeHandler`, `CoroutineTimeHandler` and `TimeoutTimeHandler`
+  implement `notifyEvery`. Each one computes the deadlines from a monotonic start
+  time, so the timer does not drift. After a late wake, it sends one tick, not
+  one for each period that it missed. A tick that started before a `clear` can
+  still reach the core after it, and the core ignores that tick. A shipped
+  handler cannot see a resolve error, so the timer runs until a `ClearTimer` for
+  its id arrives. If the app aborts the command without a `ClearTimer`, the
+  timer continues, and the core ignores its ticks
+  ([#662](https://github.com/redbadger/crux/issues/662)).
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_time-v0.18.0...crux_time-v0.19.0) - 2026-09-06
 
 ### 💥 Breaking Changes

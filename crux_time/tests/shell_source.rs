@@ -25,7 +25,7 @@ use crux_core::{
     render::RenderOperation,
     type_generation::facet::{CodeGenerator, Config, ShellExtension, TypeRegistry},
 };
-use crux_time::operation::{ClearTimer, NotifyAfter, NotifyAt, Now};
+use crux_time::operation::{ClearTimer, NotifyAfter, NotifyAt, NotifyEvery, Now};
 use facet::Facet;
 
 #[derive(Facet)]
@@ -44,6 +44,7 @@ pub enum Effect {
     TimeNow(Now),
     TimeNotifyAt(NotifyAt),
     TimeNotifyAfter(NotifyAfter),
+    TimeNotifyEvery(NotifyEvery),
     TimeClear(ClearTimer),
 }
 
