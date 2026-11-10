@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### 🚀 Features
+
+- **`clock::Time::notify_every` starts a repeating timer.** It sends one
+  `operation::NotifyEvery` stream request, and the shell answers with the timer's
+  `TimerId` once each period. The stream yields `TimerOutcome::Completed` for each
+  tick. `TimerHandle::clear` stops the timer, and the stream then yields
+  `TimerOutcome::Cleared` and ends:
+
+  ```rust
+  use crux_time::{clock::Time, operation};
+
+  #[effect]
+  enum Effect {
+      NotifyEvery(operation::NotifyEvery),
+      Clear(operation::Clear),
+  }
+
+  let (ticks, handle) = Time::notify_every(Duration::from_secs(1));
+  let command = ticks.then_send(Event::Tick);
+  ```
+
+  | Operation | Fields | Output | Kind |
+  | --- | --- | --- | --- |
+  | `NotifyEvery` | `id: TimerId, period: Duration` | `TimerId` | `Stream` |
+
+  The shell answers with `id` once per period until a `Clear` request for that `id`
+  arrives, or until a resolve returns an error.
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_time-v0.18.0...crux_time-v0.19.0) - 2026-09-06
 
 ### 💥 Breaking Changes
