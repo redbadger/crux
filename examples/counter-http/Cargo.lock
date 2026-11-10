@@ -700,6 +700,7 @@ dependencies = [
  "facet-generate-attrs",
  "futures-util",
  "http",
+ "include_dir",
  "mime",
  "serde",
  "serde_bytes",

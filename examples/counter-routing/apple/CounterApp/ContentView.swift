@@ -2,7 +2,7 @@ import App
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject var core: Core
+    @Environment(Core.self) var core
 
     var body: some View {
         VStack {
@@ -58,5 +58,6 @@ struct ActionButton: View {
 }
 
 #Preview {
-    ContentView(core: Core())
+    ContentView()
+        .environment(makeCore())
 }
