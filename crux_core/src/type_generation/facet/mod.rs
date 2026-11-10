@@ -144,46 +144,60 @@
 //!
 //! ## Shell extensions
 //!
-//! A crate can ship source for the shell, in any of the four languages, as a
-//! [`ShellExtension`]. Name the ones you want with
-//! [`TypeRegistry::shell_extension`] and they are emitted into the generated
-//! module. The main example is a capability's shell handler: the shell side of
-//! its protocol, with the rules for turning a platform response into its
-//! operation's output.
+//! A crate can ship source for the shell as a [`ShellExtension`]. An extension
+//! is one language, and its source is a directory with a `common/` set of
+//! files and a set for each platform that needs files of its own. Name the
+//! extensions you want with [`TypeRegistry::shell_extension`], and crux emits
+//! them into the generated module. The main example is an implementation of a
+//! capability's protocol over a platform client. It has the rules that turn a
+//! platform response into its operation's output.
 //!
 //! ```rust
 //! use crux_core::type_generation::facet::{
-//!     ShellExtension, ShellSource, TypeGenError, TypeRegistry,
+//!     Platform, ShellExtension, ShellProtocol, TypeRegistry,
 //! };
+//! # use include_dir::{Dir, DirEntry, File};
+//! # const URL_SESSION: Dir<'static> = Dir::new("", &[DirEntry::Dir(Dir::new(
+//! #     "apple",
+//! #     &[DirEntry::File(File::new(
+//! #         "apple/URLSession.swift",
+//! #         b"public struct URLSessionHttpHandler: HttpHandler {}\n",
+//! #     ))],
+//! # ))]);
 //!
-//! // Normally `crux_http::shell::EXTENSION`, declared by the capability crate,
-//! // whose source is `include_str!` from the crate rather than written inline.
-//! static EXTENSION: ShellExtension = ShellExtension::new("Http")
-//!     .rust_types(register_types)
-//!     .foreign_types(&["HttpHandler", "IHttpHandler"])
-//!     .swift(ShellSource::stdlib("public protocol HttpHandler: Sendable {}"));
+//! // Normally `crux_http::shell::PROTOCOL`.
+//! static PROTOCOL: ShellProtocol = ShellProtocol::new("Http")
+//!     .swift("public protocol HttpHandler: Sendable {}\n", &["HttpHandler"]);
 //!
-//! // A real capability registers each of its operations here, so that the
-//! // types its sources name exist even when the app never sends them:
-//! // `HttpRequest::register_types_facet(registry)`.
-//! fn register_types(registry: &mut TypeRegistry) -> Result<&mut TypeRegistry, TypeGenError> {
-//!     Ok(registry)
-//! }
+//! // Normally `crux_http::shell::swift::URL_SESSION`, declared by the
+//! // capability crate, with
+//! // `include_dir!("$CARGO_MANIFEST_DIR/shell/swift/url_session")`.
+//! static EXTENSION: ShellExtension = ShellExtension::swift("Http", URL_SESSION)
+//!     .protocol(&PROTOCOL)
+//!     .platforms(&[Platform::Apple, Platform::Linux])
+//!     .foreign_types(&["URLSessionHttpHandler"]);
 //!
 //! let typegen = TypeRegistry::new().shell_extension(&EXTENSION)?.build()?;
 //! # let _ = typegen;
 //! # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
 //! ```
 //!
-//! Registering the extension also registers the types its sources name, so the
-//! whole capability is generated even when the app's `Effect` uses a subset of
-//! it. Nothing generated calls the shipped implementation: your handler holds
-//! an instance and delegates to it, one line per operation.
+//! When you register the extension, crux also registers its protocol, and with
+//! it the types of the whole capability, even when the app's `Effect` uses only
+//! part of it. No generated code calls the shipped implementation. Your handler
+//! holds an instance and delegates to it, one line per operation.
+//!
+//! [`CodeGenerator::generate`] generates the language of a [`Platform`], with
+//! the shell extensions for that platform. For example, an Android shell uses
+//! `typegen.generate(Platform::Android, &config)`. The `swift`, `kotlin`,
+//! `typescript` and `csharp` methods generate for the language's default
+//! platform: Apple for Swift, the JVM for Kotlin, the web for TypeScript and
+//! .NET for C#.
 mod app;
 mod boltffi;
 mod effects;
 mod plugins;
-mod shell_handler;
+mod shell_extension;
 mod shell_protocol;
 
 use std::{
@@ -215,7 +229,8 @@ use self::plugins::{
     COMPANION_FILE_STEMS, CorePlugin, EffectHandlerPlugin, FFI_BRIDGE_FILE, OperationKindPlugin,
     RequestIdPlugin, ShellExtensionPlugin, ShellProtocolPlugin,
 };
-pub use self::shell_handler::{ShellExtension, ShellSource};
+use self::shell_extension::SourceFile;
+pub use self::shell_extension::{Dir, Language, Platform, ShellExtension};
 pub use self::shell_protocol::{ProtocolSource, RegisterTypes, ShellProtocol};
 use crate::App;
 
@@ -341,10 +356,13 @@ impl TypeRegistry {
     /// `register_types_facet`, and the `#[effect]` macro calls that function
     /// for every variant. Thus an app that uses one operation of a capability
     /// gets the protocol of that capability.
+    /// [`shell_extension`](Self::shell_extension) also calls it, for the
+    /// protocol that the extension implements.
     ///
     /// The source of each language is emitted unchanged: into a companion file
     /// with the name of the protocol (`Http.swift`, `Http.kt` and `Http.cs`)
-    /// beside the module, and into the module footer in TypeScript.
+    /// beside the module, and into the module footer in TypeScript. Crux emits
+    /// the protocols for every platform of the language.
     ///
     /// A shell implements the whole protocol, so this function also runs the
     /// [`rust_types`](ShellProtocol::rust_types) of the protocol. That
@@ -386,56 +404,57 @@ impl TypeRegistry {
         Ok(self)
     }
 
-    /// Registers a shell extension, and the types its sources name.
+    /// Registers a shell extension, and the protocol that it implements.
     ///
-    /// The source is the extension's own, in each language it ships, and it is
-    /// emitted verbatim: into a companion file named after the extension
-    /// (`Http.swift`, `Http.kt` and `Http.cs`) beside the module, and after
-    /// the types in TypeScript. A capability's shell handler is the main
-    /// example: a `HttpHandler` protocol and an implementation of it. Nothing
-    /// generated calls it. The shell's handler holds an instance and delegates
-    /// to it, one line per operation.
+    /// An extension is one language. Register one for each language you
+    /// generate. When crux generates a language, it emits each registered
+    /// extension of that language that lists the platform it generates for
+    /// (see [`CodeGenerator::generate`]). It emits the files in the extension's
+    /// `common/` directory and in the platform's directory, verbatim. Swift,
+    /// Kotlin and C# get one file beside the module for each source file, with
+    /// the same name. TypeScript gets the sources after the types, in the
+    /// order of their paths.
     ///
     /// ```rust,ignore
     /// let typegen = TypeRegistry::new()
     ///     .register_app::<Weather>()?
-    ///     .shell_extension(&crux_http::shell::EXTENSION)?
-    ///     .shell_extension(&crux_time::shell::EXTENSION)?
+    ///     .shell_extension(&crux_http::shell::swift::URL_SESSION)?
+    ///     .shell_extension(&crux_http::shell::kotlin::URL_CONNECTION)?
     ///     .build()?;
+    /// typegen.generate(Platform::Android, &config)?;
     /// ```
     ///
-    /// A capability's handler implements the whole capability, so registering
-    /// it registers every type it names, including the operations this app
-    /// never sends. The extension says which those are, with
-    /// [`ShellExtension::rust_types`].
+    /// An implementation of a capability's protocol is the main example, such
+    /// as `URLSessionHttpHandler`, which implements `HttpHandler`. No generated
+    /// code calls it. The shell's handler holds an instance and delegates to
+    /// it, one line per operation.
     ///
-    /// The crate declares the extension with [`ShellExtension::new`], the
-    /// names its sources declare, and one builder per language it ships:
-    ///
-    /// ```rust,ignore
-    /// pub static EXTENSION: ShellExtension = ShellExtension::new("Http")
-    ///     .rust_types(register_types)
-    ///     .foreign_types(&["HttpHandler", "IHttpHandler"])
-    ///     .swift(ShellSource::stdlib(include_str!("../shell/swift/Http.swift")))
-    ///     .kotlin(ShellSource::stdlib(include_str!("../shell/kotlin/Http.kt")));
-    /// ```
+    /// If the extension names its protocol with [`ShellExtension::protocol`],
+    /// this function also registers that protocol, with
+    /// [`shell_protocol`](Self::shell_protocol). Thus the app gets the protocol
+    /// and every type of the capability, including the operations that this app
+    /// never sends. Crux registers each protocol once, however many languages
+    /// you register.
     ///
     /// # Errors
     /// Returns a [`TypeGenError`] if one of the extension's own types cannot
-    /// be registered. An extension name that cannot be used as a file name or
-    /// clashes with another extension's, and a declared name that clashes
-    /// with the generated shell API, another extension or a type of yours,
-    /// are reported by [`build`](Self::build). An extension named after the
-    /// module it is written beside is reported when that language is
-    /// generated.
+    /// be registered. [`build`](Self::build) reports these problems:
+    ///
+    /// * a source directory that is not laid out correctly
+    /// * a platform list that is not correct
+    /// * a declared name that clashes with the generated shell API, another
+    ///   capability's extension, a protocol or a type of yours.
+    ///
+    /// When the generator generates a language, it reports the problems that
+    /// depend on the language and platform.
     pub fn shell_extension(
         &mut self,
         extension: &'static ShellExtension,
     ) -> Result<&mut Self, TypeGenError> {
         self.shell_extensions.push(extension);
 
-        if let Some(register) = extension.rust_types {
-            register(self)?;
+        if let Some(protocol) = extension.protocol {
+            self.shell_protocol(protocol)?;
         }
 
         Ok(self)
@@ -575,8 +594,8 @@ impl TypeRegistry {
     /// Builds the type registry and returns a [`CodeGenerator`] instance.
     /// # Errors
     /// Returns a [`TypeGenError`] if the type registration fails, or if a
-    /// registered type, effect variant or shell extension claims a name that
-    /// is already taken.
+    /// registered type, effect variant, shell protocol or shell extension
+    /// claims a name that is already taken.
     pub fn build(&mut self) -> Result<CodeGenerator, TypeGenError> {
         let builder = std::mem::take(&mut self.builder);
         let effects: Arc<[EffectMeta]> = std::mem::take(&mut self.effects).into();
@@ -589,7 +608,9 @@ impl TypeRegistry {
         if !effects.is_empty() {
             validate_names(&registry, &effects)?;
         }
-        validate_shipped_sources(
+        validate_shell_protocols(&shell_protocols)?;
+        validate_shell_extensions(&shell_extensions)?;
+        validate_foreign_types(
             &registry,
             &shipped_sources(&shell_protocols, &shell_extensions),
         )?;
@@ -635,15 +656,81 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
     Ok(())
 }
 
-/// A registered protocol or shell extension, as the name checks see it.
+/// Rejects registered shell protocols whose names cannot be used.
 ///
-/// Protocols and extensions both write companion files beside the module and
-/// both declare names in it, so the checks treat them as one list.
+/// The `name` of a protocol names its companion files (`Http.swift`), so crux
+/// checks it as a file name: its shape, and that it does not overwrite the
+/// file of another protocol or a file that crux generates. Crux checks the
+/// file names of the extensions when it generates a language, because they
+/// depend on the platform.
+fn validate_shell_protocols(protocols: &[&'static ShellProtocol]) -> Result<(), TypeGenError> {
+    for (index, protocol) in protocols.iter().enumerate() {
+        let name = protocol.name;
+
+        validate_protocol_name(name)?;
+
+        // Compared ignoring case, because `Http.swift` overwrites
+        // `http.swift` on APFS and NTFS.
+        if let Some(earlier) = protocols[..index]
+            .iter()
+            .find(|earlier| earlier.name.eq_ignore_ascii_case(name))
+        {
+            return Err(TypeGenError::Generation(format!(
+                "shell protocol `{name}` is registered after shell protocol `{}`, and the two names are the same, ignoring case, so their files would overwrite each other. Two crates may ship a protocol with that name, but only one of them can be registered.",
+                earlier.name
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+/// Rejects registered shell extensions that cannot be used.
+///
+/// Crux checks the platform list of each extension and the layout of its
+/// source directory. It also checks the name of each source file, because
+/// crux writes each file beside the module under its own name.
+///
+/// Crux makes these checks for every registered extension, whatever language
+/// and platform it generates. Crux makes the checks that depend on the
+/// platform (which files it emits together) when it generates a language.
+fn validate_shell_extensions(extensions: &[&'static ShellExtension]) -> Result<(), TypeGenError> {
+    for extension in extensions {
+        validate_extension_name(extension.name)?;
+        validate_extension_platforms(extension)?;
+        validate_extension_sources(extension)?;
+    }
+
+    Ok(())
+}
+
+/// A registered protocol or shell extension, as the checks of declared names
+/// see it.
+///
+/// Protocols and extensions both declare names in the generated module, so
+/// the checks treat them as one list.
 struct Shipped {
-    /// `"shell protocol"` or `"shell extension"`, for the error messages.
-    kind: &'static str,
+    /// Whether this is a protocol or an extension, for the error messages and
+    /// for the rule that the extensions of one capability can declare the
+    /// same names.
+    kind: ShippedKind,
     name: &'static str,
     foreign_types: Vec<&'static str>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShippedKind {
+    Protocol,
+    Extension,
+}
+
+impl std::fmt::Display for ShippedKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Protocol => "shell protocol",
+            Self::Extension => "shell extension",
+        })
+    }
 }
 
 /// The registered protocols, then the registered extensions, in registration
@@ -653,33 +740,32 @@ fn shipped_sources(
     extensions: &[&'static ShellExtension],
 ) -> Vec<Shipped> {
     let protocols = protocols.iter().map(|protocol| Shipped {
-        kind: "shell protocol",
+        kind: ShippedKind::Protocol,
         name: protocol.name,
         foreign_types: protocol.foreign_types(),
     });
     let extensions = extensions.iter().map(|extension| Shipped {
-        kind: "shell extension",
+        kind: ShippedKind::Extension,
         name: extension.name,
         foreign_types: extension.foreign_types.to_vec(),
     });
     protocols.chain(extensions).collect()
 }
 
-/// Rejects registered protocols and shell extensions whose names cannot be
-/// used.
+/// Rejects a name that a protocol or extension declares, if the name is taken.
 ///
-/// The `name` of a protocol or extension only names its companion files, so
-/// it is checked as a file name: its shape, and that it does not overwrite
-/// the file of another protocol or extension, or a file that crux generates.
-/// The names in `foreign_types` go into the generated module, so they are
-/// checked against the generated shell API, the serialization runtime's
-/// imports, the app's namespaces, the declarations of the other protocols and
-/// extensions, and the types registered in the root namespace.
+/// The names in `foreign_types` go into the generated module. Crux checks them
+/// against the generated shell API, the serialization runtime's imports, the
+/// app's namespaces, the names that the other protocols and extensions
+/// declare, and the types registered in the root namespace. The extensions of
+/// one capability, one for each language or platform, can declare the same
+/// names. An extension cannot declare a name that a protocol declares,
+/// including the protocol that it implements.
 ///
-/// The names are checked whatever language is generated and whether or not
-/// that language has source, because whether a shared type clashes should not
-/// depend on which shell you build today.
-fn validate_shipped_sources(registry: &Registry, shipped: &[Shipped]) -> Result<(), TypeGenError> {
+/// Crux makes these checks whatever language and platform it generates.
+/// Whether a shared type clashes does not depend on which shell you build
+/// today.
+fn validate_foreign_types(registry: &Registry, shipped: &[Shipped]) -> Result<(), TypeGenError> {
     use facet_generate::reflection::format::Namespace;
     use heck::ToUpperCamelCase as _;
 
@@ -693,29 +779,6 @@ fn validate_shipped_sources(registry: &Registry, shipped: &[Shipped]) -> Result<
 
     for (index, source) in shipped.iter().enumerate() {
         let Shipped { kind, name, .. } = *source;
-
-        validate_extension_name(kind, name)?;
-
-        // Compared ignoring case, because `Http.swift` overwrites
-        // `http.swift` on APFS and NTFS.
-        if let Some(earlier) = shipped[..index]
-            .iter()
-            .find(|earlier| earlier.name.eq_ignore_ascii_case(name))
-        {
-            return Err(TypeGenError::Generation(format!(
-                "{kind} `{name}` is registered after {} `{}`, and the two names are the same, ignoring case, so their files would overwrite each other. Two crates may ship sources with that name, but only one of them can be registered.",
-                earlier.kind, earlier.name
-            )));
-        }
-
-        if let Some(file) = COMPANION_FILE_STEMS
-            .iter()
-            .find(|file| file.eq_ignore_ascii_case(name))
-        {
-            return Err(TypeGenError::Generation(format!(
-                "{kind} `{name}` would be written over the generated `{file}` file, which is reserved for other use in the shell API. Please choose a different name for the {kind}."
-            )));
-        }
 
         for declared in &source.foreign_types {
             if RESERVED_TYPE_NAMES.contains(declared) {
@@ -738,10 +801,17 @@ fn validate_shipped_sources(registry: &Registry, shipped: &[Shipped]) -> Result<
                 )));
             }
 
-            if let Some(earlier) = shipped[..index]
-                .iter()
-                .find(|earlier| earlier.foreign_types.contains(declared))
-            {
+            // The extensions of one capability, one for each language or
+            // platform, declare the same names. Any other earlier declaration
+            // clashes.
+            let same_capability = |earlier: &Shipped| {
+                kind == ShippedKind::Extension
+                    && earlier.kind == ShippedKind::Extension
+                    && earlier.name == name
+            };
+            if let Some(earlier) = shipped[..index].iter().find(|earlier| {
+                !same_capability(earlier) && earlier.foreign_types.contains(declared)
+            }) {
                 let kinds = if earlier.kind == kind {
                     format!("{kind}s `{}` and `{name}`", earlier.name)
                 } else {
@@ -771,19 +841,37 @@ fn validate_shipped_sources(registry: &Registry, shipped: &[Shipped]) -> Result<
     Ok(())
 }
 
-/// Rejects a protocol or extension name that cannot be used as a file stem in
-/// every language and on every file system: it has to look like an identifier
-/// (an ASCII letter, then ASCII letters, digits or `_`), and it cannot be a
-/// name Windows reserves for a device. `kind` says which of the two it is.
-fn validate_extension_name(kind: &str, name: &str) -> Result<(), TypeGenError> {
+/// Whether `name` starts with an ASCII letter and contains only ASCII letters,
+/// digits and `_`.
+fn is_identifier(name: &str) -> bool {
     let mut chars = name.chars();
-    let identifier = chars
+    chars
         .next()
         .is_some_and(|first| first.is_ascii_alphabetic())
-        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_');
-    if !identifier {
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// Rejects an extension name that is not an identifier. The name is the
+/// capability's, and crux uses it in error messages and to group the
+/// extensions of one capability.
+fn validate_extension_name(name: &str) -> Result<(), TypeGenError> {
+    if !is_identifier(name) {
         return Err(TypeGenError::Generation(format!(
-            "{kind} `{name}` has a name that cannot be used as a file name. The name is written as `{name}.swift`, `{name}.kt` and `{name}.cs`, so it has to start with an ASCII letter and contain only ASCII letters, digits and `_`."
+            "shell extension `{name}` has a name that is not an identifier. The name of a capability has to start with an ASCII letter and contain only ASCII letters, digits and `_`."
+        )));
+    }
+
+    Ok(())
+}
+
+/// Rejects a protocol name that cannot be used as a file stem in every
+/// language and on every file system. It has to be an identifier, it cannot
+/// be a name that Windows reserves for a device, and it cannot be the name of
+/// a file that crux generates.
+fn validate_protocol_name(name: &str) -> Result<(), TypeGenError> {
+    if !is_identifier(name) {
+        return Err(TypeGenError::Generation(format!(
+            "shell protocol `{name}` has a name that cannot be used as a file name. The name is written as `{name}.swift`, `{name}.kt` and `{name}.cs`, so it has to start with an ASCII letter and contain only ASCII letters, digits and `_`."
         )));
     }
 
@@ -792,7 +880,154 @@ fn validate_extension_name(kind: &str, name: &str) -> Result<(), TypeGenError> {
         .any(|device| device.eq_ignore_ascii_case(name))
     {
         return Err(TypeGenError::Generation(format!(
-            "{kind} `{name}` has a name Windows reserves for a device, so its files could not be written there. Please choose a different name for the {kind}."
+            "shell protocol `{name}` has a name Windows reserves for a device, so its files could not be written there. Please choose a different name for the shell protocol."
+        )));
+    }
+
+    if let Some(file) = COMPANION_FILE_STEMS
+        .iter()
+        .find(|file| file.eq_ignore_ascii_case(name))
+    {
+        return Err(TypeGenError::Generation(format!(
+            "shell protocol `{name}` would be written over the generated `{file}` file, which is reserved for other use in the shell API. Please choose a different name for the shell protocol."
+        )));
+    }
+
+    Ok(())
+}
+
+/// Rejects an extension that lists no platforms, or lists a platform of
+/// another language.
+fn validate_extension_platforms(extension: &ShellExtension) -> Result<(), TypeGenError> {
+    let name = extension.name;
+    let language = extension.language.display_name();
+
+    if extension.platforms.is_empty() {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` ({language}) lists no platforms, so crux never emits it. Name the platforms its source runs on with `.platforms(..)`."
+        )));
+    }
+
+    for platform in extension.platforms {
+        if platform.language() != extension.language {
+            return Err(TypeGenError::Generation(format!(
+                "shell extension `{name}` is {language} source, but it lists the {platform:?} platform, which is a {} platform.",
+                platform.language().display_name()
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+/// Rejects a source directory that is not laid out as source sets, and a
+/// source file that cannot be written beside the module.
+///
+/// The root can contain only `common/` and the directories of the language's
+/// platforms. Otherwise crux would skip a misspelled directory, such as
+/// `andriod/`, and report nothing. Each of those directories can contain only
+/// files.
+fn validate_extension_sources(extension: &'static ShellExtension) -> Result<(), TypeGenError> {
+    use include_dir::DirEntry;
+
+    let name = extension.name;
+    let language = extension.language;
+    let platforms = language.platforms();
+
+    for entry in extension.sources.entries() {
+        let path = entry.path().to_string_lossy();
+        if path.starts_with('.') {
+            continue;
+        }
+        let DirEntry::Dir(dir) = entry else {
+            return Err(TypeGenError::Generation(format!(
+                "shell extension `{name}` has the file `{path}` at the root of its source directory. Put each file in `common/` or in the directory of a platform."
+            )));
+        };
+        let known = path == shell_extension::COMMON
+            || platforms
+                .iter()
+                .any(|platform| platform.directory() == path);
+        if !known {
+            let expected: Vec<String> = std::iter::once(shell_extension::COMMON)
+                .chain(platforms.iter().map(|platform| platform.directory()))
+                .map(|directory| format!("`{directory}/`"))
+                .collect();
+            return Err(TypeGenError::Generation(format!(
+                "shell extension `{name}` has the directory `{path}/`, which crux does not know. The source directory of a {} extension can contain only {}.",
+                language.display_name(),
+                expected.join(", ")
+            )));
+        }
+
+        for entry in dir.entries() {
+            let DirEntry::File(file) = entry else {
+                return Err(TypeGenError::Generation(format!(
+                    "shell extension `{name}` has the directory `{}/`. The directory `{path}/` can contain only files.",
+                    entry.path().to_string_lossy()
+                )));
+            };
+            validate_source_file(extension, file)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Rejects a source file that is not UTF-8 text in the extension's language,
+/// or whose name cannot be written beside the module in every language and
+/// on every file system.
+fn validate_source_file(
+    extension: &'static ShellExtension,
+    file: &'static include_dir::File<'static>,
+) -> Result<(), TypeGenError> {
+    let name = extension.name;
+    let Some(source) = SourceFile::new(file) else {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` has the file `{}`, whose path is not UTF-8.",
+            file.path().to_string_lossy()
+        )));
+    };
+    if source.is_hidden() {
+        return Ok(());
+    }
+    let path = source.path;
+    let file_extension = extension.language.file_extension();
+
+    if source.extension != file_extension {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` has the file `{path}`, which is not a {} source file. Each file has to have the extension `.{file_extension}`.",
+            extension.language.display_name()
+        )));
+    }
+
+    if !is_identifier(source.stem) {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` has the file `{path}`, whose name cannot be used as a file name in every language. The name before `.{file_extension}` has to start with an ASCII letter and contain only ASCII letters, digits and `_`."
+        )));
+    }
+
+    if WINDOWS_DEVICE_NAMES
+        .iter()
+        .any(|device| device.eq_ignore_ascii_case(source.stem))
+    {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` has the file `{path}`, whose name Windows reserves for a device, so the file could not be written there. Please rename the file."
+        )));
+    }
+
+    if let Some(reserved) = COMPANION_FILE_STEMS
+        .iter()
+        .find(|reserved| reserved.eq_ignore_ascii_case(source.stem))
+    {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` has the file `{path}`, which would be written over the generated `{reserved}` file. That file is reserved for other use in the shell API. Please rename the file."
+        )));
+    }
+
+    if source.contents.is_none() {
+        return Err(TypeGenError::Generation(format!(
+            "shell extension `{name}` has the file `{path}`, which is not UTF-8 text."
         )));
     }
 
@@ -832,8 +1067,45 @@ impl Default for TypeRegistry {
 }
 
 impl CodeGenerator {
-    /// Generates types for Swift
-    /// e.g.
+    /// Generates types for the language of `platform`, with the shell
+    /// extensions for that platform.
+    ///
+    /// For each capability with registered extensions of the language, crux
+    /// emits the extension that lists `platform`. From that extension, it
+    /// emits the files in `common/` and in the platform's directory. One
+    /// generator can generate for several platforms, so an app can generate
+    /// Kotlin for the JVM and for Android into two output directories.
+    ///
+    /// ```rust
+    /// # use crux_core::type_generation::facet::{Config, Platform, TypeRegistry};
+    /// # use std::env::temp_dir;
+    /// # let typegen = TypeRegistry::new().build()?;
+    /// # let output_root = temp_dir().join("crux_core_typegen_doctest");
+    /// typegen.generate(
+    ///     Platform::Android,
+    ///     &Config::builder("com.crux.example", output_root.join("android")).build(),
+    /// )?;
+    /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
+    /// ```
+    ///
+    /// # Errors
+    /// Errors that can occur during type generation. If a capability has
+    /// registered extensions of the language but none of them lists
+    /// `platform`, or more than one lists it, generation fails.
+    pub fn generate(&self, platform: Platform, config: &Config) -> Result<(), TypeGenError> {
+        match platform.language() {
+            Language::Swift => self.generate_swift(platform, config),
+            Language::Kotlin => self.generate_kotlin(platform, config),
+            Language::TypeScript => self.generate_typescript(platform, config),
+            Language::CSharp => self.generate_csharp(platform, config),
+        }
+    }
+
+    /// Generates types for Swift on Apple, the default platform of Swift. It
+    /// is the same as `generate(Platform::Apple, config)`. To
+    /// generate for another platform, use [`generate`](Self::generate).
+    ///
+    /// For example:
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
@@ -849,10 +1121,17 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn swift(&self, config: &Config) -> Result<(), TypeGenError> {
+        self.generate(Platform::Apple, config)
+    }
+
+    fn generate_swift(&self, platform: Platform, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Swift types");
         // Swift's module is a directory named for the package, holding a file
         // of the same name, both in `UpperCamelCase`.
-        self.check(Some(&swift_module_file_stem(&config.package_name)))?;
+        self.check_boltffi()?;
+        let module_file = swift_module_file_stem(&config.package_name);
+        let shell_protocols = self.shell_protocol_plugin(Language::Swift, Some(&module_file))?;
+        let shell_extensions = self.shell_extension_plugin(platform, Some(&module_file))?;
         let path = config.out_dir.join(&config.package_name);
 
         fs::create_dir_all(&path)?;
@@ -868,10 +1147,12 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
-        if let Some(shell_protocols) = self.shell_protocol_plugin() {
+        // In TypeScript, both plugins write into the module footer, so the
+        // protocols come first, then the implementations.
+        if let Some(shell_protocols) = shell_protocols {
             installer = installer.plugin(shell_protocols);
         }
-        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+        if let Some(shell_extensions) = shell_extensions {
             installer = installer.plugin(shell_extensions);
         }
         installer
@@ -882,8 +1163,11 @@ impl CodeGenerator {
         Ok(())
     }
 
-    /// Generates types for Kotlin
-    /// e.g.
+    /// Generates types for Kotlin on the JVM, the default platform of Kotlin.
+    /// It is the same as `generate(Platform::Jvm, config)`. To
+    /// generate for another platform, use [`generate`](Self::generate).
+    ///
+    /// For example:
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
@@ -899,8 +1183,16 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn kotlin(&self, config: &Config) -> Result<(), TypeGenError> {
+        self.generate(Platform::Jvm, config)
+    }
+
+    fn generate_kotlin(&self, platform: Platform, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating Kotlin types");
-        self.check(Some(&module_file_stem(&config.package_name)))?;
+        self.check_boltffi()?;
+        let module_file = module_file_stem(&config.package_name);
+        let shell_protocols =
+            self.shell_protocol_plugin(platform.language(), Some(&module_file))?;
+        let shell_extensions = self.shell_extension_plugin(platform, Some(&module_file))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -919,10 +1211,12 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
-        if let Some(shell_protocols) = self.shell_protocol_plugin() {
+        // In TypeScript, both plugins write into the module footer, so the
+        // protocols come first, then the implementations.
+        if let Some(shell_protocols) = shell_protocols {
             installer = installer.plugin(shell_protocols);
         }
-        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+        if let Some(shell_extensions) = shell_extensions {
             installer = installer.plugin(shell_extensions);
         }
         installer
@@ -932,8 +1226,11 @@ impl CodeGenerator {
         Ok(())
     }
 
-    /// Generates types for C#
-    /// e.g.
+    /// Generates types for C# on .NET, the default platform of C#. It is the
+    /// same as `generate(Platform::DotNet, config)`. To
+    /// generate for another platform, use [`generate`](Self::generate).
+    ///
+    /// For example:
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
@@ -949,8 +1246,16 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn csharp(&self, config: &Config) -> Result<(), TypeGenError> {
+        self.generate(Platform::DotNet, config)
+    }
+
+    fn generate_csharp(&self, platform: Platform, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating C# types");
-        self.check(Some(&module_file_stem(&config.package_name)))?;
+        self.check_boltffi()?;
+        let module_file = module_file_stem(&config.package_name);
+        let shell_protocols =
+            self.shell_protocol_plugin(platform.language(), Some(&module_file))?;
+        let shell_extensions = self.shell_extension_plugin(platform, Some(&module_file))?;
         fs::create_dir_all(&config.out_dir)?;
 
         let package_path = config.package_name.replace('.', "/");
@@ -969,10 +1274,12 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
-        if let Some(shell_protocols) = self.shell_protocol_plugin() {
+        // In TypeScript, both plugins write into the module footer, so the
+        // protocols come first, then the implementations.
+        if let Some(shell_protocols) = shell_protocols {
             installer = installer.plugin(shell_protocols);
         }
-        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+        if let Some(shell_extensions) = shell_extensions {
             installer = installer.plugin(shell_extensions);
         }
         installer
@@ -982,8 +1289,11 @@ impl CodeGenerator {
         Ok(())
     }
 
-    /// Generates types for TypeScript
-    /// e.g.
+    /// Generates types for TypeScript on the web, the default platform of
+    /// TypeScript. It is the same as `generate(Platform::Web, config)`. To
+    /// generate for another platform, use [`generate`](Self::generate).
+    ///
+    /// For example:
     /// ```rust
     /// # use crux_core::type_generation::facet::{Config, TypeRegistry};
     /// # use std::env::temp_dir;
@@ -998,8 +1308,14 @@ impl CodeGenerator {
     /// # Errors
     /// Errors that can occur during type generation.
     pub fn typescript(&self, config: &Config) -> Result<(), TypeGenError> {
+        self.generate(Platform::Web, config)
+    }
+
+    fn generate_typescript(&self, platform: Platform, config: &Config) -> Result<(), TypeGenError> {
         info!("Generating TypeScript types");
-        self.check(None)?;
+        self.check_boltffi()?;
+        let shell_protocols = self.shell_protocol_plugin(Language::TypeScript, None)?;
+        let shell_extensions = self.shell_extension_plugin(platform, None)?;
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
 
@@ -1014,10 +1330,12 @@ impl CodeGenerator {
                 installer = installer.plugin(core);
             }
         }
-        if let Some(shell_protocols) = self.shell_protocol_plugin() {
+        // In TypeScript, both plugins write into the module footer, so the
+        // protocols come first, then the implementations.
+        if let Some(shell_protocols) = shell_protocols {
             installer = installer.plugin(shell_protocols);
         }
-        if let Some(shell_extensions) = self.shell_extension_plugin(&config.package_name) {
+        if let Some(shell_extensions) = shell_extensions {
             installer = installer.plugin(shell_extensions);
         }
         installer
@@ -1129,22 +1447,6 @@ impl CodeGenerator {
         self
     }
 
-    /// Everything the configuration is checked for before a language is
-    /// generated. The builder methods are infallible, so this is where a
-    /// configuration that cannot work is reported.
-    ///
-    /// `module_file` is what the module calls its own source file in this
-    /// language, which a companion file beside it must not take. TypeScript's
-    /// module is one file with the sources appended to it, so it has no
-    /// companion files and passes `None`.
-    fn check(&self, module_file: Option<&str>) -> Result<(), TypeGenError> {
-        self.check_boltffi()?;
-        if let Some(module_file) = module_file {
-            self.check_shell_extension_files(module_file)?;
-        }
-        Ok(())
-    }
-
     /// The bridge is generated as part of `Core`, so asking for one without a
     /// `Core` to put it in is a mistake worth saying out loud — silently
     /// generating nothing would leave the shell with a missing constructor and
@@ -1195,75 +1497,211 @@ impl CodeGenerator {
             .map(|app| CorePlugin::new(&self.effects, app, self.boltffi.clone()))
     }
 
-    /// The source of a protocol or extension is written beside the module as
-    /// `<Name>.swift`, `<Name>.kt` or `<Name>.cs`, and the module names its own
-    /// file after the last segment of the package or namespace. A package
-    /// called `Crux.Http` would therefore have the `Http` protocol overwrite
-    /// `Crux/Http/Http.cs` (the types themselves), so it is rejected while
-    /// both files still exist. Names are compared ignoring case, because
-    /// `Http.swift` overwrites `http.swift` on APFS and NTFS.
-    ///
-    /// This is the one check that needs the [`Config`], so it is made here and
-    /// not in [`validate_shipped_sources`].
-    fn check_shell_extension_files(&self, module_file: &str) -> Result<(), TypeGenError> {
-        for protocol in &self.shell_protocols {
-            if protocol.name.eq_ignore_ascii_case(module_file) {
-                return Err(TypeGenError::Generation(format!(
-                    "the `{name}` shell protocol is written beside the generated module, which names its own file `{module_file}`. That is the same name, ignoring case, and one file overwrites the other on a case-insensitive file system. The package or namespace ends in `{module_file}`. Generate into a package of another name.",
-                    name = protocol.name
-                )));
+    /// The registered extensions crux emits for `language` on `platform`: for
+    /// each capability with an extension of this language, the one extension
+    /// that lists the platform. The capabilities are in registration order.
+    fn select_shell_extensions(
+        &self,
+        language: Language,
+        platform: Platform,
+    ) -> Result<Vec<&'static ShellExtension>, TypeGenError> {
+        let of_language: Vec<&'static ShellExtension> = self
+            .shell_extensions
+            .iter()
+            .filter(|extension| extension.language == language)
+            .copied()
+            .collect();
+
+        let mut capabilities: Vec<&str> = Vec::new();
+        for extension in &of_language {
+            if !capabilities.contains(&extension.name) {
+                capabilities.push(extension.name);
             }
         }
 
-        for extension in &self.shell_extensions {
-            if extension.name.eq_ignore_ascii_case(module_file) {
-                return Err(TypeGenError::Generation(format!(
-                    "the `{name}` shell extension is written beside the generated module, which names its own file `{module_file}`. That is the same name, ignoring case, and one file overwrites the other on a case-insensitive file system. The package or namespace ends in `{module_file}`. Generate into a package of another name, or register an extension that is named differently.",
-                    name = extension.name
-                )));
+        let mut selected = Vec::new();
+        for capability in capabilities {
+            let candidates: Vec<&'static ShellExtension> = of_language
+                .iter()
+                .filter(|extension| extension.name == capability)
+                .copied()
+                .collect();
+            let matching: Vec<&'static ShellExtension> = candidates
+                .iter()
+                .filter(|extension| extension.platforms.contains(&platform))
+                .copied()
+                .collect();
+
+            match matching.as_slice() {
+                [extension] => selected.push(*extension),
+                [] => {
+                    let mut listed: Vec<String> = Vec::new();
+                    for extension in &candidates {
+                        for listed_platform in extension.platforms {
+                            let listed_platform = format!("{listed_platform:?}");
+                            if !listed.contains(&listed_platform) {
+                                listed.push(listed_platform);
+                            }
+                        }
+                    }
+                    return Err(TypeGenError::Generation(format!(
+                        "the registered {language} extensions of shell extension `{capability}` list the platforms {listed}, but {language} is generated for the {platform:?} platform. Register an extension of `{capability}` that lists {platform:?}, or generate for a platform that the extensions list.",
+                        language = language.display_name(),
+                        listed = listed.join(", "),
+                    )));
+                }
+                _ => {
+                    return Err(TypeGenError::Generation(format!(
+                        "{count} registered {language} extensions of shell extension `{capability}` list the {platform:?} platform, so crux cannot choose one of them. Register only one of them.",
+                        count = matching.len(),
+                        language = language.display_name(),
+                    )));
+                }
             }
         }
 
-        Ok(())
+        Ok(selected)
     }
 
-    /// The plugin that emits the registered protocols, if any were
-    /// registered.
+    /// The plugin that emits the registered protocols that have a source in
+    /// `language`, if there are any.
     ///
-    /// It is installed outside the `handlers` flag, as the extension plugin
-    /// is. A protocol is plain code, and a shell can implement it with a
-    /// hand-written `switch` on `Effect` as well as with the generated
+    /// A protocol does not change with the platform, so crux emits it for
+    /// every platform of the language. Its source is written beside the
+    /// module as `<Name>.swift`, `<Name>.kt` or `<Name>.cs`, and the module
+    /// names its own file after the last segment of the package or namespace.
+    /// `module_file` is that name. A package called `Crux.Http` would
+    /// therefore have the `Http` protocol overwrite `Crux/Http/Http.cs` (the
+    /// types themselves), so crux rejects it for every registered protocol.
+    /// Names are compared ignoring case, because `Http.swift` overwrites
+    /// `http.swift` on APFS and NTFS.
+    /// TypeScript passes `None`, because its protocols go in the module
+    /// footer.
+    ///
+    /// The plugin is installed outside the `handlers` flag, as the extension
+    /// plugin is. A protocol is plain code, and a shell can implement it with
+    /// a hand-written `switch` on `Effect` as well as with the generated
     /// dispatcher.
-    fn shell_protocol_plugin(&self) -> Option<ShellProtocolPlugin> {
-        if self.shell_protocols.is_empty() {
-            return None;
+    fn shell_protocol_plugin(
+        &self,
+        language: Language,
+        module_file: Option<&str>,
+    ) -> Result<Option<ShellProtocolPlugin>, TypeGenError> {
+        let protocols: Vec<&'static ShellProtocol> = self
+            .shell_protocols
+            .iter()
+            .filter(|protocol| protocol.source(language).is_some())
+            .copied()
+            .collect();
+        // Every registered protocol is checked, including one with no source
+        // in this language, as `build` checks the names of every protocol.
+        if let Some(module_file) = module_file
+            && let Some(protocol) = self
+                .shell_protocols
+                .iter()
+                .find(|protocol| protocol.name.eq_ignore_ascii_case(module_file))
+        {
+            return Err(TypeGenError::Generation(format!(
+                "the `{name}` shell protocol is written beside the generated module, which names its own file `{module_file}`. That is the same name, ignoring case, and one file overwrites the other on a case-insensitive file system. The package or namespace ends in `{module_file}`. Generate into a package of another name.",
+                name = protocol.name
+            )));
         }
-        Some(ShellProtocolPlugin::new(&self.shell_protocols))
+
+        if protocols.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(ShellProtocolPlugin::new(&protocols)))
     }
 
-    /// The plugin that emits the registered shell extensions, if any were
-    /// registered.
+    /// The plugin that emits the shell extensions selected for `platform`, if
+    /// any are selected.
     ///
-    /// It is installed outside the `handlers` flag: an extension's source is
-    /// plain code, and a capability's shipped handler is as usable from a
-    /// hand-written `switch` on `Effect` as from the generated dispatcher, so
-    /// [`without_effect_handlers`](Self::without_effect_handlers) does not
-    /// take it away.
-    fn shell_extension_plugin(&self, package_name: &str) -> Option<ShellExtensionPlugin> {
-        use facet_generate::reflection::format::Namespace;
-
-        if self.shell_extensions.is_empty() {
-            return None;
+    /// Each source file is written beside the module as a file of the same
+    /// name, and the module names its own file after the package or
+    /// namespace. `module_file` is that name, so that a source file cannot
+    /// overwrite the module's types. For example, a package called `Crux.Http`
+    /// writes its types to `Crux/Http/Http.cs`, which a shipped `Http.cs` would
+    /// replace. Two source files cannot share a name either. Names are
+    /// compared ignoring case, because `Http.swift` overwrites `http.swift` on
+    /// APFS and NTFS. TypeScript's module is one file with the sources
+    /// in its footer, so it has no files to overwrite and passes `None`.
+    ///
+    /// The plugin is installed outside the `handlers` flag. An extension's
+    /// source is plain code, and a capability's shipped handler is as usable
+    /// from a hand-written `switch` on `Effect` as from the generated
+    /// dispatcher, so [`without_effect_handlers`](Self::without_effect_handlers)
+    /// does not remove it.
+    fn shell_extension_plugin(
+        &self,
+        platform: Platform,
+        module_file: Option<&str>,
+    ) -> Result<Option<ShellExtensionPlugin>, TypeGenError> {
+        let language = platform.language();
+        let selected = self.select_shell_extensions(language, platform)?;
+        if selected.is_empty() {
+            return Ok(None);
         }
-        let last_type = self
-            .registry
-            .keys()
-            .rfind(|name| name.namespace == Namespace::Root)
-            .cloned();
-        Some(ShellExtensionPlugin::new(
-            &self.shell_extensions,
-            package_name,
-            last_type,
-        ))
+
+        let mut files: Vec<(&'static ShellExtension, SourceFile)> = Vec::new();
+        for extension in &selected {
+            for file in extension.files_for(platform) {
+                if let Some(module_file) = module_file
+                    && file.stem.eq_ignore_ascii_case(module_file)
+                {
+                    return Err(TypeGenError::Generation(format!(
+                        "the `{name}` shell extension's `{path}` is written beside the generated module, which names its own file `{module_file}`. That is the same name, ignoring case, and one file overwrites the other on a case-insensitive file system. The package or namespace ends in `{module_file}`. Generate into a package of another name, or register an extension without a file of that name.",
+                        name = extension.name,
+                        path = file.path,
+                    )));
+                }
+                if module_file.is_some()
+                    && let Some(protocol) = self.shell_protocols.iter().find(|protocol| {
+                        protocol.source(language).is_some()
+                            && protocol.name.eq_ignore_ascii_case(file.stem)
+                    })
+                {
+                    return Err(TypeGenError::Generation(format!(
+                        "the `{name}` shell extension's `{path}` and the `{protocol}` shell protocol are both written beside the generated module, and their names are the same, ignoring case, so one would overwrite the other. Rename the file of the extension.",
+                        name = extension.name,
+                        path = file.path,
+                        protocol = protocol.name,
+                    )));
+                }
+                if module_file.is_some()
+                    && let Some((earlier, other)) = files
+                        .iter()
+                        .find(|(_, other)| other.stem.eq_ignore_ascii_case(file.stem))
+                {
+                    return Err(TypeGenError::Generation(format!(
+                        "the `{}` shell extension's `{}` and the `{}` shell extension's `{}` are both written beside the generated module, and their names are the same, ignoring case, so one would overwrite the other. Rename one of the files, or register only one of the extensions.",
+                        earlier.name, other.path, extension.name, file.path,
+                    )));
+                }
+                files.push((extension, file));
+            }
+        }
+
+        let mut dependencies: Vec<String> = Vec::new();
+        let mut target_dependencies: Vec<String> = Vec::new();
+        for extension in &selected {
+            for (entries, union) in [
+                (extension.dependencies, &mut dependencies),
+                (extension.target_dependencies, &mut target_dependencies),
+            ] {
+                for entry in entries {
+                    let entry = (*entry).to_string();
+                    if !union.contains(&entry) {
+                        union.push(entry);
+                    }
+                }
+            }
+        }
+
+        Ok(Some(ShellExtensionPlugin::new(
+            files.into_iter().map(|(_, file)| file).collect(),
+            dependencies,
+            target_dependencies,
+        )))
     }
 }

@@ -20,16 +20,21 @@ use facet_generate::{
         swift::Swift,
         typescript::TypeScript,
     },
+    reflection::format::Namespace,
 };
 
-use super::{CorePlugin, EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin};
+use super::{
+    CorePlugin, EffectHandlerPlugin, OperationKindPlugin, RequestIdPlugin, ShellExtensionPlugin,
+};
 use crate::{
     OperationKind,
     capability::Operation,
     // The `render` flag is a `TypeId` comparison with the real operation, so
     // the fixture has to use the real one too.
     render::RenderOperation,
-    type_generation::facet::{AppMeta, BoltFfi, EffectMeta, PackageLocation, TypeRegistry},
+    type_generation::facet::{
+        AppMeta, BoltFfi, EffectMeta, PackageLocation, TypeRegistry, shell_extension::SourceFile,
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -412,6 +417,16 @@ fn ffi_bridge_csharp() {
     insta::assert_snapshot!(file.contents);
 }
 
+/// The config of the module generated for namespace `Feature`, as
+/// facet-generate's module split makes it: named after the namespace, nested
+/// under the package, and saying which namespace it generates.
+fn namespaced_config(registry: &Registry) -> CodeGeneratorConfig {
+    let mut config = CodeGeneratorConfig::new("Feature".to_string()).with_parent("Shared");
+    config.namespace = Namespace::Named("Feature".to_string());
+    config.update_from(registry);
+    config
+}
+
 /// TypeScript emits one file per module, so there is no companion — the bridge
 /// is in the module, and the package is imported wholesale because the
 /// `initialized` promise is not in its type declarations.
@@ -753,4 +768,93 @@ fn nothing_is_emitted_for_a_type_that_is_not_the_effect() {
     }
 
     assert!(buffer.is_empty(), "expected nothing, got {buffer:?}");
+}
+
+// ---------------------------------------------------------------------------
+// Shell extensions
+// ---------------------------------------------------------------------------
+
+/// A plugin with one source file, `common/<file_name>`, as the generator
+/// selects it for one language.
+fn shell_extension_plugin(file_name: &'static str, contents: &'static str) -> ShellExtensionPlugin {
+    let (stem, extension) = file_name
+        .split_once('.')
+        .expect("a file name with an extension");
+    let path = Box::leak(format!("common/{file_name}").into_boxed_str());
+    ShellExtensionPlugin::new(
+        vec![SourceFile {
+            path,
+            file_name,
+            stem,
+            extension,
+            contents: Some(contents),
+        }],
+        vec![],
+        vec![r#".product(name: "Store", package: "Store")"#.to_string()],
+    )
+}
+
+/// What the TypeScript plugin writes into a module's footer for `config`.
+fn footer(config: &CodeGeneratorConfig) -> String {
+    let plugin = shell_extension_plugin("Store.ts", "export interface StoreHandler {}\n");
+    let mut buffer = Vec::new();
+    {
+        let mut w = IndentedWriter::new(&mut buffer, IndentConfig::Space(4));
+        EmitterPlugin::<TypeScript>::module_footer(&plugin, &mut w, config)
+            .expect("the plugin should write");
+    }
+    String::from_utf8(buffer).expect("the plugin should write valid UTF-8")
+}
+
+/// The names of the companion files the plugins return.
+fn names(files: Vec<CompanionFile>) -> Vec<String> {
+    files.into_iter().map(|file| file.file_name).collect()
+}
+
+/// The root module gets the sources: one companion file per source file, the
+/// target edge, and TypeScript's sources in the module footer.
+#[test]
+fn the_root_module_gets_the_shell_extensions() {
+    let (registry, _) = fixture();
+    let mut config = CodeGeneratorConfig::new("Shared".to_string());
+    config.update_from(&registry);
+
+    let swift = shell_extension_plugin("Store.swift", "public protocol StoreHandler {}\n");
+    let kotlin = shell_extension_plugin("Store.kt", "interface StoreHandler\n");
+    let csharp = shell_extension_plugin("Store.cs", "public interface IStoreHandler {}\n");
+
+    assert_eq!(
+        names(EmitterPlugin::<Swift>::companion_files(&swift, &config)),
+        ["Store.swift"]
+    );
+    assert_eq!(
+        names(EmitterPlugin::<Kotlin>::companion_files(&kotlin, &config)),
+        ["Store.kt"]
+    );
+    assert_eq!(
+        names(EmitterPlugin::<CSharp>::companion_files(&csharp, &config)),
+        ["Store.cs"]
+    );
+    assert_eq!(
+        EmitterPlugin::<Swift>::target_dependencies(&swift, &config),
+        vec![r#".product(name: "Store", package: "Store")"#.to_string()]
+    );
+    assert_eq!(footer(&config), "\nexport interface StoreHandler {}\n");
+}
+
+/// A namespaced module gets none of them, so the sources are not declared
+/// twice in one package.
+#[test]
+fn a_namespaced_module_gets_no_shell_extensions() {
+    let (registry, _) = fixture();
+    let config = namespaced_config(&registry);
+
+    let swift = shell_extension_plugin("Store.swift", "public protocol StoreHandler {}\n");
+    let kotlin = shell_extension_plugin("Store.kt", "interface StoreHandler\n");
+    let csharp = shell_extension_plugin("Store.cs", "public interface IStoreHandler {}\n");
+
+    assert!(EmitterPlugin::<Swift>::companion_files(&swift, &config).is_empty());
+    assert!(EmitterPlugin::<Kotlin>::companion_files(&kotlin, &config).is_empty());
+    assert!(EmitterPlugin::<CSharp>::companion_files(&csharp, &config).is_empty());
+    assert_eq!(footer(&config), "");
 }

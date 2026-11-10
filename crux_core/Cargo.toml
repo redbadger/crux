@@ -26,6 +26,7 @@ facet.workspace = true
 facet_generate = { workspace = true, optional = true }
 futures = "0.3"
 heck = { version = "0.5", optional = true }
+include_dir = { workspace = true, optional = true }
 log = { version = "0.4", optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = "1.0"
@@ -43,6 +44,7 @@ doctest_support = { path = "../doctest_support" }
 # in a namespace of its own — which is where the generated Kotlin signature has
 # to name it from the module's own package rather than as a bare `Kit.Presence`.
 facet-generate-attrs = { workspace = true }
+include_dir.workspace = true
 insta = "1"
 rand = "0.10"
 serde = { workspace = true, features = ["derive"] }
@@ -59,6 +61,7 @@ facet_typegen = [
     "crux_macros/facet_typegen",
     "dep:facet_generate",
     "dep:heck",
+    "dep:include_dir",
     "dep:log",
 ]
 testing = []
