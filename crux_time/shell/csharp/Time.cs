@@ -11,8 +11,9 @@ using System.Threading.Tasks;
 /// </para>
 /// <para>
 /// The shell answers <c>NotifyAt</c> and <c>NotifyAfter</c> exactly once, with
-/// the id of the timer, when the timer fires. <c>Clear</c> cancels the timer
-/// that it names, and answers with the same id.
+/// the id of the timer, when the timer fires. <c>NotifyEvery</c> is a stream:
+/// the shell sends the id of the timer into the sink once per period.
+/// <c>Clear</c> cancels the timer that it names, and answers with the same id.
 /// </para>
 /// <para>
 /// The pending <c>NotifyAt</c> or <c>NotifyAfter</c> of a cleared timer can
@@ -20,6 +21,13 @@ using System.Threading.Tasks;
 /// listens for that answer, and ignores it. An implementation must still
 /// complete the pending task, so that the task does not run for the life of the
 /// process.
+/// </para>
+/// <para>
+/// A repeating timer stops only when a <c>Clear</c> for its id arrives. A tick
+/// that started before the <c>Clear</c> can still reach the core after it, and
+/// the core ignores that tick. If the app aborts the command without a
+/// <c>Clear</c>, the shell is not told. The timer then continues, and the core
+/// ignores its ticks.
 /// </para>
 /// </remarks>
 public interface ITimeHandler
@@ -32,6 +40,12 @@ public interface ITimeHandler
 
     /// <summary>Answer with <c>operation.Id</c> once <c>operation.Duration</c> has elapsed.</summary>
     Task<TimerId> NotifyAfter(NotifyAfter operation);
+
+    /// <summary>
+    /// Send <c>operation.Id</c> into <paramref name="sink"/> once per
+    /// <c>operation.Period</c>, until a <c>Clear</c> for that id arrives.
+    /// </summary>
+    void NotifyEvery(NotifyEvery operation, IEffectSink<TimerId> sink);
 
     /// <summary>Cancel the timer <c>operation.Id</c> names, and answer with it.</summary>
     Task<TimerId> Clear(ClearTimer operation);

@@ -19,6 +19,20 @@ import Foundation
 /// and the operations and outputs that would have to cross it are generated
 /// types, which are not `Sendable`.
 ///
+/// ## Repeating timers
+///
+/// `notifyEvery` runs a task that sleeps until each deadline and then sends a
+/// tick. Each deadline is the start time plus a whole number of periods, on the
+/// monotonic `DispatchTime` clock, so the timer does not drift. If the task
+/// wakes after one or more deadlines have passed, it sends one tick and waits
+/// for the next deadline that is still ahead.
+///
+/// The timer runs until a `clear` for its id arrives. The task checks for the
+/// cancel before each tick, but a tick that started before the `clear` can
+/// still reach the core after it. The core ignores that tick. If the app aborts
+/// the command without a `clear`, the timer continues, and the core ignores its
+/// ticks.
+///
 /// ## Precision
 ///
 /// `now` reads `Date`, which keeps seconds as a `Double`. Near the present that
@@ -53,9 +67,42 @@ public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
         await sleep(id: operation.id, nanoseconds: operation.duration.nanos)
     }
 
+    /// Send `operation.id` into `sink` once per `operation.period`, until a
+    /// `clear` for that id arrives.
+    ///
+    /// If the app aborts the command without a `clear`, the timer continues,
+    /// and the core ignores its ticks.
+    public func notifyEvery(_ operation: NotifyEvery, into sink: EffectSink<TimerId>) {
+        // The task captures the raw id, because the generated `TimerId` is not
+        // `Sendable`. A period of 0 would make the loop spin.
+        let id = operation.id.value
+        let period = max(operation.period.nanos, 1)
+        // As in `sleep`, the task is created and remembered under one hold of
+        // the lock, so a `clear` always finds it.
+        _ = remember(id: id) {
+            Task<Void, Never> {
+                let start = DispatchTime.now().uptimeNanoseconds
+                var tick: UInt64 = 1
+                while !Task.isCancelled {
+                    let now = DispatchTime.now().uptimeNanoseconds
+                    let deadline = Self.deadline(start: start, tick: tick, period: period)
+                    if now < deadline {
+                        try? await Task.sleep(nanoseconds: deadline - now)
+                        continue
+                    }
+                    sink.send(TimerId(value: id))
+                    // The next deadline that is still ahead, so a late wake
+                    // sends one tick, not one for each period it missed.
+                    tick = (DispatchTime.now().uptimeNanoseconds - start) / period + 1
+                }
+            }
+        }
+    }
+
     public func clear(_ operation: ClearTimer) async -> TimerId {
         // Cancelling wakes the sleeping task, so the call waiting on it returns
-        // and answers too. Nothing acts on that answer.
+        // and answers too. Nothing acts on that answer. A repeating timer
+        // checks for the cancel before each tick.
         forget(id: operation.id.value)?.cancel()
         return operation.id
     }
@@ -87,6 +134,14 @@ public final class TaskTimeHandler: TimeHandler, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return timers.removeValue(forKey: id)
+    }
+
+    /// `start` plus `tick` periods, or `UInt64.max` if that does not fit.
+    private static func deadline(start: UInt64, tick: UInt64, period: UInt64) -> UInt64 {
+        let (offset, overflow) = tick.multipliedReportingOverflow(by: period)
+        if overflow { return UInt64.max }
+        let (deadline, past) = start.addingReportingOverflow(offset)
+        return past ? UInt64.max : deadline
     }
 
     /// `seconds` as whole nanoseconds, from 0 to `UInt64.max`.

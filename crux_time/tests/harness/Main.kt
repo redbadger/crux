@@ -1,7 +1,12 @@
 import com.example.shared.ClearTimer
 import com.example.shared.CoroutineTimeHandler
 import com.example.shared.Duration
+import com.example.shared.EffectHandler
+import com.example.shared.EffectSink
+import com.example.shared.Instant
 import com.example.shared.NotifyAfter
+import com.example.shared.NotifyAt
+import com.example.shared.NotifyEvery
 import com.example.shared.Now
 import com.example.shared.TimerId
 import kotlinx.coroutines.CancellationException
@@ -24,6 +29,40 @@ import kotlin.system.exitProcess
  * duration here is tens of milliseconds, except the one that is meant to be
  * cleared long before it fires.
  */
+
+/**
+ * An app's handler, which delegates each operation in one line. It compiles
+ * only if each method of `TimeHandler` has the shape of the method of the
+ * generated `EffectHandler`.
+ */
+class Delegating(
+    private val time: CoroutineTimeHandler,
+) : EffectHandler {
+    override suspend fun timeNow(operation: Now): Instant = time.now(operation)
+
+    override suspend fun timeNotifyAt(operation: NotifyAt): TimerId = time.notifyAt(operation)
+
+    override suspend fun timeNotifyAfter(operation: NotifyAfter): TimerId = time.notifyAfter(operation)
+
+    override fun timeNotifyEvery(
+        operation: NotifyEvery,
+        sink: EffectSink<TimerId>,
+    ) = time.notifyEvery(operation, sink)
+
+    override suspend fun timeClear(operation: ClearTimer): TimerId = time.clear(operation)
+}
+
+/**
+ * The ticks of a repeating timer: the id each one sent, and when, in
+ * nanoseconds on the monotonic clock.
+ */
+class Ticks {
+    private val ticks = mutableListOf<Pair<ULong, Long>>()
+
+    val sink = EffectSink<TimerId> { id -> synchronized(ticks) { ticks.add(id.value to System.nanoTime()) } }
+
+    val all: List<Pair<ULong, Long>> get() = synchronized(ticks) { ticks.toList() }
+}
 
 // Every mismatch, so that one run reports all of them rather than the first.
 val failures = mutableListOf<String>()
@@ -127,6 +166,48 @@ fun main() =
             "a timer started after its scope is cancelled throws CancellationException, got $afterCancel",
             afterCancel.exceptionOrNull() is CancellationException,
         )
+
+        // A repeating timer sends its own id once per period. The `n`th tick
+        // comes no earlier than `n` periods after the start, so no tick is
+        // early and the ticks never come in a burst.
+        val repeating = Ticks()
+        val period = 20_000_000L
+        val repeatingStart = System.nanoTime()
+        Delegating(time).timeNotifyEvery(NotifyEvery(TimerId(10uL), Duration(period.toULong())), repeating.sink)
+        delay(130)
+        val sent = repeating.all
+        expect("notifyEvery sends several ticks, got ${sent.size}", sent.size >= 3)
+        expect("notifyEvery sends its own id each time", sent.map { it.first }.toSet(), setOf(10uL))
+        expect(
+            "notifyEvery does not send a tick before its deadline",
+            sent.withIndex().all { (n, tick) -> tick.second - repeatingStart >= (n + 1) * period },
+        )
+
+        // `clear` answers with the id, and the timer stops. A tick that
+        // started before the `clear` can still arrive, so one more tick is
+        // allowed, and then the count must stay the same.
+        expect("clear of a repeating timer answers with the id it was given", time.clear(ClearTimer(TimerId(10uL))).value, 10uL)
+        val countAtClear = repeating.all.size
+        delay(30)
+        val countAfterClear = repeating.all.size
+        expect("a cleared repeating timer sends at most one more tick", countAfterClear <= countAtClear + 1)
+        delay(70)
+        expect("a cleared repeating timer sends no more ticks", repeating.all.size, countAfterClear)
+
+        // A one-shot timer and a repeating timer side by side, each with its
+        // own id.
+        val beside = Ticks()
+        time.notifyEvery(NotifyEvery(TimerId(11uL), Duration(10_000_000uL)), beside.sink)
+        val oneShot = time.notifyAfter(NotifyAfter(TimerId(12uL), Duration(50_000_000uL)))
+        expect("a one-shot timer beside a repeating one answers with its own id", oneShot.value, 12uL)
+        val besideTicks = beside.all
+        expect("a repeating timer beside a one-shot one ticks, got ${besideTicks.size}", besideTicks.size >= 2)
+        expect("a repeating timer beside a one-shot one sends its own id", besideTicks.map { it.first }.toSet(), setOf(11uL))
+        time.clear(ClearTimer(TimerId(11uL)))
+        delay(20)
+        val besideAtClear = beside.all.size
+        delay(40)
+        expect("the repeating timer beside a one-shot one stops when it is cleared", beside.all.size, besideAtClear)
 
         if (failures.isEmpty()) {
             println("HARNESS OK")

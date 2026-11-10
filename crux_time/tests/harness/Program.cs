@@ -118,6 +118,61 @@ var almost = TaskTimeHandler.FromElapsed(TimeSpan.FromTicks(1_700_000_000L * Tim
 Expect("FromElapsed does not round up to the next second", almost.Seconds, 1_699_999_999UL);
 Expect("FromElapsed keeps the last tick of the second", almost.Nanos, 999_999_900U);
 
+// A repeating timer sends its own id once per period. The `n`th tick comes no
+// earlier than `n` periods after the start, so no tick is early and the ticks
+// never come in a burst.
+var repeating = new Ticks();
+var period = TimeSpan.FromMilliseconds(20);
+var repeatingStart = Stopwatch.GetTimestamp();
+new Delegating(time).TimeNotifyEvery(
+    new NotifyEvery { Id = new TimerId { Value = 10 }, Period = new Duration { Nanos = 20_000_000 } },
+    repeating
+);
+await Task.Delay(130);
+var sent = repeating.All;
+Expect($"NotifyEvery sends several ticks, got {sent.Count}", sent.Count >= 3, true);
+Expect("NotifyEvery sends its own id each time", sent.Select(t => t.Id).Distinct().ToList(), [10UL]);
+Expect(
+    "NotifyEvery does not send a tick before its deadline",
+    sent.Select((tick, n) => Stopwatch.GetElapsedTime(repeatingStart, tick.At) >= period * (n + 1)).All(early => early),
+    true
+);
+
+// `Clear` answers with the id, and the timer stops. A tick that started before
+// the `Clear` can still arrive, so one more tick is allowed, and then the count
+// must stay the same.
+var clearedRepeating = await time.Clear(new ClearTimer { Id = new TimerId { Value = 10 } });
+Expect("Clear of a repeating timer answers with the id it was given", clearedRepeating.Value, 10UL);
+var countAtClear = repeating.All.Count;
+await Task.Delay(30);
+var countAfterClear = repeating.All.Count;
+Expect("a cleared repeating timer sends at most one more tick", countAfterClear <= countAtClear + 1, true);
+await Task.Delay(70);
+Expect("a cleared repeating timer sends no more ticks", repeating.All.Count, countAfterClear);
+
+// A one-shot timer and a repeating timer side by side, each with its own id.
+var beside = new Ticks();
+time.NotifyEvery(new NotifyEvery { Id = new TimerId { Value = 11 }, Period = new Duration { Nanos = 10_000_000 } }, beside);
+var oneShot = await time.NotifyAfter(
+    new NotifyAfter { Id = new TimerId { Value = 12 }, Duration = new Duration { Nanos = 50_000_000 } }
+);
+Expect("a one-shot timer beside a repeating one answers with its own id", oneShot.Value, 12UL);
+var besideTicks = beside.All;
+Expect($"a repeating timer beside a one-shot one ticks, got {besideTicks.Count}", besideTicks.Count >= 2, true);
+Expect("a repeating timer beside a one-shot one sends its own id", besideTicks.Select(t => t.Id).Distinct().ToList(), [11UL]);
+await time.Clear(new ClearTimer { Id = new TimerId { Value = 11 } });
+await Task.Delay(20);
+var besideAtClear = beside.All.Count;
+await Task.Delay(40);
+Expect("the repeating timer beside a one-shot one stops when it is cleared", beside.All.Count, besideAtClear);
+
+// A `Clear` that the sink runs, as the generated dispatcher does when an
+// update on a tick clears the timer, stops the timer before its next tick.
+var reentrant = new ClearingTicks(time);
+time.NotifyEvery(new NotifyEvery { Id = new TimerId { Value = 13 }, Period = new Duration { Nanos = 10_000_000 } }, reentrant);
+await Task.Delay(60);
+Expect("a Clear inside Send stops the repeating timer", reentrant.All.Select(t => t.Id).ToList(), [13UL]);
+
 if (failures.Count == 0)
 {
     Console.WriteLine("HARNESS OK");
@@ -129,3 +184,62 @@ foreach (var failure in failures)
     Console.WriteLine($"FAILED: {failure}");
 }
 return 1;
+
+/// <summary>
+/// An app's handler, which delegates each operation in one line. It compiles
+/// only if each method of <c>ITimeHandler</c> has the shape of the method of
+/// the generated <c>IEffectHandler</c>.
+/// </summary>
+sealed class Delegating(ITimeHandler time) : IEffectHandler
+{
+    public Task<Instant> TimeNow(Now operation) => time.Now(operation);
+    public Task<TimerId> TimeNotifyAt(NotifyAt operation) => time.NotifyAt(operation);
+    public Task<TimerId> TimeNotifyAfter(NotifyAfter operation) => time.NotifyAfter(operation);
+    public void TimeNotifyEvery(NotifyEvery operation, IEffectSink<TimerId> sink) => time.NotifyEvery(operation, sink);
+    public Task<TimerId> TimeClear(ClearTimer operation) => time.Clear(operation);
+}
+
+/// <summary>
+/// The ticks of a repeating timer: the id each one sent, and when, as a
+/// <c>Stopwatch</c> timestamp.
+/// </summary>
+sealed class Ticks : IEffectSink<TimerId>
+{
+    private readonly List<(ulong Id, long At)> _ticks = [];
+
+    public void Send(TimerId item)
+    {
+        lock (_ticks)
+        {
+            _ticks.Add((item.Value, Stopwatch.GetTimestamp()));
+        }
+    }
+
+    public List<(ulong Id, long At)> All
+    {
+        get
+        {
+            lock (_ticks)
+            {
+                return [.. _ticks];
+            }
+        }
+    }
+}
+
+/// <summary>
+/// A sink that records each tick and then clears its timer inside
+/// <c>Send</c>, on the thread of the timer.
+/// </summary>
+sealed class ClearingTicks(ITimeHandler time) : IEffectSink<TimerId>
+{
+    private readonly Ticks _ticks = new();
+
+    public void Send(TimerId item)
+    {
+        _ticks.Send(item);
+        _ = time.Clear(new ClearTimer { Id = item });
+    }
+
+    public List<(ulong Id, long At)> All => _ticks.All;
+}

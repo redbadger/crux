@@ -7,13 +7,19 @@
 /// ## What a timer answers with, and when
 ///
 /// The shell answers `notifyAt` and `notifyAfter` exactly once, with the id of
-/// the timer, when the timer fires. `clear` cancels the timer that it names,
-/// and answers with the same id.
+/// the timer, when the timer fires. `notifyEvery` is a stream: the shell sends
+/// the id of the timer into the sink once per period. `clear` cancels the timer
+/// that it names, and answers with the same id.
 ///
 /// The pending `notifyAt` or `notifyAfter` of a cleared timer can still answer,
 /// so a shell does not need to race the two. The core no longer listens for
 /// that answer, and ignores it. An implementation must still finish the pending
 /// call, so that the call does not wait for the life of the process.
+///
+/// A repeating timer stops only when a `clear` for its id arrives. A tick that
+/// started before the `clear` can still reach the core after it, and the core
+/// ignores that tick. If the app aborts the command without a `clear`, the shell
+/// is not told. The timer then continues, and the core ignores its ticks.
 public protocol TimeHandler: Sendable {
     /// The current wall-clock time.
     func now(_ operation: Now) async -> Instant
@@ -21,6 +27,9 @@ public protocol TimeHandler: Sendable {
     func notifyAt(_ operation: NotifyAt) async -> TimerId
     /// Answer with `operation.id` once `operation.duration` has elapsed.
     func notifyAfter(_ operation: NotifyAfter) async -> TimerId
+    /// Send `operation.id` into `sink` once per `operation.period`, until a
+    /// `clear` for that id arrives.
+    func notifyEvery(_ operation: NotifyEvery, into sink: EffectSink<TimerId>)
     /// Cancel the timer `operation.id` names, and answer with it.
     func clear(_ operation: ClearTimer) async -> TimerId
 }

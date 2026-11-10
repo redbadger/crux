@@ -26,6 +26,21 @@ using System.Threading.Tasks;
 /// constructs its own.
 /// </para>
 /// <para>
+/// <b>Repeating timers.</b> <c>NotifyEvery</c> runs a task that waits until
+/// each deadline and then sends a tick. Each deadline is the start time plus a
+/// whole number of periods, on the monotonic <c>Stopwatch</c> clock, so the
+/// timer does not drift. If the task wakes after one or more deadlines have
+/// passed, it sends one tick and waits for the next deadline that is still
+/// ahead. <c>Send</c> runs the core on the thread of the timer.
+/// </para>
+/// <para>
+/// The timer runs until a <c>Clear</c> for its id arrives. The task checks for
+/// the cancel before each tick, but a tick that started before the
+/// <c>Clear</c> can still reach the core after it. The core ignores that tick.
+/// If the app aborts the command without a <c>Clear</c>, the timer continues,
+/// and the core ignores its ticks.
+/// </para>
+/// <para>
 /// <b>Precision.</b> <c>Now</c> reads <c>DateTime.UtcNow</c>, which counts
 /// 100 ns ticks. Its real resolution depends on the operating system. A timer
 /// waits a whole number of milliseconds, rounded up, and the operating system
@@ -83,11 +98,31 @@ public sealed class TaskTimeHandler : ITimeHandler
         // A tick is 100ns, which is the finest a `TimeSpan` goes.
         Sleep(operation.Id, TimeSpan.FromTicks((long)(operation.Duration.Nanos / 100)));
 
+    /// <summary>
+    /// Send <c>operation.Id</c> into <paramref name="sink"/> once per
+    /// <c>operation.Period</c>, until a <c>Clear</c> for that id arrives.
+    /// </summary>
+    /// <remarks>
+    /// If the app aborts the command without a <c>Clear</c>, the timer
+    /// continues, and the core ignores its ticks.
+    /// </remarks>
+    public void NotifyEvery(NotifyEvery operation, IEffectSink<TimerId> sink)
+    {
+        var cancellation = new CancellationTokenSource();
+        _timers[operation.Id.Value] = cancellation;
+        // A period of 0 would make the loop spin.
+        var period = TimeSpan.FromTicks(Math.Max((long)(operation.Period.Nanos / 100), 1));
+        // On the thread pool, so that no tick is sent before this method
+        // returns.
+        _ = Task.Run(() => Repeat(operation.Id, period, sink, cancellation));
+    }
+
     public Task<TimerId> Clear(ClearTimer operation)
     {
         // Cancelling wakes the delay, so the task waiting on it completes and
         // answers too. Nothing acts on that answer. The sleeping task takes the
-        // timer out of the table and disposes of it.
+        // timer out of the table and disposes of it. A repeating timer checks
+        // for the cancel before each tick.
         if (_timers.TryGetValue(operation.Id.Value, out var cancellation))
         {
             try
@@ -137,4 +172,53 @@ public sealed class TaskTimeHandler : ITimeHandler
 
         return id;
     }
+
+    private async Task Repeat(TimerId id, TimeSpan period, IEffectSink<TimerId> sink, CancellationTokenSource cancellation)
+    {
+        var token = cancellation.Token;
+        try
+        {
+            var start = Stopwatch.GetTimestamp();
+            var tick = 1L;
+            while (true)
+            {
+                // As in `Sleep`, wait in chunks that `Task.Delay` accepts, and
+                // round up to whole milliseconds.
+                var remaining = Deadline(period, tick) - Stopwatch.GetElapsedTime(start);
+                if (remaining > TimeSpan.Zero)
+                {
+                    var chunk = remaining < MaxDelay
+                        ? TimeSpan.FromMilliseconds(Math.Ceiling(remaining.TotalMilliseconds))
+                        : MaxDelay;
+                    await Task.Delay(chunk, token).ConfigureAwait(false);
+                    continue;
+                }
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+                sink.Send(id);
+                // The next deadline that is still ahead, so a late wake sends
+                // one tick, not one for each period it missed.
+                tick = Stopwatch.GetElapsedTime(start).Ticks / period.Ticks + 1;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Cleared.
+        }
+        finally
+        {
+            // Only this timer's own entry: a later timer can have the same id.
+            _timers.TryRemove(new KeyValuePair<ulong, CancellationTokenSource>(id.Value, cancellation));
+            cancellation.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// <paramref name="tick"/> periods, or <c>TimeSpan.MaxValue</c> if that
+    /// does not fit.
+    /// </summary>
+    private static TimeSpan Deadline(TimeSpan period, long tick) =>
+        tick > TimeSpan.MaxValue.Ticks / period.Ticks ? TimeSpan.MaxValue : TimeSpan.FromTicks(period.Ticks * tick);
 }

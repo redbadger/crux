@@ -13,9 +13,11 @@
 //! `crux_core/facet_typegen` for type generation gets the protocol, and needs
 //! no feature of `crux_time` for it.
 //!
-//! A timer is answered exactly once, with its own id, and `ClearTimer` is
-//! answered with the id of the timer that it cancels. The protocol states
-//! these rules in each language.
+//! A one-shot timer is answered exactly once, with its own id. A repeating
+//! timer (`NotifyEvery`) is a stream: the shell sends its id once per period,
+//! until a `ClearTimer` for that id arrives. `ClearTimer` is answered with the
+//! id of the timer that it cancels. The protocol states these rules in each
+//! language.
 //!
 //! # Implementations
 //!
@@ -42,6 +44,14 @@
 //! emitted type where it constructs its handler, and delegates each operation
 //! to it in one line.
 //!
+//! Each implementation computes the deadlines of a repeating timer from a
+//! monotonic start time, so the timer does not drift. After a late wake, it
+//! sends one tick, not one for each period that it missed. It checks for a
+//! `clear` before each tick. A tick that started before the `clear` can still
+//! reach the core after it, and the core ignores that tick. The shell cannot
+//! tell when the app aborts the command without a `ClearTimer`. The timer then
+//! continues, and the core ignores its ticks.
+//!
 //! The implementations need the `facet_typegen` feature of `crux_time`.
 
 crux_core::__crux_core_facet_typegen_items! {
@@ -50,7 +60,7 @@ crux_core::__crux_core_facet_typegen_items! {
         type_generation::facet::{ShellProtocol, TypeGenError, TypeRegistry},
     };
 
-    use crate::operation::{ClearTimer, NotifyAfter, NotifyAt, Now};
+    use crate::operation::{ClearTimer, NotifyAfter, NotifyAt, NotifyEvery, Now};
 
     /// The protocol of `crux_time`, in each of the four languages.
     pub static PROTOCOL: ShellProtocol = ShellProtocol::new("Time")
@@ -77,6 +87,7 @@ crux_core::__crux_core_facet_typegen_items! {
         Now::register_types_facet(registry)?;
         NotifyAt::register_types_facet(registry)?;
         NotifyAfter::register_types_facet(registry)?;
+        NotifyEvery::register_types_facet(registry)?;
         ClearTimer::register_types_facet(registry)
     }
 }
