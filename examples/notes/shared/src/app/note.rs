@@ -1,5 +1,6 @@
 use automerge::{
-    Automerge, Change, ObjId, ObjType, OpObserver, ROOT, ReadDoc, transaction::Transactable,
+    Automerge, Change, ObjId, ObjType, PatchAction, PatchLog, ROOT, ReadDoc,
+    transaction::Transactable,
 };
 
 pub struct Note {
@@ -41,7 +42,8 @@ impl Note {
         note
     }
 
-    pub fn save(&mut self) -> Vec<u8> {
+    #[must_use]
+    pub fn save(&self) -> Vec<u8> {
         self.document.save()
     }
 
@@ -64,6 +66,9 @@ impl Note {
 
         println!("Splice {pos} {del} '{text}'");
 
+        #[allow(clippy::cast_possible_wrap)]
+        let del = del as isize;
+
         self.document
             .transact(|tx| tx.splice_text(body, pos, del, text))
             .expect("to splice the body text");
@@ -71,19 +76,33 @@ impl Note {
         self.document
             .get_last_local_change()
             .expect("to find a change")
-            .clone()
     }
 
     pub fn apply_changes_with(
         &mut self,
-        changes: impl IntoIterator<Item = Change>,
+        changes: impl IntoIterator<Item = Change> + Clone,
         edit_observer: &mut impl EditObserver,
     ) {
-        let mut observer = Observer { edit_observer };
+        let mut patch_log = PatchLog::active();
 
         self.document
-            .apply_changes_with(changes, Some(&mut observer))
+            .apply_changes_log_patches(changes, &mut patch_log)
             .expect("to apply changes");
+
+        for patch in self.document.make_patches(&mut patch_log) {
+            match patch.action {
+                PatchAction::SpliceText { index, value, .. } => {
+                    let text = value.make_string();
+                    edit_observer.body_insert(index, text.chars().count(), &text);
+                }
+                PatchAction::DeleteSeq { index, length } => {
+                    edit_observer.body_remove(index, length);
+                }
+                _ => {
+                    // not interested
+                }
+            }
+        }
     }
 
     fn body(&self) -> ObjId {
@@ -98,104 +117,6 @@ impl Note {
 pub trait EditObserver {
     fn body_insert(&mut self, loc: usize, len: usize, text: &str);
     fn body_remove(&mut self, loc: usize, len: usize);
-}
-
-struct Observer<'a> {
-    edit_observer: &'a mut dyn EditObserver,
-}
-
-impl OpObserver for Observer<'_> {
-    fn insert<R: automerge::ReadDoc>(
-        &mut self,
-        _doc: &R,
-        _objid: automerge::ObjId,
-        _index: usize,
-        _tagged_value: (automerge::Value<'_>, automerge::ObjId),
-        _conflict: bool,
-    ) {
-        // not interested
-    }
-
-    fn splice_text<R: automerge::ReadDoc>(
-        &mut self,
-        _doc: &R,
-        _objid: automerge::ObjId,
-        index: usize,
-        value: &str,
-    ) {
-        self.edit_observer.body_insert(index, value.len(), value);
-    }
-
-    fn put<R: automerge::ReadDoc>(
-        &mut self,
-        _doc: &R,
-        _objid: automerge::ObjId,
-        _prop: automerge::Prop,
-        _tagged_value: (automerge::Value<'_>, automerge::ObjId),
-        _conflict: bool,
-    ) {
-        // not interested
-    }
-
-    fn expose<R: automerge::ReadDoc>(
-        &mut self,
-        _doc: &R,
-        _objid: automerge::ObjId,
-        _prop: automerge::Prop,
-        _tagged_value: (automerge::Value<'_>, automerge::ObjId),
-        _conflict: bool,
-    ) {
-        // not interested
-    }
-
-    fn increment<R: automerge::ReadDoc>(
-        &mut self,
-        _doc: &R,
-        _objid: automerge::ObjId,
-        _prop: automerge::Prop,
-        _tagged_value: (i64, automerge::ObjId),
-    ) {
-        // not interested
-    }
-
-    fn delete_map<R: automerge::ReadDoc>(
-        &mut self,
-        _doc: &R,
-        _objid: automerge::ObjId,
-        _key: &str,
-    ) {
-        // not interested
-    }
-
-    fn delete_seq<R: automerge::ReadDoc>(
-        &mut self,
-        _doc: &R,
-        _objid: automerge::ObjId,
-        index: usize,
-        num: usize,
-    ) {
-        self.edit_observer.body_remove(index, num);
-    }
-
-    fn mark<'b, R: ReadDoc, M: Iterator<Item = automerge::marks::Mark<'b>>>(
-        &mut self,
-        _doc: &'b R,
-        _objid: ObjId,
-        _mark: M,
-    ) {
-        // not interested
-    }
-
-    fn unmark<R: ReadDoc>(
-        &mut self,
-        _doc: &R,
-        _objid: ObjId,
-        _name: &str,
-        _start: usize,
-        _end: usize,
-    ) {
-        // not interested
-    }
 }
 
 #[cfg(test)]
