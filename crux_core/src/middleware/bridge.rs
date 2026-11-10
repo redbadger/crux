@@ -59,6 +59,9 @@ where
 
     /// Resolve a requested effect, providing the output to the core
     ///
+    /// If the core no longer listens to a stream, the bridge ignores a new item
+    /// for that stream and returns `Ok(())`.
+    ///
     /// # Errors
     ///
     /// Returns a [`BridgeError`] when the effect fails to resolve, or any of the (de)serialization fails.
