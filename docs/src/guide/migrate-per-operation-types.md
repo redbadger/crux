@@ -746,11 +746,12 @@ time to read what the new operation does.
 namespace of your generated module, including the ones that your `Effect` does
 not use. For example, `crux_kv` brings `GetValue`, `SetValue`, `DeleteValue`,
 `KeyExists` and `ListKeys`. An operation of your own with one of those names
-collides, and at the moment the registry keeps one of the two and reports
-nothing ([#601](https://github.com/redbadger/crux/issues/601)). Rename yours
-with `#[facet(rename = "...")]`. We recommend that you give each app-defined
-operation a name that carries its capability, as the weather example does
-with `FetchSecret`, `StoreSecret` and `DeleteSecret`.
+collides, and type generation fails with an error that names both Rust types
+(the registry used to keep one of the two and report nothing,
+[#601](https://github.com/redbadger/crux/issues/601)). Rename yours with
+`#[facet(rename = "...")]`. We recommend that you give each app-defined
+operation a name that carries its capability, as the weather example does with
+`FetchSecret`, `StoreSecret` and `DeleteSecret`.
 
 ## Traps worth knowing about
 
