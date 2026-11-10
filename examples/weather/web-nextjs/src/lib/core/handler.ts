@@ -1,9 +1,9 @@
 import type {
-  Clear,
-  Delete,
+  ClearTimer,
+  DeleteSecret,
   EffectHandler,
-  Fetch,
-  Get,
+  FetchSecret,
+  GetValue,
   HttpRequest,
   HttpResult,
   Location,
@@ -11,8 +11,8 @@ import type {
   SecretDeleteResponse,
   SecretFetchResponse,
   SecretStoreResponse,
-  Set as SetValue,
-  Store,
+  SetValue,
+  StoreSecret,
   TimerId,
   ValueResult,
 } from "shared_types/app";
@@ -39,7 +39,7 @@ export class WeatherHandler implements EffectHandler {
   }
   // ANCHOR_END: http
 
-  kvGet(operation: Get): Promise<ValueResult> {
+  kvGet(operation: GetValue): Promise<ValueResult> {
     return kv.get(operation);
   }
 
@@ -51,7 +51,7 @@ export class WeatherHandler implements EffectHandler {
     return time.notifyAfter(operation);
   }
 
-  timeClear(operation: Clear): Promise<TimerId> {
+  timeClear(operation: ClearTimer): Promise<TimerId> {
     return time.clear(operation);
   }
 
@@ -63,15 +63,15 @@ export class WeatherHandler implements EffectHandler {
     return location.getLocation();
   }
 
-  fetchSecret(operation: Fetch): Promise<SecretFetchResponse> {
+  fetchSecret(operation: FetchSecret): Promise<SecretFetchResponse> {
     return secret.fetch(operation);
   }
 
-  storeSecret(operation: Store): Promise<SecretStoreResponse> {
+  storeSecret(operation: StoreSecret): Promise<SecretStoreResponse> {
     return secret.store(operation);
   }
 
-  deleteSecret(operation: Delete): Promise<SecretDeleteResponse> {
+  deleteSecret(operation: DeleteSecret): Promise<SecretDeleteResponse> {
     return secret.remove(operation);
   }
 }
