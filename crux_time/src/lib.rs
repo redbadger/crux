@@ -250,6 +250,11 @@ impl TimerHandle {
     /// A shell that goes on to answer the original timer request as well does
     /// no harm: by then the core has stopped listening for it, and the answer
     /// is ignored.
+    ///
+    /// For a repeating timer from [`clock::Time::notify_every`], the core
+    /// stops listening for ticks and then sends the [`operation::Clear`]
+    /// request. The stream yields [`TimerOutcome::Cleared`] once the shell has
+    /// answered, and then ends.
     pub fn clear(self) {
         let _ = self.abort.send(self.timer_id);
     }

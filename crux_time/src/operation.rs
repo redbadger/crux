@@ -10,6 +10,10 @@
 //! [`Clear`] is a request like the rest: it asks the shell to release the
 //! resources behind a timer, and is answered with the [`TimerId`] it named.
 //!
+//! [`NotifyEvery`] is a stream operation. It asks for a repeating timer, and
+//! the shell answers it with the same [`TimerId`] once each period. The other
+//! operations are requests, and the shell answers each of them once.
+//!
 //! ```
 //! # use crux_core::{Command, macros::effect};
 //! use crux_time::{TimerOutcome, clock::Time, operation};
@@ -52,12 +56,30 @@ pub struct NotifyAfter {
     pub duration: Duration,
 }
 
+/// Ask to be notified each time `period` elapses, answering with `id` each time.
+///
+/// This operation is a stream. The shell answers with `id` once per period.
+/// The shell continues until a [`Clear`] request for `id` arrives, or until a
+/// resolve returns an error. An error tells the shell that the core no longer
+/// listens for the ticks.
+#[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[operation(stream, output = TimerId)]
+pub struct NotifyEvery {
+    pub id: TimerId,
+    pub period: Duration,
+}
+
 /// Ask the shell to release the resources behind the timer `id`, because it is
 /// no longer wanted, answering with the same `id`.
 ///
 /// The timer's own [`NotifyAt`] or [`NotifyAfter`] request may still be
 /// answered after this one — a shell need not race the two. By then the core
 /// has stopped listening for that answer, and ignores it.
+///
+/// For a [`NotifyEvery`] timer, the shell stops the repeating timer when this
+/// request arrives. The core stops listening for ticks before it sends the
+/// request. If the shell resolves a tick after that, the resolve returns an
+/// error, and the shell can ignore that error.
 #[derive(Operation, Facet, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[operation(request, output = TimerId)]
 pub struct Clear {
