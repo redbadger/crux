@@ -240,6 +240,7 @@ mod builder;
 mod context;
 mod executor;
 mod stream;
+mod structured_concurrency;
 
 use std::future::Future;
 use std::sync::Arc;
@@ -254,9 +255,11 @@ use slab::Slab;
 use stream::CommandStreamExt as _;
 
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
-pub use context::CommandContext;
-pub use executor::AbortHandle;
+pub(crate) use context::CommandEvent;
+pub use context::{CommandContext, SpawnError};
+pub use executor::{AbortHandle, JoinHandle};
 pub use stream::CommandOutput;
+pub(crate) use structured_concurrency::{ChildTracker, ParentCompletionGuard};
 
 use crate::Request;
 use crate::capability::Operation;
@@ -265,7 +268,7 @@ use crate::capability::Operation;
 #[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
-    events: Receiver<Event>,
+    events: Receiver<CommandEvent<Effect, Event>>,
     context: CommandContext<Effect, Event>,
 
     // Executor internals
@@ -315,17 +318,21 @@ where
         let (spawn_sender, spawn_receiver) = crossbeam_channel::unbounded();
         let (_, waker_receiver) = crossbeam_channel::unbounded();
 
+        let waker: Arc<AtomicWaker> = Arc::default();
+
         let context = context::CommandContext {
             effects: effect_sender,
             events: event_sender,
             tasks: spawn_sender,
             rc: Arc::default(),
+            host_waker: waker.clone(),
         };
 
         let aborted: Arc<AtomicBool> = Arc::default();
         let task = Task {
             finished: Arc::default(),
             aborted: aborted.clone(),
+            abort_waker: Arc::default(),
             future: create_task(context.clone()).boxed(),
             join_handle_wakers: waker_receiver,
         };
@@ -345,7 +352,7 @@ where
             spawn_queue: spawn_receiver,
             ready_sender,
             tasks,
-            waker: Arc::default(),
+            waker,
             aborted,
         }
     }
@@ -465,6 +472,12 @@ where
 
     /// Run the effect state machine until it settles and return an iterator over the events
     pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
+        self.events_with_origin().map(CommandEvent::into_event)
+    }
+
+    pub(crate) fn events_with_origin(
+        &mut self,
+    ) -> impl Iterator<Item = CommandEvent<Effect, Event>> + '_ {
         self.run_until_settled();
 
         self.events.try_iter()
@@ -478,13 +491,14 @@ where
         Effect: Unpin + Send + 'static,
         Event: Unpin + Send + 'static,
     {
-        self.host(ctx.effects, ctx.events).map(|_| ())
+        self.host(ctx).map(|_| ())
     }
 
-    /// Create a command running self and the other command in sequence
-    // RFC: is this actually _useful_? Unlike `.then` on `CommandBuilder` this doesn't allow using
-    // the output of the first command in building the second one, it just runs them in sequence,
-    // and the benefit is unclear.
+    /// Create a command running `self` and `other` in sequence.
+    ///
+    /// `other` starts after `self` settles. If `self` emits events and the app
+    /// returns follow-up commands from `App::update` for those events, `self`
+    /// joins those commands and they must also settle before `other` starts.
     pub fn then(self, other: Self) -> Self
     where
         Effect: Unpin,
@@ -539,12 +553,17 @@ where
         Event: Unpin,
     {
         Command::new(move |ctx| {
-            self.map(move |output| match output {
-                CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
-                CommandOutput::Event(event) => CommandOutput::Event(event),
-            })
-            .host(ctx.effects, ctx.events)
-            .map(|_| ())
+            let owner = ctx.clone();
+            self.into_stream_with_origin()
+                .map(move |output| match output {
+                    CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
+                    CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
+                        event: event.into_event(),
+                        owner: owner.clone(),
+                    }),
+                })
+                .host(ctx)
+                .map(|_| ())
         })
     }
 
@@ -560,12 +579,17 @@ where
         Event: Unpin,
     {
         Command::new(move |ctx| {
-            self.map(move |output| match output {
-                CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
-                CommandOutput::Event(event) => CommandOutput::Event(map(event)),
-            })
-            .host(ctx.effects, ctx.events)
-            .map(|_| ())
+            let owner = ctx.clone();
+            self.into_stream_with_origin()
+                .map(move |output| match output {
+                    CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
+                    CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
+                        event: map(event.into_event()),
+                        owner: owner.clone(),
+                    }),
+                })
+                .host(ctx)
+                .map(|_| ())
         })
     }
 
@@ -574,12 +598,14 @@ where
     ///
     /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
     /// events back to the app, and to spawn additional tasks. The closure is expected to return a future.
-    pub fn spawn<F, Fut>(&mut self, create_task: F)
+    ///
+    /// Returns a handle for awaiting or aborting the spawned task.
+    pub fn spawn<F, Fut>(&mut self, create_task: F) -> JoinHandle
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        self.context.spawn(create_task);
+        self.context.spawn(create_task)
     }
 
     /// Returns an abort handle which can be used to remotely terminate a running Command
@@ -591,6 +617,7 @@ where
     pub fn abort_handle(&self) -> AbortHandle {
         AbortHandle {
             aborted: self.aborted.clone(),
+            host_waker: self.waker.clone(),
         }
     }
 }

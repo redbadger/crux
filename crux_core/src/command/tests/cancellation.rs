@@ -297,3 +297,85 @@ fn dropping_request_cancels_its_future() {
 
     assert!(cmd.is_done());
 }
+
+#[test]
+fn aborting_a_suspended_command_wakes_its_host() {
+    let child: Command<Effect, Event> = Command::new(|ctx| async move {
+        ctx.request_from_shell(Op::Basic).await;
+        panic!("aborted command must not resume");
+    });
+    let abort = child.abort_handle();
+    let mut cmd = Command::all([child]);
+
+    let request = cmd.effects().next().unwrap();
+    assert!(!cmd.is_done());
+
+    abort.abort();
+
+    // The host must poll and drop the aborted child without a shell response.
+    assert!(cmd.is_done());
+    drop(request);
+}
+
+#[test]
+fn aborting_a_suspended_task_wakes_its_joiner() {
+    let mut abort = None;
+    let mut cmd: Command<Effect, Event> = Command::new(|ctx| {
+        let handle = ctx.spawn(|ctx| async move {
+            ctx.request_from_shell(Op::Basic).await;
+            panic!("aborted task must not resume");
+        });
+        abort = Some(handle.clone());
+        async move {
+            handle.await;
+            ctx.send_event(Event::Ping);
+        }
+    });
+
+    let request = cmd.effects().next().unwrap();
+    assert!(!cmd.is_done());
+
+    let handle = abort.unwrap();
+    handle.abort();
+
+    // Running the command again must cancel the task and resume its joiner.
+    assert_eq!(cmd.events().next(), Some(Event::Ping));
+    assert!(handle.is_finished());
+    assert!(cmd.is_done());
+    drop(request);
+}
+
+#[test]
+fn try_spawn_on_dropped_command_drops_the_future_without_polling() {
+    let command: Command<(), ()> = Command::done();
+    let context = command.context.clone();
+    drop(command);
+
+    let (sender, mut receiver) = futures::channel::oneshot::channel::<()>();
+    let result = context.try_spawn(move |_| async move {
+        let _sender = sender;
+        panic!("a rejected task must never be polled");
+    });
+
+    assert!(result.is_err());
+    assert!(
+        receiver.try_recv().is_err(),
+        "the rejected future must be dropped"
+    );
+}
+
+#[test]
+fn try_spawn_returns_a_joinable_task() {
+    let mut command: Command<(), usize> = Command::new(|ctx| async move {
+        let child = ctx
+            .try_spawn(|ctx| async move {
+                ctx.send_event(1);
+            })
+            .expect("command is alive");
+        child.await;
+        ctx.send_event(2);
+    });
+
+    assert_eq!(command.events().collect::<Vec<_>>(), [1, 2]);
+    assert!(command.is_done());
+}

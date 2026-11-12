@@ -9,7 +9,10 @@ pub use effect::{Effect, EffectFFI};
 pub use request::Request;
 pub use resolve::{EffectVariant, OperationKind, RequestHandle, Resolvable, ResolveError};
 
-use crate::{App, Command};
+use crate::{
+    App, Command,
+    command::{ChildTracker, ParentCompletionGuard},
+};
 
 /// The Crux core. Create an instance of this type with your App type as the type parameter
 ///
@@ -147,16 +150,33 @@ where
             .lock()
             .expect("Capability runtime lock was poisoned");
 
-        let mut events: VecDeque<_> = root_command.events().collect();
+        let mut events: VecDeque<_> = root_command.events_with_origin().collect();
 
-        while let Some(event_from_commands) = events.pop_front() {
+        while let Some(command_event) = events.pop_front() {
+            let event_from_commands = command_event.event;
+            // event_owner is the command which emitted the event
+            let event_owner = command_event.owner;
+
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
             let command = self.app.update(event_from_commands, &mut model);
             drop(model);
 
-            root_command.spawn(|ctx| command.into_future(ctx));
+            // Run the child at the root; track its completion and cancellation
+            // on the parent without nesting their executors.
+            let child_abort = command.abort_handle();
+            let parent_guard = ParentCompletionGuard::new(event_owner.clone());
+            let child_join = root_command.spawn(|ctx| {
+                let child = command.into_future(ctx);
+                async move {
+                    child.await;
+                    drop(parent_guard);
+                }
+            });
+            // A rejected tracker is dropped, cancelling the child before it runs.
+            let _ = event_owner.try_spawn(move |_| ChildTracker::new(child_join, child_abort));
+            drop(event_owner);
 
-            events.extend(root_command.events());
+            events.extend(root_command.events_with_origin());
         }
 
         root_command.effects().collect()

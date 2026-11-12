@@ -29,6 +29,8 @@ pub(crate) struct Task {
     // Set to true when the task is aborted. Aborted tasks will poll Ready on the
     // next poll
     pub(crate) aborted: Arc<AtomicBool>,
+    // Separate from the future's waker so abort handles do not keep abandoned tasks alive.
+    pub(crate) abort_waker: Arc<AtomicWaker>,
     // The future polled by this task
     pub(crate) future: BoxFuture<'static, ()>,
 }
@@ -82,20 +84,49 @@ impl Wake for CommandWaker {
 }
 // ANCHOR_END: command_waker
 
-/// A handle used to abort a Command remotely before it is complete
+/// A handle used to abort a Command remotely before it is complete.
+///
+/// Aborting a top-level command returned by [`App::update`](crate::App::update)
+/// also cancels its follow-up commands. This is not advised, because it can have
+/// unexpected consequences when an update aborts the command that produced the
+/// event update is currently handling:  the model changes still take effect, but
+/// the command returned by that update belongs to the aborted chain and is cancelled
+/// before it runs.
+///
+/// For example, suppose a fetch command emits `Fetched(value)` and the model
+/// holds that command's abort handle. An update arm like this changes the model,
+/// but its returned save command will not execute:
+///
+/// ```text
+/// Event::Fetched(value) => {
+///     model.value = value;
+///     model.fetch_abort.take().unwrap().abort();
+///     save(value)
+/// }
+/// ```
+///
+/// Events already emitted by the aborted command are still delivered to
+/// `update`; cancellation does not undo model changes or retract those events.
+/// Commands returned while handling those events remain part of the cancelled
+/// chain. Aborting only a child command, such as a subscription, does not abort
+/// its parent or the parent's pending `.then` continuation.
 #[derive(Clone)]
 pub struct AbortHandle {
     pub(crate) aborted: Arc<AtomicBool>,
+    pub(crate) host_waker: Arc<AtomicWaker>,
 }
 
 impl AbortHandle {
     /// Abort the associated Command and all its tasks.
+    ///
+    /// Wakes the command's host so cancellation can proceed even while its tasks are suspended.
     ///
     /// The tasks will be stopped (not polled any more) at the next .await point.
     /// If you use this, make sure the tasks the Command is running are all cancellation
     /// safe, as they can be stopped at any of the await points or even before they are first polled
     pub fn abort(&self) {
         self.aborted.store(true, Ordering::Release);
+        self.host_waker.wake();
     }
 }
 
@@ -105,6 +136,7 @@ pub struct JoinHandle {
     pub(crate) register_waker: Sender<Waker>,
     pub(crate) finished: Arc<AtomicBool>,
     pub(crate) aborted: Arc<AtomicBool>,
+    pub(crate) abort_waker: Arc<AtomicWaker>,
 }
 
 // RFC: I'm sure the ordering as used is fine...? Right? :) In all seriousness, how would
@@ -112,11 +144,13 @@ pub struct JoinHandle {
 impl JoinHandle {
     /// Abort the task associated with this join handle. The task will be aborted at the
     /// next .await point. Any tasks this task spawned will continue running.
+    /// Schedules the task and wakes its owning command even if the task is suspended.
     // RFC: Do we need to think more thoroughly about cancellation? For example, should
     // the tasks have a parent-child relationship where cancelling the parent cancels all
     // the children?
     pub fn abort(&self) {
         self.aborted.store(true, Ordering::Release);
+        self.abort_waker.wake();
     }
 
     pub(crate) fn is_finished(&self) -> bool {
@@ -239,8 +273,17 @@ impl<Effect, Event> Command<Effect, Event> {
 
     pub(crate) fn spawn_new_tasks(&mut self) {
         while let Ok(task) = self.spawn_queue.try_recv() {
+            let abort_waker = task.abort_waker.clone();
             let task_id = self.tasks.insert(task);
 
+            abort_waker.register(&Waker::from(Arc::new(CommandWaker {
+                task_id: TaskId(task_id),
+                ready_queue: self.ready_sender.clone(),
+                parent_waker: self.waker.clone(),
+                woken: AtomicBool::new(false),
+            })));
+
+            // Always schedule the initial poll, including when abort happened before registration.
             self.ready_sender
                 .send(TaskId(task_id))
                 .expect("Command can't spawn a task, ready_queue has disconnected");
