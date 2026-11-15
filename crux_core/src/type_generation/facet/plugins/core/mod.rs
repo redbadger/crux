@@ -47,11 +47,6 @@ const KOTLIN_COROUTINES_VERSION: &str = "1.10.2";
 /// module: `FfiBridge.swift`, `FfiBridge.kt` and `FfiBridge.cs`.
 pub const FFI_BRIDGE_FILE: &str = "FfiBridge";
 
-/// The stems of every companion file this plugin can write beside the module,
-/// whether or not it writes them for this configuration. A shell extension's
-/// file must not take one of these names.
-pub const COMPANION_FILE_STEMS: &[&str] = &[FFI_BRIDGE_FILE];
-
 /// Emits `CoreBridge` and `Core`, and — when the FFI bindings are named —
 /// `FfiBridge`.
 #[derive(Debug, Clone)]
