@@ -1,5 +1,4 @@
-//! Kept in its own test binary because the failure is a stack overflow,
-//! which aborts the whole process.
+//! Separate test binary so a stack-overflow regression cannot abort other tests.
 
 use crux_core::{App, Command, Core, capability::Operation};
 

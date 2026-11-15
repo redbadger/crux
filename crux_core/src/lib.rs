@@ -276,6 +276,9 @@ pub trait App {
     /// capabilities, and combined to run sequentially or concurrently. If an event requires no
     /// side-effects, return [`Command::done`].
     ///
+    /// Each call starts a command with its own lifetime. Use command composition
+    /// to express sequencing and cancellation within that command.
+    ///
     /// Typically, `update` should call at least [`render`](crate::render::render).
     fn update(
         &self,

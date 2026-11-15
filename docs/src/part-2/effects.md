@@ -218,8 +218,8 @@ That said, a lot of universal async code (like async channels for example), work
 
 Commands can be cancelled using an `AbortHandle`. Call `cmd.abort_handle()` to get
 a handle, store it in your model, and call `handle.abort()` later to cancel all
-tasks in the command. This is useful for things like cancelling an in-flight search
-when the user types a new query.
+tasks and composed subcommands owned by the command. This is useful for cancelling
+an in-flight search when the user types a new query.
 
 ```rust,ignore
 // In one event handler, start a command and store its abort handle
@@ -232,6 +232,21 @@ if let Some(handle) = model.search_handle.take() {
     handle.abort();
 }
 ```
+
+Each call to `App::update` starts a command with its own lifetime. Use command
+composition to express which work runs together and which work runs in sequence.
+For example, `first.then(second)` waits for `first` and its owned tasks to finish
+before starting `second`. Events are queued for the app to handle; sequencing
+does not wait for their processing.
+
+Mapping events or effects preserves the lifetime of the command being mapped.
+Aborting the mapped command cancels its owned work; an abort handle obtained
+before mapping still controls the original command. Aborting a composed child
+lets its parent continue after cleanup, while aborting the enclosing command
+also cancels its pending `.then` continuation.
+
+Cancellation is cooperative. It does not retract events already queued in Core
+or stop work already handed to an external shell.
 
 There is more to the `async` effect API than we can or should cover here. Most of what you'd expect in async rust is supported – join handles, aborting tasks (and even Commands), spawning tasks and communicating between them, etc. Again, we recommend the [Command API docs](https://docs.rs/crux_core/latest/crux_core/command/index.html) for the full coverage.
 

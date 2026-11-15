@@ -31,9 +31,7 @@ enum Event {
 #[derive(Default)]
 struct TestApp;
 
-/// Emits `Emitted`, then requests `After`. The follow-up command for `Emitted`
-/// requests `FollowUp`, so `After` must not start before the shell resolves
-/// `FollowUp`.
+/// Emit `Emitted`, then request `After`. Handling `Emitted` requests `FollowUp`.
 fn emit_then_after() -> Command<Effect, Event> {
     Command::event(Event::Emitted)
         .then(Command::request_from_shell(After).then_send(|()| Event::Done))
@@ -68,37 +66,18 @@ fn names(effects: &[Effect]) -> Vec<&'static str> {
         .collect()
 }
 
-/// The control case. `.then` waits for the follow-up command of the event
-/// that the first command emitted.
+// Identity mappings preserve which requests are ready after handling Start.
 #[test]
-fn then_waits_for_the_follow_up() {
-    let core = Core::new_with(TestApp, ());
-
-    assert_eq!(names(&core.process_event(Event::Start)), ["FollowUp"]);
-}
-
-/// `map_event` replaces the owner of each event with the mapped command, so
-/// the command inside the map does not wait for the follow-up command. A
-/// mapped command must behave the same as the control case.
-#[test]
-#[ignore = "finding 1: .then inside map_event does not wait for the follow-up command"]
-fn then_inside_map_event_waits_for_the_follow_up() {
-    let core = Core::new_with(TestApp, ());
-
-    assert_eq!(
-        names(&core.process_event(Event::StartWithMappedEvents)),
-        ["FollowUp"]
-    );
-}
-
-/// `map_effect` replaces the owner of each event in the same way.
-#[test]
-#[ignore = "finding 1: .then inside map_effect does not wait for the follow-up command"]
-fn then_inside_map_effect_waits_for_the_follow_up() {
-    let core = Core::new_with(TestApp, ());
-
-    assert_eq!(
-        names(&core.process_event(Event::StartWithMappedEffects)),
-        ["FollowUp"]
-    );
+fn then_does_not_wait_for_follow_up_with_or_without_mapping() {
+    for event in [
+        Event::Start,
+        Event::StartWithMappedEvents,
+        Event::StartWithMappedEffects,
+    ] {
+        let core = Core::new_with(TestApp, ());
+        let effects = core.process_event(event);
+        let mut names = names(&effects);
+        names.sort_unstable();
+        assert_eq!(names, ["After", "FollowUp"]);
+    }
 }

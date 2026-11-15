@@ -22,31 +22,12 @@ use super::executor::{JoinHandle, Task};
 // ANCHOR: command_context
 pub struct CommandContext<Effect, Event> {
     pub(crate) effects: Sender<Effect>,
-    pub(crate) events: Sender<CommandEvent<Effect, Event>>,
+    pub(crate) events: Sender<Event>,
     pub(crate) tasks: Sender<Task>,
     pub(crate) rc: Arc<()>,
     pub(crate) host_waker: Arc<AtomicWaker>,
 }
 // ANCHOR_END: command_context
-
-/// Event emitted by a Command, alongside the `CommandContext` of the
-/// Command which emitted it, so that a sentinel task can join follow-up work
-/// on behalf of that command.
-#[allow(clippy::redundant_pub_crate)]
-pub(crate) struct CommandEvent<Effect, Event> {
-    pub(crate) event: Event,
-    pub(crate) owner: CommandContext<Effect, Event>,
-}
-
-impl<Effect, Event> CommandEvent<Effect, Event> {
-    pub(crate) fn into_event(self) -> Event {
-        let Self { event, owner } = self;
-        owner.host_waker.wake();
-        drop(owner);
-
-        event
-    }
-}
 
 // derive(Clone) wants Effect and Event to be clone which is not actually necessary
 impl<Effect, Event> Clone for CommandContext<Effect, Event> {
@@ -193,14 +174,14 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     }
 
     /// Send an event which should be handed to the update function. This is used to communicate the result
-    /// (or a sequence of results) of a command back to the app so that state can be updated accordingly
+    /// (or a sequence of results) of a command back to the app so that state can be updated accordingly.
+    ///
+    /// Sending queues the event for `App::update` without waiting for the app
+    /// to handle it.
     #[allow(clippy::missing_panics_doc)]
     pub fn send_event(&self, event: Event) {
         self.events
-            .send(CommandEvent {
-                event,
-                owner: self.clone(),
-            })
+            .send(event)
             .expect("Command could not send event, event channel disconnected");
     }
 
@@ -260,8 +241,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         };
 
         self.tasks.send(task).map_err(|rejected| {
-            // Drop the rejected future before returning the error. Its cleanup
-            // may cancel work hosted elsewhere, such as a tracked child command.
+            // Run the rejected future's drop cleanup before returning the error.
             drop(rejected);
             SpawnError::CommandDropped
         })?;

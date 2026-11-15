@@ -240,7 +240,6 @@ mod builder;
 mod context;
 mod executor;
 mod stream;
-mod structured_concurrency;
 
 use std::future::Future;
 use std::sync::Arc;
@@ -255,11 +254,9 @@ use slab::Slab;
 use stream::CommandStreamExt as _;
 
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
-pub(crate) use context::CommandEvent;
 pub use context::{CommandContext, SpawnError};
 pub use executor::{AbortHandle, JoinHandle};
 pub use stream::CommandOutput;
-pub(crate) use structured_concurrency::{ChildTracker, ParentCompletionGuard};
 
 use crate::Request;
 use crate::capability::Operation;
@@ -268,7 +265,7 @@ use crate::capability::Operation;
 #[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
 pub struct Command<Effect, Event> {
     effects: Receiver<Effect>,
-    events: Receiver<CommandEvent<Effect, Event>>,
+    events: Receiver<Event>,
     context: CommandContext<Effect, Event>,
 
     // Executor internals
@@ -449,8 +446,10 @@ where
         builder::StreamBuilder::new(|ctx| ctx.stream_from_shell(operation))
     }
 
-    /// Run the effect state machine until it settles, then return true
-    /// if there is any more work to do - tasks to run or events or effects to receive
+    /// Run the command until it settles, then return whether it has finished.
+    ///
+    /// Completion requires all owned tasks and subcommands to finish, all outputs
+    /// to be drained, and no saved contexts to remain.
     pub fn is_done(&mut self) -> bool {
         self.run_until_settled();
 
@@ -472,12 +471,6 @@ where
 
     /// Run the effect state machine until it settles and return an iterator over the events
     pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
-        self.events_with_origin().map(CommandEvent::into_event)
-    }
-
-    pub(crate) fn events_with_origin(
-        &mut self,
-    ) -> impl Iterator<Item = CommandEvent<Effect, Event>> + '_ {
         self.run_until_settled();
 
         self.events.try_iter()
@@ -496,9 +489,9 @@ where
 
     /// Create a command running `self` and `other` in sequence.
     ///
-    /// `other` starts after `self` settles. If `self` emits events and the app
-    /// returns follow-up commands from `App::update` for those events, `self`
-    /// joins those commands and they must also settle before `other` starts.
+    /// `other` starts after `self` and its owned tasks and subcommands finish
+    /// and their outputs have been forwarded. Emitted events are queued for the
+    /// app to handle; sequencing does not wait for their processing.
     pub fn then(self, other: Self) -> Self
     where
         Effect: Unpin,
@@ -544,7 +537,9 @@ where
     /// Map effects requested as part of this command to a different effect type.
     ///
     /// This is useful when composing apps to convert a command from a child app to a
-    /// command of the parent app.
+    /// command of the parent app. The mapped command owns the original command:
+    /// it waits for its tasks, and dropping or aborting it drops the original work.
+    /// An abort handle obtained before mapping still controls the original command.
     pub fn map_effect<F, NewEffect>(self, map: F) -> Command<NewEffect, Event>
     where
         F: Fn(Effect) -> NewEffect + Send + Sync + 'static,
@@ -553,24 +548,21 @@ where
         Event: Unpin,
     {
         Command::new(move |ctx| {
-            let owner = ctx.clone();
-            self.into_stream_with_origin()
-                .map(move |output| match output {
-                    CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
-                    CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
-                        event: event.into_event(),
-                        owner: owner.clone(),
-                    }),
-                })
-                .host(ctx)
-                .map(|_| ())
+            self.map(move |output| match output {
+                CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
+                CommandOutput::Event(event) => CommandOutput::Event(event),
+            })
+            .host(ctx)
+            .map(|_| ())
         })
     }
 
-    /// Map events sent as part of this command to a different effect type
+    /// Map events sent as part of this command to a different event type.
     ///
     /// This is useful when composing apps to convert a command from a child app to a
-    /// command of the parent app.
+    /// command of the parent app. The mapped command owns the original command:
+    /// it waits for its tasks, and dropping or aborting it drops the original work.
+    /// An abort handle obtained before mapping still controls the original command.
     pub fn map_event<F, NewEvent>(self, map: F) -> Command<Effect, NewEvent>
     where
         F: Fn(Event) -> NewEvent + Send + Sync + 'static,
@@ -579,17 +571,12 @@ where
         Event: Unpin,
     {
         Command::new(move |ctx| {
-            let owner = ctx.clone();
-            self.into_stream_with_origin()
-                .map(move |output| match output {
-                    CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
-                    CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
-                        event: map(event.into_event()),
-                        owner: owner.clone(),
-                    }),
-                })
-                .host(ctx)
-                .map(|_| ())
+            self.map(move |output| match output {
+                CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
+                CommandOutput::Event(event) => CommandOutput::Event(map(event)),
+            })
+            .host(ctx)
+            .map(|_| ())
         })
     }
 

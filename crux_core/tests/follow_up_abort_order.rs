@@ -33,8 +33,8 @@ struct Model {
     sibling: Option<AbortHandle>,
 }
 
-/// `update` for `ChildEmitted` always aborts the parent command. This flag
-/// selects if `update` aborts the sibling command first.
+/// Handling `ChildEmitted` aborts the command started by `Start`. This flag
+/// selects whether the subscription is also aborted before that command.
 struct TestApp {
     abort_sibling_first: bool,
 }
@@ -52,15 +52,13 @@ impl App for TestApp {
                 model.parent = Some(parent.abort_handle());
                 parent
             }
-            // The follow-up command of the parent: a sibling that stays
-            // active, and a command that emits `ChildEmitted`.
+            // Start a subscription alongside a command that emits `ChildEmitted`.
             Event::ParentEmitted => {
                 let sibling = Command::stream_from_shell(Subscribe).then_send(|()| Event::Tick);
                 model.sibling = Some(sibling.abort_handle());
                 Command::all([sibling, Command::event(Event::ChildEmitted)])
             }
-            // `Save` is a follow-up command in the chain of the parent, so
-            // the abort of the parent must cancel it.
+            // Stop the earlier work and request a save.
             Event::ChildEmitted => {
                 if self.abort_sibling_first {
                     model.sibling.take().expect("sibling started").abort();
@@ -81,37 +79,20 @@ fn sends_save(effects: &[Effect]) -> bool {
         .any(|effect| matches!(effect, Effect::Save(_)))
 }
 
-/// The control case. The abort of the parent command cancels the follow-up
-/// command that the same `update` call returns.
+/// Neither abort order cancels a command returned by a later update.
 #[test]
-fn aborting_the_parent_cancels_the_returned_follow_up() {
-    let core = Core::new_with(
-        TestApp {
-            abort_sibling_first: false,
-        },
-        Model::default(),
-    );
-
-    let effects = core.process_event(Event::Start);
-
-    assert!(!sends_save(&effects), "the cancelled follow-up sent Save");
-}
-
-/// The abort of the sibling schedules the host of the event owner before the
-/// host of the parent. The root then polls the new follow-up command before
-/// the cancellation from the parent reaches it, and `Save` goes to the shell.
-/// The result must not depend on the order of the two aborts.
-#[test]
-#[ignore = "finding 2: a second abort in the same update lets the cancelled follow-up send its effect"]
-fn aborting_a_sibling_first_still_cancels_the_returned_follow_up() {
-    let core = Core::new_with(
-        TestApp {
-            abort_sibling_first: true,
-        },
-        Model::default(),
-    );
-
-    let effects = core.process_event(Event::Start);
-
-    assert!(!sends_save(&effects), "the cancelled follow-up sent Save");
+fn aborting_the_emitter_does_not_cancel_the_returned_command() {
+    for abort_sibling_first in [false, true] {
+        let core = Core::new_with(
+            TestApp {
+                abort_sibling_first,
+            },
+            Model::default(),
+        );
+        let effects = core.process_event(Event::Start);
+        assert!(
+            sends_save(&effects),
+            "Save must run regardless of abort order"
+        );
+    }
 }

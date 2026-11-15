@@ -86,30 +86,16 @@ impl Wake for CommandWaker {
 
 /// A handle used to abort a Command remotely before it is complete.
 ///
-/// Aborting a top-level command returned by [`App::update`](crate::App::update)
-/// also cancels its follow-up commands. This is not advised, because it can have
-/// unexpected consequences when an update aborts the command that produced the
-/// event update is currently handling:  the model changes still take effect, but
-/// the command returned by that update belongs to the aborted chain and is cancelled
-/// before it runs.
+/// Cancellation covers tasks spawned on the command and explicitly composed
+/// subcommands. It is cooperative: it takes effect when the executor next
+/// observes the abort request, and cannot undo work already performed.
 ///
-/// For example, suppose a fetch command emits `Fetched(value)` and the model
-/// holds that command's abort handle. An update arm like this changes the model,
-/// but its returned save command will not execute:
+/// Aborting a composed child lets its parent continue after the child has been
+/// cleaned up. Aborting the enclosing command also cancels its pending `.then`
+/// continuation.
 ///
-/// ```text
-/// Event::Fetched(value) => {
-///     model.value = value;
-///     model.fetch_abort.take().unwrap().abort();
-///     save(value)
-/// }
-/// ```
-///
-/// Events already emitted by the aborted command are still delivered to
-/// `update`; cancellation does not undo model changes or retract those events.
-/// Commands returned while handling those events remain part of the cancelled
-/// chain. Aborting only a child command, such as a subscription, does not abort
-/// its parent or the parent's pending `.then` continuation.
+/// Cancellation does not retract events already queued in Core or stop work
+/// already handed to an external shell.
 #[derive(Clone)]
 pub struct AbortHandle {
     pub(crate) aborted: Arc<AtomicBool>,
@@ -121,9 +107,9 @@ impl AbortHandle {
     ///
     /// Wakes the command's host so cancellation can proceed even while its tasks are suspended.
     ///
-    /// The tasks will be stopped (not polled any more) at the next .await point.
-    /// If you use this, make sure the tasks the Command is running are all cancellation
-    /// safe, as they can be stopped at any of the await points or even before they are first polled
+    /// Tasks must be cancellation-safe: the executor drops their futures when
+    /// it observes cancellation, potentially before their first poll. A poll
+    /// already in progress can finish before cancellation is observed.
     pub fn abort(&self) {
         self.aborted.store(true, Ordering::Release);
         self.host_waker.wake();
