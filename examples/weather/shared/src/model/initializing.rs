@@ -6,6 +6,10 @@
 //! - `InitializingTransition::Onboard` - no API key, transitions to onboarding.
 //! - `InitializingTransition::Active(api_key, favorites)` - fully initialized.
 
+// Every `InitializingEvent` variant has `#[serde(skip)]`, so the `Deserialize`
+// derive generates an enum with no variants.
+#![allow(clippy::empty_enums)]
+
 use crux_core::{Command, render::render};
 use crux_kv::error::KeyValueError;
 use crux_kv::store::KeyValue;
