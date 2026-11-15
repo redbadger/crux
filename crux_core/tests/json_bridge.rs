@@ -366,3 +366,163 @@ mod tests {
         bridge.resolve(id, &response, &mut effects_bytes)
     }
 }
+
+mod stream_app {
+    use crux_core::{Command, capability::Operation, command::AbortHandle};
+    use crux_macros::effect;
+    use facet::Facet;
+    use serde::{Deserialize, Serialize};
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct Ticks;
+
+    impl Operation for Ticks {
+        type Output = u32;
+    }
+
+    #[effect(facet_typegen)]
+    pub enum Effect {
+        Ticks(Ticks),
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum Event {
+        Start,
+        Stop,
+        Tick,
+    }
+
+    #[derive(Default)]
+    pub struct Model {
+        ticks: Option<AbortHandle>,
+    }
+
+    #[derive(Default)]
+    pub struct App;
+
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = Model;
+        type ViewModel = ();
+        type Effect = Effect;
+
+        fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
+            match event {
+                Event::Start => {
+                    let command = Command::stream_from_shell(Ticks).then_send(|_| Event::Tick);
+                    model.ticks = Some(command.abort_handle());
+                    command
+                }
+                Event::Stop => {
+                    if let Some(ticks) = model.ticks.take() {
+                        ticks.abort();
+                    }
+                    Command::done()
+                }
+                Event::Tick => Command::done(),
+            }
+        }
+
+        fn view(&self, _model: &Model) {}
+    }
+}
+
+mod stream_tests {
+    use crux_core::{
+        Core, OperationKind,
+        bridge::{Bridge, BridgeError, EffectId, JsonFfiFormat, Request},
+    };
+
+    use crate::stream_app::{App, EffectFfi};
+
+    type StreamBridge = Bridge<App, JsonFfiFormat>;
+
+    fn start(bridge: &StreamBridge) -> EffectId {
+        let mut requests_bytes = vec![];
+        bridge
+            .update(b"\"Start\"", &mut requests_bytes)
+            .expect("event should process");
+
+        let mut requests: Vec<Request<EffectFfi>> =
+            serde_json::from_slice(&requests_bytes).expect("to deserialise");
+        assert_eq!(requests.len(), 1);
+
+        let ticks = requests.remove(0);
+        assert_eq!(ticks.id.kind(), OperationKind::Stream);
+
+        ticks.id
+    }
+
+    fn stop(bridge: &StreamBridge) {
+        let mut requests_bytes = vec![];
+        bridge
+            .update(b"\"Stop\"", &mut requests_bytes)
+            .expect("event should process");
+    }
+
+    fn tick(
+        bridge: &StreamBridge,
+        id: EffectId,
+        item: &[u8],
+    ) -> Result<Vec<Request<EffectFfi>>, BridgeError<JsonFfiFormat>> {
+        let mut requests_bytes = vec![];
+        bridge.resolve(id, item, &mut requests_bytes)?;
+
+        Ok(serde_json::from_slice(&requests_bytes).expect("to deserialise"))
+    }
+
+    #[test]
+    fn a_live_stream_delivers_items() {
+        let bridge = StreamBridge::new(Core::default());
+        let id = start(&bridge);
+
+        for item in [b"1", b"2"] {
+            let requests = tick(&bridge, id, item).expect("a live stream should take the item");
+            assert!(requests.is_empty());
+        }
+    }
+
+    #[test]
+    fn a_late_item_for_a_stream_the_core_stopped_is_ignored() {
+        let bridge = StreamBridge::new(Core::default());
+        let id = start(&bridge);
+        stop(&bridge);
+
+        for _ in 0..2 {
+            let requests = tick(&bridge, id, b"1").expect("a late stream item should be ignored");
+            assert!(requests.is_empty());
+        }
+    }
+
+    #[test]
+    fn a_malformed_item_for_a_live_stream_is_an_error() {
+        let bridge = StreamBridge::new(Core::default());
+        let id = start(&bridge);
+
+        let Err(error) = tick(&bridge, id, b"\"not a number\"") else {
+            panic!("expected a malformed item to fail");
+        };
+
+        assert!(
+            matches!(error, BridgeError::DeserializeOutput(_)),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn a_malformed_item_for_a_stream_the_core_stopped_is_an_error() {
+        let bridge = StreamBridge::new(Core::default());
+        let id = start(&bridge);
+        stop(&bridge);
+
+        let Err(error) = tick(&bridge, id, b"\"not a number\"") else {
+            panic!("expected a malformed item to fail");
+        };
+
+        assert!(
+            matches!(error, BridgeError::DeserializeOutput(_)),
+            "{error}"
+        );
+    }
+}

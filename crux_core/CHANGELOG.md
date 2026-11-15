@@ -393,6 +393,16 @@ and this project adheres to
   reserved names, and `without_effect_handlers()` turns them off along with the
   rest.
 
+### 🐛 Bug Fixes
+
+- **The bridge ignores a late item for a stream.** If the core no longer
+  listens to a stream, `Bridge::resolve` returns `Ok(())` for a new item on
+  that stream. Before, it returned `ResolveError::FinishedMany`. An FFI
+  wrapper usually panics on an error, so a timer tick that arrived after a
+  clear, or any item after an abort, crashed the core. A malformed item is
+  still an error. `Request::resolve` in a Rust shell still returns
+  `ResolveError::FinishedMany`.
+
 ### ⚙️ Miscellaneous Tasks
 
 - **Facet type generation now requires `facet_generate` 0.21.** Only the

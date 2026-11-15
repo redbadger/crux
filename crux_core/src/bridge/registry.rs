@@ -350,9 +350,18 @@ impl<T: FfiFormat> ResolveRegistry<T> {
     /// could have been issued; and [`ResolveError::NotFound`] if it is simply
     /// not outstanding — never issued, or already resolved.
     ///
+    /// If the core no longer listens to a stream, `resume` ignores a new item
+    /// for that stream and returns `Ok(())`. The app can abort the command,
+    /// or drop the stream, before the shell stops sending items. The item is
+    /// then late, not wrong. The registry keeps the entry of the stream, so
+    /// each later item is also ignored and does not become
+    /// [`ResolveError::NotFound`].
+    ///
     /// # Errors
     ///
-    /// Returns `BridgeError` if the stored request could not be resolved.
+    /// Returns `BridgeError` if the stored request could not be resolved. The
+    /// response is deserialized first, so a malformed item for a stream is an
+    /// error even when the core no longer listens to that stream.
     ///
     /// # Panics
     ///
@@ -362,7 +371,13 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 
         let entry = outstanding.entry(id)?;
 
-        let resolved = entry.resolve.resolve(response);
+        let resolved = match entry.resolve.resolve(response) {
+            // Only a `Many` reports `FinishedMany`. A shell behind the FFI
+            // cannot know when the core stops listening, and its wrapper
+            // usually panics on an error, so ignore the late item.
+            Err(BridgeError::ProcessResponse(ResolveError::FinishedMany)) => Ok(()),
+            resolved => resolved,
+        };
 
         // A `Once` turns itself into a `Never` as it resolves: the request is
         // finished, and its id will not be issued again, so drop it.
