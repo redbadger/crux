@@ -34,11 +34,11 @@ import App
             neverRuns()
         }
 
-        func kvGet(_: App.Get) async -> ValueResult {
+        func kvGet(_: GetValue) async -> ValueResult {
             neverRuns()
         }
 
-        func kvSet(_: App.Set) async -> ValueResult {
+        func kvSet(_: SetValue) async -> ValueResult {
             neverRuns()
         }
 
@@ -46,7 +46,7 @@ import App
             neverRuns()
         }
 
-        func timeClear(_: Clear) async -> TimerId {
+        func timeClear(_: ClearTimer) async -> TimerId {
             neverRuns()
         }
 
@@ -58,15 +58,15 @@ import App
             neverRuns()
         }
 
-        func fetchSecret(_: Fetch) async -> SecretFetchResponse {
+        func fetchSecret(_: FetchSecret) async -> SecretFetchResponse {
             neverRuns()
         }
 
-        func storeSecret(_: Store) async -> SecretStoreResponse {
+        func storeSecret(_: StoreSecret) async -> SecretStoreResponse {
             neverRuns()
         }
 
-        func deleteSecret(_: Delete) async -> SecretDeleteResponse {
+        func deleteSecret(_: DeleteSecret) async -> SecretDeleteResponse {
             neverRuns()
         }
     }

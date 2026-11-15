@@ -4,10 +4,10 @@ use crux_core::Request;
 use shared::ViewModel;
 use shared::kv::{operation, value::Value};
 
-/// `Get` is answered with a `ValueResult` — nothing else will do.
+/// `GetValue` is answered with a `ValueResult` — nothing else will do.
 pub(super) fn get(
     core: &super::Core,
-    mut request: Request<operation::Get>,
+    mut request: Request<operation::GetValue>,
     render: WriteSignal<ViewModel>,
 ) {
     let key = &request.operation.key;
@@ -16,13 +16,13 @@ pub(super) fn get(
     super::resolve_effect(core, &mut request, response, render);
 }
 
-/// `Set` is answered with the value it replaced.
+/// `SetValue` is answered with the value it replaced.
 pub(super) fn set(
     core: &super::Core,
-    mut request: Request<operation::Set>,
+    mut request: Request<operation::SetValue>,
     render: WriteSignal<ViewModel>,
 ) {
-    let operation::Set { key, value } = &request.operation;
+    let operation::SetValue { key, value } = &request.operation;
     log::debug!("kv set: {key}");
     let previous = read(key);
     let value_str = std::str::from_utf8(value).unwrap_or("");

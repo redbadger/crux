@@ -1,7 +1,7 @@
 package com.crux.example.weather.core
 
 import android.util.Log
-import com.crux.example.weather.Clear
+import com.crux.example.weather.ClearTimer
 import com.crux.example.weather.NotifyAfter
 import com.crux.example.weather.TimerId
 import kotlinx.coroutines.Job
@@ -19,7 +19,7 @@ class TimeHandler
         /// `NotifyAfter` is answered exactly once, with the id of the timer that
         /// fired.
         ///
-        /// If `Clear` arrives first the coroutine that is dispatching this
+        /// If `ClearTimer` arrives first the coroutine that is dispatching this
         /// request is cancelled, so it never gets as far as answering. Answering
         /// late would be harmless anyway — the core stops listening for this
         /// request the moment it clears the timer, and ignores any answer that
@@ -40,8 +40,8 @@ class TimeHandler
             return operation.id
         }
 
-        /// `Clear` is a request: drop the timer and answer with the id it named.
-        suspend fun clear(operation: Clear): TimerId {
+        /// `ClearTimer` is a request: drop the timer and answer with the id it named.
+        suspend fun clear(operation: ClearTimer): TimerId {
             val timerId = operation.id.value
             Log.d(TAG, "clear (id=$timerId)")
             activeTimers.remove(timerId)?.cancel()

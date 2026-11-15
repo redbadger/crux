@@ -319,7 +319,7 @@ impl TypeRegistry {
     /// A capability's handler implements the whole capability, so registering
     /// it registers every type it names, including the operations this app
     /// never sends. The extension says which those are, with
-    /// [`ShellExtension::types`].
+    /// [`ShellExtension::rust_types`].
     ///
     /// The crate declares the extension with [`ShellExtension::new`], the
     /// names its sources declare, and one builder per language it ships:
