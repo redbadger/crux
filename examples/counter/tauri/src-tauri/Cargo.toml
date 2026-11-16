@@ -22,8 +22,5 @@ tauri = { version = "2.11.5", features = [] }
 [features]
 custom-protocol = ["tauri/custom-protocol"]
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = [
-    'cfg(mobile)',
-    'cfg(desktop)',
-] }
+[lints]
+workspace = true
