@@ -22,5 +22,5 @@ wasm-streams = "=0.5"
 
 leptos = { version = "0.8.20", features = ["csr"] }
 
-[lints.clippy]
-empty_docs = "allow"
+[lints]
+workspace = true
