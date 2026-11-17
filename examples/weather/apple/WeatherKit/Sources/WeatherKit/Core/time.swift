@@ -3,7 +3,15 @@ import Foundation
 
 private nonisolated let logger = Log.time
 
-nonisolated extension WeatherHandler {
+/// The app's `TimeHandler`, which sleeps a `Task` for each timer.
+@MainActor
+public final class TaskSleepTimeHandler {
+    var activeTimers: [UInt64: Task<Void, Never>] = [:]
+
+    public init() {}
+}
+
+nonisolated extension TaskSleepTimeHandler: TimeHandler {
     /// `TimeNotifyAfter` is a request: it is answered exactly once, with the
     /// id of the timer that fired.
     ///
