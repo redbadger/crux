@@ -401,6 +401,57 @@ public sealed class EffectDispatcher
 }
 ```
 
+### Effect groups
+
+An app can put the variants of its effect into groups with
+`#[codegen(group = "Name")]`. The attribute changes only the generated shell
+code. A test or a preview can then replace one group with a fake and keep the
+real handlers for the other groups.
+
+```rust,no_run,noplayground
+// Rust
+#[effect(facet_typegen)]
+pub enum Effect {
+    Render(RenderOperation),
+    #[codegen(group = "Network")]
+    Http(HttpRequest),
+    #[codegen(group = "Store")]
+    KvGet(GetValue),
+    #[codegen(group = "Store")]
+    KvSet(SetValue),
+    GetLocation(GetLocation),
+}
+```
+
+The group name must be in upper camel case. Variants with the same name are in
+the same group. For this effect, type generation emits:
+
+- a `NetworkHandler` and a `StoreHandler`, with the methods of their variants
+  (`IStoreHandler` and so on in C#)
+- an `UngroupedHandler` for the variants in no group, except `Render`
+- an `EffectHandler` that refines (Swift), extends (Kotlin, TypeScript) or
+  inherits (C#) these handlers, and declares only `render`
+- a `GroupedEffectHandler`, which makes an `EffectHandler` from one handler for
+  each group
+
+The parameters of `GroupedEffectHandler` are in the order in which each group
+first appears in the effect, and `ungrouped` is last. In Swift:
+
+```swift
+// Swift
+let handler = GroupedEffectHandler(
+    network: OfflineNetwork(),
+    store: InMemoryStore(),
+    ungrouped: FixedLocation()
+)
+```
+
+One type that implements all of `EffectHandler` still compiles, so you can add
+groups and change the shell later. If no variant is in a group, type generation
+emits one `EffectHandler` with all the methods, as described above. Type generation rejects `Render` in a
+group. It also rejects a group whose handler has the name of a shared type or
+a name of the generated API, for example `group = "Effect"`.
+
 ### The generated Core
 
 The dispatcher resolves each request, but the shell still needs a loop

@@ -50,6 +50,12 @@ pub struct EffectVariantMeta {
     /// The generated `EffectHandler` writes it on the method for this
     /// variant, so that a shell author sees the operation's contract there.
     pub doc: Vec<String>,
+    /// The handler group of the variant, from `#[codegen(group = "Name")]`,
+    /// or `None` if the variant is in no group.
+    ///
+    /// Type generation emits a `<Name>Handler` for each group. See
+    /// [`EffectBuilder::group`].
+    pub group: Option<String>,
 }
 
 /// Records the variants of one effect enum.
@@ -110,9 +116,23 @@ impl<'a> EffectBuilder<'a> {
             output,
             render: TypeId::of::<Op>() == TypeId::of::<crate::render::RenderOperation>(),
             doc: Doc::from(Op::SHAPE).comments().to_vec(),
+            group: None,
         });
 
         Ok(self)
+    }
+
+    /// Put the variant that was recorded last into the handler group `name`.
+    ///
+    /// `#[codegen(group = "Name")]` on a variant calls this method after
+    /// [`variant`](Self::variant). Variants with the same `name` are in the
+    /// same group. [`TypeRegistry::build`] checks the name.
+    #[must_use]
+    pub fn group(mut self, name: &str) -> Self {
+        if let Some(variant) = self.meta.variants.last_mut() {
+            variant.group = Some(name.to_string());
+        }
+        self
     }
 
     /// Hand the recorded metadata back to the registry.

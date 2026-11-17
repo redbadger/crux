@@ -1419,3 +1419,619 @@ mod toolchain {
         })
     }
 }
+
+/// An app that puts its effects into handler groups with
+/// `#[codegen(group = "...")]`.
+#[cfg(feature = "facet_typegen")]
+mod facet_groups_test {
+    use std::fs;
+
+    use crux_core::{
+        Command,
+        macros::effect,
+        render::RenderOperation,
+        type_generation::facet::{Config, Export, TypeGenError, TypeRegistry},
+    };
+
+    use super::{
+        facet_shared::{Event, Get, Legacy, Probe, Publish, Subscribe, ViewModel},
+        toolchain::{build, kotlinc_build, swift_build},
+    };
+
+    #[effect(facet_typegen)]
+    pub enum Effect {
+        Render(RenderOperation),
+        #[codegen(group = "Store")]
+        Get(Get),
+        #[codegen(group = "Network")]
+        Publish(Publish),
+        #[codegen(group = "Store")]
+        Subscribe(Subscribe),
+        Probe(Probe),
+        Legacy(Legacy),
+    }
+
+    #[derive(Default)]
+    pub struct App;
+
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = ();
+        type ViewModel = ViewModel;
+        type Effect = Effect;
+
+        fn update(&self, _event: Event, _model: &mut Self::Model) -> Command<Effect, Event> {
+            Command::done()
+        }
+
+        fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+            ViewModel
+        }
+    }
+
+    fn generator() -> crux_core::type_generation::facet::CodeGenerator {
+        TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry")
+    }
+
+    fn assert_generated(source: &str, expected: &[&str]) {
+        for fragment in expected {
+            assert!(
+                source.contains(fragment),
+                "expected the generated source to contain `{fragment}`:\n{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn generates_swift() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        let source = fs::read_to_string(dir.path().join("App/Sources/App/App.swift"))
+            .expect("should write a Swift module");
+
+        assert_generated(
+            &source,
+            &[
+                "public protocol StoreHandler: Sendable {",
+                "public protocol NetworkHandler: Sendable {",
+                "public protocol UngroupedHandler: Sendable {",
+                "public protocol EffectHandler: Sendable, StoreHandler, NetworkHandler, UngroupedHandler {",
+                "public struct GroupedEffectHandler: EffectHandler {",
+                "public init(store: any StoreHandler, network: any NetworkHandler, ungrouped: any UngroupedHandler) {",
+                "self.network.publish(operation)",
+                "public struct EffectDispatcher: Sendable {",
+            ],
+        );
+    }
+
+    #[test]
+    fn generates_kotlin() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        let source = fs::read_to_string(dir.path().join("com/example/shared/Shared.kt"))
+            .expect("should write a Kotlin module");
+
+        assert_generated(
+            &source,
+            &[
+                "interface StoreHandler {",
+                "interface EffectHandler : StoreHandler, NetworkHandler, UngroupedHandler {",
+                "suspend fun probe(operation: com.example.shared.Kit.Probe): com.example.shared.Kit.Presence",
+                ") : EffectHandler, StoreHandler by store, NetworkHandler by network, UngroupedHandler by ungrouped",
+            ],
+        );
+    }
+
+    #[test]
+    fn generates_csharp() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+
+        let source = fs::read_to_string(dir.path().join("Example/Shared/Shared.cs"))
+            .expect("should write a C# module");
+
+        assert_generated(
+            &source,
+            &[
+                "public interface IStoreHandler",
+                "public interface IEffectHandler : IStoreHandler, INetworkHandler, IUngroupedHandler",
+                "public sealed class GroupedEffectHandler : IEffectHandler",
+                "public GroupedEffectHandler(IStoreHandler store, INetworkHandler network, IUngroupedHandler ungrouped)",
+            ],
+        );
+    }
+
+    /// Runs `pnpm` and `tsc`, so this is a real compile of the generated
+    /// TypeScript, not just a string check.
+    #[test]
+    fn generates_typescript() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("typescript type generation should succeed");
+
+        let source = fs::read_to_string(dir.path().join("shared_types.ts"))
+            .expect("should write a TypeScript module");
+
+        assert_generated(
+            &source,
+            &[
+                "export interface StoreHandler {",
+                "export interface EffectHandler extends StoreHandler, NetworkHandler, UngroupedHandler {",
+                "export class GroupedEffectHandler implements EffectHandler {",
+            ],
+        );
+
+        assert!(
+            dir.path().join("shared_types.d.ts").exists(),
+            "tsc should have emitted declarations, so the generated module compiles"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Compiling the generated code with a shell that uses it
+    // -----------------------------------------------------------------------
+
+    /// An app whose group names test the edge cases: `Get` has the name of
+    /// its own method, and the parameters `default`, `object` and `in` are
+    /// keywords in at least one shell language.
+    mod keywords {
+        use super::{Event, Get, Legacy, Probe, Publish, RenderOperation, Subscribe, ViewModel};
+        use crux_core::{Command, macros::effect};
+
+        #[effect(facet_typegen)]
+        pub enum Effect {
+            Render(RenderOperation),
+            #[codegen(group = "Get")]
+            Get(Get),
+            #[codegen(group = "Default")]
+            Publish(Publish),
+            #[codegen(group = "Default")]
+            Subscribe(Subscribe),
+            #[codegen(group = "Object")]
+            Probe(Probe),
+            #[codegen(group = "In")]
+            Legacy(Legacy),
+        }
+
+        #[derive(Default)]
+        pub struct App;
+
+        impl crux_core::App for App {
+            type Event = Event;
+            type Model = ();
+            type ViewModel = ViewModel;
+            type Effect = Effect;
+
+            fn update(&self, _event: Event, _model: &mut Self::Model) -> Command<Effect, Event> {
+                Command::done()
+            }
+
+            fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+                ViewModel
+            }
+        }
+    }
+
+    fn keywords_generator() -> crux_core::type_generation::facet::CodeGenerator {
+        TypeRegistry::new()
+            .register_app::<keywords::App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry")
+    }
+
+    /// A Swift type that implements all of `EffectHandler`. Both apps carry
+    /// the same operations, so the same type serves both.
+    const SWIFT_EVERYTHING: &str = r"import Kit
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+struct Everything: EffectHandler {
+    func get(_ operation: Get) async -> GetResult { fatalError() }
+    func publish(_ operation: Publish) {}
+    func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>) {}
+    func probe(_ operation: Probe) async -> Presence { fatalError() }
+    func legacy(_ operation: Legacy, requestId: UInt32, resolve: @escaping @Sendable ([UInt8]) -> Void) {}
+}
+";
+
+    /// A shell that implements all of `EffectHandler` in one type, and one
+    /// that makes it from a fake for one group. Both must compile.
+    #[test]
+    fn the_generated_swift_compiles_with_a_shell() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+        let package = dir.path().join("App");
+        let shell = SWIFT_EVERYTHING.to_string()
+            + r"
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+struct FakeStore: StoreHandler {
+    func get(_ operation: Get) async -> GetResult { fatalError() }
+    func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>) {}
+}
+
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+func handlers() -> [any EffectHandler] {
+    let all = Everything()
+    return [all, GroupedEffectHandler(store: FakeStore(), network: all, ungrouped: all)]
+}
+";
+        fs::write(package.join("Sources/App/Shell.swift"), shell).expect("should write the shell");
+
+        swift_build(&package);
+    }
+
+    #[test]
+    fn the_generated_swift_compiles_with_keyword_groups() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        keywords_generator()
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+        let package = dir.path().join("App");
+        let shell = SWIFT_EVERYTHING.to_string()
+            + r"
+@available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
+func handler() -> any EffectHandler {
+    let all = Everything()
+    return GroupedEffectHandler(get: all, default: all, object: all, in: all)
+}
+";
+        fs::write(package.join("Sources/App/Shell.swift"), shell).expect("should write the shell");
+
+        swift_build(&package);
+    }
+
+    const KOTLIN_EVERYTHING: &str = r"package shell
+
+import com.example.shared.*
+import com.example.shared.Kit.Presence
+import com.example.shared.Kit.Probe
+
+class Everything : EffectHandler {
+    override suspend fun get(operation: Get): GetResult = TODO()
+    override fun publish(operation: Publish) {}
+    override fun subscribe(operation: Subscribe, sink: EffectSink<Message>) {}
+    override suspend fun probe(operation: Probe): Presence = TODO()
+    override fun legacy(operation: Legacy, requestId: UInt, resolve: (ByteArray) -> Unit) {}
+}
+";
+
+    /// Writes `source` into a package directory of its own, which
+    /// `kotlinc_build` compiles together with the generated packages.
+    fn write_kotlin_shell(dir: &std::path::Path, source: &str) {
+        let shell = dir.join("shell");
+        fs::create_dir_all(&shell).expect("should create the shell package");
+        fs::write(shell.join("Shell.kt"), source).expect("should write the shell");
+    }
+
+    #[test]
+    fn the_generated_kotlin_compiles_with_a_shell() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+        let shell = KOTLIN_EVERYTHING.to_string()
+            + r"
+class FakeStore : StoreHandler {
+    override suspend fun get(operation: Get): GetResult = TODO()
+    override fun subscribe(operation: Subscribe, sink: EffectSink<Message>) {}
+}
+
+fun handlers(): List<EffectHandler> {
+    val all = Everything()
+    return listOf(all, GroupedEffectHandler(store = FakeStore(), network = all, ungrouped = all))
+}
+";
+        write_kotlin_shell(dir.path(), &shell);
+
+        kotlinc_build(dir.path());
+    }
+
+    #[test]
+    fn the_generated_kotlin_compiles_with_keyword_groups() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        keywords_generator()
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+        let shell = KOTLIN_EVERYTHING.to_string()
+            + r"
+fun handler(): EffectHandler {
+    val all = Everything()
+    return GroupedEffectHandler(get = all, default = all, `object` = all, `in` = all)
+}
+";
+        write_kotlin_shell(dir.path(), &shell);
+
+        kotlinc_build(dir.path());
+    }
+
+    const TYPESCRIPT_EVERYTHING: &str = r#"import {
+  EffectHandler,
+  EffectSink,
+  Get,
+  GetResult,
+  GroupedEffectHandler,
+  Legacy,
+  Message,
+  Publish,
+  Subscribe,
+} from "./shared_types";
+import { Presence, Probe } from "./Kit";
+
+class Everything implements EffectHandler {
+  get(_operation: Get): Promise<GetResult> {
+    throw new Error("not called");
+  }
+  publish(_operation: Publish): void {}
+  subscribe(_operation: Subscribe, _sink: EffectSink<Message>): void {}
+  probe(_operation: Probe): Promise<Presence> {
+    throw new Error("not called");
+  }
+  legacy(_operation: Legacy, _requestId: number, _resolve: (bytes: Uint8Array) => void): void {}
+}
+
+const all = new Everything();
+"#;
+
+    /// `typescript()` runs `tsc` over every `.ts` file in the output
+    /// directory, so a shell written there first is type-checked with the
+    /// generated module.
+    #[test]
+    fn the_generated_typescript_type_checks_with_a_shell() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let shell = TYPESCRIPT_EVERYTHING.replace(
+            "} from \"./shared_types\";",
+            "  StoreHandler,\n} from \"./shared_types\";",
+        ) + r"
+class FakeStore implements StoreHandler {
+  get(_operation: Get): Promise<GetResult> {
+    throw new Error('not called');
+  }
+  subscribe(_operation: Subscribe, _sink: EffectSink<Message>): void {}
+}
+
+export const handlers: EffectHandler[] = [all, new GroupedEffectHandler(new FakeStore(), all, all)];
+";
+        fs::write(dir.path().join("shell.ts"), shell).expect("should write the shell");
+
+        generator()
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("tsc should type-check the generated module and the shell");
+    }
+
+    #[test]
+    fn the_generated_typescript_type_checks_with_keyword_groups() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let shell = TYPESCRIPT_EVERYTHING.to_string()
+            + "\nexport const handler: EffectHandler = new GroupedEffectHandler(all, all, all, all);\n";
+        fs::write(dir.path().join("shell.ts"), shell).expect("should write the shell");
+
+        keywords_generator()
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("tsc should type-check the generated module and the shell");
+    }
+
+    const CSHARP_EVERYTHING: &str = r"using System;
+using System.Threading.Tasks;
+using Example.Shared;
+using Example.Shared.Kit;
+
+namespace Shell;
+
+public sealed class Everything : IEffectHandler
+{
+    public Task<GetResult> Get(Example.Shared.Get operation) => throw new NotImplementedException();
+    public void Publish(Example.Shared.Publish operation) { }
+    public void Subscribe(Example.Shared.Subscribe operation, IEffectSink<Message> sink) { }
+    public Task<Presence> Probe(Probe operation) => throw new NotImplementedException();
+    public void Legacy(Example.Shared.Legacy operation, uint requestId, Action<byte[]> resolve) { }
+}
+";
+
+    fn dotnet_build(dir: &std::path::Path) {
+        build(
+            "dotnet",
+            &["build", "--nologo"].map(std::ffi::OsStr::new),
+            dir,
+        );
+    }
+
+    #[test]
+    fn the_generated_csharp_compiles_with_a_shell() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+        let shell = CSHARP_EVERYTHING.to_string()
+            + r"
+public sealed class FakeStore : IStoreHandler
+{
+    public Task<GetResult> Get(Example.Shared.Get operation) => throw new NotImplementedException();
+    public void Subscribe(Example.Shared.Subscribe operation, IEffectSink<Message> sink) { }
+}
+
+public static class Handlers
+{
+    public static IEffectHandler[] Make()
+    {
+        var all = new Everything();
+        return [all, new GroupedEffectHandler(new FakeStore(), all, all)];
+    }
+}
+";
+        fs::write(dir.path().join("Shell.cs"), shell).expect("should write the shell");
+
+        dotnet_build(dir.path());
+    }
+
+    #[test]
+    fn the_generated_csharp_compiles_with_keyword_groups() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        keywords_generator()
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+        let shell = CSHARP_EVERYTHING.to_string()
+            + r"
+public static class Handlers
+{
+    public static IEffectHandler Make()
+    {
+        var all = new Everything();
+        return new GroupedEffectHandler(get: all, @default: all, @object: all, @in: all);
+    }
+}
+";
+        fs::write(dir.path().join("Shell.cs"), shell).expect("should write the shell");
+
+        dotnet_build(dir.path());
+    }
+
+    /// Registers the types of `E` and returns the error that `build` gives.
+    fn build_error<E: Export>() -> String {
+        let mut registry = TypeRegistry::new();
+        E::register_types(&mut registry).expect("should register the effect");
+        let Err(TypeGenError::Generation(message)) = registry.build() else {
+            panic!("expected a generation error");
+        };
+        message
+    }
+
+    mod effect_group {
+        use super::{Get, RenderOperation, effect};
+
+        #[effect(facet_typegen)]
+        pub enum Effect {
+            Render(RenderOperation),
+            #[codegen(group = "Effect")]
+            Get(Get),
+        }
+    }
+
+    mod ungrouped_group {
+        use super::{Get, RenderOperation, effect};
+
+        #[effect(facet_typegen)]
+        pub enum Effect {
+            Render(RenderOperation),
+            #[codegen(group = "Ungrouped")]
+            Get(Get),
+        }
+    }
+
+    mod render_group {
+        use super::{Get, RenderOperation, effect};
+
+        #[effect(facet_typegen)]
+        pub enum Effect {
+            #[codegen(group = "View")]
+            Render(RenderOperation),
+            Get(Get),
+        }
+    }
+
+    #[test]
+    fn a_group_cannot_generate_effect_handler() {
+        let message = build_error::<effect_group::Effect>();
+        assert!(
+            message.contains("effect group `Effect` would generate `EffectHandler`"),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn a_group_cannot_be_called_ungrouped() {
+        let message = build_error::<ungrouped_group::Effect>();
+        assert!(
+            message.contains("effect group `Ungrouped` would generate `UngroupedHandler`"),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[test]
+    fn the_render_variant_cannot_be_in_a_group() {
+        let message = build_error::<render_group::Effect>();
+        assert!(
+            message.contains("variant `Render` of effect `Effect` carries the render operation"),
+            "unexpected message: {message}"
+        );
+    }
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(facet::Facet)]
+    pub struct StoreHandler {
+        pub whoops: String,
+    }
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(facet::Facet)]
+    pub struct UngroupedHandler {
+        pub whoops: String,
+    }
+
+    #[test]
+    fn a_type_cannot_have_the_name_of_a_group_handler() {
+        let error = TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .register_type::<StoreHandler>()
+            .expect("should register the clashing type")
+            .build()
+            .err()
+            .expect("should reject the clashing type");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains(
+                "effect group `Store` would generate `StoreHandler`, but a shared type has that name"
+            ),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// `UngroupedHandler` is generated only when the effect has groups.
+    #[test]
+    fn a_type_cannot_be_called_ungrouped_handler_when_the_effect_has_groups() {
+        let error = TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .register_type::<UngroupedHandler>()
+            .expect("should register the clashing type")
+            .build()
+            .err()
+            .expect("should reject the clashing type");
+
+        let TypeGenError::Generation(message) = error else {
+            panic!("expected a generation error");
+        };
+        assert!(
+            message.contains(
+                "`UngroupedHandler` is generated for the shell API when an effect has groups"
+            ),
+            "unexpected message: {message}"
+        );
+
+        TypeRegistry::new()
+            .register_app::<super::facet_shared::App>()
+            .expect("should register the app without groups")
+            .register_type::<UngroupedHandler>()
+            .expect("should register the type")
+            .build()
+            .expect("an app without groups can have a type called UngroupedHandler");
+    }
+}
