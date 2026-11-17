@@ -10,7 +10,7 @@
 use std::any::TypeId;
 
 use facet::Facet;
-use facet_generate::reflection::format::{Format, QualifiedTypeName};
+use facet_generate::reflection::format::{Doc, Format, QualifiedTypeName};
 
 use super::{TypeGenError, TypeRegistry};
 use crate::{OperationKind, capability::Operation};
@@ -45,6 +45,11 @@ pub struct EffectVariantMeta {
     /// The generated `Core` handles that variant itself — it re-reads the view
     /// instead of dispatching — so it has to be able to pick it out.
     pub render: bool,
+    /// The doc comment of the operation type, one string for each line.
+    ///
+    /// The generated `EffectHandler` writes it on the method for this
+    /// variant, so that a shell author sees the operation's contract there.
+    pub doc: Vec<String>,
 }
 
 /// Records the variants of one effect enum.
@@ -75,7 +80,7 @@ impl<'a> EffectBuilder<'a> {
     /// Returns a [`TypeGenError`] if `Op::Output` cannot be reflected.
     pub fn variant<'facet, Op>(mut self, ident: &str) -> Result<Self, TypeGenError>
     where
-        Op: Operation,
+        Op: Operation + Facet<'facet>,
         Op::Output: Facet<'facet>,
     {
         let kind = Op::KIND;
@@ -104,6 +109,7 @@ impl<'a> EffectBuilder<'a> {
             kind,
             output,
             render: TypeId::of::<Op>() == TypeId::of::<crate::render::RenderOperation>(),
+            doc: Doc::from(Op::SHAPE).comments().to_vec(),
         });
 
         Ok(self)

@@ -25,7 +25,15 @@ public interface IEffectHandler
     /// implement it only if you drive <c>EffectDispatcher</c> yourself.
     /// </summary>
     void Render(RenderOperation operation) { }
+    /// <summary>
+    /// Fetch `url`.
+    ///
+    /// The handler method for this operation carries this doc, in each language.
+    /// </summary>
     Task<HttpResult> Http(HttpRequest operation);
+    /// <summary>
+    /// Receive a message each time one arrives.
+    /// </summary>
     void Subscribe(Subscribe operation, IEffectSink<Message> sink);
     void Legacy(LegacyOperation operation, uint requestId, Action<byte[]> resolve);
 }

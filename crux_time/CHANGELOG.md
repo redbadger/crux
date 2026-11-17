@@ -36,6 +36,12 @@ and this project adheres to
   The shell answers with `id` once per period until a `ClearTimer` request for that
   `id` arrives, or until a resolve returns an error.
 
+- **The doc of each operation says what the shell answers with.** A
+  `NotifyAt` or `NotifyAfter` answers once, when the timer fires, and can
+  still answer after a `ClearTimer` for its id. The core ignores that answer.
+  The generated `EffectHandler` shows this doc on the method for each
+  operation.
+
 ## [0.19.0](https://github.com/redbadger/crux/compare/crux_time-v0.18.0...crux_time-v0.19.0) - 2026-09-06
 
 ### 💥 Breaking Changes

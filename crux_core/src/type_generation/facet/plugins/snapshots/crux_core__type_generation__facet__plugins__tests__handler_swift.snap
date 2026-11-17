@@ -35,7 +35,11 @@ private func serializeEffectOutput(_ body: (BincodeSerializer) throws -> Void) -
 @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
 public protocol EffectHandler: Sendable {
     func render(_ operation: RenderOperation)
+    /// Fetch `url`.
+    ///
+    /// The handler method for this operation carries this doc, in each language.
     func http(_ operation: HttpRequest) async -> HttpResult
+    /// Receive a message each time one arrives.
     func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>)
     func legacy(_ operation: LegacyOperation, requestId: UInt32, resolve: @escaping @Sendable ([UInt8]) -> Void)
 }

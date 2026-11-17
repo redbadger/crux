@@ -192,8 +192,8 @@ and this project adheres to
   `EffectDispatcher`) are now reserved: `TypeRegistry::build` reports an error
   if a shared type or an effect variant claims one.
 
-  Requires `facet_generate` 0.21, which fires the `after_type` plugin hook for
-  every top-level type and exposes the helpers these plugins need.
+  The plugins use the `after_type` plugin hook of `facet_generate`, which
+  fires for every top-level type, and the helpers that it exposes for them.
 
 - **Type generation also emits a shell-side `Core`.** With the handler API in
   place, what every shell still wrote by hand was the same loop: serialize the
@@ -288,49 +288,15 @@ and this project adheres to
   joins the reserved names, and a `boltffi(..)` configuration with no `Core`
   to bridge (`without_core()`, no registered app, or no `Render` variant) is
   an error rather than a no-op. Requires `facet_generate` with the
-  companion-file and manifest hooks (0.21).
+  companion-file and manifest hooks.
 
-- **A crate can ship source for the shell as a shell extension, and type
-  generation emits it on request.** The main use is a capability's shell
-  handler. A crate exports a `ShellExtension` static behind its
-  `facet_typegen` feature: a name, the top-level names its sources declare,
-  and, per language, a `ShellSource` holding Swift, Kotlin, TypeScript or C#
-  source embedded with `include_str!`. An app registers the ones it wants on
-  the `TypeRegistry`, which also registers every type the shipped sources
-  name:
-
-  ```rust,ignore
-  TypeRegistry::new().register_app::<App>()?
-      .shell_extension(&crux_http::shell::EXTENSION)?
-      .shell_extension(&crux_time::shell::EXTENSION)?
-      .build()?
-  ```
-
-  For each registered extension with source for the language, the generated
-  module gains one companion file named after the extension (`Http.swift`,
-  `Http.kt`, `Http.cs`) with the source verbatim under the module header;
-  TypeScript appends it to the module after the types. A capability's
-  handler declares a protocol (`HttpHandler`) with one method per operation,
-  matching the generated `EffectHandler` shapes, and an implementation of
-  it. The app's handler holds an instance and delegates one line per
-  operation. Nothing else is generated: `EffectHandler`, `EffectDispatcher`
-  and `Core` are unchanged, an unregistered extension leaves no trace, and
-  `without_effect_handlers()` does not affect it.
-  `ShellSource::dependencies` carries any manifest lines the source needs,
-  which reach the manifest only through registration. `ShellSource::stdlib(..)`
-  is the constructor for the expected case of none, and a Swift source that
-  adds a package names the target's product with `target_dependencies(..)`.
-  Both types are `#[non_exhaustive]` and built with `const fn` builders
-  (`ShellExtension::new("Http").foreign_types(..).swift(..)`), so a language can
-  be added later without breaking the crates that ship them. The build
-  rejects an extension name that is not an identifier-shaped file stem or is
-  a Windows device name, that matches another extension's ignoring case, or
-  that matches a file crux generates (`FfiBridge`); and a declared name that
-  is reserved for the shell API, imported from the serialization runtime,
-  the name of a namespace, declared by another extension, or used by a type
-  registered in the root namespace. An extension named after the module it
-  would be written beside is rejected when that language is generated. See
-  [Shell extensions](https://redbadger.github.io/crux/part-4/typegen.html#shell-extensions).
+- **Each `EffectHandler` method carries the doc comment of its operation.**
+  Type generation writes the doc of the operation type on its method in the
+  generated `EffectHandler`, in Swift, Kotlin, TypeScript and C#. A capability
+  states its contract with the shell in that doc, so the shell author reads
+  it where they implement the method. `EffectBuilder::variant` reads the doc
+  from the operation's `Shape`, so it now requires `Op: Facet`. Every
+  operation that an effect carries already implements `Facet`.
 
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` used to be a bare counter. It now packs, from the top, eight
@@ -405,7 +371,7 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **Facet type generation now requires `facet_generate` 0.21.** Only the
+- **Facet type generation now requires `facet_generate` 0.22.4.** Only the
   `facet_typegen` feature is affected; every other feature of this crate is
   unchanged.
 - Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.

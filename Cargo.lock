@@ -775,8 +775,9 @@ dependencies = [
 
 [[package]]
 name = "facet-generate-attrs"
-version = "0.18.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9748acb73b45dbcbc3fd9b61cc2e6b678ec6e05d6ada20775851e798764e566e"
 dependencies = [
  "facet 0.46.5",
 ]
@@ -859,9 +860,11 @@ dependencies = [
 
 [[package]]
 name = "facet_generate"
-version = "0.21.0"
-source = "git+https://github.com/redbadger/facet-generate?rev=d9d4fc7b#d9d4fc7bf1043ff2da2c77114c2ec884d1e2a553"
+version = "0.22.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4b40165bb037a16467655a6fe5f69bca25414d3509bf392f5552679ea1cc1f3"
 dependencies = [
+ "anyhow",
  "derive_builder",
  "facet 0.46.5",
  "facet-generate-attrs",
@@ -872,7 +875,6 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "textwrap",
  "thiserror",
 ]
 
@@ -2233,8 +2235,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c13547615a44dc9c452a8a534638acdf07120d4b6847c8178705da06306a3057"
 dependencies = [
  "smawk",
- "unicode-linebreak",
- "unicode-width",
 ]
 
 [[package]]
@@ -2477,18 +2477,6 @@ name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
-
-[[package]]
-name = "unicode-linebreak"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b09c83c3c29d37506a3e260c08c03743a6bb66a9cd432c6934ab501a190571f"
-
-[[package]]
-name = "unicode-width"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "uniffi_bindgen"
