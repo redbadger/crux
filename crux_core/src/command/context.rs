@@ -15,7 +15,7 @@ use thiserror::Error;
 use crate::capability::Operation;
 use crate::{OperationKind, Request};
 
-use super::executor::{JoinHandle, Task};
+use super::executor::{JoinHandle, Task, TaskCompletion};
 
 /// Context enabling tasks to communicate with the parent Command,
 /// specifically submit effects, events and spawn further tasks
@@ -226,15 +226,17 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let future = make_future(ctx);
 
         let task = Task {
-            finished: Arc::default(),
             aborted: Arc::default(),
             abort_waker: Arc::default(),
             future: future.boxed(),
-            join_handle_wakers: receiver,
+            completion: TaskCompletion {
+                finished: Arc::default(),
+                join_handle_wakers: receiver,
+            },
         };
 
         let handle = JoinHandle {
-            finished: task.finished.clone(),
+            finished: task.completion.finished.clone(),
             aborted: task.aborted.clone(),
             abort_waker: task.abort_waker.clone(),
             register_waker: sender,

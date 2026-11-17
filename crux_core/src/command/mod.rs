@@ -327,11 +327,13 @@ where
 
         let aborted: Arc<AtomicBool> = Arc::default();
         let task = Task {
-            finished: Arc::default(),
             aborted: aborted.clone(),
             abort_waker: Arc::default(),
             future: create_task(context.clone()).boxed(),
-            join_handle_wakers: waker_receiver,
+            completion: executor::TaskCompletion {
+                finished: Arc::default(),
+                join_handle_wakers: waker_receiver,
+            },
         };
 
         let mut tasks = Slab::with_capacity(1);
@@ -585,14 +587,12 @@ where
     ///
     /// The `create_task` closure receives a [`CommandContext`] that it can use to send shell requests,
     /// events back to the app, and to spawn additional tasks. The closure is expected to return a future.
-    ///
-    /// Returns a handle for awaiting or aborting the spawned task.
-    pub fn spawn<F, Fut>(&mut self, create_task: F) -> JoinHandle
+    pub fn spawn<F, Fut>(&mut self, create_task: F)
     where
         F: FnOnce(CommandContext<Effect, Event>) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        self.context.spawn(create_task)
+        self.context.spawn(create_task);
     }
 
     /// Returns an abort handle which can be used to remotely terminate a running Command

@@ -21,11 +21,6 @@ pub(crate) struct TaskId(pub(crate) usize);
 
 // ANCHOR: task
 pub(crate) struct Task {
-    // Used to wake the join handle when the task concludes
-    pub(crate) join_handle_wakers: Receiver<Waker>,
-    // Set to true when the task finishes, used by the join handle
-    // RFC: is there a safe way to do this relying on the waker alone?
-    pub(crate) finished: Arc<AtomicBool>,
     // Set to true when the task is aborted. Aborted tasks will poll Ready on the
     // next poll
     pub(crate) aborted: Arc<AtomicBool>,
@@ -33,6 +28,8 @@ pub(crate) struct Task {
     pub(crate) abort_waker: Arc<AtomicWaker>,
     // The future polled by this task
     pub(crate) future: BoxFuture<'static, ()>,
+    // Fields drop in declaration order: clean up the future before notifying joiners.
+    pub(crate) completion: TaskCompletion,
 }
 // ANCHOR_END: task
 
@@ -40,11 +37,19 @@ impl Task {
     pub(crate) fn is_aborted(&self) -> bool {
         self.aborted.load(Ordering::Acquire)
     }
+}
 
-    fn wake_join_handles(&self) {
+/// Reports task termination on every drop path, including command teardown and
+/// tasks discarded before their first poll.
+pub(crate) struct TaskCompletion {
+    pub(crate) finished: Arc<AtomicBool>,
+    pub(crate) join_handle_wakers: Receiver<Waker>,
+}
+
+impl Drop for TaskCompletion {
+    fn drop(&mut self) {
+        self.finished.store(true, Ordering::Release);
         for waker in self.join_handle_wakers.try_iter() {
-            // TODO: this potentially wakes tasks which are no longer interested
-            // and wakes tasks more than once if they await multiple copies of the same join handle
             waker.wake();
         }
     }
@@ -151,10 +156,12 @@ impl Future for JoinHandle {
         if self.is_finished() {
             Poll::Ready(())
         } else {
-            match self.register_waker.send(cx.waker().clone()) {
-                Ok(()) => Poll::Pending,
-                // The task no longer exists, we report ready immediately
-                Err(_) => Poll::Ready(()),
+            // Register first, then recheck completion so termination between
+            // the first check and registration cannot leave us asleep.
+            if self.register_waker.send(cx.waker().clone()).is_err() || self.is_finished() {
+                Poll::Ready(())
+            } else {
+                Poll::Pending
             }
         }
     }
@@ -200,13 +207,7 @@ impl<Effect, Event> Command<Effect, Event> {
                         //   we pick it up again when it's woken up
                     }
                     TaskState::Completed | TaskState::Cancelled => {
-                        // Remove and drop the task, it's finished
-                        let task = self.tasks.remove(task_id.0);
-
-                        task.finished.store(true, Ordering::Release);
-                        task.wake_join_handles();
-
-                        drop(task);
+                        drop(self.tasks.remove(task_id.0));
                     }
                 }
             }

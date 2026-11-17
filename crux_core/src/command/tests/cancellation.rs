@@ -379,3 +379,134 @@ fn try_spawn_returns_a_joinable_task() {
     assert_eq!(command.events().collect::<Vec<_>>(), [1, 2]);
     assert!(command.is_done());
 }
+
+/// A task in command `waiter` awaits a task in command `owner`. The abort of
+/// `owner` cancels that task, so the waiter must resume.
+#[test]
+fn aborting_the_owner_wakes_a_join_handle_in_another_command() {
+    let mut owner: Command<Effect, Event> = Command::done();
+    let handle = owner.context.spawn(|ctx| async move {
+        ctx.request_from_shell(Op::Basic).await;
+    });
+    let request = owner.effects().next().expect("the task requests Op");
+
+    let mut waiter: Command<Effect, Event> = Command::new({
+        let handle = handle.clone();
+        |ctx| async move {
+            handle.await;
+            ctx.send_event(Event::Ping);
+        }
+    });
+    // The waiter polls the join handle, which registers its waker.
+    assert_eq!(waiter.events().next(), None);
+
+    owner.abort_handle().abort();
+    assert!(owner.is_done());
+
+    assert_eq!(
+        waiter.events().next(),
+        Some(Event::Ping),
+        "the waiter did not resume"
+    );
+    assert!(handle.is_finished(), "the cancelled task is not finished");
+    assert!(waiter.is_done());
+    drop(request);
+}
+
+/// `try_spawn` accepts a task after the abort of the command and before the
+/// command runs again. The command drops that task, so a waiter on its join
+/// handle must resume.
+#[test]
+fn try_spawn_after_abort_wakes_a_join_handle_in_another_command() {
+    let mut owner: Command<Effect, Event> = Command::new(|ctx| async move {
+        ctx.request_from_shell(Op::Basic).await;
+    });
+    let request = owner.effects().next().expect("the task requests Op");
+    let context = owner.context.clone();
+
+    owner.abort_handle().abort();
+    let handle = context
+        .try_spawn(|_| async move {})
+        .expect("the aborted command still accepts the task");
+    drop(context);
+
+    let mut waiter: Command<Effect, Event> = Command::new({
+        let handle = handle.clone();
+        |ctx| async move {
+            handle.await;
+            ctx.send_event(Event::Ping);
+        }
+    });
+    // The waiter polls the join handle, which registers its waker.
+    assert_eq!(waiter.events().next(), None);
+
+    assert!(owner.is_done());
+
+    assert_eq!(
+        waiter.events().next(),
+        Some(Event::Ping),
+        "the waiter did not resume"
+    );
+    assert!(handle.is_finished(), "the dropped task is not finished");
+    assert!(waiter.is_done());
+    drop(request);
+}
+
+#[test]
+fn dropping_owner_wakes_all_joiners_after_future_cleanup() {
+    use futures::FutureExt;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    };
+    use std::task::{Context, Wake, Waker};
+
+    struct Cleanup(Arc<AtomicBool>);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Release);
+        }
+    }
+
+    struct Waiter {
+        cleaned: Arc<AtomicBool>,
+        wakes: AtomicUsize,
+    }
+    impl Wake for Waiter {
+        fn wake(self: Arc<Self>) {
+            assert!(
+                self.cleaned.load(Ordering::Acquire),
+                "future must be dropped before waking joiners"
+            );
+            self.wakes.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    for poll_task in [false, true] {
+        let cleaned = Arc::new(AtomicBool::new(false));
+        let cleanup = Cleanup(cleaned.clone());
+        let mut owner: Command<Effect, Event> = Command::done();
+        let mut first = owner.context.spawn(move |ctx| async move {
+            let _cleanup = cleanup;
+            ctx.request_from_shell(Op::Basic).await;
+        });
+        let request = poll_task.then(|| owner.effects().next().expect("task requests Op"));
+        let mut second = first.clone();
+        let waiter = Arc::new(Waiter {
+            cleaned,
+            wakes: AtomicUsize::new(0),
+        });
+        let waker = Waker::from(waiter.clone());
+        let mut cx = Context::from_waker(&waker);
+        assert!(first.poll_unpin(&mut cx).is_pending());
+        assert!(second.poll_unpin(&mut cx).is_pending());
+
+        drop(owner);
+
+        assert_eq!(waiter.wakes.load(Ordering::Relaxed), 2);
+        assert!(first.is_finished());
+        assert!(first.poll_unpin(&mut cx).is_ready());
+        assert!(second.poll_unpin(&mut cx).is_ready());
+        drop(request);
+    }
+}
