@@ -57,6 +57,14 @@ and this project adheres to
 
   Structs only, of any shape: named, tuple or unit.
 
+- **`#[codegen(group = "Name")]` puts an effect variant into a handler group.**
+  On a variant of an `#[effect(facet_typegen)]` enum, the attribute puts the
+  variant into a group of the generated shell handlers (`<Name>Handler`). It
+  changes nothing in Rust, because the macro removes it from the enums that it
+  emits. The name must be in upper camel case, and a variant can be in one
+  group only. An unknown key in `codegen(...)` is a compile error. See the
+  [effect groups RFC](https://redbadger.github.io/crux/rfcs/effect-groups.html).
+
 ### ⚙️ Miscellaneous Tasks
 
 - **`#[effect(facet_typegen)]` now records each variant's operation kind and

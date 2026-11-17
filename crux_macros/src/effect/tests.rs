@@ -1093,3 +1093,164 @@ fn a_generic_operation_registers_through_a_qualified_path() {
         "a generic operation should register through a qualified path:\n{expanded}"
     );
 }
+
+/// Expand `input` with `facet_typegen` and pretty-print the result.
+fn expand_facet(input: syn::ItemEnum) -> String {
+    pretty_print(&effect_impl(Some(format_ident!("facet_typegen")), input))
+}
+
+#[test]
+fn a_group_is_recorded_and_removed_from_the_emitted_enums() {
+    let actual = expand_facet(parse_quote! {
+        pub enum Effect {
+            Render(RenderOperation),
+            #[codegen(group = "Store")]
+            Get(Get),
+            /// The doc stays on the FFI copy.
+            #[codegen(group = "Store")]
+            Set(Set),
+            Locate(Locate),
+        }
+    });
+
+    // The builder chain is split over lines, so compare without whitespace.
+    let chain: String = actual.split_whitespace().collect();
+    assert!(chain.contains(r#".variant::<Get>("Get")?.group("Store").variant::<Set>("Set")?.group("Store").variant::<Locate>("Locate")?.finish()"#), "{actual}");
+    assert!(!actual.contains("codegen"), "{actual}");
+    assert!(actual.contains("/// The doc stays on the FFI copy."));
+    assert!(!actual.contains("compile_error"));
+}
+
+#[test]
+fn a_group_is_removed_without_facet_typegen() {
+    let actual = pretty_print(&effect_impl(
+        None,
+        parse_quote! {
+            pub enum Effect {
+                #[codegen(group = "Store")]
+                Get(Get),
+            }
+        },
+    ));
+
+    assert!(!actual.contains("codegen"));
+    assert!(!actual.contains("compile_error"));
+}
+
+/// Expand `input` and return the messages of the compile errors it emits.
+fn compile_errors(input: syn::ItemEnum) -> Vec<String> {
+    let output = effect_impl(Some(format_ident!("facet_typegen")), input);
+    let file: syn::File = syn::parse2(output).expect("the expansion should parse");
+    file.items
+        .iter()
+        .filter_map(|item| match item {
+            syn::Item::Macro(item)
+                if item.mac.path.segments.last().unwrap().ident == "compile_error" =>
+            {
+                let message: syn::LitStr = item.mac.parse_body().expect("a string message");
+                Some(message.value())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_group_must_be_upper_camel_case() {
+    for name in ["store", "HTTP", "Key_Value", "", "Store Front"] {
+        let group = syn::LitStr::new(name, proc_macro2::Span::call_site());
+        let errors = compile_errors(parse_quote! {
+            pub enum Effect {
+                #[codegen(group = #group)]
+                Get(Get),
+            }
+        });
+
+        assert_eq!(errors.len(), 1, "{name}: {errors:?}");
+        assert!(
+            errors[0].contains(&format!(
+                "the group name `{name}` is not in upper camel case"
+            )),
+            "{name}: {errors:?}"
+        );
+    }
+}
+
+/// The error suggests the upper camel case spelling of the name.
+#[test]
+fn a_group_error_suggests_a_name() {
+    for (name, suggestion) in [("HTTP", "Http"), ("key_value", "KeyValue"), ("", "Store")] {
+        let group = syn::LitStr::new(name, proc_macro2::Span::call_site());
+        let errors = compile_errors(parse_quote! {
+            pub enum Effect {
+                #[codegen(group = #group)]
+                Get(Get),
+            }
+        });
+
+        assert!(
+            errors[0].ends_with(&format!("use a name such as \"{suggestion}\"")),
+            "{name}: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn a_variant_is_in_one_group_only() {
+    let errors = compile_errors(parse_quote! {
+        pub enum Effect {
+            #[codegen(group = "Store")]
+            #[codegen(group = "Network")]
+            Get(Get),
+        }
+    });
+
+    assert_eq!(errors, ["a variant can be in only one group"]);
+}
+
+#[test]
+fn an_unknown_codegen_key_is_rejected() {
+    let errors = compile_errors(parse_quote! {
+        pub enum Effect {
+            #[codegen(grup = "Store")]
+            Get(Get),
+        }
+    });
+
+    assert_eq!(
+        errors,
+        ["unknown key `grup` in `#[codegen(...)]`, expected `group = \"Name\"`"]
+    );
+}
+
+#[test]
+fn codegen_on_the_enum_is_rejected() {
+    let input = parse_quote! {
+        #[codegen(group = "Store")]
+        pub enum Effect {
+            Get(Get),
+        }
+    };
+    let errors = compile_errors(input);
+
+    assert_eq!(
+        errors,
+        ["`#[codegen(...)]` goes on a variant of the effect enum, not on the enum"]
+    );
+}
+
+/// An error still leaves the enum in place, so that rustc reports only the
+/// error, not every use of the enum as well.
+#[test]
+fn an_error_still_emits_the_enum() {
+    let actual = expand_facet(parse_quote! {
+        pub enum Effect {
+            #[codegen(group = "store")]
+            Get(Get),
+        }
+    });
+
+    assert!(actual.contains("compile_error"));
+    assert!(actual.contains("pub enum Effect {"));
+    assert!(actual.contains("impl crux_core::EffectFFI for Effect"));
+}
