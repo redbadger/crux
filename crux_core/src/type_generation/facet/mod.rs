@@ -203,6 +203,14 @@ const RESERVED_TYPE_NAMES: &[&str] = &[
     FFI_BRIDGE_FILE,
 ];
 
+/// Names that the generated shell API claims only when a variant of the
+/// effect is in a handler group. An app without groups can still use them.
+const GROUPED_TYPE_NAMES: &[&str] = &[
+    "GroupedEffectHandler",
+    "UngroupedHandler",
+    "IUngroupedHandler",
+];
+
 pub struct TypeRegistry {
     builder: RegistryBuilder,
     effects: Vec<EffectMeta>,
@@ -402,6 +410,8 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
         }
     }
 
+    validate_groups(registry, effects)?;
+
     for effect in effects {
         for variant in &effect.variants {
             if variant.ident == "OperationKind" {
@@ -439,6 +449,76 @@ fn run_pnpm(dir: &Path, args: &[&str]) -> Result<(), TypeGenError> {
     }
 }
 
+/// Rejects handler groups that the generated handler API cannot express.
+///
+/// A group name must be in upper camel case. The render variant cannot be in
+/// a group, because `EffectHandler` declares `render` itself. The generated
+/// `<Group>Handler` (and `I<Group>Handler` in C#) must not be a name that the
+/// shell API uses or the name of a registered type. Two variants with the same
+/// group name are in the same group, not in two groups.
+fn validate_groups(registry: &Registry, effects: &[EffectMeta]) -> Result<(), TypeGenError> {
+    use facet_generate::reflection::format::Namespace;
+    use heck::ToUpperCamelCase;
+
+    let registered = |name: &str| {
+        registry
+            .keys()
+            .any(|key| key.namespace == Namespace::Root && key.name == name)
+    };
+
+    for effect in effects {
+        let effect_name = &effect.effect.name;
+        let mut seen: Vec<&str> = Vec::new();
+        for variant in &effect.variants {
+            let Some(group) = variant.group.as_deref() else {
+                continue;
+            };
+            if variant.render {
+                return Err(TypeGenError::Generation(format!(
+                    "variant `{}` of effect `{effect_name}` carries the render operation, so it cannot be in a group. The generated `Core` handles it. Remove its `#[codegen(group = ...)]`.",
+                    variant.ident
+                )));
+            }
+            if seen.contains(&group) {
+                continue;
+            }
+            seen.push(group);
+
+            let upper_camel = group.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+                && group.chars().all(|c| c.is_ascii_alphanumeric())
+                && group == group.to_upper_camel_case();
+            if !upper_camel {
+                return Err(TypeGenError::Generation(format!(
+                    "effect group `{group}` is not in upper camel case. A group name becomes part of a type name in the shell (`<Name>Handler`), so use a name such as `Store`."
+                )));
+            }
+            for handler in [format!("{group}Handler"), format!("I{group}Handler")] {
+                if RESERVED_TYPE_NAMES.contains(&handler.as_str())
+                    || GROUPED_TYPE_NAMES.contains(&handler.as_str())
+                {
+                    return Err(TypeGenError::Generation(format!(
+                        "effect group `{group}` would generate `{handler}`, which the shell API uses for something else. Choose a different group name."
+                    )));
+                }
+                if registered(&handler) {
+                    return Err(TypeGenError::Generation(format!(
+                        "effect group `{group}` would generate `{handler}`, but a shared type has that name. Choose a different group name, or rename the type with `#[facet(rename = \"...\")]`."
+                    )));
+                }
+            }
+        }
+
+        if !seen.is_empty()
+            && let Some(name) = GROUPED_TYPE_NAMES.iter().find(|name| registered(name))
+        {
+            return Err(TypeGenError::Generation(format!(
+                "`{name}` is generated for the shell API when an effect has groups, so a shared type cannot be called that. Rename the type with `#[facet(rename = \"...\")]`."
+            )));
+        }
+    }
+
+    Ok(())
+}
 impl Default for TypeRegistry {
     fn default() -> Self {
         Self::new()

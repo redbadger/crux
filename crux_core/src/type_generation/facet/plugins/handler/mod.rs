@@ -13,6 +13,13 @@
 //! Each handler method carries the doc comment of its operation type. Thus the
 //! contract that a capability writes on its operation in Rust reaches the
 //! shell author in each language.
+//!
+//! If the app puts variants into handler groups with
+//! `#[codegen(group = "Name")]`, the plugin also emits a `<Name>Handler` for
+//! each group and an `UngroupedHandler` for the other variants.
+//! `EffectHandler` then gets its methods from these handlers, and
+//! `GroupedEffectHandler` makes an `EffectHandler` from one handler for each
+//! group. Without groups, the output does not change.
 
 mod csharp;
 mod kotlin;

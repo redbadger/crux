@@ -192,7 +192,22 @@ where
         &AppMeta,
     ) -> std::io::Result<()>,
 {
-    let (registry, effects) = fixture();
+    emit_with::<Language, _, _>(|_| {}, hook)
+}
+
+/// Like [`emit`], but `change` first changes the recorded effect metadata.
+fn emit_with<Language: Requalify, C, F>(change: C, hook: F) -> String
+where
+    C: FnOnce(&mut [EffectMeta]),
+    F: FnOnce(
+        &mut IndentedWriter<&mut Vec<u8>>,
+        &EmitContext<'_>,
+        &[EffectMeta],
+        &AppMeta,
+    ) -> std::io::Result<()>,
+{
+    let (registry, mut effects) = fixture();
+    change(&mut effects);
     let mut config = CodeGeneratorConfig::new("Shared".to_string());
     config.update_from(&registry);
     let app = app_meta(&registry);
@@ -229,6 +244,28 @@ where
     EffectHandlerPlugin: EmitterPlugin<Language>,
 {
     emit::<Language, _>(|w, ctx, effects, _app| {
+        let plugin = EffectHandlerPlugin::new(&effects.to_vec().into());
+        EmitterPlugin::<Language>::after_type(&plugin, w, ctx)
+    })
+}
+
+/// Put the fixture variants into handler groups: `Http` in `Network`,
+/// `Subscribe` in `Store`, and `Legacy` in no group.
+fn group_fixture(effects: &mut [EffectMeta]) {
+    for variant in &mut effects[0].variants {
+        variant.group = match variant.ident.as_str() {
+            "Http" => Some("Network".to_string()),
+            "Subscribe" => Some("Store".to_string()),
+            _ => None,
+        };
+    }
+}
+
+fn grouped_handler<Language: Requalify>() -> String
+where
+    EffectHandlerPlugin: EmitterPlugin<Language>,
+{
+    emit_with::<Language, _, _>(group_fixture, |w, ctx, effects, _app| {
         let plugin = EffectHandlerPlugin::new(&effects.to_vec().into());
         EmitterPlugin::<Language>::after_type(&plugin, w, ctx)
     })
@@ -329,6 +366,107 @@ fn handler_typescript() {
 #[test]
 fn handler_csharp() {
     insta::assert_snapshot!(handler::<CSharp>());
+}
+
+// ---------------------------------------------------------------------------
+// Effect handler with groups
+// ---------------------------------------------------------------------------
+
+#[test]
+fn grouped_handler_swift() {
+    insta::assert_snapshot!(grouped_handler::<Swift>());
+}
+
+#[test]
+fn grouped_handler_kotlin() {
+    insta::assert_snapshot!(grouped_handler::<Kotlin>());
+}
+
+#[test]
+fn grouped_handler_typescript() {
+    insta::assert_snapshot!(grouped_handler::<TypeScript>());
+}
+
+#[test]
+fn grouped_handler_csharp() {
+    insta::assert_snapshot!(grouped_handler::<CSharp>());
+}
+
+/// The dispatcher calls `EffectHandler`, which has every method through the
+/// group protocols, so it is the same with groups and without them.
+#[test]
+fn groups_do_not_change_the_dispatcher() {
+    let dispatcher = |source: String| {
+        let start = source
+            .find("public struct EffectDispatcher")
+            .expect("should emit the dispatcher");
+        source[start..].to_string()
+    };
+
+    assert_eq!(
+        dispatcher(grouped_handler::<Swift>()),
+        dispatcher(handler::<Swift>())
+    );
+}
+
+/// The handler API with `Http` in a group that has the name of its method,
+/// and `Subscribe` and `Legacy` in a group whose parameter is a keyword.
+fn keyword_grouped_handler<Language: Requalify>() -> String
+where
+    EffectHandlerPlugin: EmitterPlugin<Language>,
+{
+    let groups = |effects: &mut [EffectMeta]| {
+        for variant in &mut effects[0].variants {
+            variant.group = match variant.ident.as_str() {
+                "Http" => Some("Http".to_string()),
+                "Subscribe" | "Legacy" => Some("Default".to_string()),
+                _ => None,
+            };
+        }
+    };
+    emit_with::<Language, _, _>(groups, |w, ctx, effects, _app| {
+        let plugin = EffectHandlerPlugin::new(&effects.to_vec().into());
+        EmitterPlugin::<Language>::after_type(&plugin, w, ctx)
+    })
+}
+
+/// Each language escapes a parameter name that is a keyword. A group that has
+/// the name of one of its methods (`Http`) gets no special treatment, because
+/// the field of each language cannot clash with a method.
+#[test]
+fn group_parameters_are_escaped() {
+    let swift = keyword_grouped_handler::<Swift>();
+    assert!(
+        swift.contains("public init(http: any HttpHandler, `default`: any DefaultHandler) {"),
+        "{swift}"
+    );
+    assert!(swift.contains("self.`default` = `default`"), "{swift}");
+    assert!(swift.contains("await self.http.http(operation)"), "{swift}");
+    // Every variant except `Render` is in a group.
+    assert!(!swift.contains("UngroupedHandler"), "{swift}");
+
+    let kotlin = keyword_grouped_handler::<Kotlin>();
+    assert!(
+        kotlin.contains(") : EffectHandler, HttpHandler by http, DefaultHandler by default"),
+        "{kotlin}"
+    );
+
+    let typescript = keyword_grouped_handler::<TypeScript>();
+    assert!(
+        typescript.contains("private readonly _default: DefaultHandler;"),
+        "{typescript}"
+    );
+    assert!(
+        !typescript.contains("    default: DefaultHandler,"),
+        "{typescript}"
+    );
+
+    let csharp = keyword_grouped_handler::<CSharp>();
+    assert!(
+        csharp.contains("public GroupedEffectHandler(IHttpHandler http, IDefaultHandler @default)"),
+        "{csharp}"
+    );
+    assert!(csharp.contains("_default = @default;"), "{csharp}");
 }
 
 // ---------------------------------------------------------------------------
@@ -913,6 +1051,7 @@ fn output_types_are_every_type_inside_each_output() {
         output: Some(output),
         render: false,
         doc: Vec::new(),
+        group: None,
     };
     let effect = EffectMeta {
         effect: QualifiedTypeName::root("Effect".to_string()),

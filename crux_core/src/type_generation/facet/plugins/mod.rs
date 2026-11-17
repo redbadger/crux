@@ -143,6 +143,42 @@ pub struct Variant<'a> {
     /// The doc comment of the operation type, which the handler method
     /// carries.
     pub doc: &'a [String],
+    /// The handler group of the variant, or `None` if it is in no group.
+    pub group: Option<&'a str>,
+}
+
+/// One member of the generated `GroupedEffectHandler`: a handler group, or
+/// the handler for the variants in no group.
+#[derive(Debug)]
+pub struct Member<'a> {
+    /// The group name, or [`UNGROUPED`] for the variants in no group.
+    pub name: &'a str,
+    /// The variants that the handler of this member handles, in declaration
+    /// order. Never the render variant.
+    pub variants: Vec<&'a Variant<'a>>,
+}
+
+/// The name of the handler member for the variants in no group. The handler
+/// is `UngroupedHandler`, and its parameter is `ungrouped`.
+pub const UNGROUPED: &str = "Ungrouped";
+
+impl Member<'_> {
+    /// The name of the handler protocol or interface, without the `I` prefix
+    /// of C#.
+    pub fn handler(&self) -> String {
+        format!("{}Handler", self.name)
+    }
+
+    /// The name of the parameter for this member, before a language escapes
+    /// it.
+    pub fn parameter(&self) -> String {
+        lower_camel(self.name)
+    }
+
+    /// Whether this member is the handler for the variants in no group.
+    pub fn is_ungrouped(&self) -> bool {
+        self.name == UNGROUPED
+    }
 }
 
 /// The effect enum a plugin hook was called for.
@@ -195,6 +231,7 @@ pub fn matched<'a, Language: Requalify>(
             operation: operation.as_ref(),
             render: meta.render,
             doc: &meta.doc,
+            group: meta.group.as_deref(),
         });
     }
 
@@ -284,6 +321,46 @@ impl<'a> Matched<'a> {
     /// its whole job is to own the view loop.
     pub fn render_variant(&self) -> Option<&Variant<'a>> {
         self.variants.iter().find(|variant| variant.render)
+    }
+
+    /// The members of the generated `GroupedEffectHandler`: one for each
+    /// group, in the order in which each group first appears in the effect,
+    /// and then one for the variants in no group, if there are any.
+    ///
+    /// The list is empty if no variant is in a group. In that case the handler
+    /// API is the same as without groups.
+    pub fn members(&self) -> Vec<Member<'_>> {
+        let mut members: Vec<Member<'_>> = Vec::new();
+        for variant in &self.variants {
+            let Some(name) = variant.group else {
+                continue;
+            };
+            if let Some(member) = members.iter_mut().find(|member| member.name == name) {
+                member.variants.push(variant);
+            } else {
+                members.push(Member {
+                    name,
+                    variants: vec![variant],
+                });
+            }
+        }
+        if members.is_empty() {
+            return members;
+        }
+
+        // `Core` handles the render variant itself, so no handler has it.
+        let ungrouped: Vec<&Variant<'_>> = self
+            .variants
+            .iter()
+            .filter(|variant| variant.group.is_none() && !variant.render)
+            .collect();
+        if !ungrouped.is_empty() {
+            members.push(Member {
+                name: UNGROUPED,
+                variants: ungrouped,
+            });
+        }
+        members
     }
 }
 
