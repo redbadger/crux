@@ -58,9 +58,8 @@ values (for example, which `URLError` is a timeout) stays with the shell.
 
 The operations of `crux_http`, `crux_kv` and `crux_time` get the contract text
 in their docs. The text is written once, in Rust, and is neutral to the
-language of the shell. Rustdoc link syntax (`` [`ClearTimer`] ``) passes
-through to the generated doc unchanged. A change in facet_generate will strip
-it.
+language of the shell. facet_generate turns rustdoc link syntax
+(`` [`ClearTimer`] ``) into plain text in the generated doc.
 
 An operation of the app itself gets the same treatment. Its doc comment
 appears on its handler method, with no extra work.
@@ -126,9 +125,9 @@ lines of generator. The back-link stayed.
 ## Future work
 
 **App-declared effect groups.** The app groups its own effect variants, for
-example with `#[effect(group = "Store")]`. Type generation emits a handler
+example with `#[codegen(group = "Store")]`. Type generation emits a handler
 protocol for each group, and `EffectHandler` refines them, so that a test or a
 preview can replace one group with a fake. Capability crates do not change,
 and an app with no groups gets the same output as today. A spike (commit
-`ukqqrxvn` in `crux-spike-e`) built it for Swift and Kotlin. It would get its
-own RFC.
+`ukqqrxvn` in `crux-spike-e`) built it for Swift and Kotlin. The
+[App-declared effect groups](./effect-groups.md) RFC proposes it.
