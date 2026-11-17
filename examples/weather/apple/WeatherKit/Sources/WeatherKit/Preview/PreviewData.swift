@@ -28,7 +28,7 @@ let previewWeatherResponse = CurrentWeatherResponse(
 // MARK: - Preview Environment Modifier
 
 struct PreviewEnvironment: ViewModifier {
-    @State private var core = Core(bridge: PreviewBridge(), handler: PreviewHandler())
+    @State private var core = Core(bridge: PreviewBridge(), handler: previewHandler())
 
     func body(content: Content) -> some View {
         content

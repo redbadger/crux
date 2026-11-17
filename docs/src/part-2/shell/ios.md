@@ -7,7 +7,7 @@ This is the first of the shell chapters. We'll walk through how the Swift side t
 The Apple shell is split into two Swift targets:
 
 - **`WeatherApp`** (the app target) holds just a few files: the `@main` struct that builds the `Core`, and `ContentView` as the root view.
-- **`WeatherKit`** (a local Swift Package) holds everything else: the `WeatherHandler`, every effect handler, every screen, and the preview helpers.
+- **`WeatherKit`** (a local Swift Package) holds everything else: the effect handlers, every screen, and the preview helpers.
 
 The split exists because building Swift is much faster than rebuilding the whole Rust framework, and SPM gives you the kind of iteration loop you'd expect from `cargo`. When you're tweaking a view, you only recompile the package. When you're iterating on effect handlers, same: the Rust library (and the Swift bindings it emits) only recompile when the core changes.
 
@@ -22,7 +22,7 @@ Here's the app entry point:
 {{#include ../../../../examples/weather/apple/WeatherApp/WeatherApp.swift:start}}
 ```
 
-Build the generated `Core` from a `WeatherHandler`, keep it in `@State`, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites, everything we described in [App lifecycle](../app_lifecycle.md).
+Build the generated `Core` from a `GroupedEffectHandler`, keep it in `@State`, wire up an `updater`, and send `Event::Start` to kick the lifecycle. After that, the core starts fetching the API key and favourites, everything we described in [App lifecycle](../app_lifecycle.md).
 
 `Core` comes from the generated `App` module, hence the `import App`. `struct WeatherApp: App` still resolves to SwiftUI's protocol (Swift looks for a protocol in that position, not a module), so the two names don't clash.
 
@@ -81,16 +81,11 @@ The loop (serialize the event, call the bridge, deserialize the requests, dispat
 
 `Core` handles `Render` itself: when one arrives it re-reads the view from the bridge and stores it in `view`, which is the class's one observable property. Everything else goes to the generated `EffectDispatcher`, which calls the matching `EffectHandler` method and resolves the request afterwards: never for a notification, once for a request. When a request is resolved, `Core` passes the bytes back through the bridge and loops over any **new** requests that come back. This is a direct consequence of `Command`'s async nature: a command written with `.await` points produces its next effect only after the previous one is resolved. Processing has to continue until the command's task finishes, and the generated `Core` keeps it going, so the shell doesn't have to.
 
-What the shell writes is the `EffectHandler`. In WeatherKit that is `WeatherHandler`:
+The shell implements the effects. The weather app puts its effects into groups with `#[codegen(group = "...")]` on the `Effect` variants. Thus type generation emits one handler protocol for each group: `NetworkHandler`, `StoreHandler`, `TimeHandler`, and `UngroupedHandler` for the location effects, which are in no group. The generated `EffectHandler` refines all four protocols. WeatherKit has one type for each protocol, and `WeatherApp` makes one `EffectHandler` from them with the generated `GroupedEffectHandler`, as shown above. `render` has a generated default, because `Core` owns it.
 
-```swift
-// Swift
-{{#include ../../../../examples/weather/apple/WeatherKit/Sources/WeatherKit/Core/WeatherHandler.swift}}
-```
+Each type is in the file with the platform code that it uses: `SessionNetworkHandler` in `http.swift`, `DeviceStoreHandler` in `keyValue.swift` and `secret.swift`, `TaskSleepTimeHandler` in `time.swift`, and `CoreLocationHandler` in `location.swift`. [Type generation](../../part-4/typegen.md#effect-groups) describes the groups.
 
-The conformance is an empty extension. `render` has a generated default, because `Core` owns it, and the other methods live beside the platform code they use (`http.swift`, `keyValue.swift`, `location.swift`, `secret.swift`, `time.swift`), all as Swift extensions on `WeatherHandler`, so they share state (like the `KeyValueStore` and the active timer list) without passing it around.
-
-Note the `nonisolated`. The generated `EffectHandler` is `Sendable` and its requirements are not actor-isolated, but `WeatherHandler` is `@MainActor`, so the handler methods are `nonisolated` and hop to the main actor only where they touch main-actor state. URLSession, Keychain and CoreLocation work doesn't belong on the main actor anyway.
+Note the `nonisolated`. The generated `EffectHandler` is `Sendable` and its requirements are not actor-isolated, but `DeviceStoreHandler` and `TaskSleepTimeHandler` are `@MainActor`, because they keep main-actor state (the `KeyValueStore` and the active timers). So the handler methods are `nonisolated` and hop to the main actor only where they touch main-actor state. URLSession, Keychain and CoreLocation work doesn't belong on the main actor anyway.
 
 Here's the HTTP handler in full:
 
@@ -120,7 +115,7 @@ When the user taps a button, the view sends an event via the `CoreUpdater` that 
 
 ## Previewing without the core
 
-Because WeatherKit never touches the FFI, previews don't need the Rust framework. They do need a `Core`, since that is what the views read from, so `PreviewCore.swift` provides the two things a real `Core` is built from: a `CoreBridge` that answers `view()` with a fixed view model and returns no requests, and an `EffectHandler` whose methods never run, because a preview never sends an event. With those and a `CoreUpdater.forPreview()` that swallows events, a preview builds a genuine generated `Core` and injects it:
+Because WeatherKit never touches the FFI, previews don't need the Rust framework. They do need a `Core`, since that is what the views read from, so `PreviewCore.swift` provides the two things a real `Core` is built from: a `CoreBridge` that answers `view()` with a fixed view model and returns no requests, and an `EffectHandler` made with `GroupedEffectHandler`. The preview handler keeps the real timers and has a fake for each other group: the network is offline, the store is in memory, and the location is London. With those and a `CoreUpdater.forPreview()` that swallows events, a preview builds a genuine generated `Core` and injects it:
 
 ```swift
 // Swift
