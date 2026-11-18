@@ -142,3 +142,11 @@ jobs:
       - name: Check crux_http for wasm32-unknown-unknown
         shell: bash
         run: cargo check -p crux_http --target wasm32-unknown-unknown
+
+      # TEMPORARY: kache prefetch diagnostics. Do not merge.
+      - name: kache diagnostics
+        if: always()
+        shell: bash
+        run: |
+          "$RUSTC_WRAPPER" stats || true
+          grep -E "prefetch" "$KACHE_CACHE_DIR/kache.log" | head -60 || true

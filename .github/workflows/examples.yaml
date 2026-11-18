@@ -218,6 +218,14 @@ jobs:
       - name: CI
         run: just ${{ matrix.shell }}/ci
 
+      # TEMPORARY: kache prefetch diagnostics. Do not merge.
+      - name: kache diagnostics
+        if: always()
+        shell: bash
+        run: |
+          "$RUSTC_WRAPPER" stats || true
+          grep -E "prefetch" "$KACHE_CACHE_DIR/kache.log" | head -60 || true
+
   # WASM shells built with trunk (Leptos, Yew). Needs: Rust, wasm32 target, trunk.
   # All examples have web-leptos; only counter has web-yew.
   web-trunk:
@@ -516,6 +524,14 @@ jobs:
       - name: CI
         run: just apple/ci
 
+      # TEMPORARY: kache prefetch diagnostics. Do not merge.
+      - name: kache diagnostics
+        if: always()
+        shell: bash
+        run: |
+          "$RUSTC_WRAPPER" stats || true
+          grep -E "prefetch" "$KACHE_CACHE_DIR/kache.log" | head -60 || true
+
   # Android shells. Needs: Rust with Android NDK targets, BoltFFI, JDK 17, Android SDK.
   # The shell is always "Android" (capital A matches the directory name), so the
   # job name gives only the example.
@@ -576,3 +592,11 @@ jobs:
 
       - name: CI
         run: just Android/ci
+
+      # TEMPORARY: kache prefetch diagnostics. Do not merge.
+      - name: kache diagnostics
+        if: always()
+        shell: bash
+        run: |
+          "$RUSTC_WRAPPER" stats || true
+          grep -E "prefetch" "$KACHE_CACHE_DIR/kache.log" | head -60 || true
