@@ -1,6 +1,9 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 default: dev
 
+# `--overlay` argument for `boltffi pack`. CI sets BOLTFFI_OVERLAY to build fewer targets.
+overlay := if env("BOLTFFI_OVERLAY", "") == "" { "" } else { "--overlay " + quote(env("BOLTFFI_OVERLAY")) }
+
 # --------------------------------------------------------------------------
 # Development
 # --------------------------------------------------------------------------
@@ -65,7 +68,7 @@ typegen: assert-windows
 [working-directory('../shared')]
 pack: assert-windows
     @echo '{{ style("command") }}pack:{{ NORMAL }}'
-    boltffi pack csharp --release
+    boltffi pack csharp --release {{ overlay }}
 
 # build the selected WinUI3 app (generates types and the FFI NuGet first)
 build: assert-windows typegen pack
