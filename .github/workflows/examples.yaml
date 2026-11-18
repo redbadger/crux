@@ -42,8 +42,6 @@ env:
   RUSTFLAGS: "-D warnings"
   RUST_BACKTRACE: short
   CI: 1
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
 
 jobs:
   # Selects the matrix entries to run. It gives one JSON list for each matrix
@@ -207,7 +205,12 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@nextest
 
@@ -241,7 +244,12 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@trunk
 
@@ -270,16 +278,21 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@v2
         with:
           tool: dioxus-cli@0.7.7
 
+      # web-dioxus/Justfile clears RUSTC_WRAPPER for `dx build`. Thus kache
+      # caches only the `check` recipe here.
       - name: CI
         run: just web-dioxus/ci
-        env:
-          RUSTC_WRAPPER: ""
 
   # JS/TS web shells. Needs: Rust, wasm32 target, BoltFFI, Node.js, TypeScript, pnpm.
   # All examples have web-nextjs; only counter has web-react-router.
@@ -307,7 +320,12 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
 
       - uses: ./.github/actions/install-boltffi
@@ -372,7 +390,12 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
 
       - uses: actions/setup-node@v6
@@ -412,7 +435,16 @@ jobs:
           targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
+          # The README of kache-action recommends this on GitHub-hosted Windows
+          # runners, because there the home and workspace directories are on
+          # different volumes.
+          cache-dir: ${{ runner.temp }}/kache
       - uses: taiki-e/install-action@just
 
       - uses: actions/setup-dotnet@v4
@@ -455,7 +487,12 @@ jobs:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-darwin,x86_64-apple-ios
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
 
       # macos-26 ships Xcode 26.5 but defaults to 26.4.1; use the latest stable.
       - uses: maxim-lobanov/setup-xcode@v1
@@ -500,7 +537,12 @@ jobs:
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
 
       - uses: actions/setup-java@v4

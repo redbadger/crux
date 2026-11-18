@@ -16,8 +16,6 @@ env:
   RUST_BACKTRACE: short
   NEXTEST_PROFILE: ci
   CI: 1
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
 
 jobs:
   # Finds whether a pull request can affect the root workspace. On a push to
@@ -92,8 +90,12 @@ jobs:
           components: clippy, rustfmt, rust-src
           targets: wasm32-unknown-unknown
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
 
       - name: Lints
         shell: bash
