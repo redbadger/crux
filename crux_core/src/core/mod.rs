@@ -149,11 +149,12 @@ where
 
         let mut events: VecDeque<_> = root_command.events().collect();
 
-        while let Some(event_from_commands) = events.pop_front() {
+        while let Some(event) = events.pop_front() {
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            let command = self.app.update(event_from_commands, &mut model);
+            let command = self.app.update(event, &mut model);
             drop(model);
 
+            // Run the returned command alongside the other active commands.
             root_command.spawn(|ctx| command.into_future(ctx));
 
             events.extend(root_command.events());

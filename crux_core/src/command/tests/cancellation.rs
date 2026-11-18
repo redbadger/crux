@@ -297,3 +297,216 @@ fn dropping_request_cancels_its_future() {
 
     assert!(cmd.is_done());
 }
+
+#[test]
+fn aborting_a_suspended_command_wakes_its_host() {
+    let child: Command<Effect, Event> = Command::new(|ctx| async move {
+        ctx.request_from_shell(Op::Basic).await;
+        panic!("aborted command must not resume");
+    });
+    let abort = child.abort_handle();
+    let mut cmd = Command::all([child]);
+
+    let request = cmd.effects().next().unwrap();
+    assert!(!cmd.is_done());
+
+    abort.abort();
+
+    // The host must poll and drop the aborted child without a shell response.
+    assert!(cmd.is_done());
+    drop(request);
+}
+
+#[test]
+fn aborting_a_suspended_task_wakes_its_joiner() {
+    let mut abort = None;
+    let mut cmd: Command<Effect, Event> = Command::new(|ctx| {
+        let handle = ctx.spawn(|ctx| async move {
+            ctx.request_from_shell(Op::Basic).await;
+            panic!("aborted task must not resume");
+        });
+        abort = Some(handle.clone());
+        async move {
+            handle.await;
+            ctx.send_event(Event::Ping);
+        }
+    });
+
+    let request = cmd.effects().next().unwrap();
+    assert!(!cmd.is_done());
+
+    let handle = abort.unwrap();
+    handle.abort();
+
+    // Running the command again must cancel the task and resume its joiner.
+    assert_eq!(cmd.events().next(), Some(Event::Ping));
+    assert!(handle.is_finished());
+    assert!(cmd.is_done());
+    drop(request);
+}
+
+#[test]
+fn try_spawn_on_dropped_command_drops_the_future_without_polling() {
+    let command: Command<(), ()> = Command::done();
+    let context = command.context.clone();
+    drop(command);
+
+    let (sender, mut receiver) = futures::channel::oneshot::channel::<()>();
+    let result = context.try_spawn(move |_| async move {
+        let _sender = sender;
+        panic!("a rejected task must never be polled");
+    });
+
+    assert!(result.is_err());
+    assert!(
+        receiver.try_recv().is_err(),
+        "the rejected future must be dropped"
+    );
+}
+
+#[test]
+fn try_spawn_returns_a_joinable_task() {
+    let mut command: Command<(), usize> = Command::new(|ctx| async move {
+        let child = ctx
+            .try_spawn(|ctx| async move {
+                ctx.send_event(1);
+            })
+            .expect("command is alive");
+        child.await;
+        ctx.send_event(2);
+    });
+
+    assert_eq!(command.events().collect::<Vec<_>>(), [1, 2]);
+    assert!(command.is_done());
+}
+
+/// A task in command `waiter` awaits a task in command `owner`. The abort of
+/// `owner` cancels that task, so the waiter must resume.
+#[test]
+fn aborting_the_owner_wakes_a_join_handle_in_another_command() {
+    let mut owner: Command<Effect, Event> = Command::done();
+    let handle = owner.context.spawn(|ctx| async move {
+        ctx.request_from_shell(Op::Basic).await;
+    });
+    let request = owner.effects().next().expect("the task requests Op");
+
+    let mut waiter: Command<Effect, Event> = Command::new({
+        let handle = handle.clone();
+        |ctx| async move {
+            handle.await;
+            ctx.send_event(Event::Ping);
+        }
+    });
+    // The waiter polls the join handle, which registers its waker.
+    assert_eq!(waiter.events().next(), None);
+
+    owner.abort_handle().abort();
+    assert!(owner.is_done());
+
+    assert_eq!(
+        waiter.events().next(),
+        Some(Event::Ping),
+        "the waiter did not resume"
+    );
+    assert!(handle.is_finished(), "the cancelled task is not finished");
+    assert!(waiter.is_done());
+    drop(request);
+}
+
+/// `try_spawn` accepts a task after the abort of the command and before the
+/// command runs again. The command drops that task, so a waiter on its join
+/// handle must resume.
+#[test]
+fn try_spawn_after_abort_wakes_a_join_handle_in_another_command() {
+    let mut owner: Command<Effect, Event> = Command::new(|ctx| async move {
+        ctx.request_from_shell(Op::Basic).await;
+    });
+    let request = owner.effects().next().expect("the task requests Op");
+    let context = owner.context.clone();
+
+    owner.abort_handle().abort();
+    let handle = context
+        .try_spawn(|_| async move {})
+        .expect("the aborted command still accepts the task");
+    drop(context);
+
+    let mut waiter: Command<Effect, Event> = Command::new({
+        let handle = handle.clone();
+        |ctx| async move {
+            handle.await;
+            ctx.send_event(Event::Ping);
+        }
+    });
+    // The waiter polls the join handle, which registers its waker.
+    assert_eq!(waiter.events().next(), None);
+
+    assert!(owner.is_done());
+
+    assert_eq!(
+        waiter.events().next(),
+        Some(Event::Ping),
+        "the waiter did not resume"
+    );
+    assert!(handle.is_finished(), "the dropped task is not finished");
+    assert!(waiter.is_done());
+    drop(request);
+}
+
+#[test]
+fn dropping_owner_wakes_all_joiners_after_future_cleanup() {
+    use futures::FutureExt;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    };
+    use std::task::{Context, Wake, Waker};
+
+    struct Cleanup(Arc<AtomicBool>);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Release);
+        }
+    }
+
+    struct Waiter {
+        cleaned: Arc<AtomicBool>,
+        wakes: AtomicUsize,
+    }
+    impl Wake for Waiter {
+        fn wake(self: Arc<Self>) {
+            assert!(
+                self.cleaned.load(Ordering::Acquire),
+                "future must be dropped before waking joiners"
+            );
+            self.wakes.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    for poll_task in [false, true] {
+        let cleaned = Arc::new(AtomicBool::new(false));
+        let cleanup = Cleanup(cleaned.clone());
+        let mut owner: Command<Effect, Event> = Command::done();
+        let mut first = owner.context.spawn(move |ctx| async move {
+            let _cleanup = cleanup;
+            ctx.request_from_shell(Op::Basic).await;
+        });
+        let request = poll_task.then(|| owner.effects().next().expect("task requests Op"));
+        let mut second = first.clone();
+        let waiter = Arc::new(Waiter {
+            cleaned,
+            wakes: AtomicUsize::new(0),
+        });
+        let waker = Waker::from(waiter.clone());
+        let mut cx = Context::from_waker(&waker);
+        assert!(first.poll_unpin(&mut cx).is_pending());
+        assert!(second.poll_unpin(&mut cx).is_pending());
+
+        drop(owner);
+
+        assert_eq!(waiter.wakes.load(Ordering::Relaxed), 2);
+        assert!(first.is_finished());
+        assert!(first.poll_unpin(&mut cx).is_ready());
+        assert!(second.poll_unpin(&mut cx).is_ready());
+        drop(request);
+    }
+}

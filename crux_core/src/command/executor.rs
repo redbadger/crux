@@ -21,16 +21,15 @@ pub(crate) struct TaskId(pub(crate) usize);
 
 // ANCHOR: task
 pub(crate) struct Task {
-    // Used to wake the join handle when the task concludes
-    pub(crate) join_handle_wakers: Receiver<Waker>,
-    // Set to true when the task finishes, used by the join handle
-    // RFC: is there a safe way to do this relying on the waker alone?
-    pub(crate) finished: Arc<AtomicBool>,
     // Set to true when the task is aborted. Aborted tasks will poll Ready on the
     // next poll
     pub(crate) aborted: Arc<AtomicBool>,
+    // Separate from the future's waker so abort handles do not keep abandoned tasks alive.
+    pub(crate) abort_waker: Arc<AtomicWaker>,
     // The future polled by this task
     pub(crate) future: BoxFuture<'static, ()>,
+    // Fields drop in declaration order: clean up the future before notifying joiners.
+    pub(crate) completion: TaskCompletion,
 }
 // ANCHOR_END: task
 
@@ -38,11 +37,19 @@ impl Task {
     pub(crate) fn is_aborted(&self) -> bool {
         self.aborted.load(Ordering::Acquire)
     }
+}
 
-    fn wake_join_handles(&self) {
+/// Reports task termination on every drop path, including command teardown and
+/// tasks discarded before their first poll.
+pub(crate) struct TaskCompletion {
+    pub(crate) finished: Arc<AtomicBool>,
+    pub(crate) join_handle_wakers: Receiver<Waker>,
+}
+
+impl Drop for TaskCompletion {
+    fn drop(&mut self) {
+        self.finished.store(true, Ordering::Release);
         for waker in self.join_handle_wakers.try_iter() {
-            // TODO: this potentially wakes tasks which are no longer interested
-            // and wakes tasks more than once if they await multiple copies of the same join handle
             waker.wake();
         }
     }
@@ -82,29 +89,45 @@ impl Wake for CommandWaker {
 }
 // ANCHOR_END: command_waker
 
-/// A handle used to abort a Command remotely before it is complete
+/// A handle used to abort a Command remotely before it is complete.
+///
+/// Cancellation covers tasks spawned on the command and explicitly composed
+/// subcommands. It is cooperative: it takes effect when the executor next
+/// observes the abort request, and cannot undo work already performed.
+///
+/// Aborting a composed child lets its parent continue after the child has been
+/// cleaned up. Aborting the enclosing command also cancels its pending `.then`
+/// continuation.
+///
+/// Cancellation does not retract events already queued in Core or stop work
+/// already handed to an external shell.
 #[derive(Clone)]
 pub struct AbortHandle {
     pub(crate) aborted: Arc<AtomicBool>,
+    pub(crate) host_waker: Arc<AtomicWaker>,
 }
 
 impl AbortHandle {
     /// Abort the associated Command and all its tasks.
     ///
-    /// The tasks will be stopped (not polled any more) at the next .await point.
-    /// If you use this, make sure the tasks the Command is running are all cancellation
-    /// safe, as they can be stopped at any of the await points or even before they are first polled
+    /// Wakes the command's host so cancellation can proceed even while its tasks are suspended.
+    ///
+    /// Tasks must be cancellation-safe: the executor drops their futures when
+    /// it observes cancellation, potentially before their first poll. A poll
+    /// already in progress can finish before cancellation is observed.
     pub fn abort(&self) {
         self.aborted.store(true, Ordering::Release);
+        self.host_waker.wake();
     }
 }
 
-/// A handle used to await a task completion of abort the task
+/// A handle used to await a task completion or abort the task
 #[derive(Clone)]
 pub struct JoinHandle {
     pub(crate) register_waker: Sender<Waker>,
     pub(crate) finished: Arc<AtomicBool>,
     pub(crate) aborted: Arc<AtomicBool>,
+    pub(crate) abort_waker: Arc<AtomicWaker>,
 }
 
 // RFC: I'm sure the ordering as used is fine...? Right? :) In all seriousness, how would
@@ -112,11 +135,20 @@ pub struct JoinHandle {
 impl JoinHandle {
     /// Abort the task associated with this join handle. The task will be aborted at the
     /// next .await point. Any tasks this task spawned will continue running.
+    /// Schedules the task and wakes its owning command even if the task is suspended.
+    /// If the task is finished, this call does nothing.
     // RFC: Do we need to think more thoroughly about cancellation? For example, should
     // the tasks have a parent-child relationship where cancelling the parent cancels all
     // the children?
     pub fn abort(&self) {
+        // The abort waker holds the slot id of the finished task. A new task can
+        // reuse that slot, so a wake now would poll the wrong task.
+        if self.is_finished() {
+            return;
+        }
+
         self.aborted.store(true, Ordering::Release);
+        self.abort_waker.wake();
     }
 
     pub(crate) fn is_finished(&self) -> bool {
@@ -131,10 +163,12 @@ impl Future for JoinHandle {
         if self.is_finished() {
             Poll::Ready(())
         } else {
-            match self.register_waker.send(cx.waker().clone()) {
-                Ok(()) => Poll::Pending,
-                // The task no longer exists, we report ready immediately
-                Err(_) => Poll::Ready(()),
+            // Register first, then recheck completion so termination between
+            // the first check and registration cannot leave us asleep.
+            if self.register_waker.send(cx.waker().clone()).is_err() || self.is_finished() {
+                Poll::Ready(())
+            } else {
+                Poll::Pending
             }
         }
     }
@@ -180,13 +214,7 @@ impl<Effect, Event> Command<Effect, Event> {
                         //   we pick it up again when it's woken up
                     }
                     TaskState::Completed | TaskState::Cancelled => {
-                        // Remove and drop the task, it's finished
-                        let task = self.tasks.remove(task_id.0);
-
-                        task.finished.store(true, Ordering::Release);
-                        task.wake_join_handles();
-
-                        drop(task);
+                        drop(self.tasks.remove(task_id.0));
                     }
                 }
             }
@@ -239,8 +267,17 @@ impl<Effect, Event> Command<Effect, Event> {
 
     pub(crate) fn spawn_new_tasks(&mut self) {
         while let Ok(task) = self.spawn_queue.try_recv() {
+            let abort_waker = task.abort_waker.clone();
             let task_id = self.tasks.insert(task);
 
+            abort_waker.register(&Waker::from(Arc::new(CommandWaker {
+                task_id: TaskId(task_id),
+                ready_queue: self.ready_sender.clone(),
+                parent_waker: self.waker.clone(),
+                woken: AtomicBool::new(false),
+            })));
+
+            // Always schedule the initial poll, including when abort happened before registration.
             self.ready_sender
                 .send(TaskId(task_id))
                 .expect("Command can't spawn a task, ready_queue has disconnected");

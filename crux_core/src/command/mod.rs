@@ -254,8 +254,8 @@ use slab::Slab;
 use stream::CommandStreamExt as _;
 
 pub use builder::{NotificationBuilder, RequestBuilder, StreamBuilder};
-pub use context::CommandContext;
-pub use executor::AbortHandle;
+pub use context::{CommandContext, SpawnError};
+pub use executor::{AbortHandle, JoinHandle};
 pub use stream::CommandOutput;
 
 use crate::Request;
@@ -315,19 +315,25 @@ where
         let (spawn_sender, spawn_receiver) = crossbeam_channel::unbounded();
         let (_, waker_receiver) = crossbeam_channel::unbounded();
 
+        let waker: Arc<AtomicWaker> = Arc::default();
+
         let context = context::CommandContext {
             effects: effect_sender,
             events: event_sender,
             tasks: spawn_sender,
             rc: Arc::default(),
+            host_waker: waker.clone(),
         };
 
         let aborted: Arc<AtomicBool> = Arc::default();
         let task = Task {
-            finished: Arc::default(),
             aborted: aborted.clone(),
+            abort_waker: Arc::default(),
             future: create_task(context.clone()).boxed(),
-            join_handle_wakers: waker_receiver,
+            completion: executor::TaskCompletion {
+                finished: Arc::default(),
+                join_handle_wakers: waker_receiver,
+            },
         };
 
         let mut tasks = Slab::with_capacity(1);
@@ -345,7 +351,7 @@ where
             spawn_queue: spawn_receiver,
             ready_sender,
             tasks,
-            waker: Arc::default(),
+            waker,
             aborted,
         }
     }
@@ -442,8 +448,10 @@ where
         builder::StreamBuilder::new(|ctx| ctx.stream_from_shell(operation))
     }
 
-    /// Run the effect state machine until it settles, then return true
-    /// if there is any more work to do - tasks to run or events or effects to receive
+    /// Run the command until it settles, then return whether it has finished.
+    ///
+    /// Completion requires all owned tasks and subcommands to finish, all outputs
+    /// to be drained, and no saved contexts to remain.
     pub fn is_done(&mut self) -> bool {
         self.run_until_settled();
 
@@ -478,13 +486,14 @@ where
         Effect: Unpin + Send + 'static,
         Event: Unpin + Send + 'static,
     {
-        self.host(ctx.effects, ctx.events).map(|_| ())
+        self.host(ctx).map(|_| ())
     }
 
-    /// Create a command running self and the other command in sequence
-    // RFC: is this actually _useful_? Unlike `.then` on `CommandBuilder` this doesn't allow using
-    // the output of the first command in building the second one, it just runs them in sequence,
-    // and the benefit is unclear.
+    /// Create a command running `self` and `other` in sequence.
+    ///
+    /// `other` starts after `self` and its owned tasks and subcommands finish
+    /// and their outputs have been forwarded. Emitted events are queued for the
+    /// app to handle; sequencing does not wait for their processing.
     pub fn then(self, other: Self) -> Self
     where
         Effect: Unpin,
@@ -530,7 +539,9 @@ where
     /// Map effects requested as part of this command to a different effect type.
     ///
     /// This is useful when composing apps to convert a command from a child app to a
-    /// command of the parent app.
+    /// command of the parent app. The mapped command owns the original command:
+    /// it waits for its tasks, and dropping or aborting it drops the original work.
+    /// An abort handle obtained before mapping still controls the original command.
     pub fn map_effect<F, NewEffect>(self, map: F) -> Command<NewEffect, Event>
     where
         F: Fn(Effect) -> NewEffect + Send + Sync + 'static,
@@ -543,15 +554,17 @@ where
                 CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
                 CommandOutput::Event(event) => CommandOutput::Event(event),
             })
-            .host(ctx.effects, ctx.events)
+            .host(ctx)
             .map(|_| ())
         })
     }
 
-    /// Map events sent as part of this command to a different effect type
+    /// Map events sent as part of this command to a different event type.
     ///
     /// This is useful when composing apps to convert a command from a child app to a
-    /// command of the parent app.
+    /// command of the parent app. The mapped command owns the original command:
+    /// it waits for its tasks, and dropping or aborting it drops the original work.
+    /// An abort handle obtained before mapping still controls the original command.
     pub fn map_event<F, NewEvent>(self, map: F) -> Command<Effect, NewEvent>
     where
         F: Fn(Event) -> NewEvent + Send + Sync + 'static,
@@ -564,7 +577,7 @@ where
                 CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
                 CommandOutput::Event(event) => CommandOutput::Event(map(event)),
             })
-            .host(ctx.effects, ctx.events)
+            .host(ctx)
             .map(|_| ())
         })
     }
@@ -591,6 +604,7 @@ where
     pub fn abort_handle(&self) -> AbortHandle {
         AbortHandle {
             aborted: self.aborted.clone(),
+            host_waker: self.waker.clone(),
         }
     }
 }

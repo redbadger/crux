@@ -8,12 +8,14 @@ use crossbeam_channel::Sender;
 use futures::channel::mpsc;
 use futures::future::Fuse;
 use futures::stream::StreamFuture;
+use futures::task::AtomicWaker;
 use futures::{FutureExt as _, Stream, StreamExt};
+use thiserror::Error;
 
 use crate::capability::Operation;
 use crate::{OperationKind, Request};
 
-use super::executor::{JoinHandle, Task};
+use super::executor::{JoinHandle, Task, TaskCompletion};
 
 /// Context enabling tasks to communicate with the parent Command,
 /// specifically submit effects, events and spawn further tasks
@@ -23,6 +25,7 @@ pub struct CommandContext<Effect, Event> {
     pub(crate) events: Sender<Event>,
     pub(crate) tasks: Sender<Task>,
     pub(crate) rc: Arc<()>,
+    pub(crate) host_waker: Arc<AtomicWaker>,
 }
 // ANCHOR_END: command_context
 
@@ -34,6 +37,7 @@ impl<Effect, Event> Clone for CommandContext<Effect, Event> {
             events: self.events.clone(),
             tasks: self.tasks.clone(),
             rc: self.rc.clone(),
+            host_waker: self.host_waker.clone(),
         }
     }
 }
@@ -170,7 +174,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     }
 
     /// Send an event which should be handed to the update function. This is used to communicate the result
-    /// (or a sequence of results) of a command back to the app so that state can be updated accordingly
+    /// (or a sequence of results) of a command back to the app so that state can be updated accordingly.
+    ///
+    /// Sending queues the event for `App::update` without waiting for the app
+    /// to handle it.
     #[allow(clippy::missing_panics_doc)]
     pub fn send_event(&self, event: Event) {
         self.events
@@ -190,31 +197,73 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         F: FnOnce(Self) -> Fut,
         Fut: Future<Output = ()> + Send + 'static,
     {
+        self.try_spawn(make_future)
+            .expect("Command could not spawn task, tasks channel disconnected")
+    }
+    // ANCHOR_END: spawn
+
+    /// Attempt to spawn a task within the same command, returning a handle for
+    /// awaiting or aborting it.
+    ///
+    /// The closure is called even if the command has been dropped. In that case,
+    /// its returned future is dropped without being polled, before this method
+    /// returns. Side effects in the closure itself are not undone.
+    ///
+    /// Acceptance does not guarantee execution: an aborted command can accept
+    /// the task and drop it when processing cancellation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SpawnError`] if the command no longer exists to accept the task.
+    pub fn try_spawn<F, Fut>(&self, make_future: F) -> Result<JoinHandle, SpawnError>
+    where
+        F: FnOnce(Self) -> Fut,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
         let (sender, receiver) = crossbeam_channel::unbounded();
 
         let ctx = self.clone();
         let future = make_future(ctx);
 
         let task = Task {
-            finished: Arc::default(),
             aborted: Arc::default(),
+            abort_waker: Arc::default(),
             future: future.boxed(),
-            join_handle_wakers: receiver,
+            completion: TaskCompletion {
+                finished: Arc::default(),
+                join_handle_wakers: receiver,
+            },
         };
 
         let handle = JoinHandle {
-            finished: task.finished.clone(),
+            finished: task.completion.finished.clone(),
             aborted: task.aborted.clone(),
+            abort_waker: task.abort_waker.clone(),
             register_waker: sender,
         };
 
-        self.tasks
-            .send(task)
-            .expect("Command could not spawn task, tasks channel disconnected");
+        self.tasks.send(task).map_err(|rejected| {
+            // Run the rejected future's drop cleanup before returning the error.
+            drop(rejected);
+            SpawnError::CommandDropped
+        })?;
 
-        handle
+        // spawn can be called outside of the run loop, we need to make
+        // sure the host of this command knows to poll it again
+        self.host_waker.wake();
+
+        Ok(handle)
     }
-    // ANCHOR_END: spawn
+}
+
+/// A task could not be spawned because its command has been dropped.
+// Keep the thiserror attribute on a variant: BoltFFI 0.30.1 mistakes a
+// type-level #[error("...")] for its own marker when scanning dependencies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+pub enum SpawnError {
+    /// The command no longer exists to accept the task.
+    #[error("cannot spawn a task on a dropped command")]
+    CommandDropped,
 }
 
 pub enum ShellStream<T: Unpin + Send> {

@@ -716,11 +716,11 @@ mod save_load_tests {
         let timer = effects.next().unwrap().expect_time_notify_after();
         // Every test in this binary takes timer ids from one counter, so the
         // test checks that the id is new, not which number it is.
-        assert_ne!(timer.operation.id, second_id);
-        assert_eq!(
-            timer.operation.duration,
-            crux_time::Duration::from_millis(1000)
-        );
+        let time::NotifyAfter { id, duration } = timer.operation;
+
+        assert_ne!(id, first_id);
+        assert_ne!(id, second_id);
+        assert_eq!(duration, crux_time::Duration::from_millis(1000));
     }
     // ANCHOR_END: starts_a_timer_after_an_edit
 }
