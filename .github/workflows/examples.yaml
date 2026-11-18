@@ -424,6 +424,9 @@ jobs:
     if: needs.changes.outputs.windows == 'true'
     runs-on: windows-latest
 
+    env:
+      BOLTFFI_OVERLAY: ${{ github.workspace }}/.github/boltffi-ci.toml
+
     defaults:
       run:
         working-directory: examples/counter
@@ -437,7 +440,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+          targets: x86_64-pc-windows-msvc
           components: clippy, rustfmt
 
       - uses: ./.github/actions/kache
@@ -472,6 +475,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.apple != '[]'
     runs-on: macos-26
+
+    env:
+      BOLTFFI_OVERLAY: ${{ github.workspace }}/.github/boltffi-ci.toml
 
     strategy:
       fail-fast: false
@@ -524,6 +530,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.android != '[]'
     runs-on: ubuntu-latest
+
+    env:
+      BOLTFFI_OVERLAY: ${{ github.workspace }}/.github/boltffi-ci.toml
 
     strategy:
       fail-fast: false
