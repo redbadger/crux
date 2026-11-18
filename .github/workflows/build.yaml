@@ -20,8 +20,62 @@ env:
   RUSTC_WRAPPER: "sccache"
 
 jobs:
-  build:
+  # Finds whether a pull request can affect the root workspace. On a push to
+  # master, `build` always runs. On a pull request, `build` runs unless every
+  # changed file is in docs/, in examples/ or in the list of inert files below.
+  # `build` is a required check, and GitHub counts a skipped job as a pass. Thus
+  # a skipped `build` does not block a merge.
+  changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+
+    outputs:
+      build: ${{ steps.select.outputs.build }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Select the jobs
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # On a push, or if git cannot list the changed files, every job runs.
+          changed="$RUNNER_TEMP/changed.txt"
+          : > "$changed"
+          all=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            if git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA" > "$changed"; then
+              all=false
+            else
+              echo "::warning::Cannot list the changed files, so every job runs"
+            fi
+          fi
+          echo "Changed files:"
+          cat "$changed"
+
+          jq -n -r --argjson all "$all" --rawfile changed "$changed" '
+            # Files that the root workspace does not use.
+            def inert:
+              startswith("docs/") or startswith("examples/") or startswith(".vscode/")
+              or IN("README.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "LICENSE",
+                    "release.md", "renovate.json", ".gitignore", ".gitattributes");
+
+            ($changed | split("\n") | map(select(length > 0))) as $files
+            | "build=\($all or any($files[]; inert | not))"
+          ' | tee -a "$GITHUB_OUTPUT"
+
+  build:
+    needs: changes
+    # If `changes` fails, `build` runs, because a skipped `build` passes the
+    # required check.
+    if: ${{ !cancelled() && needs.changes.result != 'skipped' && (needs.changes.result == 'failure' || needs.changes.outputs.build == 'true') }}
     runs-on: ubuntu-latest
 
     steps:
