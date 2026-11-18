@@ -69,6 +69,18 @@ We assert the new state is `FetchingLocation`. Then we call `.expect_only_locati
 
 That's the whole test. `update` is a pure function, so there's nothing to set up beyond the initial state and nothing to tear down.
 
+## Testing a stream
+
+A stream is one request that the shell answers many times. The generated `resolve_<variant>` helper takes the next effect, resolves its request once, and then drops the request. A stream request owns the channel that carries each item to the core, so a dropped request ends the stream. In the counter-http example, `resolve_server_sent_events` would deliver the first chunk and then end the stream.
+
+To test a stream, keep the request. Call `cmd.expect_one_effect().expect_server_sent_events()`, which asserts that the command holds exactly one effect and returns its `Request<SseRequest>`. Then call `request.resolve(...)` once for each item the shell sends. After each call, check the events on the command, because the app can emit an event for each item. If the operation has an item that ends the stream, resolve the request with that item to test what the app does then. For this effect that item is `SseResponse::Done`.
+
+The counter-http example tests its Server-Sent Events subscription like this. The test resolves the request with two chunks, and after each one it checks that the app emits an `Update` event with the new `Count`. It stops there and leaves the stream open.
+
+```rust
+{{#include ../../../examples/counter-http/shared/src/app.rs:sse_test}}
+```
+
 ## More integrated tests and deterministic simulation testing
 
 We could test the key-value storage in a more integrated fashion too - instead of asserting
