@@ -58,6 +58,7 @@ runs:
     # read-only, and then pull requests cannot write under `artifacts-pr`.
     - uses: kunobi-ninja/kache-action@v1
       with:
+        # renovate: datasource=github-releases depName=kunobi-ninja/kache
         version: v2.1.1
         s3-bucket: ${{ inputs.access-key-id != '' && inputs.secret-access-key != '' && inputs.bucket || '' }}
         s3-endpoint: ${{ inputs.access-key-id != '' && inputs.secret-access-key != '' && inputs.endpoint || '' }}

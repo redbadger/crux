@@ -10,6 +10,16 @@
   "prConcurrentLimit": 3,
   "minimumReleaseAge": "7 days",
   "labels": ["dependencies"],
+  "customManagers": [
+    {
+      "description": "Update versions that a `# renovate: datasource=... depName=...` comment marks in the line above, for example the kache version in the kache action",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/actions/kache/action\\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\n\\s*version: (?<currentValue>\\S+)"
+      ]
+    }
+  ],
   "packageRules": [
     {
       "description": "Automerge patch-level and pin/digest updates — CI gates correctness",
@@ -52,6 +62,13 @@
     {
       "description": "Group GitHub Actions updates",
       "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "commitMessagePrefix": "chore(ci):"
+    },
+    {
+      "description": "Group the kache binary version with the GitHub Actions updates",
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": ["kunobi-ninja/kache"],
       "groupName": "github-actions",
       "commitMessagePrefix": "chore(ci):"
     },

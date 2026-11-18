@@ -384,10 +384,43 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # The runner image can download these packages from a slow Ubuntu mirror
+      # (12 minutes at 90 kB/s, against 30 s on a good day). The cache keeps the
+      # packages that apt downloads, so apt downloads only the packages that
+      # changed. A new runner image gets a new key, and the previous key is a
+      # fallback, so most packages come from the cache then too.
+      #
+      # ImageOS and ImageVersion are environment variables of the runner. The
+      # `env` context does not contain them, so a step reads them.
+      - name: Make the apt cache key
+        id: apt-key
+        run: |
+          prefix="apt-${RUNNER_OS}-${RUNNER_ARCH}-${ImageOS:?}-"
+          echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+          echo "key=$prefix${ImageVersion:?}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the apt package cache
+        uses: actions/cache@v6
+        with:
+          path: ~/apt-archives
+          key: ${{ steps.apt-key.outputs.key }}
+          restore-keys: ${{ steps.apt-key.outputs.prefix }}
+
+      # apt needs root to write `partial/`. After the install, give the
+      # directory to the runner user so that the cache can save it, and remove
+      # the packages that are no longer available. The `_apt` user cannot open
+      # the home directory, so apt downloads as root.
       - name: Install system dependencies
         run: |
+          archives="$HOME/apt-archives"
+          apt_options=(-o Dir::Cache::Archives="$archives" -o APT::Sandbox::User=root)
+          sudo mkdir -p "$archives/partial"
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y "${apt_options[@]}" \
+            libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get autoclean "${apt_options[@]}"
+          sudo rm -rf "$archives/partial" "$archives/lock"
+          sudo chown -R "$(id -u):$(id -g)" "$archives"
 
       - name: Remove rust-toolchain.toml
         run: rm ../../rust-toolchain.toml
