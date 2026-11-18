@@ -50,6 +50,11 @@ check-versions:
         exit 1
     fi
 
+    # Each CI job that uses .github/actions/install-boltffi gives the version on
+    # the `version:` line after the `uses:` line. Print each one as `file:line`.
+    ci_boltffi_pins='/uses: \.\/\.github\/actions\/install-boltffi/ { pending = 1; next } pending && /version:/ { print FILENAME ":" $0; pending = 0 }'
+    ci_boltffi_checked=$(awk "$ci_boltffi_pins" .github/workflows/*.yaml | wc -l | tr -d ' ')
+
     status=0
     checked=0
     while IFS= read -r hit; do
@@ -65,6 +70,7 @@ check-versions:
     $(grep -HoE '^boltffi = "=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/Cargo.toml || true)
     $(grep -HoE '"@boltffi/runtime": "[0-9]+\.[0-9]+\.[0-9]+"' examples/*/*/package.json || true)
     $(grep -rHoE "boltffi_cli --version '=[0-9]+\.[0-9]+\.[0-9]+'" .github/workflows docs/src lib.just || true)
+    $(awk "$ci_boltffi_pins" .github/workflows/*.yaml)
     $(grep -rHoE '^boltffi = "=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
     $(grep -HoE '^boltffi_version := "[0-9]+\.[0-9]+\.[0-9]+"' examples/counter/windows/Justfile || true)
     $(grep -A2 -H '"boltffi", "boltffi_cli"' renovate.json | grep -E 'allowedVersions' || true)
@@ -87,6 +93,11 @@ check-versions:
     $(grep -HoE 'Pin facet to [0-9]+\.[0-9]+\.[0-9]+' renovate.json || true)
     $(grep -F -A3 -H '"matchPackageNames": ["facet"],' renovate.json | grep -E 'allowedVersions' || true)
     FACET_PINS
+
+    if [ "$ci_boltffi_checked" -lt 4 ]; then
+        echo "  {{ style("error") }}✗ only found $ci_boltffi_checked BoltFFI pins in CI, expected at least 4. Did a pin site move, or did its name change?{{ NORMAL }}"
+        status=1
+    fi
 
     if [ "$facet_checked" -lt 10 ]; then
         echo "  {{ style("error") }}✗ only found $facet_checked facet pins, expected at least 10 — has a pin site moved or been renamed?{{ NORMAL }}"

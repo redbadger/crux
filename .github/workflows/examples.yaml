@@ -182,10 +182,9 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.9
       - uses: taiki-e/install-action@just
 
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.30.1' --locked
-        env:
-          RUSTFLAGS: ""
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.30.1"
 
       - name: Install wasm-opt
         run: |
@@ -290,16 +289,15 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.30.1' --locked
-        env:
-          RUSTFLAGS: ""
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.30.1"
 
       - name: CI
         run: just windows/ci
 
   # Apple (iOS/macOS) shells. Needs: macOS runner, Rust with Apple targets,
-  # BoltFFI, cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
+  # BoltFFI, xcodegen, swiftlint. All examples have an "apple" shell,
   # so the matrix is just the example name — the shell is always "apple".
   apple:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -340,13 +338,9 @@ jobs:
       - name: Install tools
         run: brew install just xcodegen swiftlint
 
-      - name: Install cargo-swift
-        run: cargo install cargo-swift --version '=0.9'
-
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.30.1' --locked
-        env:
-          RUSTFLAGS: ""
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.30.1"
 
       - name: CI
         run: just apple/ci
@@ -396,10 +390,9 @@ jobs:
           # removed from Google's SDK repository, so installing it now fails.
           packages: platform-tools
 
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.30.1' --locked
-        env:
-          RUSTFLAGS: ""
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.30.1"
 
       - name: CI
         run: just Android/ci

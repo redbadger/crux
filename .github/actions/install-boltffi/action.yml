@@ -1,0 +1,73 @@
+name: Install BoltFFI CLI
+description: >
+  Download the prebuilt boltffi binary from the BoltFFI GitHub release, check
+  its SHA-256 hash, and add it to PATH. Supports Linux x86_64, macOS arm64 and
+  Windows x86_64 runners.
+
+inputs:
+  version:
+    description: >
+      The BoltFFI version to install, without the "v" prefix (for example
+      "0.30.1"). `just check-versions` holds each caller to lib.just.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install BoltFFI CLI
+      shell: bash
+      env:
+        BOLTFFI_VERSION: ${{ inputs.version }}
+        RUNNER_OS_NAME: ${{ runner.os }}
+        RUNNER_ARCH_NAME: ${{ runner.arch }}
+      run: |
+        set -euo pipefail
+
+        case "$RUNNER_OS_NAME/$RUNNER_ARCH_NAME" in
+          Linux/X64) asset=boltffi-linux-x86_64.tar.gz ;;
+          macOS/ARM64) asset=boltffi-darwin-aarch64.tar.gz ;;
+          Windows/X64) asset=boltffi-windows-x86_64.zip ;;
+          *)
+            echo "::error::No BoltFFI binary for $RUNNER_OS_NAME/$RUNNER_ARCH_NAME"
+            exit 1
+            ;;
+        esac
+
+        url="https://github.com/boltffi/boltffi/releases/download/v${BOLTFFI_VERSION}/${asset}"
+        archive_path="$RUNNER_TEMP/$asset"
+        curl --fail --location --retry 3 "$url" --output "$archive_path"
+        curl --fail --location --retry 3 "$url.sha256" --output "$archive_path.sha256"
+
+        # The Windows .sha256 file has CRLF line endings, so `--check` cannot
+        # read it. Compare the hash field only.
+        #
+        # Hash from stdin. If the file name contains a backslash (as the
+        # Windows temp path does), sha256sum puts a "\" before the hash.
+        expected=$(awk '{print $1}' "$archive_path.sha256" | tr -d '\r')
+        if command -v sha256sum >/dev/null 2>&1; then
+          actual=$(sha256sum < "$archive_path" | awk '{print $1}')
+        else
+          actual=$(shasum -a 256 < "$archive_path" | awk '{print $1}')
+        fi
+        if [ "$expected" != "$actual" ]; then
+          echo "::error::SHA-256 of $asset is $actual, expected $expected"
+          exit 1
+        fi
+
+        bin_dir="$RUNNER_TEMP/boltffi/bin"
+        mkdir -p "$bin_dir"
+        case "$asset" in
+          *.zip) unzip -o -q "$archive_path" -d "$bin_dir" ;;
+          *) tar -xzf "$archive_path" -C "$bin_dir" ;;
+        esac
+
+        echo "$bin_dir" >> "$GITHUB_PATH"
+
+        # Call the binary by its path. On Windows, $bin_dir starts with a drive
+        # letter and a colon, so it cannot go into PATH in this shell.
+        actual_version=$("$bin_dir/boltffi" --version | head -n 1 | tr -d '\r')
+        if [ "$actual_version" != "boltffi $BOLTFFI_VERSION" ]; then
+          echo "::error::Installed '$actual_version', expected 'boltffi $BOLTFFI_VERSION'"
+          exit 1
+        fi
+        echo "$actual_version"
