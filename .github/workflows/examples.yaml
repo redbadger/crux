@@ -550,6 +550,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Caches the Gradle home. Only master writes the cache, and pull requests
+      # read it.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+
       - uses: android-actions/setup-android@v3
         with:
           # The obsolete `tools` package (part of the action's default) was
