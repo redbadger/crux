@@ -19,7 +19,6 @@ edition = "2024"
 //!   `Effect` variant
 //! - part-4/generated_core.svg, the layers of a shell that uses the generated
 //!   `Core`, from the UI down to the Rust core
-//! - part-4/request_id.svg, the bit fields of a request id
 //!
 //! Do not edit the SVG files directly. Change this script and run it again.
 //! The script needs a nightly Rust toolchain, because cargo runs single-file
@@ -1927,67 +1926,6 @@ fn generated_core() -> String {
     s
 }
 
-/// The bit fields of a request id, from the most significant bit.
-fn request_id() -> String {
-    const W: f64 = 720.0;
-    const H: f64 = 210.0;
-    let title = "Crux: the bits of a request id";
-    let desc = "A request id is a 32-bit unsigned integer with three fields. Bits 31 to 24 \
-                hold the effect's variant index, in 8 bits. Bit 23 is the kind bit: 0 for a \
-                request that the shell resolves once, and 1 for a stream that it resolves \
-                many times. Bits 22 to 0 hold the sequence number, in 23 bits, starting \
-                from 1. Id 0 is reserved for notifications. For example, 0x01000002 is \
-                variant 1, a request, with sequence number 2.";
-    let mut s = String::new();
-    head(&mut s, W, H, title, desc);
-
-    let (y, h) = (50.0, 80.0);
-    let fields = [
-        (230.0, Kind::Effect, "effect variant index", "8 bits", 31, 24),
-        (150.0, Kind::World, "kind", "1 bit", 23, 23),
-        (300.0, Kind::Model, "sequence number", "23 bits, from 1", 22, 0),
-    ];
-    let mut x = 20.0;
-    let bit = faint(12.0, true);
-    for (w, kind, name, bits, hi, lo) in fields {
-        let r = Rect::new(x, y, w, h);
-        let mut lines: Vec<Line> = vec![(TITLE, 16.0, name), (SMALL, 12.0, bits)];
-        if name == "kind" {
-            lines.push((SMALL, 12.0, "0 once, 1 many"));
-        }
-        lines_card(&mut s, r, kind, &lines);
-        if hi == lo {
-            text(&mut s, r.cx(), y - 10.0, "middle", &bit, &hi.to_string());
-        } else {
-            text(&mut s, x + 8.0, y - 10.0, "start", &bit, &hi.to_string());
-            text(&mut s, x + w - 8.0, y - 10.0, "end", &bit, &lo.to_string());
-        }
-        x += w;
-    }
-    assert!(x + 20.0 == W, "{x}");
-
-    let note = faint(13.0, false);
-    text(
-        &mut s,
-        20.0,
-        y + h + 32.0,
-        "start",
-        &note,
-        "Id 0 is reserved for notifications, on which the core never waits.",
-    );
-    text(
-        &mut s,
-        20.0,
-        y + h + 56.0,
-        "start",
-        &note,
-        "Example: 0x01000002 is variant 1, a request (resolved once), with sequence number 2.",
-    );
-
-    s.push_str("</svg>\n");
-    s
-}
-
 fn main() -> std::io::Result<()> {
     // Under `-Zscript`, CARGO_MANIFEST_DIR is the directory of this script, so
     // the default output directory does not depend on the current directory.
@@ -2010,6 +1948,5 @@ fn main() -> std::io::Result<()> {
         request_nesting(),
     )?;
     std::fs::write(format!("{out}/part-4/generated_core.svg"), generated_core())?;
-    std::fs::write(format!("{out}/part-4/request_id.svg"), request_id())?;
     Ok(())
 }

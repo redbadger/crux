@@ -96,14 +96,6 @@ is built the way it is.
 
 ![The layers of a shell that uses the generated Core. The UI reads the view from Core and sends events to it. Core sends the serialized event through FfiBridge and the CoreFfi bindings from BoltFFI to the Rust core, and gets the requests back. Core handles Render itself and gives the other requests to the generated EffectDispatcher. The dispatcher calls the shell's own EffectHandler, and resolves each request through the bridge. With a BoltFFI config, type generation also emits the FfiBridge.](../part-4/generated_core.svg)
 
-If you do resolve by hand, the `id` you pass back is the one that arrived,
-untouched. It is not a bare
-counter, though: it names the effect, says whether the request is resolved once
-or many times, and carries a sequence number, and type generation emits an
-`EffectKind` enum and a `RequestId` decoder for reading it — useful in a log
-line, never needed to resolve. See
-[reading a request id](../part-4/typegen.md#reading-a-request-id).
-
 Three of the shells that follow hand the loop to the generated `Core`. The
 Leptos shell doesn't:
 core and shell are both Rust there, so it matches on the `Effect` enum
