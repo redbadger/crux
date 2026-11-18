@@ -121,7 +121,7 @@ impl AbortHandle {
     }
 }
 
-/// A handle used to await a task completion of abort the task
+/// A handle used to await a task completion or abort the task
 #[derive(Clone)]
 pub struct JoinHandle {
     pub(crate) register_waker: Sender<Waker>,
@@ -136,10 +136,17 @@ impl JoinHandle {
     /// Abort the task associated with this join handle. The task will be aborted at the
     /// next .await point. Any tasks this task spawned will continue running.
     /// Schedules the task and wakes its owning command even if the task is suspended.
+    /// If the task is finished, this call does nothing.
     // RFC: Do we need to think more thoroughly about cancellation? For example, should
     // the tasks have a parent-child relationship where cancelling the parent cancels all
     // the children?
     pub fn abort(&self) {
+        // The abort waker holds the slot id of the finished task. A new task can
+        // reuse that slot, so a wake now would poll the wrong task.
+        if self.is_finished() {
+            return;
+        }
+
         self.aborted.store(true, Ordering::Release);
         self.abort_waker.wake();
     }
