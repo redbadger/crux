@@ -11,7 +11,7 @@ doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-apple
 
-# installs Rust targets required for Apple packaging with cargo-swift
+# installs the Rust targets that `boltffi pack apple` needs
 install-targets:
     @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
     TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(rustup show active-toolchain | awk '{print $1}')}" ; \

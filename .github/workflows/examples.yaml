@@ -4,15 +4,25 @@
 # installs the tools its shells need. Within each job a matrix fans out to
 # cover every example x shell combination for that platform.
 #
-# Matrix shape:
-#   shared     — 6 entries (all 5 examples x shared + counter/tui)
-#   web-trunk  — 6 entries (all 5 examples x web-leptos + counter/web-yew)
-#   web-dioxus — 1 entry   (counter only)
-#   web-js     — 6 entries (all 5 examples x web-nextjs + counter/web-react-router)
-#   tauri      — 1 entry   (counter only)
-#   windows    — 1 entry   (counter only)
-#   apple      — 5 entries (all 5 examples, shell is always "apple")
-#   android    — 5 entries (all 5 examples, shell is always "Android")
+# Matrix shape (the full lists are in the `changes` job):
+#   shared     7 entries (all 6 examples x shared + counter/tui)
+#   web-trunk  6 entries (5 examples x web-leptos + counter/web-yew)
+#   web-dioxus 1 entry   (counter only)
+#   web-js     7 entries (all 6 examples x web-nextjs + counter/web-react-router)
+#   tauri      1 entry   (counter only)
+#   windows    1 entry   (counter only)
+#   apple      5 entries (5 examples, shell is always "apple")
+#   android    5 entries (5 examples, shell is always "Android")
+#
+# On a push to master, every entry runs. On a pull request, the `changes` job
+# keeps only the entries that the PR can affect:
+#   - A change to a file outside docs/ and examples/<example>/ (for example a
+#     root crate, Cargo.lock, lib.just or .github/) selects every entry.
+#   - A change in examples/<example>/<shell>/ selects only that shell of that
+#     example.
+#   - Any other change in examples/<example>/ (for example shared/) selects
+#     every shell of that example.
+# A job with no entries left is skipped.
 #
 # Each matrix entry runs: just <shell>/ci  (working dir: examples/<example>)
 name: examples
@@ -32,27 +42,153 @@ env:
   RUSTFLAGS: "-D warnings"
   RUST_BACKTRACE: short
   CI: 1
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
 
 jobs:
+  # Selects the matrix entries to run. It gives one JSON list for each matrix
+  # job, and true or false for each job with no matrix.
+  changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+
+    outputs:
+      shared: ${{ steps.select.outputs.shared }}
+      web-trunk: ${{ steps.select.outputs.web-trunk }}
+      web-dioxus: ${{ steps.select.outputs.web-dioxus }}
+      web-js: ${{ steps.select.outputs.web-js }}
+      tauri: ${{ steps.select.outputs.tauri }}
+      windows: ${{ steps.select.outputs.windows }}
+      apple: ${{ steps.select.outputs.apple }}
+      android: ${{ steps.select.outputs.android }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Select the matrix entries
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          JOBS: |
+            {
+              "shared": [
+                { "example": "counter", "shell": "shared" },
+                { "example": "counter", "shell": "tui" },
+                { "example": "counter-http", "shell": "shared" },
+                { "example": "counter-middleware", "shell": "shared" },
+                { "example": "counter-routing", "shell": "shared" },
+                { "example": "notes", "shell": "shared" },
+                { "example": "weather", "shell": "shared" }
+              ],
+              "web-trunk": [
+                { "example": "counter", "shell": "web-leptos" },
+                { "example": "counter", "shell": "web-yew" },
+                { "example": "counter-http", "shell": "web-leptos" },
+                { "example": "counter-middleware", "shell": "web-leptos" },
+                { "example": "counter-routing", "shell": "web-leptos" },
+                { "example": "weather", "shell": "web-leptos" }
+              ],
+              "web-dioxus": [
+                { "example": "counter", "shell": "web-dioxus" }
+              ],
+              "web-js": [
+                { "example": "counter", "shell": "web-nextjs" },
+                { "example": "counter", "shell": "web-react-router" },
+                { "example": "counter-http", "shell": "web-nextjs" },
+                { "example": "counter-middleware", "shell": "web-nextjs" },
+                { "example": "counter-routing", "shell": "web-nextjs" },
+                { "example": "notes", "shell": "web-nextjs" },
+                { "example": "weather", "shell": "web-nextjs" }
+              ],
+              "tauri": [
+                { "example": "counter", "shell": "tauri" }
+              ],
+              "windows": [
+                { "example": "counter", "shell": "windows" }
+              ],
+              "apple": [
+                { "example": "counter", "shell": "apple" },
+                { "example": "counter-http", "shell": "apple" },
+                { "example": "counter-middleware", "shell": "apple" },
+                { "example": "counter-routing", "shell": "apple" },
+                { "example": "weather", "shell": "apple" }
+              ],
+              "android": [
+                { "example": "counter", "shell": "Android" },
+                { "example": "counter-http", "shell": "Android" },
+                { "example": "counter-middleware", "shell": "Android" },
+                { "example": "counter-routing", "shell": "Android" },
+                { "example": "weather", "shell": "Android" }
+              ]
+            }
+        run: |
+          set -euo pipefail
+
+          # On a push, or if git cannot list the changed files, every entry runs.
+          changed="$RUNNER_TEMP/changed.txt"
+          : > "$changed"
+          all=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            if git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA" > "$changed"; then
+              all=false
+            else
+              echo "::warning::Cannot list the changed files, so every entry runs"
+            fi
+          fi
+          echo "Changed files:"
+          cat "$changed"
+
+          jq -n -r --argjson all "$all" --rawfile changed "$changed" --argjson jobs "$JOBS" '
+            # Files that no example uses.
+            def inert:
+              startswith("docs/") or startswith(".vscode/")
+              or IN("README.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "LICENSE",
+                    "release.md", "renovate.json", ".gitignore", ".gitattributes",
+                    "examples/README.md");
+
+            # The directories that hold one shell each. shared/ is not in this
+            # list, because every shell of the example uses it.
+            def shell_dirs:
+              ["tui", "web-leptos", "web-yew", "web-dioxus", "web-nextjs",
+               "web-react-router", "tauri", "windows", "apple", "Android"];
+
+            # True if a file in $files can affect the matrix entry in the input.
+            def affected($files):
+              . as $entry
+              | "examples/\($entry.example)/" as $dir
+              | any($files[];
+                  startswith($dir)
+                  and ((ltrimstr($dir) | split("/")) as $parts
+                       | if ($parts | length) > 1 and ($parts[0] | IN(shell_dirs[]))
+                         then $parts[0] == $entry.shell
+                         else true
+                         end));
+
+            ($changed | split("\n") | map(select(length > 0))) as $files
+            | ($all or any($files[]; (inert or test("^examples/[^/]+/")) | not)) as $everything
+            | $jobs
+            | to_entries[]
+            | .key as $job
+            | (.value | map(select($everything or affected($files)))) as $selected
+            | if ($job | IN("web-dioxus", "tauri", "windows"))
+              then "\($job)=\($selected | length > 0)"
+              else "\($job)=\($selected | tojson)"
+              end
+          ' | tee -a "$GITHUB_OUTPUT"
+
   # Rust-only shells (shared + tui). Needs: Rust, wasm32 target, clippy, nextest.
   # All examples have a "shared" shell; only counter has "tui".
   shared:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.shared != '[]'
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { example: counter, shell: shared }
-          - { example: counter, shell: tui }
-          - { example: counter-http, shell: shared }
-          - { example: counter-middleware, shell: shared }
-          - { example: counter-routing, shell: shared }
-          - { example: notes, shell: shared }
-          - { example: weather, shell: shared }
+        include: ${{ fromJSON(needs.changes.outputs.shared) }}
 
     defaults:
       run:
@@ -69,7 +205,12 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@nextest
 
@@ -79,19 +220,14 @@ jobs:
   # WASM shells built with trunk (Leptos, Yew). Needs: Rust, wasm32 target, trunk.
   # All examples have web-leptos; only counter has web-yew.
   web-trunk:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.web-trunk != '[]'
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { example: counter, shell: web-leptos }
-          - { example: counter, shell: web-yew }
-          - { example: counter-http, shell: web-leptos }
-          - { example: counter-middleware, shell: web-leptos }
-          - { example: counter-routing, shell: web-leptos }
-          - { example: weather, shell: web-leptos }
+        include: ${{ fromJSON(needs.changes.outputs.web-trunk) }}
 
     defaults:
       run:
@@ -108,7 +244,12 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@trunk
 
@@ -118,7 +259,8 @@ jobs:
   # Dioxus WASM shell. Needs: Rust, wasm32 target, dioxus-cli.
   # Only counter has this shell, so no matrix needed.
   web-dioxus:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.web-dioxus == 'true'
     runs-on: ubuntu-latest
 
     defaults:
@@ -136,34 +278,33 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@v2
         with:
           tool: dioxus-cli@0.7.7
 
+      # web-dioxus/Justfile clears RUSTC_WRAPPER for `dx build`. Thus kache
+      # caches only the `check` recipe here.
       - name: CI
         run: just web-dioxus/ci
-        env:
-          RUSTC_WRAPPER: ""
 
   # JS/TS web shells. Needs: Rust, wasm32 target, BoltFFI, Node.js, TypeScript, pnpm.
   # All examples have web-nextjs; only counter has web-react-router.
   web-js:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.web-js != '[]'
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { example: counter, shell: web-nextjs }
-          - { example: counter, shell: web-react-router }
-          - { example: counter-http, shell: web-nextjs }
-          - { example: counter-middleware, shell: web-nextjs }
-          - { example: counter-routing, shell: web-nextjs }
-          - { example: notes, shell: web-nextjs }
-          - { example: weather, shell: web-nextjs }
+        include: ${{ fromJSON(needs.changes.outputs.web-js) }}
 
     defaults:
       run:
@@ -179,13 +320,17 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
 
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.30.1' --locked
-        env:
-          RUSTFLAGS: ""
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.30.1"
 
       - name: Install wasm-opt
         run: |
@@ -224,7 +369,8 @@ jobs:
   # Tauri desktop shell. Needs: Rust, Node.js, pnpm, GTK/WebKit system libs.
   # Only counter has this shell, so no matrix needed.
   tauri:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.tauri == 'true'
     runs-on: ubuntu-latest
 
     defaults:
@@ -244,7 +390,12 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
 
       - uses: actions/setup-node@v6
@@ -264,7 +415,8 @@ jobs:
   # .NET 10 SDK, just, and Visual Studio (pre-installed on windows-latest,
   # resolved via vswhere). Only counter has this shell, so no matrix needed.
   windows:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.windows == 'true'
     runs-on: windows-latest
 
     defaults:
@@ -283,37 +435,42 @@ jobs:
           targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
+          # The README of kache-action recommends this on GitHub-hosted Windows
+          # runners, because there the home and workspace directories are on
+          # different volumes.
+          cache-dir: ${{ runner.temp }}/kache
       - uses: taiki-e/install-action@just
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
 
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.30.1' --locked
-        env:
-          RUSTFLAGS: ""
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.30.1"
 
       - name: CI
         run: just windows/ci
 
   # Apple (iOS/macOS) shells. Needs: macOS runner, Rust with Apple targets,
-  # BoltFFI, cargo-swift, xcodegen, swiftlint. All examples have an "apple" shell,
-  # so the matrix is just the example name — the shell is always "apple".
+  # BoltFFI, xcodegen, swiftlint. The shell is always "apple", so the job name
+  # gives only the example.
   apple:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: apple (${{ matrix.example }})
+    needs: changes
+    if: needs.changes.outputs.apple != '[]'
     runs-on: macos-26
 
     strategy:
       fail-fast: false
       matrix:
-        example:
-          - counter
-          - counter-http
-          - counter-middleware
-          - counter-routing
-          - weather
+        include: ${{ fromJSON(needs.changes.outputs.apple) }}
 
     defaults:
       run:
@@ -330,7 +487,12 @@ jobs:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-darwin,x86_64-apple-ios
           components: clippy, rustfmt
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
 
       # macos-26 ships Xcode 26.5 but defaults to 26.4.1; use the latest stable.
       - uses: maxim-lobanov/setup-xcode@v1
@@ -340,33 +502,26 @@ jobs:
       - name: Install tools
         run: brew install just xcodegen swiftlint
 
-      - name: Install cargo-swift
-        run: cargo install cargo-swift --version '=0.9'
-
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.30.1' --locked
-        env:
-          RUSTFLAGS: ""
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.30.1"
 
       - name: CI
         run: just apple/ci
 
   # Android shells. Needs: Rust with Android NDK targets, BoltFFI, JDK 17, Android SDK.
-  # All examples have an "Android" shell (capital A matches the directory name),
-  # so the matrix is just the example name — the shell is always "Android".
+  # The shell is always "Android" (capital A matches the directory name), so the
+  # job name gives only the example.
   android:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: android (${{ matrix.example }})
+    needs: changes
+    if: needs.changes.outputs.android != '[]'
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        example:
-          - counter
-          - counter-http
-          - counter-middleware
-          - counter-routing
-          - weather
+        include: ${{ fromJSON(needs.changes.outputs.android) }}
 
     defaults:
       run:
@@ -382,7 +537,12 @@ jobs:
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: kunobi-ninja/kache-action@v1
+        with:
+          version: v2.1.1
+          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          save-cache: ${{ github.ref == 'refs/heads/master' }}
+          pr-comment: false
       - uses: taiki-e/install-action@just
 
       - uses: actions/setup-java@v4
@@ -390,16 +550,21 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Caches the Gradle home. Only master writes the cache, and pull requests
+      # read it.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+
       - uses: android-actions/setup-android@v3
         with:
           # The obsolete `tools` package (part of the action's default) was
           # removed from Google's SDK repository, so installing it now fails.
           packages: platform-tools
 
-      - name: Install BoltFFI CLI
-        run: cargo install boltffi_cli --version '=0.30.1' --locked
-        env:
-          RUSTFLAGS: ""
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.30.1"
 
       - name: CI
         run: just Android/ci
