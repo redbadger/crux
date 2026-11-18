@@ -160,7 +160,11 @@ where
             events.extend(root_command.events());
         }
 
-        root_command.effects().collect()
+        root_command
+            .effects_with_context()
+            .filter(crate::command::CommandEffect::is_pending)
+            .map(crate::command::CommandEffect::into_effect)
+            .collect()
     }
     // ANCHOR_END: process
 
