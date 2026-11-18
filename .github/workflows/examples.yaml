@@ -205,12 +205,13 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@nextest
 
@@ -244,12 +245,13 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@trunk
 
@@ -278,12 +280,13 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy, rustfmt
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@v2
         with:
@@ -320,12 +323,13 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       - uses: taiki-e/install-action@just
 
       - uses: ./.github/actions/install-boltffi
@@ -390,12 +394,13 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       - uses: taiki-e/install-action@just
 
       - uses: actions/setup-node@v6
@@ -435,12 +440,13 @@ jobs:
           targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
           components: clippy, rustfmt
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           # The README of kache-action recommends this on GitHub-hosted Windows
           # runners, because there the home and workspace directories are on
           # different volumes.
@@ -487,12 +493,13 @@ jobs:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-darwin,x86_64-apple-ios
           components: clippy, rustfmt
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
 
       # macos-26 ships Xcode 26.5 but defaults to 26.4.1; use the latest stable.
       - uses: maxim-lobanov/setup-xcode@v1
@@ -537,12 +544,13 @@ jobs:
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       - uses: taiki-e/install-action@just
 
       - uses: actions/setup-java@v4
