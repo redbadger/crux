@@ -43,12 +43,13 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: kunobi-ninja/kache-action@v1
+      - uses: ./latest/.github/actions/kache
         with:
-          version: v2.1.1
-          cache-key-prefix: kache-${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
-          save-cache: ${{ github.ref == 'refs/heads/master' }}
-          pr-comment: false
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
 
       - name: Setup mdBook
         uses: jontze/action-mdbook@v4
