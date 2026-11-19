@@ -59,7 +59,7 @@ runs:
     - uses: kunobi-ninja/kache-action@v1
       with:
         # renovate: datasource=github-releases depName=kunobi-ninja/kache
-        version: v2.1.1
+        version: v2.2.0
         s3-bucket: ${{ inputs.access-key-id != '' && inputs.secret-access-key != '' && inputs.bucket || '' }}
         s3-endpoint: ${{ inputs.access-key-id != '' && inputs.secret-access-key != '' && inputs.endpoint || '' }}
         s3-region: auto
