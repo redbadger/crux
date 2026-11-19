@@ -349,6 +349,15 @@ and this project adheres to
   rename one with `#[facet(rename = "...")]` or give it its own namespace. This
   holds for types registered directly, and for types reached through a field
   or variant. The check lives in `facet_generate` ([redbadger/facet-generate#137](https://github.com/redbadger/facet-generate/pull/137)).
+- **`CodeGenerator::typescript` fails when `pnpm install` or `tsc` does.** It
+  ran both on the generated package but ignored their exit status, so a module
+  that didn't type-check was only noticed by the shell's build
+  ([#602](https://github.com/redbadger/crux/issues/602)). It now returns the
+  new `TypeGenError::CommandFailed`, with the command and its exit status.
+  Their output is still printed, so `tsc`'s diagnostics appear above the
+  error. If the generated `package.json` depends on a package that hasn't
+  been built yet, such as a BoltFFI wasm package, build that first:
+  `pnpm install` failing is now an error too.
 
 - **The bridge ignores a late item for a stream.** If the core no longer
   listens to a stream, `Bridge::resolve` returns `Ok(())` for a new item on
