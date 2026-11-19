@@ -3,7 +3,7 @@ package com.crux.examples.counter
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-open class Core : androidx.lifecycle.ViewModel() {
+open class CoreWrapper : androidx.lifecycle.ViewModel() {
     private var core: CoreFfi = CoreFfi()
 
     var view: ViewModel by mutableStateOf(

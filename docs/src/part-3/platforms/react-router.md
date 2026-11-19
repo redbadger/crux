@@ -140,11 +140,11 @@ We will use the [simple counter example](https://github.com/redbadger/crux/tree/
 
 A simple app that increments, decrements and resets a counter.
 
-#### Wrap the core to support capabilities
+#### Wrap the core to handle effects
 
 First, let's add some boilerplate code to wrap our core and handle the
-capabilities that we are using. For this example, we only need to support the
-`Render` capability, which triggers a render of the UI.
+effects that it produces. For this example, we only need to support the
+`Render` effect, which triggers a render of the UI.
 
 ```admonish
 This code that wraps the core only needs to be written once — it only grows when
@@ -166,11 +166,11 @@ WebAssembly instance, and so we can't just pass the data directly.
 ```
 
 ```admonish tip
-That `switch` statement, above, is where you would handle any other effects that
+That `matchEffect` call, above, is where you would handle any other effects that
 your core might ask for. For example, if your core needs to make an HTTP
 request, you would handle that here. To see an example of this, take a look at
 the
-[counter example](https://github.com/redbadger/crux/tree/master/examples/counter/web-react-router/app/core.ts)
+[counter-http example](https://github.com/redbadger/crux/tree/master/examples/counter-http/web-nextjs/src/app/core.ts)
 in the Crux repository.
 ```
 

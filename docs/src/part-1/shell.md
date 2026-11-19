@@ -79,9 +79,12 @@ serde = { workspace = true, features = ["derive"] }
 
 # optional dependencies
 anyhow = { workspace = true, optional = true }
-clap = { version = "4.6.1", optional = true, features = ["derive"] }
-log = { version = "0.4.29", optional = true }
+clap = { version = "4.6.6", optional = true, features = ["derive"] }
+log = { version = "0.4.33", optional = true }
 pretty_env_logger = { version = "0.5.0", optional = true }
+
+[dev-dependencies]
+crux_core = { workspace = true, features = ["testing"] }
 ```
 
 A lot has changed! The key things we added are:
@@ -89,6 +92,9 @@ A lot has changed! The key things we added are:
 1. a `bin` target called `codegen`, which is how we're going to run all the code generation
 2. a `boltffi` dependency for the binding surface
 3. dependencies we need for the code generation
+
+The `[dev-dependencies]` section is the one we added in the [testing chapter](./testing.md),
+so keep it, or your tests will stop compiling.
 
 And since we've declared the `codegen` target, we need to add the code for it.
 
@@ -126,7 +132,9 @@ TypeScript, ...), all with consistent serialization behavior.
 ### The BoltFFI config file
 
 One more file is worth calling out before we move on:
-[`shared/boltffi.toml`](https://www.boltffi.dev/docs/configuration).
+[`shared/boltffi.toml`](https://www.boltffi.dev/docs/configuration). Create it
+next to `shared/Cargo.toml`. Here's the one from the counter example, which you
+can copy as a starting point:
 
 ```toml,ignore
 # shared/boltffi.toml
@@ -140,7 +148,12 @@ where to write generated artifacts, what Swift module or Kotlin package to use,
 where to put the wasm/npm output, and how to configure the C# bindings.
 
 These paths are relative to `shared/`, because the BoltFFI commands run from
-that directory. If you rename the crate or move a shell, update this file and
+that directory. They expect the shells to live in sibling directories called
+`apple`, `Android`, `web-nextjs` and `windows`, which is what the following
+chapters use. You can change `repository` and `license` to your own, and
+leave out the targets for platforms you don't plan to build. The Android
+`package` has to match the Kotlin package name in `codegen.rs` and your Android
+app, so if you change one, change all three. If you rename the crate or move a shell, update this file and
 the matching shell project together.
 
 ## Updating our `app.rs`
@@ -158,7 +171,7 @@ pub enum Effect {
 ```
 
 We also need to annotate the other types that cross the FFI boundary with the
-`Facet` derive macro. We are using Facet v0.44 (with `crux_core` v0.17), and so
+`Facet` derive macro. We are using Facet v0.46, and so
 we also need to specify a layout for enums, e.g. `repr(C)` or `repr(u8)`.
 
 ```rust,noplayground
