@@ -44,6 +44,12 @@ use syn::{Ident, ItemEnum, parse_macro_input};
 ///     Http(HttpRequest),
 /// }
 /// ```
+///
+/// With `facet_typegen`, a variant can also have `#[codegen(group = "Name")]`.
+/// The attribute puts the variant into a handler group of the generated shell
+/// code (`<Name>Handler`), and changes nothing in Rust. The name must be in
+/// upper camel case, and a variant can be in one group only. The macro removes
+/// the attribute from the enums that it emits.
 #[proc_macro_attribute]
 pub fn effect(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as Option<Ident>);

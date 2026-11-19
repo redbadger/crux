@@ -9,7 +9,14 @@ struct WeatherApp: App {
 
     // ANCHOR: start
     init() {
-        let core = Core(handler: WeatherHandler())
+        let core = Core(
+            handler: GroupedEffectHandler(
+                network: SessionNetworkHandler(),
+                store: DeviceStoreHandler(),
+                time: TaskSleepTimeHandler(),
+                ungrouped: CoreLocationHandler()
+            )
+        )
 
         _core = State(wrappedValue: core)
         updater = CoreUpdater { core.update($0) }

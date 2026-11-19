@@ -1,0 +1,95 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: "grouped_handler::<Kotlin>()"
+---
+
+/**
+ * Receives the items of a streaming effect.
+ *
+ * Every item sent is one resolution of the request that started the stream.
+ */
+fun interface EffectSink<in T> {
+    fun send(item: T)
+}
+
+private fun effectOutputBytes(body: (Serializer) -> Unit): ByteArray {
+    val serializer = BincodeSerializer()
+    body(serializer)
+    return serializer.get_bytes()
+}
+
+/** Handles the effects of `Effect` in the `Network` group. */
+interface NetworkHandler {
+    /**
+     * Fetch `url`.
+     *
+     * The handler method for this operation carries this doc, in each language.
+     */
+    suspend fun http(operation: Shared.HttpRequest): Shared.HttpResult
+}
+
+/** Handles the effects of `Effect` in the `Store` group. */
+interface StoreHandler {
+    /** Receive a message each time one arrives. */
+    fun subscribe(operation: Shared.Subscribe, sink: EffectSink<Shared.Message>)
+}
+
+/** Handles the effects of `Effect` that are in no group. */
+interface UngroupedHandler {
+    fun legacy(operation: Shared.LegacyOperation, requestId: UInt, resolve: (ByteArray) -> Unit)
+}
+
+/**
+ * Handles every effect `Effect` can carry.
+ *
+ * `EffectDispatcher` resolves each request for you, so there is no
+ * `resolve` to call at the wrong time or with the wrong bytes.
+ *
+ * The methods are in the group interfaces that this interface extends.
+ */
+interface EffectHandler : NetworkHandler, StoreHandler, UngroupedHandler {
+    /**
+     * `Core` handles `Render` itself, so this does nothing; implement it
+     * only if you drive `EffectDispatcher` yourself.
+     */
+    fun render(operation: Shared.RenderOperation) {}
+}
+
+/**
+ * An `EffectHandler` made from one handler for each group. Each method
+ * forwards to the handler of its group.
+ */
+class GroupedEffectHandler(
+    network: NetworkHandler,
+    store: StoreHandler,
+    ungrouped: UngroupedHandler,
+) : EffectHandler, NetworkHandler by network, StoreHandler by store, UngroupedHandler by ungrouped
+
+/**
+ * Routes each request to an `EffectHandler` and resolves it for you:
+ * never for a notification, once for a request, once per item for a
+ * stream.
+ */
+class EffectDispatcher(
+    private val handler: EffectHandler,
+    private val resolve: (UInt, ByteArray) -> Unit,
+) {
+    suspend fun dispatch(request: Request) {
+        val id = request.id
+        when (val effect = request.effect) {
+            is Effect.Render -> handler.render(effect.value)
+            is Effect.Http -> {
+                val output = handler.http(effect.value)
+                resolve(id, effectOutputBytes { serializer ->
+                    output.serialize(serializer)
+                })
+            }
+            is Effect.Subscribe -> handler.subscribe(effect.value) { item ->
+                resolve(id, effectOutputBytes { serializer ->
+                    item.serialize(serializer)
+                })
+            }
+            is Effect.Legacy -> handler.legacy(effect.value, id) { bytes -> resolve(id, bytes) }
+        }
+    }
+}

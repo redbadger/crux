@@ -1,11 +1,70 @@
-use heck::ToSnakeCase;
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, format_ident, quote};
-use syn::{Ident, ItemEnum, Type};
+use syn::{Attribute, Ident, ItemEnum, LitStr, Type};
 
+#[derive(Clone)]
 struct Effect {
     ident: Ident,
     operation: Type,
+    /// The handler group from `#[codegen(group = "Name")]` on the variant, or
+    /// `None`.
+    group: Option<String>,
+}
+
+/// The attribute that changes only the generated shell code.
+const CODEGEN: &str = "codegen";
+
+/// Reads `#[codegen(group = "Name")]` from the attributes of a variant.
+///
+/// The group name becomes part of a type name in each shell language
+/// (`<Name>Handler`), so it must be in upper camel case.
+fn variant_group(attrs: &[Attribute]) -> syn::Result<Option<String>> {
+    let mut group: Option<String> = None;
+    for attr in attrs.iter().filter(|attr| attr.path().is_ident(CODEGEN)) {
+        attr.parse_nested_meta(|meta| {
+            if !meta.path.is_ident("group") {
+                let key = meta
+                    .path
+                    .get_ident()
+                    .map_or_else(|| "?".to_string(), ToString::to_string);
+                return Err(meta.error(format!(
+                    "unknown key `{key}` in `#[codegen(...)]`, expected `group = \"Name\"`"
+                )));
+            }
+            let value: LitStr = meta.value()?.parse()?;
+            let name = value.value();
+            if !is_upper_camel_case(&name) {
+                let suggestion = Some(name.to_upper_camel_case())
+                    .filter(|suggestion| is_upper_camel_case(suggestion))
+                    .unwrap_or_else(|| "Store".to_string());
+                return Err(syn::Error::new(
+                    value.span(),
+                    format!(
+                        "the group name `{name}` is not in upper camel case. A group name becomes part of a type name in the shell (`<Name>Handler`), so use a name such as \"{suggestion}\""
+                    ),
+                ));
+            }
+            if group.is_some() {
+                return Err(syn::Error::new(
+                    value.span(),
+                    "a variant can be in only one group",
+                ));
+            }
+            group = Some(name);
+            Ok(())
+        })?;
+    }
+    Ok(group)
+}
+
+/// Whether `name` is an ASCII identifier in upper camel case, such as `Store`
+/// or `Http2`. `HTTP` is not, because two group names that differ only in
+/// case would give the same parameter name in the shell.
+fn is_upper_camel_case(name: &str) -> bool {
+    name.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+        && name.chars().all(|c| c.is_ascii_alphanumeric())
+        && name == name.to_upper_camel_case()
 }
 
 /// The request id carries the effect's variant index in 8 bits.
@@ -37,13 +96,34 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     let typegen_kind: TypegenKind = args.into();
     let enum_ident_str = enum_ident.to_string();
 
+    let mut errors: Vec<TokenStream> = Vec::new();
+
+    // `#[codegen(...)]` belongs on a variant. On the enum, rustc would report
+    // an unknown attribute, so report something clearer and drop it.
+    for attr in attrs.iter().filter(|attr| attr.path().is_ident(CODEGEN)) {
+        errors.push(
+            syn::Error::new_spanned(
+                attr,
+                "`#[codegen(...)]` goes on a variant of the effect enum, not on the enum",
+            )
+            .to_compile_error(),
+        );
+    }
+
     // Separate facet attributes from other attributes
-    let (facet_attrs, non_facet_attrs): (Vec<_>, Vec<_>) =
-        attrs.iter().partition(|attr| attr.path().is_ident("facet"));
+    let (facet_attrs, non_facet_attrs): (Vec<_>, Vec<_>) = attrs
+        .iter()
+        .filter(|attr| !attr.path().is_ident(CODEGEN))
+        .partition(|attr| attr.path().is_ident("facet"));
 
     let mut ffi_enum = input.clone();
     ffi_enum.ident = format_ident!("{}Ffi", enum_ident);
     ffi_enum.attrs = vec![];
+    // `#[codegen(...)]` changes only the generated shell code, and rustc does
+    // not know it, so no enum that this macro emits carries it.
+    for variant in &mut ffi_enum.variants {
+        variant.attrs.retain(|attr| !attr.path().is_ident(CODEGEN));
+    }
     let ffi_enum_ident = &ffi_enum.ident;
 
     let ffi_enum = match typegen_kind {
@@ -77,16 +157,29 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
 
     let variant_count = u16::try_from(input.variants.len()).expect("variant count checked above");
 
-    let effects = input.variants.into_iter().map(|variant| {
-        let ident = variant.ident;
-        let operation = variant
-            .fields
-            .into_iter()
-            .next()
-            .expect("each variant is expected to be a tuple with one field")
-            .ty;
-        Effect { ident, operation }
-    });
+    let effects: Vec<Effect> = input
+        .variants
+        .into_iter()
+        .map(|variant| {
+            let group = variant_group(&variant.attrs).unwrap_or_else(|error| {
+                errors.push(error.to_compile_error());
+                None
+            });
+            let ident = variant.ident;
+            let operation = variant
+                .fields
+                .into_iter()
+                .next()
+                .expect("each variant is expected to be a tuple with one field")
+                .ty;
+            Effect {
+                ident,
+                operation,
+                group,
+            }
+        })
+        .collect();
+    let effects = effects.into_iter();
 
     let effect_names = effects
         .clone()
@@ -358,9 +451,10 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
             let effect_variants_meta = effects.map(|effect| {
                 let ident_str = effect.ident.to_string();
                 let operation = &effect.operation;
+                let group = effect.group.as_ref().map(|group| quote! { .group(#group) });
 
                 quote! {
-                    .variant::<#operation>(#ident_str)?
+                    .variant::<#operation>(#ident_str)? #group
                 }
             });
             quote! {
@@ -452,6 +546,8 @@ pub fn effect_impl(args: Option<Ident>, input: ItemEnum) -> TokenStream {
     };
 
     quote! {
+        #(#errors)*
+
         #original_enum
 
         #ffi_enum

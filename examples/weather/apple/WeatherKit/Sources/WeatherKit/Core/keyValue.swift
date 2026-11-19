@@ -3,7 +3,29 @@ import Foundation
 
 private nonisolated let logger = Log.keyValue
 
-nonisolated extension WeatherHandler {
+/// The app's `StoreHandler`: key-value data in Core Data (here) and secrets
+/// in the Keychain (`secret.swift`).
+///
+/// The Core Data stack is confined to the main queue, so the class is
+/// `@MainActor`. `StoreHandler` is `Sendable` and its requirements are not
+/// actor-isolated, so the handler methods are `nonisolated` and hop to the
+/// main actor only where they touch the store.
+@MainActor
+public final class DeviceStoreHandler {
+    let keyValueStore: KeyValueStore
+
+    public init() {
+        do {
+            keyValueStore = try KeyValueStore()
+            logger.debug("KeyValueStore initialized successfully")
+        } catch {
+            logger.error("Failed to initialize KeyValueStore: \(error.localizedDescription)")
+            fatalError("KeyValueStore initialization failed: \(error)")
+        }
+    }
+}
+
+nonisolated extension DeviceStoreHandler: StoreHandler {
     /// `KvGet` is answered with a `ValueResult` — the value stored under the
     /// key, or the error that stopped us reading it.
     public func kvGet(_ operation: GetValue) async -> ValueResult {
