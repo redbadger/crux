@@ -1,0 +1,80 @@
+mod lib '../../../lib.just'
+
+# `flutter run -d …` for the OS running `just` (not the Rust target triple).
+flutter_host_device := if os() == "macos" {
+    "macos"
+} else if os() == "linux" {
+    "linux"
+} else if os() == "windows" {
+    "windows"
+} else {
+    ""
+}
+
+default: dev
+
+# --------------------------------------------------------------------------
+# Development
+# --------------------------------------------------------------------------
+
+doctor:
+    @echo '{{ style("command") }}doctor:{{ NORMAL }}'
+    @just lib::check-tool cargo "https://rustup.rs"
+    @just lib::check-tool flutter "https://docs.flutter.dev/get-started/install"
+    @just lib::check-tool dart "https://docs.flutter.dev/get-started/install"
+    @just lib::check-tool flutter_rust_bridge_codegen "cargo install flutter_rust_bridge_codegen"
+
+# Generate Dart + Rust FRB glue (`rust/src/frb_generated.rs`, `lib/src/rust/`).
+generate:
+    @echo '{{ style("command") }}generate:{{ NORMAL }}'
+    flutter_rust_bridge_codegen generate
+
+install:
+    @echo '{{ style("command") }}install:{{ NORMAL }}'
+    flutter pub get
+
+# Build the Rust cdylib (host target). Desktop `flutter run` still needs native
+# embedding per platform — see flutter_rust_bridge docs if the library is not found.
+rust-build:
+    @echo '{{ style("command") }}rust-build:{{ NORMAL }}'
+    cargo build --manifest-path rust/Cargo.toml
+
+fix:
+    @echo '{{ style("command") }}fix:{{ NORMAL }}'
+    dart format .
+
+check: generate install
+    @echo '{{ style("command") }}check:{{ NORMAL }}'
+    dart format --set-exit-if-changed .
+    dart analyze
+    cargo clippy --manifest-path rust/Cargo.toml -- -D warnings
+
+build: generate install rust-build
+    @echo '{{ style("command") }}build:{{ NORMAL }}'
+    flutter build apk --debug
+
+test:
+    @echo '{{ style("command") }}test:{{ NORMAL }}'
+    flutter test
+
+clean:
+    @echo '{{ style("command") }}clean:{{ NORMAL }}'
+    flutter clean
+    cargo clean --manifest-path rust/Cargo.toml
+    rm -rf lib/src/rust
+
+dev: fix check rust-build test
+
+ci: check rust-build test
+
+# Run on host desktop (macos / linux / windows). Override: FLUTTER_DEVICE=chrome just run
+run *ARGS: generate install rust-build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo '{{ style("command") }}run:{{ NORMAL }}'
+    device="${FLUTTER_DEVICE:-{{flutter_host_device}}}"
+    if [ -n "$device" ]; then
+        flutter run -d "$device" {{ARGS}}
+    else
+        flutter run {{ARGS}}
+    fi
