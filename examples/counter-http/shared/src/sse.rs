@@ -6,9 +6,14 @@ use facet::Facet;
 use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-use crux_core::{Request, capability::Operation, command::StreamBuilder};
+use crux_core::{Request, command::StreamBuilder, macros::Operation};
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+// ANCHOR: operation
+/// Open a Server-Sent Events stream on `url`. The shell answers with a
+/// sequence of [`SseResponse`]s: a `Chunk` per batch of bytes it reads, then
+/// one `Done` when the server closes the connection.
+#[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[operation(stream, output = SseResponse)]
 pub struct SseRequest {
     pub url: String,
 }
@@ -19,16 +24,13 @@ pub enum SseResponse {
     Chunk(Vec<u8>),
     Done,
 }
+// ANCHOR_END: operation
 
 impl SseResponse {
     #[must_use]
     pub const fn is_done(&self) -> bool {
         matches!(self, Self::Done)
     }
-}
-
-impl Operation for SseRequest {
-    type Output = SseResponse;
 }
 
 pub struct ServerSentEvents;
