@@ -99,8 +99,9 @@ impl Wake for CommandWaker {
 /// cleaned up. Aborting the enclosing command also cancels its pending `.then`
 /// continuation.
 ///
-/// Cancellation does not retract events already queued in Core or stop work
-/// already handed to an external shell.
+/// Requests and streams whose waits have ended are discarded before dispatch
+/// by Core. Cancellation does not retract dispatched effects,
+/// queued events or notifications, or stop work already handed to a shell.
 #[derive(Clone)]
 pub struct AbortHandle {
     pub(crate) aborted: Arc<AtomicBool>,

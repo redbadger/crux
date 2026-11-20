@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use crossbeam_channel::Sender;
-use futures::channel::mpsc;
+use futures::channel::{mpsc, oneshot};
 use futures::future::Fuse;
 use futures::stream::StreamFuture;
 use futures::task::AtomicWaker;
@@ -16,18 +16,49 @@ use crate::capability::Operation;
 use crate::{OperationKind, Request};
 
 use super::executor::{JoinHandle, Task, TaskCompletion};
+use super::pending::{track_request, track_stream};
 
 /// Context enabling tasks to communicate with the parent Command,
 /// specifically submit effects, events and spawn further tasks
 // ANCHOR: command_context
 pub struct CommandContext<Effect, Event> {
-    pub(crate) effects: Sender<Effect>,
+    pub(crate) effects: Sender<CommandEffect<Effect>>,
     pub(crate) events: Sender<Event>,
     pub(crate) tasks: Sender<Task>,
     pub(crate) rc: Arc<()>,
     pub(crate) host_waker: Arc<AtomicWaker>,
 }
 // ANCHOR_END: command_context
+
+/// Effect payload and a channel tracking whether its waiting side is alive.
+pub struct CommandEffect<Effect> {
+    pub(crate) effect: Effect,
+    // Present until dispatch for requests/streams; notifications have no waiter.
+    pending_sender: Option<oneshot::Sender<()>>,
+}
+
+impl<Effect> CommandEffect<Effect> {
+    /// Whether the waiting side is alive. Notifications always pass through.
+    pub(crate) fn is_pending(&self) -> bool {
+        self.pending_sender
+            .as_ref()
+            .is_none_or(|sender| !sender.is_canceled())
+    }
+
+    pub(crate) fn into_effect(self) -> Effect {
+        self.effect
+    }
+
+    pub(crate) fn map<NewEffect>(
+        self,
+        map: impl FnOnce(Effect) -> NewEffect,
+    ) -> CommandEffect<NewEffect> {
+        CommandEffect {
+            effect: map(self.effect),
+            pending_sender: self.pending_sender,
+        }
+    }
+}
 
 // derive(Clone) wants Effect and Event to be clone which is not actually necessary
 impl<Effect, Event> Clone for CommandContext<Effect, Event> {
@@ -67,7 +98,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         let request = Request::resolves_never(operation);
 
         self.effects
-            .send(request.into())
+            .send(CommandEffect {
+                effect: request.into(),
+                pending_sender: None,
+            })
             .expect("Command could not send notification, effect channel disconnected");
     }
 
@@ -88,7 +122,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// `cargo check`.
     #[allow(clippy::missing_panics_doc)]
     // ANCHOR: request_from_shell
-    pub fn request_from_shell<Op>(&self, operation: Op) -> ShellRequest<Op::Output>
+    pub fn request_from_shell<Op>(
+        &self,
+        operation: Op,
+    ) -> impl Future<Output = Op::Output> + Send + Unpin + use<Op, Effect, Event>
     where
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
@@ -108,17 +145,24 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             let _ = output_sender.unbounded_send(output);
         });
 
+        let (pending_sender, pending_receiver) = oneshot::channel();
         let send_request = {
             let effect = request.into();
             let effects = self.effects.clone();
             move || {
                 effects
-                    .send(effect)
+                    .send(CommandEffect {
+                        effect,
+                        pending_sender: Some(pending_sender),
+                    })
                     .expect("Command could not send request effect, effect channel disconnected");
             }
         };
 
-        ShellRequest::new(Box::new(send_request), output_receiver)
+        track_request(
+            ShellRequest::new(Box::new(send_request), output_receiver),
+            pending_receiver,
+        )
     }
     // ANCHOR_END: request_from_shell
 
@@ -138,7 +182,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     /// `cargo build`, `cargo test` or `cargo clippy --all-targets` — and not by
     /// `cargo check`.
     #[allow(clippy::missing_panics_doc)]
-    pub fn stream_from_shell<Op>(&self, operation: Op) -> ShellStream<Op::Output>
+    pub fn stream_from_shell<Op>(
+        &self,
+        operation: Op,
+    ) -> impl Stream<Item = Op::Output> + Send + Unpin + use<Op, Effect, Event>
     where
         Op: Operation,
         Effect: From<Request<Op>> + Send + 'static,
@@ -160,17 +207,24 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             Ok(())
         });
 
+        let (pending_sender, pending_receiver) = oneshot::channel();
         let send_request = {
             let effect = request.into();
             let effects = self.effects.clone();
             move || {
                 effects
-                    .send(effect)
+                    .send(CommandEffect {
+                        effect,
+                        pending_sender: Some(pending_sender),
+                    })
                     .expect("Command could not send stream effect, effect channel disconnected");
             }
         };
 
-        ShellStream::new(send_request, output_receiver)
+        track_stream(
+            ShellStream::new(send_request, output_receiver),
+            pending_receiver,
+        )
     }
 
     /// Send an event which should be handed to the update function. This is used to communicate the result
