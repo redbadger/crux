@@ -1,4 +1,6 @@
 mod effect;
+mod event;
+mod observability;
 mod request;
 mod resolve;
 
@@ -6,6 +8,10 @@ use std::collections::VecDeque;
 use std::sync::{Mutex, RwLock};
 
 pub use effect::{Effect, EffectFFI};
+pub use event::EventName;
+pub use observability::{
+    CommandObservation, CoreRuntimeObserver, RuntimeContextId, RuntimeObservation,
+};
 pub use request::Request;
 pub use resolve::{EffectVariant, OperationKind, RequestHandle, Resolvable, ResolveError};
 
@@ -36,6 +42,7 @@ where
 
     // internals
     root_command: Mutex<Command<A::Effect, A::Event>>,
+    observation_context: Option<RuntimeObservation<A::Event>>,
 }
 // ANCHOR_END: core
 
@@ -58,6 +65,7 @@ where
             model: RwLock::default(),
             app: A::default(),
             root_command: Mutex::new(Command::done()),
+            observation_context: None,
         }
     }
 }
@@ -80,7 +88,24 @@ where
             model: RwLock::new(model),
             app,
             root_command: Mutex::new(Command::done()),
+            observation_context: None,
         }
+    }
+
+    /// Observe update/command lifetimes, effects, and causal relationships.
+    ///
+    /// Event names are obtained through [`EventName`], which can be derived
+    /// without inspecting event payloads. Unobserved apps need no naming trait.
+    #[must_use]
+    pub fn with_runtime_observer(
+        mut self,
+        observer: impl CoreRuntimeObserver + Send + Sync + 'static,
+    ) -> Self
+    where
+        A::Event: EventName,
+    {
+        self.observation_context = Some(RuntimeObservation::new(observer));
+        self
     }
 
     /// Run the app's `update` function with a given `event`, returning a vector of
@@ -92,8 +117,9 @@ where
     // used in docs/internals/runtime.md
     // ANCHOR: process_event
     pub fn process_event(&self, event: A::Event) -> Vec<A::Effect> {
-        let mut model = self.model.write().expect("Model RwLock was poisoned.");
+        let command_observation = self.observe_command_start(&event, None);
 
+        let mut model = self.model.write().expect("Model RwLock was poisoned.");
         let command = self.app.update(event, &mut model);
 
         // drop the model here, we don't want to hold the lock for the process() call
@@ -103,7 +129,12 @@ where
             .root_command
             .lock()
             .expect("Capability runtime lock was poisoned");
-        root_command.spawn(|ctx| command.into_future(ctx));
+        match command_observation {
+            Some(observation) => {
+                root_command.spawn(|ctx| command.host_with_observation(ctx, observation));
+            }
+            None => root_command.spawn(|ctx| command.into_future(ctx)),
+        }
 
         drop(root_command);
 
@@ -147,26 +178,83 @@ where
             .lock()
             .expect("Capability runtime lock was poisoned");
 
-        let mut events: VecDeque<_> = root_command.events().collect();
+        let mut events: VecDeque<_> = root_command.events_with_context().collect();
 
-        while let Some(event) = events.pop_front() {
+        while let Some(command_event) = events.pop_front() {
+            let command_observation =
+                self.observe_command_start(&command_event.event, command_event.caused_by);
+
             let mut model = self.model.write().expect("Model RwLock was poisoned.");
-            let command = self.app.update(event, &mut model);
+            let command = self.app.update(command_event.event, &mut model);
             drop(model);
 
             // Run the returned command alongside the other active commands.
-            root_command.spawn(|ctx| command.into_future(ctx));
+            if let Some(observation) = command_observation {
+                root_command.spawn(|ctx| command.host_with_observation(ctx, observation));
+            } else {
+                root_command.spawn(|ctx| command.into_future(ctx));
+            }
 
-            events.extend(root_command.events());
+            events.extend(root_command.events_with_context());
         }
 
         root_command
             .effects_with_context()
-            .filter(crate::command::CommandEffect::is_pending)
-            .map(crate::command::CommandEffect::into_effect)
+            .filter_map(|effect| self.dispatch_effect(effect))
             .collect()
     }
     // ANCHOR_END: process
+
+    /// Discard abandoned effects, then observe dispatch and release the payload.
+    /// If the wait ended before guard delivery, discard the effect instead.
+    fn dispatch_effect(
+        &self,
+        mut effect: crate::command::CommandEffect<A::Effect>,
+    ) -> Option<A::Effect> {
+        if !effect.is_pending() {
+            return None;
+        }
+
+        let Some(observation) = &self.observation_context else {
+            return Some(effect.into_effect());
+        };
+
+        let parent = effect.parent_context_id.unwrap_or(RuntimeContextId::ROOT);
+        match effect.effect.kind() {
+            OperationKind::Notify => {
+                observation
+                    .observer
+                    .notification(parent, effect.effect.name());
+            }
+            kind @ (OperationKind::Request | OperationKind::Stream) => {
+                let id = observation.next_context_id();
+                observation
+                    .observer
+                    .effect_started(id, parent, effect.effect.name(), kind);
+                let guard = crate::command::SpanGuard {
+                    id,
+                    observer: observation.observer.clone(),
+                };
+                if let Err(guard) = effect.set_guard(guard) {
+                    drop(guard);
+                    return None;
+                }
+            }
+        }
+
+        Some(effect.into_effect())
+    }
+
+    /// Start the combined update/command span before entering `App::update`.
+    fn observe_command_start(
+        &self,
+        event: &A::Event,
+        caused_by: Option<RuntimeContextId>,
+    ) -> Option<CommandObservation> {
+        self.observation_context
+            .as_ref()
+            .map(|context| context.start_command(event, caused_by))
+    }
 
     /// Get the current state of the app's view model.
     ///

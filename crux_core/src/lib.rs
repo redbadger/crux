@@ -238,12 +238,13 @@ macro_rules! __crux_core_testing_items {
 
 mod capabilities;
 mod core;
+pub use core::EventName;
 
 pub use capabilities::*;
 pub use command::Command;
 pub use core::{
-    Core, Effect, EffectFFI, EffectVariant, OperationKind, Request, RequestHandle, Resolvable,
-    ResolveError,
+    Core, CoreRuntimeObserver, Effect, EffectFFI, EffectVariant, OperationKind, Request,
+    RequestHandle, Resolvable, ResolveError, RuntimeContextId,
 };
 #[cfg(feature = "uniffi_compat_bindgen")]
 #[deprecated(
