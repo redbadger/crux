@@ -37,6 +37,7 @@ pub struct ViewModel {
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[repr(C)]
+#[derive(crux_core::macros::EventName)]
 pub enum Event {
     // events from the shell
     Get,
