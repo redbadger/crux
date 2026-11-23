@@ -1,12 +1,16 @@
 use std::{convert::From, future};
 
 use async_sse::{Event as SseEvent, decode};
-use crux_core::{Request, capability::Operation, command::StreamBuilder};
+use crux_core::{Request, command::StreamBuilder, macros::Operation};
 use facet::Facet;
 use futures::{Stream, StreamExt, io::Cursor};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+/// Open a Server-Sent Events stream on `url`. The shell answers with a
+/// sequence of [`SseResponse`]s: a `Chunk` per batch of bytes it reads, then
+/// one `Done` when the server closes the connection.
+#[derive(Operation, Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[operation(stream, output = SseResponse)]
 pub struct SseRequest {
     pub url: String,
 }
@@ -20,13 +24,9 @@ pub enum SseResponse {
 
 impl SseResponse {
     #[must_use]
-    pub fn is_done(&self) -> bool {
-        matches!(self, SseResponse::Done)
+    pub const fn is_done(&self) -> bool {
+        matches!(self, Self::Done)
     }
-}
-
-impl Operation for SseRequest {
-    type Output = SseResponse;
 }
 
 pub fn get<Effect, Event, T>(

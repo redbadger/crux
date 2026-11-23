@@ -1,8 +1,9 @@
 import App
 import SwiftUI
 
+// ANCHOR: content_view
 struct ContentView: View {
-    @ObservedObject var core: CoreWrapper
+    @Environment(Core.self) var core
 
     var body: some View {
         VStack {
@@ -24,6 +25,7 @@ struct ContentView: View {
         }
     }
 }
+// ANCHOR_END: content_view
 
 struct ActionButton: View {
     var label: String
@@ -51,5 +53,6 @@ struct ActionButton: View {
 }
 
 #Preview {
-    ContentView(core: CoreWrapper())
+    ContentView()
+        .environment(Core(handler: CounterHandler()))
 }

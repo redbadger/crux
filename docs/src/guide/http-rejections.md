@@ -1,6 +1,6 @@
 # Handling `crux_http` rejections
 
-When a server rejects a request — a 4xx or a 5xx — `crux_http` does **not** hand your
+When a server rejects a request (a 4xx or a 5xx), `crux_http` does **not** hand your
 app a `Response` with that status on it. It converts the rejection into an
 `Err(HttpError::Http { .. })`, keeping the status, the headers and the body, and sends
 *that* to your update function.
@@ -15,7 +15,7 @@ So an `Ok(Response)` always means the server did not reject the request, and
 This is the trap the invariant exists to close:
 
 ```rust
-// WRONG — the `else` branch is dead code
+// WRONG: the `else` branch is dead code
 match result {
     Ok(mut response) => {
         if response.status().is_success() {
@@ -34,7 +34,7 @@ Everything the server said about *why* it refused is on the error, so read it th
 
 ```rust
 match result {
-    // no status check here — this arm cannot see a 4xx or 5xx
+    // no status check here, because this arm cannot see a 4xx or 5xx
     Ok(response) => saved(response.body()),
     Err(error) => {
         let message = error
@@ -58,19 +58,19 @@ need to destructure the variant:
 | --- | --- |
 | `code()` | The status the server rejected with, e.g. `Some(409)` |
 | `body()` | The raw body bytes the server sent, if any |
-| `body_json::<T>()` | That body deserialized — your own error envelope, an RFC 7807 `problem+json` struct, or `serde_json::Value` |
+| `body_json::<T>()` | That body deserialized: your own error envelope, an RFC 7807 `problem+json` struct, or `serde_json::Value` |
 | `header(name)` | One header, looked up case-insensitively |
 | `content_type()` | The parsed `Content-Type`, if the response declared one |
 | `headers()` | The whole `HeaderMap`, for multi-value headers or logging |
 
 Body decoding is skipped for an error status, so the raw error body survives even when
-the request was built with `.expect_json::<T>()` — an error envelope that doesn't match
+the request was built with `.expect_json::<T>()`, so an error envelope that doesn't match
 `T` still reaches you intact.
 
 `HttpError::Http` is raised for a rejection and nothing else, so `code().is_some()` is the
-test for "the server said no". The crate's own failures have their own variants —
+test for "the server said no". The crate's own failures have their own variants:
 `Json` (a body that wouldn't deserialize), `BodyAlreadyTaken` (you read the body twice),
-`InvalidStatusCode` (the shell sent a status that isn't valid HTTP) — as do the shell's
+`InvalidStatusCode` (the shell sent a status that isn't valid HTTP). So do the shell's
 transport failures (`Url`, `Io`, `Timeout`). None of them carry a status, because no server
 chose one.
 
@@ -152,9 +152,9 @@ through. A status outside 100–999 becomes `HttpError::InvalidStatusCode`.
 There are exactly two values a feature can receive, and `crux_http::testing` has one
 builder for each:
 
-- `ResponseBuilder` — the `Ok(Response)` of a successful exchange. It **panics** if you
+- `ResponseBuilder`: the `Ok(Response)` of a successful exchange. It **panics** if you
   give it a 4xx or 5xx, because no app can ever receive one.
-- `rejection(status, body)` — the `Err` of a rejection. Use `rejection_from(response)`
+- `rejection(status, body)`: the `Err` of a rejection. Use `rejection_from(response)`
   when the rejection's headers are what your feature acts on.
 
 Both run the same conversion a real shell response takes, so what they produce is what
@@ -162,11 +162,11 @@ your app is really handed. That's also the conversion `Response::try_from` runs,
 build the values an event like `Event::Uploaded` above carries too.
 
 ```rust
-// before — asserts a state the app can never observe, so the test passes
+// before: asserts a state the app can never observe, so the test passes
 // while the code it covers is dead
 let result = Ok(ResponseBuilder::with_status(409).body(body).build());
 
-// after — what the app really receives
+// after: what the app really receives
 let result = crux_http::testing::rejection(409, body);
 
 // …or, when the headers are the point

@@ -35,7 +35,7 @@ pub struct ViewModel {
     pub confirmed: bool,
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub enum Event {
     // events from the shell
@@ -59,6 +59,7 @@ pub enum Event {
     UpdateBy(isize),
 }
 
+// ANCHOR: effect
 #[effect(facet_typegen)]
 #[derive(Debug)]
 pub enum Effect {
@@ -67,6 +68,7 @@ pub enum Effect {
     ServerSentEvents(SseRequest),
     Random(RandomNumberRequest),
 }
+// ANCHOR_END: effect
 
 #[derive(Default)]
 pub struct Counter;
@@ -194,10 +196,10 @@ impl App for Counter {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
-        let suffix = match model.count.updated_at {
-            None => " (pending)".to_string(),
-            Some(d) => format!(" ({d})"),
-        };
+        let suffix = model
+            .count
+            .updated_at
+            .map_or_else(|| " (pending)".to_string(), |d| format!(" ({d})"));
 
         Self::ViewModel {
             text: model.count.value.to_string() + &suffix,
@@ -506,6 +508,7 @@ mod tests {
         );
     }
 
+    // ANCHOR: random_test
     #[test]
     fn random_change() {
         let app = Counter;
@@ -523,6 +526,7 @@ mod tests {
 
         let event = cmd.events().next().unwrap();
         assert_eq!(event, Event::UpdateBy(-2));
+        // ANCHOR_END: random_test
 
         let mut cmd = app.update(event, &mut model);
 

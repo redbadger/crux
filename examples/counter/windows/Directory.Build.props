@@ -3,4 +3,16 @@
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'CounterApp.Shared'">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <!-- Type generation emits an FfiBridge over BoltFFI's CoreFfi into the
+       generated project (see `.boltffi(..)` in shared/src/bin/codegen.rs), so
+       that project needs the local NuGet `boltffi pack csharp` builds. The
+       generated .csproj is rewritten on every typegen, so the reference is
+       added here. It sits outside CounterApp/Directory.Packages.props, so the
+       version is given inline. -->
+  <!-- ANCHOR: ffi_reference -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'CounterApp.Shared'">
+    <PackageReference Include="CounterApp.Shared.Ffi" Version="0.1.0" />
+  </ItemGroup>
+  <!-- ANCHOR_END: ffi_reference -->
 </Project>

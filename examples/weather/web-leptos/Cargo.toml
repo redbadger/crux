@@ -27,5 +27,5 @@ web-sys = { version = "0.3.103", features = ["Geolocation", "Navigator", "Positi
 leptos = { version = "0.8.20", features = ["csr"] }
 phosphor-leptos = "0.8.0"
 
-[lints.clippy]
-empty_docs = "allow"
+[lints]
+workspace = true
