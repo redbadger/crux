@@ -27,3 +27,6 @@ crux_core = { version = "0.21.0", path = "../crux_core", features = [
 
 [features]
 facet_typegen = ["crux_core/facet_typegen"]
+
+[lints]
+workspace = true

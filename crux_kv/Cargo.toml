@@ -27,3 +27,6 @@ serde_json = "1.0.151"
 
 [features]
 facet_typegen = ["crux_core/facet_typegen"]
+
+[lints]
+workspace = true

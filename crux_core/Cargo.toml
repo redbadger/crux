@@ -67,3 +67,6 @@ uniffi_compat_bindgen = [
     "dep:cargo_metadata",
     "dep:uniffi_bindgen",
 ]
+
+[lints]
+workspace = true

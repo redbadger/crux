@@ -48,3 +48,6 @@ insta = "1.48.0"
 crux_core = { version = "0.21.0", path = "../crux_core", features = [
     "testing",
 ] }
+
+[lints]
+workspace = true

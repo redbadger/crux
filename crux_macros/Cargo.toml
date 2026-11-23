@@ -32,3 +32,6 @@ serde = { version = "1.0", features = ["derive"] }
 
 [features]
 facet_typegen = ["crux_core/facet_typegen"]
+
+[lints]
+workspace = true
