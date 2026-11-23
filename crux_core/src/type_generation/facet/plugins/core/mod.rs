@@ -79,6 +79,28 @@ impl CorePlugin {
             .is_some_and(|effect| effect.variants.iter().any(|variant| variant.render))
     }
 
+    /// Whether `Core` is emitted into the module `config` describes: the one
+    /// that generates the first effect, since `Core` is written after that
+    /// enum.
+    ///
+    /// `Core` itself lands in the right place without asking, because
+    /// `after_type` only fires for the effect enum. The module-level hooks are
+    /// called for every module, though, and only this one declares
+    /// `CoreBridge`. An `FfiBridge` or an import anywhere else is not merely
+    /// untidy: the companion file names `CoreBridge`, so it does not compile.
+    ///
+    /// The package-level `manifest_dependencies` hooks keep using the unscoped
+    /// `emits_core`. A manifest describes a whole package, the installers
+    /// write one for each package, and the hook gets no module config to
+    /// scope by.
+    fn emits_core_in(&self, config: &CodeGeneratorConfig) -> bool {
+        self.emits_core()
+            && self
+                .effects
+                .first()
+                .is_some_and(|effect| config.generates(&effect.effect))
+    }
+
     /// The bridge configuration, if there is a `Core` for a bridge to belong
     /// to.
     fn ffi(&self) -> Option<&BoltFfi> {
@@ -106,8 +128,8 @@ impl EmitterPlugin<Swift> for CorePlugin {
     ///
     /// The FFI module is deliberately *not* imported here: only `FfiBridge`
     /// names it, and that lives in its own file.
-    fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.emits_core() {
+    fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core_in(config) {
             return vec![];
         }
         vec!["Observation".to_string()]
@@ -120,6 +142,9 @@ impl EmitterPlugin<Swift> for CorePlugin {
     }
 
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
+        if !self.emits_core_in(config) {
+            return vec![];
+        }
         let Some(ffi) = self.ffi() else {
             return vec![];
         };
@@ -148,8 +173,12 @@ impl EmitterPlugin<Swift> for CorePlugin {
             .unwrap_or_default()
     }
 
-    /// …and the generated target has to depend on its product.
-    fn target_dependencies(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
+    /// …and the generated target has to depend on its product: the target
+    /// `Core` is in, which is the only one that names the bridge.
+    fn target_dependencies(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core_in(config) {
+            return vec![];
+        }
         self.ffi()
             .and_then(BoltFfi::swift_ffi)
             .map(|swift| {
@@ -164,8 +193,8 @@ impl EmitterPlugin<Swift> for CorePlugin {
 }
 
 impl EmitterPlugin<Kotlin> for CorePlugin {
-    fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.emits_core() {
+    fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core_in(config) {
             return vec![];
         }
         [
@@ -196,6 +225,9 @@ impl EmitterPlugin<Kotlin> for CorePlugin {
     }
 
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
+        if !self.emits_core_in(config) {
+            return vec![];
+        }
         let Some(ffi) = self.ffi() else {
             return vec![];
         };
@@ -227,7 +259,7 @@ impl EmitterPlugin<Kotlin> for CorePlugin {
 
 impl EmitterPlugin<TypeScript> for CorePlugin {
     fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.emits_core() {
+        if !self.emits_core_in(config) {
             return vec![];
         }
         let path = bincode_import_path(config);
@@ -269,8 +301,8 @@ impl EmitterPlugin<TypeScript> for CorePlugin {
 impl EmitterPlugin<CSharp> for CorePlugin {
     /// `Core` raises `PropertyChanged`, so it needs the interface, the delegate
     /// and the event args.
-    fn imports(&self, _config: &CodeGeneratorConfig) -> Vec<String> {
-        if !self.emits_core() {
+    fn imports(&self, config: &CodeGeneratorConfig) -> Vec<String> {
+        if !self.emits_core_in(config) {
             return vec![];
         }
         vec!["using System.ComponentModel;".to_string()]
@@ -283,6 +315,9 @@ impl EmitterPlugin<CSharp> for CorePlugin {
     }
 
     fn companion_files(&self, config: &CodeGeneratorConfig) -> Vec<CompanionFile> {
+        if !self.emits_core_in(config) {
+            return vec![];
+        }
         let Some(ffi) = self.ffi() else {
             return vec![];
         };
