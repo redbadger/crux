@@ -1,6 +1,6 @@
 # React (Next.js)
 
-The Next.js shell is TypeScript talking to a WASM blob. Events serialise as bincode, cross the FFI, return effect requests; the shell handles each one, serialises the response, sends it back — the same `Request`/`Response` loop as iOS and Android, just in JavaScript. The interesting half of the chapter is how React's render model shapes the shell, because it's the opposite of Leptos's.
+The Next.js shell is TypeScript talking to a WASM blob. Events serialise as bincode, cross the FFI and come back as effect requests, which the generated `Core` hands to the shell's handler and resolves with what it returns — the same loop as iOS and Android, just in JavaScript. The interesting half of the chapter is how React's render model shapes the shell, because it's the opposite of Leptos's.
 
 ## Components re-run on every render
 

@@ -1,12 +1,11 @@
 # RFC: Per-operation types with static request kinds
 
 ```admonish
-This RFC is **proposed**. Its compat stage is implemented in a stack of pull
-requests alongside this text, so that reviewers can read real code — see the
-[migration guide](../guide/migrate-per-operation-types.md) — and, if accepted,
-would ship as `crux_core` 0.21, with the breaking stage following in the next
-major release. The text below is kept as it was written, with the sections
-describing the implementation brought up to date.
+This RFC has been **accepted** and implemented, it's kept for future reference
+as additional context for the design choices. See the
+[migration guide](../guide/migrate-per-operation-types.md) for the practical
+version. The text below is kept as it was written, with the sections describing
+the implementation brought up to date.
 ```
 
 This RFC proposes that each operation a capability can ask the shell to perform
@@ -473,7 +472,7 @@ value of the wrong variant that later panics inside a capability.
 
 *This section describes what the compat stage implements, which is more than
 the RFC originally proposed: the handler API was a "second phase" here and is
-part of the same stack, and a generated shell-side `Core` is proposed on top of
+part of the same stack, and a generated shell-side `Core` is built on top of
 it — see [its own RFC](./generated-core.md).*
 
 Because the kind is static per `EffectFfi` variant, type generation emits it as
@@ -673,7 +672,7 @@ open questions.
 
 The change lands in two releases so that each is usable on its own.
 
-**Compat release (additive) — proposed as `crux_core` 0.21, `crux_macros` 0.11,
+**Compat release (additive) — `crux_core` 0.21, `crux_macros` 0.11,
 `crux_http` 0.21, `crux_kv` 0.15 and `crux_time` 0.19.** Everything a reader
 needs in order to try the design, without breaking anyone. The
 [migration guide](../guide/migrate-per-operation-types.md) is the practical
@@ -811,7 +810,7 @@ Stream}` and are used through the module path.
 Steps 1 to 3 are implemented in the compat stack — the traits, the derive, the
 tightened constructors, the per-operation rewrites of `crux_kv` and `crux_time`,
 and kind and handler emission for all four languages, with a
-[generated shell-side `Core`](./generated-core.md) proposed on top — and two
+[generated shell-side `Core`](./generated-core.md) built on top — and two
 examples moved across on both sides of the boundary. What remains is the
 breaking release:
 

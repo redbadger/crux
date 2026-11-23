@@ -1,8 +1,8 @@
 # Middleware
 
-Middleware is a relatively new, and somewhat advanced feature for split
-effect handling, i.e. handling some effects in the shell, and some
-still in the core, but outside the app's state loop.
+Middleware is a somewhat advanced feature for split effect handling, i.e.
+handling some effects in the shell, and some still in the core, but outside
+the app's state loop.
 
 Middleware can be useful when you have an existing 3rd party library written in Rust
 which you want to use, but it isn't written in a sans-I/O way with managed
@@ -49,7 +49,7 @@ First, we need an `Operation` type that describes the request and its output. Th
 same as defining a capability's protocol — a request type and a response type:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/counter-middleware/shared/src/capabilities/mod.rs:9:17}}
+{{#include ../../../examples/counter-middleware/shared/src/capabilities/mod.rs:operation}}
 ```
 
 The `RandomNumberRequest` carries the range (min, max), and `RandomNumber` carries the result.
@@ -66,7 +66,7 @@ declares that the request is answered exactly once. See
 The app uses this operation as one variant of its `Effect` enum:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/counter-middleware/shared/src/app.rs:62:69}}
+{{#include ../../../examples/counter-middleware/shared/src/app.rs:effect}}
 ```
 
 And the app can request a random number using `Command::request_from_shell`, just as it
@@ -158,6 +158,29 @@ If a middleware fully consumes a variant on every target you build, you can
 remove that variant from this enum and `panic!` on it in `From` — the shell then
 sees a narrower set of effects. The counter example keeps `Random` here because
 the WebAssembly shells trigger it themselves and need it in the typegen.
+
+## In the shell
+
+On native targets the middleware resolves `Random` on its own thread, after
+`update` has returned. Whatever the app asks for next — here, a `Render` and
+the HTTP calls that update the server's count — can't come back as the return
+value of `update` or `resolve`, so the bridge hands those requests to the
+callback you gave `.bridge(...)`. In this example that callback
+calls `CruxShell::process_effects`, a trait the shell implements and passes to
+`CoreFfi::new`. The bytes are the same serialized requests that `update` and
+`resolve` return, and the shell handles them the same way.
+
+The counter-middleware shells drive that loop by hand, as in Part I. With the
+generated `Core`, pass the bytes to its `process(bytes:)` (Swift),
+`process(bytes)` (Kotlin), `processBytes` (TypeScript) or `Process(byte[])` (C#).
+The callback arrives on the middleware's thread, and the Swift `Core` is
+`@MainActor`, so hop to the main actor before calling it.
+
+Setting the `Core` up changes in one way. `CoreFfi::new` takes the shell's
+callback, but the generated `FfiBridge` constructs `CoreFfi` with no arguments,
+so an app with middleware doesn't configure `.boltffi(...)`. Instead it writes
+the three-method `CoreBridge` over its own `CoreFfi` and uses the `Core`
+constructor that takes a bridge, such as `Core(bridge:handler:)` in Swift.
 
 ## Testing
 
