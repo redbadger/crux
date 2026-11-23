@@ -143,7 +143,7 @@ mod facet_shared {
 
 #[cfg(feature = "facet_typegen")]
 mod facet_test {
-    use std::fs;
+    use std::{fs, process::Command};
 
     use crux_core::{
         OperationKind,
@@ -152,7 +152,7 @@ mod facet_test {
 
     use super::{
         facet_shared::{App, OtherApp},
-        toolchain::build,
+        toolchain::{build, kotlinc_build},
     };
 
     #[test]
@@ -367,12 +367,12 @@ mod facet_test {
                 "val Effect.operationKind: OperationKind?",
                 "fun interface EffectSink<in T> {",
                 "interface EffectHandler {",
-                "suspend fun get(operation: com.example.shared.Get): GetResult",
+                "suspend fun get(operation: com.example.shared.Get): com.example.shared.GetResult",
                 // A sibling namespace has to be named from the root package: a
                 // bare `Kit.Presence` does not resolve from inside
                 // `com.example.shared`.
                 "suspend fun probe(operation: com.example.shared.Kit.Probe): com.example.shared.Kit.Presence",
-                "fun subscribe(operation: com.example.shared.Subscribe, sink: EffectSink<Message>)",
+                "fun subscribe(operation: com.example.shared.Subscribe, sink: EffectSink<com.example.shared.Message>)",
                 "fun legacy(operation: com.example.shared.Legacy, requestId: UInt, resolve: (ByteArray) -> Unit)",
                 "class EffectDispatcher(",
                 "suspend fun dispatch(request: Request) {",
@@ -380,8 +380,8 @@ mod facet_test {
                 "interface CoreBridge {",
                 "class Core(",
                 "private val scope: CoroutineScope,",
-                "val view: StateFlow<ViewModel> = _view.asStateFlow()",
-                "fun update(event: Event) {",
+                "val view: StateFlow<com.example.shared.ViewModel> = _view.asStateFlow()",
+                "fun update(event: com.example.shared.Event) {",
                 "fun process(bytes: ByteArray) {",
                 "fun process(requests: List<Request>) {",
             ],
@@ -407,6 +407,11 @@ mod facet_test {
                 "public interface IEffectHandler",
                 "Task<Example.Shared.GetResult> Get(Example.Shared.Get operation);",
                 "void Subscribe(Example.Shared.Subscribe operation, IEffectSink<Example.Shared.Message> sink);",
+                "Task<Example.Shared.Kit.Presence> Probe(Example.Shared.Kit.Probe operation);",
+                // A C# `enum` has no methods, so a unit-only output is written
+                // through its companion class, which the lookup finds only in
+                // the emitter's spelling.
+                "Example.Shared.Kit.PresenceBincode.Serialize(output, serializer);",
                 "void Legacy(Example.Shared.Legacy operation, uint requestId, Action<byte[]> resolve);",
                 "public sealed class EffectDispatcher",
                 "public void Dispatch(Example.Shared.Request request)",
@@ -416,6 +421,7 @@ mod facet_test {
                 "public event PropertyChangedEventHandler? PropertyChanged;",
                 "public Core(ICoreBridge bridge, IEffectHandler handler)",
                 "public void Update(Example.Shared.Event @event)",
+                "Example.Shared.EventBincode.Serialize(@event, serializer);",
                 "public void Process(byte[] bytes)",
                 "public void Process(IReadOnlyList<Example.Shared.Request> requests)",
             ],
@@ -461,6 +467,61 @@ mod facet_test {
             dir.path().join("shared_types.d.ts").exists(),
             "tsc should have emitted declarations, so the generated module compiles"
         );
+    }
+
+    /// `typescript()` emits declarations whether or not `tsc` accepts the
+    /// module, so ask `tsc` itself. `Probe` resolves with `Kit.Presence`, a
+    /// unit-only enum in another namespace, which the dispatcher has to
+    /// serialize through its free function rather than a method it lacks.
+    #[test]
+    fn the_generated_typescript_type_checks() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .typescript(&Config::builder("shared_types", dir.path()).build())
+            .expect("typescript type generation should succeed");
+
+        let output = Command::new("pnpm")
+            .current_dir(dir.path())
+            .args(["exec", "tsc", "--build", "--force"])
+            .output()
+            .expect("should run tsc");
+        assert!(
+            output.status.success(),
+            "tsc should type-check the generated module:\n{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    /// The same for C#, whose unit-only enums keep their bincode entry points
+    /// in a companion class — for `Kit.Presence`, and for the app's `Event`,
+    /// both named from the dotted `Example.Shared`.
+    #[test]
+    fn the_generated_csharp_compiles() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .csharp(&Config::builder("Example.Shared", dir.path()).build())
+            .expect("c# type generation should succeed");
+
+        build(
+            "dotnet",
+            &["build", "--nologo"].map(std::ffi::OsStr::new),
+            dir.path(),
+        );
+    }
+
+    /// The same for Kotlin. The `EffectHandler` and `Core` name the root
+    /// types from `com.example.shared`, and `Kit.Presence` from its own
+    /// package below it. A bare `Kit.Presence` does not resolve there, so
+    /// only `kotlinc` can tell if the spelling is correct.
+    #[test]
+    fn the_generated_kotlin_compiles() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        generator()
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        kotlinc_build(dir.path());
     }
 
     /// Reads the Swift module a `CodeGenerator` writes, for the tests that
@@ -1069,7 +1130,11 @@ mod facet_clash_test {
 /// `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set.
 #[cfg(feature = "facet_typegen")]
 mod toolchain {
-    use std::{path::Path, process::Command};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        process::Command,
+    };
 
     /// Whether a toolchain that this test cannot find is a failure, not a
     /// skip. Set `CRUX_REQUIRE_SHELL_TOOLCHAINS` where every toolchain is
@@ -1107,5 +1172,83 @@ mod toolchain {
             }
             Err(e) => panic!("could not run `{program}`: {e}"),
         }
+    }
+
+    /// Compiles the generated Kotlin package directories under `dir` with
+    /// `kotlinc`. It does not compile `dir` itself, because `kotlinc` would
+    /// then try to compile the `build.gradle.kts` file in it.
+    pub fn kotlinc_build(dir: &Path) {
+        let Some(coroutines) = coroutines_jar() else {
+            unavailable(
+                "there is no kotlinx-coroutines-core jar in KOTLINX_COROUTINES_JAR or under \
+                 ~/.gradle or ~/.m2, and `kotlinc` ships only the standard library",
+                "the generated Kotlin is not compiled",
+            );
+            return;
+        };
+
+        let mut args: Vec<std::ffi::OsString> = fs::read_dir(dir)
+            .expect("should read the generated package")
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .map(PathBuf::into_os_string)
+            .collect();
+        args.sort();
+        args.extend([
+            "-classpath".into(),
+            coroutines.into_os_string(),
+            "-d".into(),
+            dir.join("classes.jar").into_os_string(),
+        ]);
+        let args: Vec<&std::ffi::OsStr> = args.iter().map(std::ffi::OsString::as_os_str).collect();
+        build("kotlinc", &args, dir);
+    }
+
+    /// Finds a `kotlinx-coroutines-core` jar, which the generated Kotlin
+    /// imports. Gradle and Maven keep one under the home directory after a
+    /// build that uses it. Set `KOTLINX_COROUTINES_JAR` to use a jar in a
+    /// different location.
+    fn coroutines_jar() -> Option<PathBuf> {
+        if let Ok(jar) = std::env::var("KOTLINX_COROUTINES_JAR") {
+            return Some(PathBuf::from(jar));
+        }
+
+        let home = PathBuf::from(std::env::var("HOME").ok()?);
+        [
+            home.join(
+                ".gradle/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm",
+            ),
+            home.join(".m2/repository/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm"),
+        ]
+        .iter()
+        .find_map(|root| find_jar(root, 4))
+    }
+
+    /// The first jar under `dir`, no deeper than `depth`, without the
+    /// `-sources` jars.
+    fn find_jar(dir: &Path, depth: usize) -> Option<PathBuf> {
+        if depth == 0 {
+            return None;
+        }
+
+        let mut entries: Vec<_> = fs::read_dir(dir)
+            .ok()?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .collect();
+        entries.sort();
+
+        entries.iter().find_map(|path| {
+            let name = path.file_name()?.to_str()?;
+            if path.is_dir() {
+                find_jar(path, depth - 1)
+            } else {
+                let jar = path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("jar"));
+                (jar && !name.ends_with("-sources.jar")).then(|| path.clone())
+            }
+        })
     }
 }

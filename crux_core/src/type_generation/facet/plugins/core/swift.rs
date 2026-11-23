@@ -6,7 +6,7 @@ use facet_generate::{
     generation::{
         CodeGeneratorConfig,
         indent::IndentWrite,
-        swift::{case_name, render_type, requalify, write_doc},
+        swift::{case_name, render_type, write_doc},
     },
     reflection::format::Format,
 };
@@ -17,6 +17,8 @@ use super::{
 };
 use crate::type_generation::facet::SwiftFfi;
 
+/// `app` names the event and view model in the emitter's spelling, as the
+/// formats in `m` are.
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
     m: &Matched<'_>,
@@ -132,13 +134,8 @@ fn emit_core(
         .render_variant()
         .expect("the plugin only matches an effect with a render variant");
     let render_case = case_name(render.name);
-    // The app's types are named as the registry spells them, and the emitter
-    // functions take the spelling the generator rewrites references to.
-    let event = render_type(&Format::TypeName(requalify(config, &app.event)), config);
-    let view_model = render_type(
-        &Format::TypeName(requalify(config, &app.view_model)),
-        config,
-    );
+    let event = render_type(&Format::TypeName(app.event.clone()), config);
+    let view_model = render_type(&Format::TypeName(app.view_model.clone()), config);
 
     writeln!(w)?;
     write_doc(
