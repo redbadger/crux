@@ -1,4 +1,5 @@
 import App
+import Synchronization
 
 #if DEBUG
 
@@ -27,52 +28,61 @@ import App
         }
     }
 
-    /// A preview never sends an event, so the core never asks for an effect and
-    /// none of these run. `render` is not here: the generated `Core` handles it.
-    nonisolated struct PreviewHandler: EffectHandler {
+    /// The preview's `EffectHandler`. It keeps the app's real timers and puts
+    /// fakes in the other groups, so a preview never uses the network, Core
+    /// Data, the Keychain or CoreLocation. `render` is not here: the generated
+    /// `Core` handles it.
+    func previewHandler() -> GroupedEffectHandler {
+        GroupedEffectHandler(
+            network: OfflineNetwork(),
+            store: InMemoryStore(),
+            time: TaskSleepTimeHandler(),
+            ungrouped: FixedLocation()
+        )
+    }
+
+    /// Every request fails as if the device is offline.
+    nonisolated struct OfflineNetwork: NetworkHandler {
         func http(_: HttpRequest) async -> HttpResult {
-            neverRuns()
-        }
-
-        func kvGet(_: GetValue) async -> ValueResult {
-            neverRuns()
-        }
-
-        func kvSet(_: SetValue) async -> ValueResult {
-            neverRuns()
-        }
-
-        func timeNotifyAfter(_: NotifyAfter) async -> TimerId {
-            neverRuns()
-        }
-
-        func timeClear(_: ClearTimer) async -> TimerId {
-            neverRuns()
-        }
-
-        func isLocationEnabled(_: IsLocationEnabled) async -> Bool {
-            neverRuns()
-        }
-
-        func getLocation(_: GetLocation) async -> Location? {
-            neverRuns()
-        }
-
-        func fetchSecret(_: FetchSecret) async -> SecretFetchResponse {
-            neverRuns()
-        }
-
-        func storeSecret(_: StoreSecret) async -> SecretStoreResponse {
-            neverRuns()
-        }
-
-        func deleteSecret(_: DeleteSecret) async -> SecretDeleteResponse {
-            neverRuns()
+            .err(.io("previews are offline"))
         }
     }
 
-    private nonisolated func neverRuns() -> Never {
-        fatalError("a preview core does not run effects")
+    /// Key-value data and secrets in memory, empty at the start.
+    nonisolated final class InMemoryStore: StoreHandler {
+        private let values = Mutex<[String: [UInt8]]>([:])
+
+        func kvGet(_ operation: GetValue) async -> ValueResult {
+            .ok(values.withLock { $0[operation.key] }.map(Value.bytes) ?? .none)
+        }
+
+        func kvSet(_ operation: SetValue) async -> ValueResult {
+            let previous = values.withLock { $0.updateValue(operation.value, forKey: operation.key) }
+            return .ok(previous.map(Value.bytes) ?? .none)
+        }
+
+        func fetchSecret(_ operation: FetchSecret) async -> SecretFetchResponse {
+            .missing(operation.value)
+        }
+
+        func storeSecret(_ operation: StoreSecret) async -> SecretStoreResponse {
+            .stored(operation.field0)
+        }
+
+        func deleteSecret(_ operation: DeleteSecret) async -> SecretDeleteResponse {
+            .deleted(operation.value)
+        }
+    }
+
+    /// Location services are on, and the device is in London.
+    nonisolated struct FixedLocation: UngroupedHandler {
+        func isLocationEnabled(_: IsLocationEnabled) async -> Bool {
+            true
+        }
+
+        func getLocation(_: GetLocation) async -> Location? {
+            Location(lat: 51.5074, lon: -0.1278)
+        }
     }
 
 #endif

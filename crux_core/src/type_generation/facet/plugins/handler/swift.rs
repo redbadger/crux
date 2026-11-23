@@ -6,10 +6,13 @@ use facet_generate::generation::{
     CodeGeneratorConfig,
     bincode::swift::write_serialize_value,
     indent::IndentWrite,
-    swift::{case_name, render_type, write_doc},
+    swift::{case_name, field_name, render_type, write_doc},
 };
 
-use super::{super::SWIFT_AVAILABILITY as AVAILABILITY, Matched};
+use super::{
+    super::{Member, SWIFT_AVAILABILITY as AVAILABILITY, Variant},
+    Matched,
+};
 
 pub(super) fn emit(
     w: &mut dyn IndentWrite,
@@ -86,6 +89,11 @@ fn emit_handler(
     m: &Matched<'_>,
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
+    let members = m.members();
+    if !members.is_empty() {
+        return emit_grouped_handler(w, m, &members, config);
+    }
+
     writeln!(w)?;
     write_doc(
         w,
@@ -100,33 +108,7 @@ fn emit_handler(
     writeln!(w, "public protocol EffectHandler: Sendable {{")?;
     w.indent();
     for variant in &m.variants {
-        let method = case_name(variant.name);
-        let operation = render_type(variant.operation, config);
-        // `Core` handles the render operation, and its method has a doc of its
-        // own, so only the other operations carry the operation's doc.
-        if !variant.render {
-            write_doc(w, variant.doc)?;
-        }
-        if variant.is_legacy() {
-            writeln!(
-                w,
-                "func {method}(_ operation: {operation}, requestId: UInt32, resolve: @escaping @Sendable ([UInt8]) -> Void)"
-            )?;
-        } else if variant.is_stream() {
-            let output = render_output(variant, config);
-            writeln!(
-                w,
-                "func {method}(_ operation: {operation}, into sink: EffectSink<{output}>)"
-            )?;
-        } else if variant.is_request() {
-            let output = render_output(variant, config);
-            writeln!(
-                w,
-                "func {method}(_ operation: {operation}) async -> {output}"
-            )?;
-        } else {
-            writeln!(w, "func {method}(_ operation: {operation})")?;
-        }
+        emit_requirement(w, variant, config)?;
     }
     w.unindent();
     writeln!(w, "}}")?;
@@ -134,6 +116,164 @@ fn emit_handler(
     emit_default_render(w, m, config)?;
 
     Ok(())
+}
+
+/// One requirement of a handler protocol. A requirement other than `render`
+/// carries the doc comment of its operation.
+fn emit_requirement(
+    w: &mut dyn IndentWrite,
+    variant: &Variant<'_>,
+    config: &CodeGeneratorConfig,
+) -> io::Result<()> {
+    // `Core` handles the render operation, and its method has a doc of its
+    // own, so only the other operations carry the operation's doc.
+    if !variant.render {
+        write_doc(w, variant.doc)?;
+    }
+    writeln!(w, "{}", signature(variant, config))
+}
+
+/// The signature of the handler method for `variant`.
+fn signature(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> String {
+    let method = case_name(variant.name);
+    let operation = render_type(variant.operation, config);
+    if variant.is_legacy() {
+        format!(
+            "func {method}(_ operation: {operation}, requestId: UInt32, resolve: @escaping @Sendable ([UInt8]) -> Void)"
+        )
+    } else if variant.is_stream() {
+        let output = render_output(variant, config);
+        format!("func {method}(_ operation: {operation}, into sink: EffectSink<{output}>)")
+    } else if variant.is_request() {
+        let output = render_output(variant, config);
+        format!("func {method}(_ operation: {operation}) async -> {output}")
+    } else {
+        format!("func {method}(_ operation: {operation})")
+    }
+}
+
+/// The handler API when the app puts its effects into groups: one protocol
+/// for each group, `EffectHandler` that refines them all, and
+/// `GroupedEffectHandler` that forwards each method to the handler of its
+/// group.
+fn emit_grouped_handler(
+    w: &mut dyn IndentWrite,
+    m: &Matched<'_>,
+    members: &[Member<'_>],
+    config: &CodeGeneratorConfig,
+) -> io::Result<()> {
+    for member in members {
+        writeln!(w)?;
+        let doc = if member.is_ungrouped() {
+            format!("Handles the effects of `{}` that are in no group.", m.name)
+        } else {
+            format!(
+                "Handles the effects of `{}` in the `{}` group.",
+                m.name, member.name
+            )
+        };
+        write_doc(w, &[doc])?;
+        writeln!(w, "{AVAILABILITY}")?;
+        writeln!(w, "public protocol {}: Sendable {{", member.handler())?;
+        w.indent();
+        for variant in &member.variants {
+            emit_requirement(w, variant, config)?;
+        }
+        w.unindent();
+        writeln!(w, "}}")?;
+    }
+
+    writeln!(w)?;
+    write_doc(
+        w,
+        &[
+            &format!("Handles every effect `{}` can carry.", m.name),
+            "",
+            "`EffectDispatcher` resolves each request for you, so there is no",
+            "`resolve` to call at the wrong time or with the wrong bytes.",
+            "",
+            "The methods are in the group protocols that this protocol refines.",
+        ],
+    )?;
+    writeln!(w, "{AVAILABILITY}")?;
+    let handlers: Vec<String> = members.iter().map(Member::handler).collect();
+    writeln!(
+        w,
+        "public protocol EffectHandler: Sendable, {} {{",
+        handlers.join(", ")
+    )?;
+    w.indent();
+    if let Some(render) = m.render_variant() {
+        emit_requirement(w, render, config)?;
+    }
+    w.unindent();
+    writeln!(w, "}}")?;
+
+    emit_default_render(w, m, config)?;
+
+    writeln!(w)?;
+    write_doc(
+        w,
+        &[
+            "An `EffectHandler` made from one handler for each group. Each method",
+            "forwards to the handler of its group.",
+        ],
+    )?;
+    writeln!(w, "{AVAILABILITY}")?;
+    writeln!(w, "public struct GroupedEffectHandler: EffectHandler {{")?;
+    w.indent();
+    for member in members {
+        let parameter = field_name(&member.parameter());
+        writeln!(w, "public let {parameter}: any {}", member.handler())?;
+    }
+    writeln!(w)?;
+    let parameters: Vec<String> = members
+        .iter()
+        .map(|member| {
+            format!(
+                "{}: any {}",
+                field_name(&member.parameter()),
+                member.handler()
+            )
+        })
+        .collect();
+    writeln!(w, "public init({}) {{", parameters.join(", "))?;
+    w.indent();
+    for member in members {
+        let parameter = field_name(&member.parameter());
+        writeln!(w, "self.{parameter} = {parameter}")?;
+    }
+    w.unindent();
+    writeln!(w, "}}")?;
+    for member in members {
+        let target = format!("self.{}", field_name(&member.parameter()));
+        for variant in &member.variants {
+            writeln!(w)?;
+            writeln!(w, "public {} {{", signature(variant, config))?;
+            w.indent();
+            writeln!(w, "{}", forward(&target, variant))?;
+            w.unindent();
+            writeln!(w, "}}")?;
+        }
+    }
+    w.unindent();
+    writeln!(w, "}}")?;
+
+    Ok(())
+}
+
+/// The call that forwards `variant` to the same method on `target`.
+fn forward(target: &str, variant: &Variant<'_>) -> String {
+    let method = case_name(variant.name);
+    if variant.is_legacy() {
+        format!("{target}.{method}(operation, requestId: requestId, resolve: resolve)")
+    } else if variant.is_stream() {
+        format!("{target}.{method}(operation, into: sink)")
+    } else if variant.is_request() {
+        format!("await {target}.{method}(operation)")
+    } else {
+        format!("{target}.{method}(operation)")
+    }
 }
 
 /// `Core` handles the render variant itself, so a handler written for it never
@@ -227,7 +367,7 @@ fn emit_dispatcher(
 
 fn emit_arm(
     w: &mut dyn IndentWrite,
-    variant: &super::super::Variant<'_>,
+    variant: &Variant<'_>,
     method: &str,
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
@@ -260,7 +400,7 @@ fn emit_arm(
 fn emit_resolve(
     w: &mut dyn IndentWrite,
     value: &str,
-    variant: &super::super::Variant<'_>,
+    variant: &Variant<'_>,
     config: &CodeGeneratorConfig,
 ) -> io::Result<()> {
     writeln!(w, "resolve(id, serializeEffectOutput {{ serializer in")?;
@@ -274,7 +414,7 @@ fn emit_resolve(
     Ok(())
 }
 
-fn render_output(variant: &super::super::Variant<'_>, config: &CodeGeneratorConfig) -> String {
+fn render_output(variant: &Variant<'_>, config: &CodeGeneratorConfig) -> String {
     variant
         .output
         .as_ref()

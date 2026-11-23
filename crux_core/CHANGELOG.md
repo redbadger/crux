@@ -301,6 +301,32 @@ and this project adheres to
   from the operation's `Shape`, so it now requires `Op: Facet`. Every
   operation that an effect carries already implements `Facet`.
 
+- **An app can put its effects into handler groups.** An app puts a variant
+  of its effect enum into a group with `#[codegen(group = "Store")]`. Type
+  generation then emits a `<Group>Handler` for each group (`I<Group>Handler`
+  in C#). It also emits an `UngroupedHandler` for the other variants, except
+  `Render`. `EffectHandler` refines (Swift), extends (Kotlin, TypeScript) or
+  inherits (C#) these handlers, and declares only `render`. A new
+  `GroupedEffectHandler` makes an `EffectHandler` from one handler for each
+  group. Thus a test or a preview can replace one group with a fake:
+
+  ```swift
+  GroupedEffectHandler(
+      network: OfflineNetwork(),
+      store: InMemoryStore(),
+      time: TaskSleepTimeHandler(),
+      ungrouped: FixedLocation()
+  )
+  ```
+
+  A type that implements all of `EffectHandler` still compiles. If no variant
+  is in a group, the generated code does not change. `TypeRegistry::build`
+  rejects `Render` in a group. It also rejects a group whose handler has the
+  name of a registered type or a name that the shell API uses.
+  `EffectBuilder::group` records the group, and `EffectVariantMeta` has a new
+  `group` field. See the
+  [effect groups RFC](https://redbadger.github.io/crux/rfcs/effect-groups.html).
+
 - **Request ids are structured, so a bad resolve says what is wrong with it.**
   An `EffectId` was a bare counter. The bridge now encodes into each id the
   effect variant the request carries, whether the shell resolves it once or
