@@ -5,14 +5,16 @@
 # cover every example x shell combination for that platform.
 #
 # Matrix shape (the full lists are in the `changes` job):
-#   shared     7 entries (all 6 examples x shared + counter/tui)
-#   web-trunk  6 entries (5 examples x web-leptos + counter/web-yew)
-#   web-dioxus 1 entry   (counter only)
-#   web-js     7 entries (all 6 examples x web-nextjs + counter/web-react-router)
-#   tauri      1 entry   (counter only)
-#   windows    1 entry   (counter only)
-#   apple      5 entries (5 examples, shell is always "apple")
-#   android    5 entries (5 examples, shell is always "Android")
+#   shared            7 entries (all 6 examples x shared + counter/tui)
+#   web-trunk         6 entries (5 examples x web-leptos + counter/web-yew)
+#   web-dioxus        1 entry   (counter only)
+#   web-js            7 entries (all 6 examples x web-nextjs + counter/web-react-router)
+#   tauri             1 entry   (counter only)
+#   windows           1 entry   (counter only)
+#   windows-justfiles 1 entry   (counter, no shell: any change in counter selects it)
+#   windows-tauri     1 entry   (counter only)
+#   apple             5 entries (5 examples, shell is always "apple")
+#   android           5 entries (5 examples, shell is always "Android")
 #
 # On a push to master, every entry runs. On a pull request, the `changes` job
 # keeps only the entries that the PR can affect:
@@ -25,6 +27,13 @@
 # A job with no entries left is skipped.
 #
 # Each matrix entry runs: just <shell>/ci  (working dir: examples/<example>)
+#
+# The windows-justfiles and windows-tauri jobs run the [windows] variants of
+# the counter recipes on a Windows runner. There is no Windows job for the
+# Android shell, because `boltffi pack android` fails on Windows. Its
+# scan_crate step gives `cargo metadata` a verbatim `\\?\` manifest path
+# (https://github.com/boltffi/boltffi/issues/793). Add that job when the
+# issue is fixed.
 name: examples
 
 on:
@@ -57,6 +66,8 @@ jobs:
       web-js: ${{ steps.select.outputs.web-js }}
       tauri: ${{ steps.select.outputs.tauri }}
       windows: ${{ steps.select.outputs.windows }}
+      windows-justfiles: ${{ steps.select.outputs.windows-justfiles }}
+      windows-tauri: ${{ steps.select.outputs.windows-tauri }}
       apple: ${{ steps.select.outputs.apple }}
       android: ${{ steps.select.outputs.android }}
 
@@ -108,6 +119,12 @@ jobs:
               "windows": [
                 { "example": "counter", "shell": "windows" }
               ],
+              "windows-justfiles": [
+                { "example": "counter" }
+              ],
+              "windows-tauri": [
+                { "example": "counter", "shell": "tauri" }
+              ],
               "apple": [
                 { "example": "counter", "shell": "apple" },
                 { "example": "counter-http", "shell": "apple" },
@@ -155,6 +172,7 @@ jobs:
                "web-react-router", "tauri", "windows", "apple", "Android"];
 
             # True if a file in $files can affect the matrix entry in the input.
+            # An entry with no shell uses every shell of its example.
             def affected($files):
               . as $entry
               | "examples/\($entry.example)/" as $dir
@@ -162,7 +180,7 @@ jobs:
                   startswith($dir)
                   and ((ltrimstr($dir) | split("/")) as $parts
                        | if ($parts | length) > 1 and ($parts[0] | IN(shell_dirs[]))
-                         then $parts[0] == $entry.shell
+                         then $entry.shell == null or $parts[0] == $entry.shell
                          else true
                          end));
 
@@ -172,7 +190,7 @@ jobs:
             | to_entries[]
             | .key as $job
             | (.value | map(select($everything or affected($files)))) as $selected
-            | if ($job | IN("web-dioxus", "tauri", "windows"))
+            | if ($job | IN("web-dioxus", "tauri", "windows", "windows-justfiles", "windows-tauri"))
               then "\($job)=\($selected | length > 0)"
               else "\($job)=\($selected | tojson)"
               end
@@ -499,6 +517,108 @@ jobs:
 
       - name: CI
         run: just windows/ci
+
+  # The [windows] recipe variants of the counter Justfiles. Needs: Windows
+  # runner, Rust and just. The `windows` job above builds only the WinUI 3
+  # shell, so without this job nothing runs the other [windows] recipes.
+  # This job compiles nothing, so it does not use kache.
+  windows-justfiles:
+    needs: changes
+    if: needs.changes.outputs.windows-justfiles == 'true'
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@just
+
+      # PowerShell 5.1 decodes a BOM-less .ps1 using the legacy ANSI codepage,
+      # so a [script('powershell')] body containing ✓ / ✗ / — comes out as
+      # mojibake. `chcp 65001` does not help: the parser uses GetACP(), not the
+      # console codepage. The lib.just helpers avoid this by running as plain
+      # recipes under windows-shell, where just passes the recipe as a process
+      # argument instead of a temp file. This guards that.
+      - name: doctor output is not mangled
+        shell: pwsh
+        run: |
+          $out = just Android/doctor 2>&1 | Out-String
+          Write-Host $out
+          if ($out -match 'Ã|â€|ï¿½') { throw "mojibake in doctor output" }
+          if ($out -notmatch '[✓✗]') { throw "no check marks in doctor output" }
+
+      # The bash recipes run under `set -euo pipefail`. Their PowerShell twins
+      # need an explicit $LASTEXITCODE check, or a mid-loop failure is silently
+      # swallowed and the recipe exits 0. Two entries with the failing one
+      # FIRST is what discriminates: with a single entry the failure is also
+      # the last command, so a broken recipe would pass this by accident.
+      - name: aggregate recipes fail when a child fails
+        shell: pwsh
+        run: |
+          foreach ($recipe in 'fix', 'check', 'ci', 'clean') {
+            just subprojects="nope shared" $recipe *> $null
+            if ($LASTEXITCODE -eq 0) { throw "$recipe swallowed a child failure" }
+            Write-Host "  ok: $recipe propagated (exit $LASTEXITCODE)"
+          }
+          # $LASTEXITCODE is still non-zero from the last injected failure, and
+          # GitHub's pwsh wrapper would propagate it as the step's status.
+          exit 0
+
+  # Tauri desktop shell on Windows. Needs: Windows runner, Rust, Node.js and
+  # pnpm. The windows-latest image has the WebView2 runtime, so this job
+  # installs no system libraries. Only counter has this shell, so no matrix
+  # needed.
+  windows-tauri:
+    needs: changes
+    if: needs.changes.outputs.windows-tauri == 'true'
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: ./.github/actions/kache
+        with:
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          # The README of kache-action recommends this on GitHub-hosted Windows
+          # runners, because there the home and workspace directories are on
+          # different volumes.
+          cache-dir: ${{ runner.temp }}/kache
+      - uses: taiki-e/install-action@just
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: CI
+        run: just tauri/ci
+        env:
+          CI: true
 
   # Apple (iOS/macOS) shells. Needs: macOS runner, Rust with Apple targets,
   # BoltFFI, xcodegen, swiftlint. The shell is always "apple", so the job name
