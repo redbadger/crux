@@ -12,20 +12,24 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-anyhow.workspace = true
-crux_core = { version = "0.21.0", path = "../crux_core" }
+crux_core = { version = "0.21.0", path = "../crux_core", default-features = false, features = ["crux_macros"] }
 facet.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = "0.11"
 thiserror.workspace = true
 
 [dev-dependencies]
+anyhow.workspace = true
 crux_core = { version = "0.21.0", path = "../crux_core", features = [
     "testing",
 ] }
 serde_json = "1.0.151"
 
 [features]
+default = ["std"]
+# crux_kv uses `std` itself. This feature forwards it to crux_core, so a
+# dependent crate no longer gets crux_core's default features through crux_kv.
+std = ["crux_core/std"]
 facet_typegen = ["crux_core/facet_typegen"]
 
 [lints]
