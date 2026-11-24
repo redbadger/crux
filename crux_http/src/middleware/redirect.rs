@@ -18,6 +18,7 @@
 //! ```
 
 use crate::middleware::{Middleware, Next, Request};
+use crate::prelude::*;
 use crate::{Client, RawResponse, Result};
 use http::StatusCode;
 use url::ParseError;

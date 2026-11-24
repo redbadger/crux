@@ -19,6 +19,7 @@ mod kotlin;
 mod swift;
 mod typescript;
 
+use crate::prelude::*;
 use std::{io, sync::Arc};
 
 use facet_generate::{

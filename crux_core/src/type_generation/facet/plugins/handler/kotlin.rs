@@ -1,6 +1,7 @@
 //! Kotlin: `EffectSink`, the `EffectHandler` interface and
 //! `EffectDispatcher`.
 
+use crate::prelude::*;
 use std::io;
 
 use facet_generate::generation::{

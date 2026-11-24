@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::super::Command;
@@ -249,7 +250,7 @@ fn and() {
     assert_eq!(events[0], Event::Completed(AnOperationOutput::One));
     assert_eq!(events[1], Event::Completed(AnOperationOutput::Two));
 
-    eprintln!("! Running cmd.is_done()");
+    std::eprintln!("! Running cmd.is_done()");
     assert!(cmd.is_done());
 }
 

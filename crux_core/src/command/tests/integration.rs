@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use http::Http;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +22,7 @@ pub trait App {
 
 // A faux HTTP capability, because using the real one would cause a circular crate reference
 mod http {
+    use crate::prelude::*;
     use std::future::Future;
 
     use serde::{Deserialize, Serialize};

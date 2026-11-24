@@ -1,5 +1,6 @@
 //! Configuration for `HttpClient`s.
 
+use crate::prelude::*;
 use http::{HeaderMap, HeaderValue};
 use std::fmt::Debug;
 use url::Url;

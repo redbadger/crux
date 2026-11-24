@@ -1,4 +1,5 @@
 use crate::body::Body;
+use crate::prelude::*;
 use crate::{Client, HttpError, RawResponse, Request, Result, middleware::Middleware};
 use http::HeaderValue;
 

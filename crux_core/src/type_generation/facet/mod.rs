@@ -116,6 +116,7 @@ mod boltffi;
 mod effects;
 mod plugins;
 
+use crate::prelude::*;
 use std::{
     fs::{self, File},
     io::Write,

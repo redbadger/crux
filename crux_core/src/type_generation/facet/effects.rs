@@ -7,6 +7,7 @@
 //! [`OperationKind`](crate::OperationKind) each variant declares and the type its
 //! request resolves with — have to come from the operation types themselves.
 
+use crate::prelude::*;
 use std::any::TypeId;
 
 use facet::Facet;

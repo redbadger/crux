@@ -209,8 +209,11 @@
 //! all of this end to end, with shells written in Swift, Kotlin, TypeScript, C# and Rust.
 //!
 
-#![cfg_attr(not(feature = "std"), no_std)]
+// spike(no_std): the crate is always `no_std`, so every use of `std` is explicit.
+#![no_std]
 extern crate alloc;
+#[cfg(any(feature = "std", test))]
+extern crate std;
 
 // spike(no_std): the bits of the std prelude that live in `alloc`.
 #[allow(unused_imports)]
@@ -218,7 +221,9 @@ pub(crate) mod prelude {
     pub use alloc::{
         borrow::ToOwned,
         boxed::Box,
+        format,
         string::{String, ToString},
+        vec,
         vec::Vec,
     };
 }

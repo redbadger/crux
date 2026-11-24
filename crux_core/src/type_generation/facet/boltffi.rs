@@ -13,6 +13,7 @@
 //!
 //! [bridge]: crate::type_generation::facet::CodeGenerator
 
+use crate::prelude::*;
 use facet_generate::generation::PackageLocation;
 
 /// The class `BoltFFI` exports when nothing else is said.

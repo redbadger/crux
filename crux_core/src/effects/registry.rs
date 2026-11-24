@@ -88,6 +88,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::*;
     use std::sync::{
         Arc, Mutex,
         atomic::{AtomicUsize, Ordering},

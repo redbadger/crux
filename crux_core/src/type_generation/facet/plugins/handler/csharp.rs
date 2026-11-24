@@ -1,5 +1,6 @@
 //! C#: `IEffectSink`, the `IEffectHandler` interface and `EffectDispatcher`.
 
+use crate::prelude::*;
 use std::io;
 
 use facet_generate::generation::{

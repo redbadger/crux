@@ -4,6 +4,7 @@
 //! The union that facet-generate emits for an enum already discriminates on
 //! `kind`, so the accessor is a function rather than a property.
 
+use crate::prelude::*;
 use std::io;
 
 use facet_generate::generation::{indent::IndentWrite, plugin::EmitContext, typescript::write_doc};

@@ -22,9 +22,11 @@
 //! as are the shell's ([`HttpError::Url`], [`HttpError::Io`], [`HttpError::Timeout`]).
 // #![warn(missing_docs)]
 // spike(no_std): without `std` this crate is a subset, see `src/nostd/`.
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 
 /// The parts of the std prelude that live in `alloc`.
 #[allow(unused_imports)]

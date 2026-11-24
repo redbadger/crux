@@ -10,6 +10,8 @@
 //! will go on meaning exactly what it means today, and `crux_time::Time` will
 //! come to mean this type.
 
+#[cfg(feature = "std")]
+use crate::prelude::*;
 use core::{future::Future, marker::PhantomData, time};
 // spike(no_std): `now` and `notify_at` deal in `SystemTime`, so they need std.
 // `now_instant` and `notify_at_instant` deal in `Instant`, so they do not.

@@ -1,5 +1,6 @@
 //! Swift: `EffectSink`, the `EffectHandler` protocol and `EffectDispatcher`.
 
+use crate::prelude::*;
 use std::io;
 
 use facet_generate::generation::{

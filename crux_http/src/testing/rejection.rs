@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use crate::{RawResponse, Response, Result, protocol::HttpResponse};
 
 /// Build the [`crux_http::Result`](crate::Result) a feature receives when the server
@@ -104,6 +105,7 @@ fn build_rejection<Body>(caller: &str, response: HttpResponse) -> Result<Respons
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::*;
     use crate::{HttpError, protocol::HttpResponse};
 
     use super::{rejection, rejection_from};

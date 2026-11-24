@@ -4,6 +4,7 @@
 //! `public abstract record Effect`, not `partial record`, so it cannot be
 //! re-opened from outside the way a Swift or Kotlin extension can.
 
+use crate::prelude::*;
 use std::io;
 
 use facet_generate::generation::{indent::IndentWrite, plugin::EmitContext};

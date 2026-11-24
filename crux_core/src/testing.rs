@@ -1,4 +1,5 @@
 //! Testing support for unit testing Crux apps.
+use crate::prelude::*;
 use anyhow::Result;
 use std::{collections::VecDeque, sync::Mutex};
 

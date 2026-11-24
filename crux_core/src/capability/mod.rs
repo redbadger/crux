@@ -1,4 +1,6 @@
 #[cfg(feature = "facet_typegen")]
+use crate::prelude::*;
+#[cfg(feature = "facet_typegen")]
 use crate::type_generation::facet::TypeGenError;
 
 /// Operation trait links together input and output of a side-effect.

@@ -48,6 +48,7 @@
 //! }
 //! ```
 
+use crate::prelude::*;
 use std::sync::Arc;
 
 use crate::{Client, RawResponse, Request, Result};

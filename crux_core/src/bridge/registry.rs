@@ -405,6 +405,7 @@ impl<T: FfiFormat> ResolveRegistry<T> {
 mod tests {
     use super::{EffectId, EffectInfo, Entry, Outstanding, ResolveSerialized, Sequence};
     use crate::bridge::JsonFfiFormat;
+    use crate::prelude::*;
     use crate::{EffectVariant, OperationKind, ResolveError};
     use std::collections::HashMap;
 

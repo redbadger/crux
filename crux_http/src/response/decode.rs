@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use std::fmt;
 use std::io;
 
@@ -139,6 +140,7 @@ pub fn decode_body(
 #[cfg(test)]
 mod decode_tests {
     use super::decode_body;
+    use crate::prelude::*;
 
     #[test]
     fn utf8() {

@@ -1,3 +1,4 @@
+use alloc::string::{String, ToString as _}; // the local `ToString` type shadows the prelude one
 use serde::{Deserialize, Serialize};
 
 use crate::{Command, Request, capability::Operation};

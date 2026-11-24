@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use std::fmt;
 use std::sync::Arc;
 
@@ -363,6 +364,7 @@ impl Client {
 #[cfg(test)]
 mod client_tests {
     use super::Client;
+    use crate::prelude::*;
     use crate::protocol::{HttpRequest, HttpResponse};
     use crate::testing::FakeShell;
 

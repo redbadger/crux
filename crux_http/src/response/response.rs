@@ -1,4 +1,5 @@
 use super::decode::decode_body;
+use crate::prelude::*;
 use crate::{HttpError, Result, protocol::HttpResponse};
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Version};
 use serde::de::DeserializeOwned;
@@ -439,6 +440,7 @@ impl<Body> TryFrom<Response<Body>> for http::Response<Body> {
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::*;
     use http::{HeaderMap, StatusCode};
 
     use crate::{
@@ -670,6 +672,7 @@ mod status_serde {
 }
 
 mod header_serde {
+    use crate::prelude::*;
     use http::{HeaderMap, HeaderName, HeaderValue};
     use serde::{Deserializer, Serializer, de::Error};
     use std::str::FromStr;

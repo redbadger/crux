@@ -105,6 +105,7 @@ impl<Out> RequestHandle<Out> {
 mod tests {
     use super::{OperationKind, RequestHandle};
     use crate::bridge::{BridgeError, JsonFfiFormat};
+    use crate::prelude::*;
 
     /// An id is minted from the serializing side, so the two must agree.
     #[test]

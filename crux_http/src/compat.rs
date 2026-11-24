@@ -2,6 +2,7 @@
 //!
 //! Enabled only when the `http-types` feature is active.
 
+use crate::prelude::*;
 use http::{HeaderName, HeaderValue};
 
 use crate::{RawResponse, Request};
@@ -87,6 +88,7 @@ impl From<http_types::Response> for RawResponse {
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::*;
     use crate::{Request, Url};
     use http::{HeaderValue, Method};
 

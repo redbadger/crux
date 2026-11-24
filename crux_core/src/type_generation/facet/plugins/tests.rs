@@ -8,6 +8,7 @@
 // read from Rust.
 #![allow(dead_code)]
 
+use crate::prelude::*;
 use facet::Facet;
 use facet_generate::{
     Registry,

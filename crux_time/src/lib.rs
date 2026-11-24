@@ -5,9 +5,24 @@
 //! more of a side-cause) by Crux, and has to be obtained externally. This capability provides a simple
 //! interface to do so.
 // spike(no_std): without `std` the deprecated root `Time` and anything naming `SystemTime` go.
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+
+/// The parts of the std prelude that live in `alloc`.
+#[allow(unused_imports)]
+pub(crate) mod prelude {
+    pub use alloc::{
+        borrow::ToOwned,
+        boxed::Box,
+        format,
+        string::{String, ToString},
+        vec,
+        vec::Vec,
+    };
+}
 
 pub mod clock;
 pub mod command;

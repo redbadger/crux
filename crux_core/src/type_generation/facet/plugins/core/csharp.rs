@@ -1,5 +1,6 @@
 //! C#: the `ICoreBridge` interface and the `Core` class.
 
+use crate::prelude::*;
 use std::io;
 
 use facet_generate::{
