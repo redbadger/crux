@@ -1,8 +1,8 @@
 # RFC: `no_std` + `alloc` support
 
 ```admonish
-This RFC is **proposed**. It contains no implementation code. The evidence in
-it comes from a throwaway spike on the
+This RFC is **proposed**. It contains no implementation code. Most of the
+evidence in it comes from a throwaway spike on the
 [`spike/no-std`](https://github.com/redbadger/crux/tree/spike/no-std) branch,
 which stands alone and is not part of this pull request or meant to be merged.
 The spike built `crux_core` for a Cortex-M4 and linked a small Crux app into
@@ -16,6 +16,10 @@ cores build without `std` and rebuilt both firmwares as shells over them, and
 both have been flashed and work. Work the spike has planned but not done is
 marked as planned.
 
+An outside app on the spike branch,
+[crux-ha-dashboard](https://github.com/StuartHarris/crux-ha-dashboard), adds
+evidence from an ESP32-S3 (see [Evidence](#evidence)).
+
 Paths and crates the RFC cites from the spike, such as `examples/counter/cpb`,
 `examples_support/ble_gateway` or the `std` feature of `crux_time`, exist only
 on that branch.
@@ -28,8 +32,9 @@ on by default, so existing apps would build exactly as they do now.
 
 ## Summary
 
-`crux_core` would become `#![no_std]` when its `std` feature is off, and depend
-on `alloc` in all builds. The work falls into a handful of blockers, each small:
+`crux_core` would become `#![no_std]` in all builds, link `std` only when its
+`std` feature is on, and depend on `alloc` in all builds. The work falls into
+a handful of blockers, each small:
 
 - swap `std::` paths for `core::` and `alloc::`, with an internal prelude for
   `Vec`, `Box` and `String`;
@@ -45,9 +50,10 @@ on `alloc` in all builds. The work falls into a handful of blockers, each small:
 This is `no_std` with `alloc`, not a heap-free Crux. `Command`, the executor
 and the effect registries all allocate, and removing that is out of scope.
 
-Beyond `crux_core`, capability crates would offer a `no_std` subset behind the
-same kind of `std` feature, and an example's `shared` crate would build without
-`std` so that firmware is one more shell over the same core.
+Beyond `crux_core`, `crux_http` and `crux_time` would offer a `no_std` subset
+behind the same kind of `std` feature, and `crux_kv` would forward its `std`
+feature to `crux_core`. An example's `shared` crate would build without `std`
+so that firmware is one more shell over the same core.
 
 ## Why?
 
@@ -82,9 +88,10 @@ The spike has done that for the counter and `counter_http` examples.
 
 ## Goals
 
-- `crux_core` builds and works with `--no-default-features` on Cortex-M
-  targets that have compare-and-swap, with `thumbv7em-none-eabihf` as the
-  first one kept green in CI.
+- `crux_core` builds and works with `--no-default-features` and its
+  `critical-section` feature on Cortex-M targets that have compare-and-swap,
+  with `thumbv7em-none-eabihf` as the first one kept green in CI. The final
+  binary links a `critical-section` implementation.
 - It is correct on multi-core chips, such as the RP2040 or a dual-core ESP32,
   as long as one execution context owns the `Core`. Wakers may fire on any
   core and in interrupt handlers.
@@ -104,7 +111,8 @@ The spike has done that for the counter and `counter_http` examples.
 - The full API of the capability crates without `std`. Each can offer a
   `no_std` subset behind a default `std` feature, as described in
   [Capability crates](#8-capability-crates), but making one API serve both
-  modes is left to their own RFCs. `crux_kv` is not touched.
+  modes is left to their own RFCs. `crux_kv` gets no subset. It only forwards
+  `std` to `crux_core`.
 - Running without a heap.
 
 ## Design
@@ -115,29 +123,49 @@ examples.
 
 ### 1. Prelude and paths
 
-With `std` off, the crate root gains
+The crate root gains, in every build,
 
 ```rust
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 ```
 
-On the host that alone produces 142 errors, all at the name-resolution stage
-(so a floor, not the full count). Most are `Vec` and `Box` no longer being in
-scope, and the rest are `use std::...` lines and a few inline `std::` paths,
-plus `vec!` in the bridge and the two `eprintln!` calls.
+(`crux_core` uses `#[cfg(any(feature = "std", test))]`, so that its tests
+always have `std`.) The `std` feature and the default features do not change,
+so users see no difference.
+
+The spike first used `#![cfg_attr(not(feature = "std"), no_std)]`, and later
+made `no_std` unconditional, as above, in `crux_core`, `crux_http` and
+`crux_time`. With the conditional form, a std build gets the std prelude
+implicitly, so code that `no_std` builds also compile can use `std` by
+accident and still build on the host. With the unconditional form, a std
+build has no std prelude, and every use of `std` is explicit.
+
+With `std` off, the attribute alone produces 142 errors on the host, all at
+the name-resolution stage (so a floor, not the full count). Most are `Vec` and
+`Box` no longer being in scope, and the rest are `use std::...` lines and a
+few inline `std::` paths, plus `vec!` in the bridge and the two `eprintln!`
+calls.
 
 The fix is mechanical. A crate-private `prelude` module re-exports `Box`,
-`Vec`, `String`, `ToString` and `ToOwned` from `alloc`, and each module that
-needs it imports it. `std::{fmt, mem, any, future, pin, task, ops, marker}`
+`Vec`, `String`, `ToString`, `ToOwned`, `format!` and `vec!` from `alloc`, and
+each module that needs it imports it. Because no build has the std prelude,
+this includes std-only modules and test modules: in the spike, about 45 files
+gained one `use crate::prelude::*;`. `crux_time` gained a prelude module like
+`crux_http`'s. `std::{fmt, mem, any, future, pin, task, ops, marker}`
 and `std::sync::atomic` become `core::`, while `std::sync::{Arc, Weak}`,
 `std::collections::VecDeque` and `std::task::Wake` become `alloc::`. Modules
 that stay std-only (`testing`, `bindgen`, `type_generation` and the bridge)
 can keep their `std::` paths.
 
-To stop this regressing, the clippy lints `std_instead_of_core`,
-`std_instead_of_alloc` and `alloc_instead_of_core` can be turned on for
-`crux_core`.
+The unconditional `no_std` does not stop a `std::` path in shared code. A std
+build still has `std` in scope, so such a path compiles on the host and fails
+only in a `no_std` build. To stop this regressing, the clippy lints
+`std_instead_of_core`, `std_instead_of_alloc` and `alloc_instead_of_core` can
+be turned on for `crux_core`, and the CI build for `thumbv7em-none-eabihf`
+catches the rest.
 
 ### 2. An internal channel
 
@@ -211,7 +239,8 @@ guard type that outlives the closure. The crate defines only the interface;
 the firmware links one implementation, for example the
 `critical-section-single-core` feature of `cortex-m` (which the spike's
 firmware enables for embassy already) or the one a HAL such as `esp-hal`
-provides. Forgetting it is a link error, not a silent fallback.
+provides. Forgetting it is a link error, not a silent fallback. The outside
+app in [Evidence](#evidence) runs `esp-hal`'s implementation on an ESP32-S3.
 
 That closure style matters because of one detail in the executor. The waker
 the executor gives each task, `CommandWaker`, sends the task's id on the ready
@@ -423,11 +452,30 @@ serve.
 - **`crux_time` (done in the spike).** A default `std` feature and
   `core::time::Duration`. The protocol types, `clock::Time::notify_after`,
   the timer handles and the `NotifyAfter` and `ClearTimer` operations work
-  without `std`. `clock::Time::{now, notify_at}`, which name `SystemTime`, and
-  the deprecated root `Time` stay std-only. It has its own `no_std` test, and
-  `just check-nostd` and CI check it, with `crux_http`'s subset, for
-  `thumbv7em-none-eabihf`.
-- **`crux_kv`** is not touched.
+  without `std`. The spike also added `clock::Time::now_instant` and
+  `notify_at_instant`, which are not on master. They use `crux_time::Instant`
+  in place of `SystemTime`, so they work without `std`.
+  `clock::Time::{now, notify_at}`, which name `SystemTime`, and the deprecated
+  root `Time` stay std-only. `notify_every` is std-only too, because it uses
+  `futures::channel::mpsc` and boxes the stream it returns. A `no_std` version
+  with a channel that needs only `alloc` is possible later. `crux_time` has
+  its own `no_std` test, and `just check-nostd` and CI check it, with `crux_http`'s
+  subset, for `thumbv7em-none-eabihf`. `crux_time` and `crux_core` depend on
+  `facet` unconditionally, with `alloc` only, so `facet` is compiled into a
+  firmware even when the app's own types do not derive `Facet`, as in the
+  outside app in [Evidence](#evidence).
+- **`crux_kv` (changed in the spike).** `crux_kv` itself still needs `std`
+  and has no `no_std` subset. It used to depend on `crux_core` with its
+  default features, so each app that used `crux_kv` got `crux_core`'s `std`,
+  `bridge` and `crux_macros`. It now depends on `crux_core` with
+  `default-features = false, features = ["crux_macros"]`, and has
+  `default = ["std"]` and `std = ["crux_core/std"]`.
+
+The general rule for a library crate that depends on `crux_core` or on a
+capability crate: turn off that dependency's default features, and forward
+`std` through a feature of its own. Otherwise the library turns on the
+dependency's defaults for every app that uses it, and a `no_std` app cannot
+turn them off.
 
 This is how cores should wait for time: through `crux_time`'s `NotifyAfter`
 and `ClearTimer`, as effect variants `TimeNotifyAfter` and `TimeClear`, rather
@@ -544,8 +592,11 @@ added to `crux_http`'s std builder needs a decision for the `no_std` twin.
 Apps on the default features notice nothing. Their lockfiles lose nothing and
 gain nothing.
 
-Apps that turn default features off today would need to add `std` (and
-`bridge`, if they use it) to keep what they have.
+With this RFC, `default-features = false` on `crux_core` would mean a `no_std`
+build. `crux_core` then needs either `std` or `critical-section`, or it fails
+to compile. An app that turns default features off today, for example only
+to drop the bridge, would need to add `std` (and `crux_macros` and `bridge`,
+if it uses them) to keep what it has.
 
 While surveying this, the spike found a pre-existing bug that affects std
 users too. `crux_core/src/lib.rs` re-exports the macros under
@@ -577,6 +628,27 @@ enough to make one crate with a feature the better trade.
 minimal synchronous core without `std` would avoid the channel and lock work.
 It would also lose async tasks, which are the reason to use Crux rather than a
 plain state machine.
+
+**No `std` by default.** The crates could leave `std` out of `default`, so that
+a plain dependency is a `no_std` build. This RFC keeps `std` as a default
+feature, for these reasons:
+
+- Without `std` or `critical-section`, `crux_core` raises a `compile_error!`
+  (section 3). A plain `cargo add crux_core` would then fail until the user
+  chooses a lock.
+- Without `std`, `Core`'s locks are try-locks that panic on contention. iOS
+  and Android shells can call `Core` from more than one thread, so that is
+  the wrong default for them.
+- `bridge`, `testing`, `facet_typegen` and `uniffi_compat_bindgen` all need
+  `std`, and without `std` `crux_http` gives a smaller, different API.
+- The convention in the Rust ecosystem (`serde`, `futures`, `facet`, `slab`)
+  is `default = ["std"]`, and embedded developers expect to write
+  `default-features = false`.
+- It would break every existing app, for the benefit of a few.
+
+What matters instead is that a library which depends on `crux_core`, or on a
+capability crate, does not take its default features and forwards `std`
+(section 8).
 
 ## Evidence
 
@@ -788,6 +860,84 @@ On 2026-10-09 it was flashed and run with the gateway. The count, pending
 state on presses, link-down and reconnect, and stream recovery with Wi-Fi off
 (four retries, then updates again without a Bluetooth reconnect) all worked.
 
+**An outside app on an ESP32-S3.**
+[crux-ha-dashboard](https://github.com/StuartHarris/crux-ha-dashboard) is a
+Home Assistant dashboard on a LilyGo T5 E-Paper S3 Pro Lite, which has a
+dual-core Xtensa ESP32-S3 and 8 MB of PSRAM. It is not part of the spike, and
+the facts below are from its commit `7959678f`. Its core, `shared`, builds with
+and without `std`, and talks MQTT to Home Assistant through a sans-io MQTT
+client over a byte-stream capability
+([`docs/architecture.md`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/docs/architecture.md)). It has two shells:
+firmware on `esp-hal` and embassy, and a desktop simulator in egui.
+
+- **A second architecture.** The firmware builds for
+  `xtensa-esp32s3-none-elf`, after the spike's Cortex-M4. It depends on
+  `crux_core` and `crux_time` from the `spike/no-std` branch with
+  `default-features = false`, and enables `crux_core/critical-section`
+  ([`firmware/Cargo.toml`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/firmware/Cargo.toml)). `esp-hal` supplies the
+  implementation. The target needs the `esp` toolchain and
+  `-Zbuild-std=core,alloc`. Without that toolchain, the app's
+  `just check-nostd` checks for `thumbv7em-none-eabihf` instead
+  ([`Justfile`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/Justfile)).
+- **The layout of design section 9, in an outside workspace.** The workspace
+  dependencies have `default-features = false`, and the firmware is its own
+  workspace, excluded from the root to stop feature unification
+  ([`Cargo.toml`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/Cargo.toml)). `shared`'s `std` feature turns on
+  `crux_core/std` and `crux_time/std`, but never `bridge`
+  ([`shared/Cargo.toml`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/shared/Cargo.toml)). The simulator is a std shell
+  without the bridge. The app has no FFI, and its own types do not derive
+  `Facet`, so it gives no evidence for open question 4.
+- **A larger core.** The core has seven capabilities (`Render`, a byte
+  stream, the radio, power, the front light, a log and `crux_time`) and about
+  790 tests.
+- **One task owns the `Core`.** `logic::shell::Shell` holds the `Core` and
+  calls `process_event` and `resolve`
+  ([`firmware/logic/src/shell/mod.rs`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/firmware/logic/src/shell/mod.rs)).
+  The timer, display, radio and stream tasks never see it. They send signals
+  to the core task through unbounded queues, copied from the spike's delay
+  queue ([`firmware/src/lane.rs`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/firmware/src/lane.rs)). This is stricter
+  than the spike's HTTP firmware, in which two tasks share the `Core` as a
+  `&'static`. To match each answer to its request, the shell keeps its own
+  lists of pending `Request` values (see open question 10).
+- **Every hardware future is an effect.** The firmware has no root waker and
+  no `generic-queue-N`. All its timers are `crux_time`'s `NotifyAfter` and
+  `ClearTimer`, which a `timers` task serves with `embassy_futures::select`
+  ([`timers.rs`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/firmware/src/bin/dashboard/timers.rs)). So the app adds
+  nothing to the experiment in "A wake from an interrupt", but it supports
+  open question 9.
+- **Light sleep.** On battery, the firmware puts the chip into light sleep
+  inside `critical_section::with`
+  ([`display.rs`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/firmware/src/bin/dashboard/display.rs)). Light sleep
+  keeps the RAM, so the `Core` and its model stay.
+
+The ESP32-S3 has two cores, but Crux runs on one of them. The firmware calls
+only `esp_rtos::start`, and nothing starts the second core
+([`board.rs`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/firmware/src/board.rs#L87)). The Wi-Fi driver runs in threads
+of `esp-rtos`. On the ESP32-S3, `esp-hal`'s `critical-section` implementation
+is the multi-core one in `esp-sync` 0.3.0, which masks interrupts and also
+takes a lock that both cores share. So the firmware exercises that
+implementation, but no other core contends for it. This app is not evidence
+that Crux is correct on multi-core chips.
+
+The owner's notes, which record manual observation and are not in the
+repository, add these results:
+
+- The board ran on its stand for days at a time.
+- On 2026-11-24, an overnight test on battery woke the chip from light sleep
+  14 times, once an hour, with no restart.
+- The firmware reconnected when the access point was blocked, when the broker
+  was stopped, and when it roamed between access points.
+- On 2026-11-20, a connect brought about 200 MQTT packets, and on the board
+  that burst took 9 to 14 `update` calls in about 55 ms. This is the first
+  figure for time on a device. The firmware logs a warning for an update of
+  more than 50 ms ([`firmware/README.md`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/firmware/README.md)).
+
+The firmware records panics and restarts only from 2026-11-22, so these
+runs do not prove that no contention panic occurred over the whole period. The
+heap has 8 MB of PSRAM, so they say nothing about fragmentation. The app's
+size figures predate the board and do not isolate Crux, so this RFC does not
+cite them.
+
 ## Open questions
 
 1. **The lock.** The spike has now tried the recommended split:
@@ -799,6 +949,8 @@ state on presses, link-down and reconnect, and stream recovery with Wi-Fi off
      is in `process_event` would need a blocking lock. Across cores that is
      correct, but a blocking lock cannot tell the other core from an
      interrupt on its own core, so it brings back the interrupt deadlock.
+     The outside app in [Evidence](#evidence) runs on a dual-core ESP32-S3,
+     but Crux uses only one core there, so this question stays open.
    - Is the `critical-section` feature, which something in every `no_std`
      build must enable, acceptable? The alternative is an unconditional
      dependency.
@@ -820,9 +972,14 @@ state on presses, link-down and reconnect, and stream recovery with Wi-Fi off
    gate it on `std`?
 6. **Heap behaviour.** Allocation per command, and capacity retained in slabs
    and queues, should be documented. Is a long-running fragmentation test on
-   a real embedded allocator needed before calling this supported?
+   a real embedded allocator needed before calling this supported? The long
+   runs of the outside app in [Evidence](#evidence) do not answer this,
+   because its heap has 8 MB of PSRAM.
 7. **CI targets.** Is `thumbv7em-none-eabihf` alone enough, or should a
-   RISC-V target such as `riscv32imac-unknown-none-elf` be built too?
+   RISC-V target such as `riscv32imac-unknown-none-elf` be built too? The
+   outside app in [Evidence](#evidence) builds and runs Crux on Xtensa
+   (`xtensa-esp32s3-none-elf`). That target needs the `esp` toolchain and
+   `-Zbuild-std`, which make it costly as a CI job.
 8. **Capability crates.** Is a `no_std` subset with twin types, as in
    `crux_http`, acceptable, or should each crate make its public types its
    own so that one API serves both modes? For `crux_http` that is a breaking
@@ -852,6 +1009,31 @@ state on presses, link-down and reconnect, and stream recovery with Wi-Fi off
    `Command` awaiting a hardware future directly, which would need some way
    for the shell to hear about the wake.
 
+   The outside app in [Evidence](#evidence) gives stronger support for the
+   rule. Its larger core awaits no hardware future, and every timer is a
+   `crux_time` effect. It also shows a shape that this RFC proposes to
+   recommend with the rule: one task owns the `Core`, and the other tasks send
+   their results to that task through queues.
+10. **A request registry for Rust shells.** A Rust shell gets each effect as
+    a `Request<Op>`, which holds the operation and its resolve handle. Only
+    `Core::resolve` with that `Request` answers it. Without `std`, `Core`'s
+    locks are try-locks, so only the context that owns the `Core` can
+    resolve. A shell that gives work to other tasks must keep each `Request`,
+    send the task a plain operation with a token, and find the `Request`
+    again when the answer comes back. The outside app in
+    [Evidence](#evidence) does this with a list for each kind of request and
+    four token counters
+    ([`firmware/logic/src/shell/mod.rs`](https://github.com/StuartHarris/crux-ha-dashboard/blob/7959678fbd85/firmware/logic/src/shell/mod.rs)).
+    The spike's HTTP firmware keeps a smaller list in its delay task. The
+    bridge already does this bookkeeping in its resolve registry, keyed by
+    effect id, but the bridge needs `std` and a Rust shell does not use it.
+    Would a typed `no_std` registry in `crux_core` help Rust shells, with a
+    token in, the `Request` out, and a resolve when the answer comes? It
+    would remove the counters, the lists and the look-ups. The policy of the
+    app would stay in the shell, for example the outside app's stop rule for
+    the radio, one `Render` for each batch of effects, and a `Close` that
+    waits for its stream to end.
+
 ## Next steps
 
 If this direction is agreed, the work splits into small pull requests, each
@@ -865,14 +1047,16 @@ useful on its own:
 4. Add the `sync` shim: closure-based `critical-section` locks for the
    internals, try-locks for `Core`, and the `critical-section` feature.
 5. Add the `bridge` feature and the macro gate.
-6. Add the `no_std` attribute, the prelude and path changes, the middleware
-   changes, and a CI job that builds `crux_core` for `thumbv7em-none-eabihf`.
+6. Add the unconditional `no_std` attribute, the prelude and path changes,
+   the middleware changes, and a CI job that builds `crux_core` for
+   `thumbv7em-none-eabihf`.
 7. Split the counter example's FFI into its own crate and gate its `shared`
    on `std`, with CI checking `shared` for `thumbv7em-none-eabihf`. Add the
    CPB shell at `examples/counter/cpb`, and the experimental Embedded page in
    Part III of the book (both done in the spike).
-8. Add the `no_std` subsets of `crux_http` and `crux_time` (both done in the
-   spike), and fix `facet-generate-attrs`' `facet` dependency.
+8. Add the `no_std` subsets of `crux_http` and `crux_time`, and make
+   `crux_kv` forward `std` instead of taking `crux_core`'s default features
+   (all done in the spike). Fix `facet-generate-attrs`' `facet` dependency.
 9. Do the same for `counter_http`: restart-with-backoff and an error state in
    its core, its firmware at `examples/counter-http/cpb`, and the Bluetooth
    protocol and gateway in `examples_support/` (all done in the spike).
