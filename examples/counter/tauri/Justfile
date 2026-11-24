@@ -1,3 +1,5 @@
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 mod lib '../../../lib.just'
 
 default: dev
@@ -40,10 +42,22 @@ test:
     @echo "  No tests configured"
 
 # clean build artifacts
+[unix]
 clean:
     @echo '{{ style("command") }}clean:{{ NORMAL }}'
     cargo clean
     rm -rf node_modules dist
+
+[windows]
+[script('powershell')]
+clean:
+    $ErrorActionPreference = 'Stop'
+    Write-Host "{{ style("command") }}clean:{{ NORMAL }}"
+    cargo clean
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    foreach ($path in "node_modules", "dist") {
+        if (Test-Path $path) { Remove-Item -Recurse -Force $path }
+    }
 
 # update pnpm dependencies to latest
 update-pnpm-deps:
