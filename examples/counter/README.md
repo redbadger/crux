@@ -41,16 +41,22 @@ Windows support is partial:
 
 - `windows` (WinUI3) is covered by CI.
 - `Android` and `tauri` have Windows-specific recipes and have been built by
-  hand on Windows.
-- `shared` should work — its recipes are plain `cargo` — but is untested.
-- `tui`, `web-leptos` and `web-yew` have no Windows-specific recipes, but
-  nothing POSIX-only in them either. just's default shell is `sh`, so they may
-  work where Git Bash or similar is on `PATH`.
+  hand on Windows. CI builds `tauri` on Windows. CI does not build `Android` on
+  Windows, because `boltffi pack android` fails there
+  ([boltffi#793](https://github.com/boltffi/boltffi/issues/793)).
+- `shared` and `tui` set `windows-shell`, and their recipes are plain `cargo`
+  commands. They are untested on Windows.
+- `web-leptos` and `web-yew` have no Windows-specific recipes, but nothing
+  POSIX-only in them either. just's default shell is `sh`, so they can work
+  where Git Bash or a similar shell is on `PATH`.
 - `web-dioxus`, `web-nextjs` and `web-react-router` use `rm -rf`, so they need
   porting before they will run.
 
 The ported directories set `windows-shell` so their recipes run through
-`powershell.exe`, which ships with Windows — you do not need PowerShell 7.
+`powershell.exe`, which ships with Windows. You do not need PowerShell 7.
+The top-level `examples/Justfile` also runs the other examples, which do not
+set `windows-shell` yet.
+
 Gradle and pnpm both create paths long enough to hit the 260-character
 `MAX_PATH` limit, so enable long path support before building the `Android`
 shell, from an elevated prompt:
@@ -60,5 +66,5 @@ Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' `
   -Name LongPathsEnabled -Value 1
 ```
 
-Run `just doctor` in the shell directory first — it reports each missing tool
+Run `just doctor` in the shell directory first. It reports each missing tool
 with the command that installs it.
