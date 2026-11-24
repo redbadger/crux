@@ -1,7 +1,5 @@
 name: WeatherApp
 packages:
-  Shared:
-    path: ./generated/Shared
   App:
     path: ./generated/App
   WeatherKit:
@@ -34,7 +32,6 @@ targetTemplates:
     settings:
       groups: [common]
     dependencies:
-      - package: Shared
       - package: App
       - package: WeatherKit
 

@@ -1,6 +1,11 @@
 # [Crux](https://red-badger.com/crux) &middot; [![GitHub license](https://img.shields.io/github/license/redbadger/crux?color=blue)](https://github.com/redbadger/crux/blob/master/LICENSE) [![Crate version](https://img.shields.io/crates/v/crux_core.svg)](https://crates.io/crates/crux_core) [![Docs](https://img.shields.io/badge/docs.rs-crux_core-green)](https://docs.rs/crux_core/) [![Build status](https://img.shields.io/github/actions/workflow/status/redbadger/crux/build.yaml)](https://github.com/redbadger/crux/actions)
 
-<a href="https://red-badger.com/crux"><img src="https://github.com/redbadger/crux/raw/master/docs/src/images/crux_logo.svg" height="100" /></a>
+<a href="https://red-badger.com/crux">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/redbadger/crux/master/docs/src/images/crux_logo_dark.svg">
+    <img src="https://raw.githubusercontent.com/redbadger/crux/master/docs/src/images/crux_logo.svg" height="87" alt="Crux">
+  </picture>
+</a>
 
 **[Watch the introductory talk](https://www.youtube.com/watch?v=cWCZms92-1g) | [Read the book](https://redbadger.github.io/crux) | [Read API docs](https://docs.rs/crux_core/latest/crux_core/) | [Join Zulip community](https://crux-community.zulipchat.com)**
 
@@ -44,7 +49,7 @@ You can also join the friendly conversation on our
 
 ## Architectural Overview
 
-![Logical architecture](https://github.com/redbadger/crux/raw/master/docs/src/architecture.svg)
+![Logical architecture](https://raw.githubusercontent.com/redbadger/crux/master/docs/src/architecture.svg)
 
 Crux has managed side-effects. It strictly separates pure computational tasks
 from tasks that cause side effects. This is similar to the way
@@ -132,7 +137,7 @@ The only built-in capability is `Render`. But this repository contains a few
 capabilities at various stages of maturity, and you can easily write your own if
 you want to:
 
-![crux](https://github.com/redbadger/crux/raw/master/docs/src/crux.png)
+![The Crux core and its effects sit inside a shell that serves the user and the outside world](https://raw.githubusercontent.com/redbadger/crux/master/docs/src/crux.svg)
 
 ### Published capabilities
 
@@ -265,7 +270,7 @@ appreciated.
 
 ### Red Badger Consulting Limited
 
-<img src="https://github.com/redbadger/crux/raw/master/docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
+<img src="https://raw.githubusercontent.com/redbadger/crux/master/docs/src/images/RB_Screen_Logos_Artwork-02.svg" alt="Red Badger logo" height="40px"/>
 
 [Red Badger](https://red-badger.com/) is the digital product consultancy trusted
 by blue chips and global brands. Our product design and technical pedigree allow
@@ -277,7 +282,7 @@ capabilities to power continuous innovation.
 
 ### Zulip
 
-<img src="https://github.com/redbadger/crux/raw/master/docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
+<img src="https://raw.githubusercontent.com/redbadger/crux/master/docs/src/images/zulip-icon-circle.svg" alt="Zulip round icon" height="40px"/>
 
 [Zulip](https://zulip.com/) is an open-source modern team chat app designed to
 keep both live and asynchronous conversations organized.

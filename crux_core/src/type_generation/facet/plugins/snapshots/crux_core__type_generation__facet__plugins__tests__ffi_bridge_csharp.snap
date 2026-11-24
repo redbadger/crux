@@ -1,0 +1,24 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: file.contents
+---
+/// <summary>
+/// The generated <c>ICoreBridge</c>, implemented over BoltFFI's
+/// <c>CoreFfi</c>: bytes in, bytes out, nothing else. It is the only
+/// generated type that knows the Rust core exists — pass a fake to
+/// <c>Core(ICoreBridge, IEffectHandler)</c> instead for tests.
+///
+/// Disposing an <c>FfiBridge</c> releases the core it wraps.
+/// </summary>
+public sealed class FfiBridge : ICoreBridge, IDisposable
+{
+    private readonly CoreFfi _ffi = new();
+
+    public byte[] Update(byte[] @event) => _ffi.Update(@event);
+
+    public byte[] Resolve(uint id, byte[] output) => _ffi.Resolve(id, output);
+
+    public byte[] View() => _ffi.View();
+
+    public void Dispose() => _ffi.Dispose();
+}

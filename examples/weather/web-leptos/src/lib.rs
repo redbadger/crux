@@ -2,6 +2,8 @@
 
 // The Leptos `#[component]` macro generates `#[must_use]`-triggering helpers.
 #![allow(clippy::must_use_candidate)]
+// The `#[component]` macro also generates enums with no variants.
+#![allow(clippy::empty_enums)]
 
 mod components;
 mod core;

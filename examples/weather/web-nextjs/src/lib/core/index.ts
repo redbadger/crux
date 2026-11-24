@@ -1,113 +1,18 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { ViewModel } from "shared_types/app";
+import { Core } from "shared_types/app";
 
-import { CoreFfi } from "shared";
-import type { Effect, Event, ViewModel } from "shared_types/app";
-import {
-  Request,
-  matchEffect,
-  serializeEvent,
-  serializeHttpResult,
-  serializeKeyValueResult,
-  serializeLocationResult,
-  serializeSecretResponse,
-  serializeTimeResponse,
-  deserializeViewModel,
-} from "shared_types/app";
-import type { Serializer } from "shared_types/serde";
-import { BincodeDeserializer, BincodeSerializer } from "shared_types/bincode";
-import * as http from "./http";
-import * as kv from "./kv";
-import * as location from "./location";
-import * as secret from "./secret";
-import * as time from "./time";
+import { WeatherHandler } from "./handler";
+
+export { WeatherHandler } from "./handler";
 
 // ANCHOR: core_base
-export class Core {
-  core: CoreFfi;
-  callback: Dispatch<SetStateAction<ViewModel>>;
-
-  constructor(callback: Dispatch<SetStateAction<ViewModel>>) {
-    this.callback = callback;
-    this.core = CoreFfi.new();
-  }
-
-  update(event: Event) {
-    const serializer = new BincodeSerializer();
-    serializeEvent(event, serializer);
-
-    const effects = this.core.update(serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.resolve(id, effect);
-    }
-  }
-  // ANCHOR_END: core_base
-
-  resolve(id: number, effect: Effect) {
-    matchEffect(effect, {
-      Render: (): void => {
-        this.callback(deserializeView(this.core.view()));
-      },
-      // ANCHOR: http
-      Http: (e): void => {
-        void http
-          .request(e.value)
-          .then((r) => this.respond(id, (s) => serializeHttpResult(r, s)));
-      },
-      // ANCHOR_END: http
-      KeyValue: (e): void => {
-        void kv
-          .handle(e.value)
-          .then((r) => this.respond(id, (s) => serializeKeyValueResult(r, s)));
-      },
-      Location: (e): void => {
-        void location
-          .handle(e.value)
-          .then((r) => this.respond(id, (s) => serializeLocationResult(r, s)));
-      },
-      Secret: (e): void => {
-        const r = secret.handle(e.value);
-        this.respond(id, (s) => serializeSecretResponse(r, s));
-      },
-      Time: (e): void => {
-        void time
-          .handle(e.value)
-          .then((r) => this.respond(id, (s) => serializeTimeResponse(r, s)));
-      },
-    });
-  }
-
-  // ANCHOR: respond
-  respond(id: number, serialize: (s: Serializer) => void) {
-    const serializer = new BincodeSerializer();
-    serialize(serializer);
-
-    const effects = this.core.resolve(id, serializer.getBytes());
-
-    const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.resolve(id, effect);
-    }
-  }
-  // ANCHOR_END: respond
+/// Everything the shell has to write to run a Crux core: an `EffectHandler`
+/// for the app's operations and a callback for the view model. `Core.create`
+/// waits for the wasm module, builds the generated `FfiBridge` over it, and
+/// owns the loop between them.
+export function createCore(
+  onView: (view: ViewModel) => void,
+): Promise<Core> {
+  return Core.create(new WeatherHandler(), onView);
 }
-
-function deserializeRequests(bytes: Uint8Array | number[]) {
-  const deserializer = new BincodeDeserializer(asBytes(bytes));
-  const len = deserializer.deserializeLen();
-  const requests: Request[] = [];
-  for (let i = 0; i < len; i++) {
-    const request = Request.deserialize(deserializer);
-    requests.push(request);
-  }
-  return requests;
-}
-
-function deserializeView(bytes: Uint8Array | number[]) {
-  return deserializeViewModel(new BincodeDeserializer(asBytes(bytes)));
-}
-
-function asBytes(bytes: Uint8Array | number[]): Uint8Array {
-  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-}
+// ANCHOR_END: core_base

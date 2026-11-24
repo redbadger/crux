@@ -6,9 +6,13 @@
 //! - `InitializingTransition::Onboard` - no API key, transitions to onboarding.
 //! - `InitializingTransition::Active(api_key, favorites)` - fully initialized.
 
+// Every `InitializingEvent` variant has `#[serde(skip)]`, so the `Deserialize`
+// derive generates an enum with no variants.
+#![allow(clippy::empty_enums)]
+
 use crux_core::{Command, render::render};
-use crux_kv::command::KeyValue;
 use crux_kv::error::KeyValueError;
+use crux_kv::store::KeyValue;
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
@@ -108,7 +112,6 @@ impl InitializingModel {
                     }
                 };
                 self.api_key = InitializingValue::Fetched(api_key);
-                self.resolve()
             }
             InitializingEvent::FavoritesLoaded(result) => {
                 let favorites = result
@@ -120,9 +123,10 @@ impl InitializingModel {
 
                 tracing::debug!("loaded {} favorites", favorites.len());
                 self.favorites = InitializingValue::Fetched(favorites);
-                self.resolve()
             }
         }
+
+        self.resolve()
     }
     // ANCHOR_END: update
 

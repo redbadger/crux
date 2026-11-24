@@ -6,6 +6,9 @@ default: dev
 
 gradlew := if os() == "windows" { "./gradlew.bat" } else { "./gradlew" }
 
+# `--overlay` argument for `boltffi pack`. CI sets BOLTFFI_OVERLAY to build fewer targets.
+overlay := if env("BOLTFFI_OVERLAY", "") == "" { "" } else { "--overlay " + quote(env("BOLTFFI_OVERLAY")) }
+
 # --------------------------------------------------------------------------
 # Development
 # --------------------------------------------------------------------------
@@ -56,7 +59,7 @@ check: typegen
 [working-directory('../shared')]
 package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
-    boltffi pack android
+    boltffi pack android {{ overlay }}
 
 # generate Kotlin app types
 [unix]

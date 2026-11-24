@@ -1,4 +1,5 @@
-use crux_time::{TimeRequest, TimeResponse};
+use crux_core::bridge::EffectId;
+use crux_time::operation::NotifyAfter;
 use std::sync::{Arc, Mutex};
 
 use crate::{
@@ -17,7 +18,8 @@ mod app {
         render::{RenderOperation, render},
     };
     use crux_macros::effect;
-    use crux_time::{Time, TimeRequest, TimerOutcome};
+    use crux_time::{TimerOutcome, clock::Time, operation as time};
+    use facet::Facet;
     use serde::{Deserialize, Serialize};
     use std::time::Duration;
 
@@ -52,12 +54,14 @@ mod app {
         type Output = StoredImageAsset;
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Facet)]
+    #[repr(C)]
     pub enum PermissionRequest {
         Camera,
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Facet)]
+    #[repr(C)]
     pub enum PermissionResponse {
         Granted,
         Denied,
@@ -71,7 +75,8 @@ mod app {
     #[derive(Debug)]
     pub(crate) enum Effect {
         Render(RenderOperation),
-        Time(TimeRequest),
+        TimeNotifyAfter(time::NotifyAfter),
+        TimeClear(time::ClearTimer),
         Permission(PermissionRequest),
         Camera(CaptureImageOp),
         ImageAssets(StoreImageAssets),
@@ -237,7 +242,7 @@ mod ffi {
         render::RenderOperation,
     };
     use crux_macros::effect;
-    use crux_time::TimeRequest;
+    use crux_time::operation as time;
     use std::sync::{Arc, Weak};
 
     use crate::{
@@ -250,11 +255,12 @@ mod ffi {
     /// Narrowed effect, down to the serialized variants
     ///
     /// This is only necessary if some variants are 'special'
-    #[effect(typegen)]
+    #[effect(facet_typegen)]
     #[derive(Debug)]
     pub enum SerializedEffect {
         Render(RenderOperation),
-        Time(TimeRequest),
+        TimeNotifyAfter(time::NotifyAfter),
+        TimeClear(time::ClearTimer),
         Permission(PermissionRequest),
     }
 
@@ -264,7 +270,8 @@ mod ffi {
         fn try_from(value: Effect) -> Result<Self, Self::Error> {
             match value {
                 Effect::Render(request) => Ok(Self::Render(request)),
-                Effect::Time(request) => Ok(Self::Time(request)),
+                Effect::TimeNotifyAfter(request) => Ok(Self::TimeNotifyAfter(request)),
+                Effect::TimeClear(request) => Ok(Self::TimeClear(request)),
                 Effect::Permission(request) => Ok(Self::Permission(request)),
                 other => Err(other),
             }
@@ -371,11 +378,11 @@ mod ffi {
         }
 
         /// Resolve an effect sent over the serialized lane.
-        pub(crate) fn resolve_serialized(&self, id: u32, data: &[u8]) {
+        pub(crate) fn resolve_serialized(&self, id: EffectId, data: &[u8]) {
             self.router
                 .routes
                 .serialized
-                .resolve(EffectId(id), data)
+                .resolve(id, data)
                 .expect("serialized resolve should work");
         }
 
@@ -627,12 +634,8 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert!(has_render_effect(&serialized));
 
     // 3 -> 2
-    let (request_id, request) = extract_single_time_request(serialized);
-    let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
-        panic!("expected NotifyAfter request")
-    };
-    let response = TimeResponse::DurationElapsed { id: timer_id };
-    let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
+    let (request_id, NotifyAfter { id: timer_id, .. }) = extract_single_time_request(serialized);
+    let response_bytes = serde_json::to_vec(&timer_id).expect("timer id should serialize");
     core.resolve_serialized(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, Some(2));
@@ -640,12 +643,8 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert!(has_render_effect(&serialized));
 
     // 2 -> 1
-    let (request_id, request) = extract_single_time_request(serialized);
-    let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
-        panic!("expected NotifyAfter request")
-    };
-    let response = TimeResponse::DurationElapsed { id: timer_id };
-    let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
+    let (request_id, NotifyAfter { id: timer_id, .. }) = extract_single_time_request(serialized);
+    let response_bytes = serde_json::to_vec(&timer_id).expect("timer id should serialize");
     core.resolve_serialized(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, Some(1));
@@ -653,12 +652,8 @@ fn trigger_with_timer_takes_a_picture_after_countdown() {
     assert!(has_render_effect(&serialized));
 
     // 1 -> camera permission
-    let (request_id, request) = extract_single_time_request(serialized);
-    let TimeRequest::NotifyAfter { id: timer_id, .. } = request else {
-        panic!("expected NotifyAfter request")
-    };
-    let response = TimeResponse::DurationElapsed { id: timer_id };
-    let response_bytes = serde_json::to_vec(&response).expect("time response should serialize");
+    let (request_id, NotifyAfter { id: timer_id, .. }) = extract_single_time_request(serialized);
+    let response_bytes = serde_json::to_vec(&timer_id).expect("timer id should serialize");
     core.resolve_serialized(request_id, &response_bytes);
 
     assert_eq!(core.view().countdown, None);
@@ -755,12 +750,12 @@ fn assert_only_render_effect(effects: &[FfiRequest]) {
     assert!(matches!(effects[0].effect, FfiEffect::Render(_)));
 }
 
-pub(crate) fn extract_single_time_request(effects: Vec<FfiRequest>) -> (u32, TimeRequest) {
+pub(crate) fn extract_single_time_request(effects: Vec<FfiRequest>) -> (EffectId, NotifyAfter) {
     let mut time_effects: Vec<_> = effects
         .into_iter()
         .filter_map(|effect| match effect.effect {
-            FfiEffect::Time(request) => Some((effect.id.0, request)),
-            FfiEffect::Render(_) | FfiEffect::Permission(_) => None,
+            FfiEffect::TimeNotifyAfter(request) => Some((effect.id, request)),
+            FfiEffect::Render(_) | FfiEffect::TimeClear(_) | FfiEffect::Permission(_) => None,
         })
         .collect();
 
@@ -771,12 +766,12 @@ pub(crate) fn extract_single_time_request(effects: Vec<FfiRequest>) -> (u32, Tim
 
 pub(crate) fn extract_single_permission_request(
     effects: Vec<FfiRequest>,
-) -> (u32, PermissionRequest) {
+) -> (EffectId, PermissionRequest) {
     let mut permission_effects: Vec<_> = effects
         .into_iter()
         .filter_map(|effect| match effect.effect {
-            FfiEffect::Permission(request) => Some((effect.id.0, request)),
-            FfiEffect::Render(_) | FfiEffect::Time(_) => None,
+            FfiEffect::Permission(request) => Some((effect.id, request)),
+            FfiEffect::Render(_) | FfiEffect::TimeNotifyAfter(_) | FfiEffect::TimeClear(_) => None,
         })
         .collect();
 

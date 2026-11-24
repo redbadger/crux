@@ -9,7 +9,7 @@
 use std::time::Duration;
 
 use crux_core::{Command, render::render};
-use crux_time::command::{Time, TimerHandle, TimerOutcome};
+use crux_time::{TimerHandle, TimerOutcome, clock::Time};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
@@ -205,7 +205,7 @@ mod tests {
 
         // should have a time effect (the debounce timer)
         let effect = cmd.effects().next().unwrap();
-        assert!(matches!(effect, Effect::Time(_)));
+        assert!(matches!(effect, Effect::TimeNotifyAfter(_)));
     }
 
     #[test]

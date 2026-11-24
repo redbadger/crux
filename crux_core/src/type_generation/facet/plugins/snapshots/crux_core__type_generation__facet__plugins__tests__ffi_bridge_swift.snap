@@ -1,0 +1,29 @@
+---
+source: crux_core/src/type_generation/facet/plugins/tests.rs
+expression: file.contents
+---
+/// The generated `CoreBridge`, implemented over BoltFFI's `CoreFfi`: bytes
+/// in, bytes out, nothing else. It is the only generated type that knows
+/// the Rust core exists — pass a fake to `Core(bridge:handler:)` instead
+/// for previews and tests.
+///
+/// `@unchecked Sendable` because `CoreFfi` is a class Swift cannot prove
+/// `Sendable`; its state is a handle into a mutex-guarded bridge on the
+/// Rust side, so calling it from any task is safe.
+public struct FfiBridge: CoreBridge, @unchecked Sendable {
+    private let ffi = Shared.CoreFfi()
+
+    public init() {}
+
+    public func update(_ event: [UInt8]) -> [UInt8] {
+        [UInt8](ffi.update(data: Data(event)))
+    }
+
+    public func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8] {
+        [UInt8](ffi.resolve(id: id, data: Data(output)))
+    }
+
+    public func view() -> [UInt8] {
+        [UInt8](ffi.view())
+    }
+}

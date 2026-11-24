@@ -1,6 +1,6 @@
 # React (Next.js)
 
-The Next.js shell is TypeScript talking to a WASM blob. Events serialise as bincode, cross the FFI, return effect requests; the shell handles each one, serialises the response, sends it back — the same `Request`/`Response` loop as iOS and Android, just in JavaScript. The interesting half of the chapter is how React's render model shapes the shell, because it's the opposite of Leptos's.
+The Next.js shell is TypeScript talking to a WASM blob. Events serialise as bincode, cross the FFI and come back as effect requests, which the generated `Core` hands to the shell's handler and resolves with what it returns — the same loop as iOS and Android, just in JavaScript. The interesting half of the chapter is how React's render model shapes the shell, because it's the opposite of Leptos's.
 
 ## Components re-run on every render
 
@@ -19,6 +19,7 @@ Three consequences for the Crux shell:
 The root of the tree is a `CoreProvider`:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:provider}}
 ```
 
@@ -26,7 +27,7 @@ Three things happen in this component.
 
 The `useRef` holds the `Core` across renders. `coreRef.current` points at the same instance every time the function runs; assigning once inside the init effect locks it in.
 
-The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It awaits the WASM module's `initialized` promise, then constructs the `Core` and fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for StrictMode (on by default in Next.js), which double-invokes effects in development to surface resource-leak bugs.
+The init `useEffect` has an empty dep array, which React reads as "run on mount, once". It awaits `createCore` — which is asynchronous because the WASM module loads asynchronously, and the generated `Core.create` waits for it — then fires `Event::Start` to kick off the lifecycle. The `initialized.current` guard is belt-and-braces for StrictMode (on by default in Next.js), which double-invokes effects in development to surface resource-leak bugs.
 
 The `dispatch` callback is wrapped in `useCallback(_, [])` so its reference is stable. Consumers of `useDispatch()` get the same function every render, which matters when passing it into handlers — otherwise every view update would invalidate every handler and trigger spurious re-renders of memoised children.
 
@@ -35,6 +36,7 @@ The `dispatch` callback is wrapped in `useCallback(_, [])` so its reference is s
 Same directional story as Leptos: state flows in, events flow out. The mechanisms are different, but the shape is the same. Two separate contexts:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:context}}
 ```
 
@@ -43,23 +45,26 @@ Splitting them matters. With both `view` and `dispatch` in one context, every `v
 Consumers pull either side with a hook:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/provider.tsx:hooks}}
 ```
 
 Then components fire events with:
 
 ```typescript
+// TypeScript
 const dispatch = useDispatch();
 dispatch(eventActive(activeEventResetApiKey()));
 ```
 
-Both directions cross the FFI as bincode. `dispatch` is just a JS callback wrapping the serialise-and-call-update flow; `setView` is a React state setter the `Core` invokes after deserialising the response to `Effect::Render`.
+Both directions cross the FFI as bincode. `dispatch` is just a JS callback around the generated `Core`'s `update`; `setView` is a React state setter, handed to `Core` as its `onView` callback, which `Core` calls with the freshly deserialised view model after every `Effect::Render`.
 
 ## Projecting with useMemo
 
 The root reads the whole `ViewModel` and picks off per-stage slices for each screen:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/app/page.tsx:app}}
 ```
 
@@ -69,29 +74,78 @@ So the win here is mostly clarity: the stage-picking logic lives in one place, a
 
 ## Handling effects
 
-The FFI bridge is a single class:
+The shell writes two small things and the generated `Core` owns the loop between them:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:core_base}}
 ```
 
-`update` serialises an event with `BincodeSerializer`, calls `CoreFfi.update` (the WASM export), and deserialises the returned bytes into `Request` objects. Each request carries an `id` and an `effect`; we walk them and dispatch each to a per-capability branch.
-
-HTTP looks like this:
+`Core` serialises an event with `BincodeSerializer`, calls the bridge's `update`, deserialises the returned bytes into `Request` objects, handles `Render` itself (re-read the view, call `onView`), and hands everything else to the generated `EffectDispatcher`. There is no `switch` over the effect union anywhere: the dispatcher calls the method for the variant it received and resolves the request with what that method returns. When it does, `Core` calls the bridge's `resolve` and loops through any **new** effect requests that come back — a Crux command with `.await` points produces its next effect only after the previous one resolves, so the loop has to keep going until the command's task actually finishes, and now nothing in the shell has to remember to. Its public surface:
 
 ```typescript
-{{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:http}}
+// TypeScript
+export class Core {
+    view: ViewModel;
+    constructor(bridge: CoreBridge, handler: EffectHandler,
+                onView: (view: ViewModel) => void);
+    static create(handler: EffectHandler,
+                  onView: (view: ViewModel) => void): Promise<Core>;
+    update(event: Event): void;
+    process(requests: Request[]): void;
+    processBytes(bytes: Uint8Array): void;
+}
 ```
 
-The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest` into a browser `Request` and the `Response` back into the shared `HttpResult`. When it returns, we call `respond`:
+The bridge is the generated `CoreBridge` interface over the WASM export, and because the codegen was told which npm package BoltFFI produces (`.boltffi(BoltFfi::new().typescript("shared", …))`), the generated module implements it too:
 
 ```typescript
-{{#include ../../../../examples/weather/web-nextjs/src/lib/core/index.ts:respond}}
+// TypeScript
+export class FfiBridge implements CoreBridge {
+  private readonly ffi = boltffi.CoreFfi.new();
+  update(event: Uint8Array): Uint8Array { return this.ffi.update(event); }
+  resolve(id: number, output: Uint8Array): Uint8Array { return this.ffi.resolve(id, output); }
+  view(): Uint8Array { return this.ffi.view(); }
+}
 ```
 
-Same recursion as the other shells: serialise the response, call `CoreFfi.resolve`, and loop through any **new** effect requests that come back. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
+Bytes in, bytes out. `CoreFfi.new()` touches the WASM module, so an `FfiBridge` can only be constructed once the package's `initialized` promise has resolved. `Core.create` awaits it before constructing, which is why it is asynchronous, and why `CoreProvider` builds the core inside its init effect rather than in the `useRef` initialiser. The generated `package.json` depends on the wasm package, so the web `Justfile` packs it before running typegen.
 
-The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape.
+The handler is `WeatherHandler`, one method per operation. HTTP looks like this:
+
+```typescript
+// TypeScript
+{{#include ../../../../examples/weather/web-nextjs/src/lib/core/handler.ts:http}}
+```
+
+One method, returning a `Promise<HttpResult>` — the operation declares that it is answered exactly once with an `HttpResult`, so that's the signature, and the dispatcher awaits it and resolves. The handler in `http.ts` is a `fetch` wrapper that turns the shared `HttpRequest` into a browser `Request` and the `Response` back into the shared `HttpResult`. `timeClear(operation: ClearTimer): Promise<TimerId>` answers with the id once the timeout is cleared, like every other request. There is no `render` method at all: `Core` owns it, and the generated interface makes it optional.
+
+The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape: one method per operation, returning that operation's output.
+
+```admonish note title="A TypeScript detail"
+The generated union already uses `kind` as its discriminant, so the
+operation-kind accessor is a free function, `effectOperationKind(effect)`,
+rather than a property.
+```
+
+The notes example goes one step further and uses a **stream**. Its `Subscribe`
+operation is resolved once per message from a peer, so the generated handler
+method takes a sink instead of returning a value:
+
+```typescript
+// TypeScript
+subscribe(_operation: Subscribe, sink: EffectSink<Message>): void {
+  // Every message a peer broadcasts becomes one item on this sink, for as
+  // long as the page lives.
+  this.subscription.current = sink;
+}
+```
+
+Its `NotesHandler` parks the sink and the page calls `sink.send(new Message(bytes))`
+whenever a message arrives; each `send` resolves the original request again. Before the
+handler API, that shell had to keep the request id in a ref and remember to
+resolve it repeatedly and never terminate it — the sink is the same thing with
+the bookkeeping generated.
 
 ## Shared components
 
@@ -100,6 +154,7 @@ Screens compose a set of Tailwind-styled presentational components in `src/app/c
 The `Home` screen pulls its slice from props, calls `useDispatch` once, and wires buttons to events:
 
 ```typescript
+// TypeScript
 {{#include ../../../../examples/weather/web-nextjs/src/app/components/HomeView.tsx:home_view}}
 ```
 

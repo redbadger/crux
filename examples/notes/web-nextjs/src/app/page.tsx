@@ -10,8 +10,8 @@ import Textarea, {
   SelectEvent,
 } from "../components/Textarea/Textarea";
 
-import * as sharedWasm from "shared";
-import { SyncMessage, Timers, Core } from "./core";
+import { SyncMessage, createCore } from "./core";
+import type { Core, EffectSink } from "shared_types/app";
 import {
   TextCursor,
   matchTextCursor,
@@ -25,10 +25,6 @@ import {
 } from "shared_types/app";
 
 const LOG_EDITS = false;
-
-const wasmInitialized = (
-  sharedWasm as unknown as { initialized: Promise<void> }
-).initialized;
 
 type Selection = {
   start: number;
@@ -47,17 +43,22 @@ function cursorToSelection(cursor: TextCursor): Selection {
 
 const Home: NextPage = () => {
   const [view, setView] = useState<ViewModel>(
-    new ViewModel("", textCursorPosition(BigInt(0))),
+    new ViewModel("", textCursorPosition(BigInt(0)), null),
   );
-
-  const [_, setTimers] = useState<Timers>({});
+  // Until the core has produced its first view there is nothing to edit, and
+  // edits would be dropped (`core.current` is still null).
+  const [ready, setReady] = useState(false);
 
   // TODO the state and channel handling should probably get
   // packaged up as a custom hook or something
 
-  const subscriptionId = useRef<number | null>(null);
-  const channel = useRef(new BroadcastChannel("crux-note"));
-  const core = useRef(new Core(setView, setTimers, channel, subscriptionId));
+  // Set by the core's `subscribe` handler; every peer message becomes one
+  // item on this sink.
+  const subscription = useRef<EffectSink<Message> | null>(null);
+  // Created once, in the effect: a `useRef` initialiser would open a new
+  // channel on every render.
+  const channel = useRef<BroadcastChannel | null>(null);
+  const core = useRef<Core | null>(null);
 
   const onMessage = (event: MessageEvent<SyncMessage>) => {
     let message = event.data;
@@ -68,13 +69,8 @@ const Home: NextPage = () => {
 
       return;
     } else if (message.kind == "change" && message.data != null) {
-      if (subscriptionId.current == null) return;
-
       // Pass data into the core
-      const data = message.data;
-      core.current.respond(subscriptionId.current, (s) =>
-        new Message(data).serialize(s),
-      );
+      subscription.current?.send(new Message(message.data));
     }
   };
 
@@ -88,13 +84,22 @@ const Home: NextPage = () => {
 
         (async () => {
           try {
-            await wasmInitialized;
+            // `Core.create` waits for the WASM module before building the
+            // generated bridge over it.
+            const ch = new BroadcastChannel("crux-note");
+            channel.current = ch;
 
-            // Initialize the Core with WASM after module is loaded
-            core.current.initialize();
+            core.current = await createCore(
+              (view) => {
+                setView(view);
+                setReady(true);
+              },
+              channel,
+              subscription,
+            );
 
             // Subscribe to the BroadcastChannel
-            channel.current.onmessage = onMessage;
+            ch.onmessage = onMessage;
 
             // Open the document
             core.current.update(eventOpen());
@@ -104,15 +109,14 @@ const Home: NextPage = () => {
               kind: "reset",
             };
 
-            channel.current.postMessage(message);
+            ch.postMessage(message);
           } catch (error) {
             console.error("Error during WASM initialization:", error);
           }
         })();
 
-        const ch = channel.current;
         return () => {
-          ch.onmessage = null;
+          if (channel.current) channel.current.onmessage = null;
         };
       }
     },
@@ -122,9 +126,10 @@ const Home: NextPage = () => {
   // Event handlers
 
   const onChange = ({ start, end, text }: ChangeEvent): void => {
+    if (!ready) return;
     log(`onChange ${start} ${end} "${text}"`);
 
-    core.current.update(eventReplace(BigInt(start), BigInt(end), text));
+    core.current?.update(eventReplace(BigInt(start), BigInt(end), text));
   };
 
   const onSelect = ({ start, end }: SelectEvent): void => {
@@ -135,7 +140,7 @@ const Home: NextPage = () => {
         ? eventMoveCursor(BigInt(end))
         : eventSelect(BigInt(start), BigInt(end));
 
-    core.current.update(event);
+    core.current?.update(event);
   };
 
   const [inputLog, updateLog] = useState<string[]>([]);
@@ -154,6 +159,16 @@ const Home: NextPage = () => {
       <div className="min-h-screen flex flex-col bg-slate-200">
         <Navbar title="A note" />
         <main className="grow flex flex-col">
+          {view.error ? (
+            <div role="alert" className="p-3 bg-red-100 text-red-800">
+              {view.error}
+            </div>
+          ) : null}
+          {!ready ? (
+            <div role="status" className="px-3 pt-2 text-sm text-slate-500">
+              Loading…
+            </div>
+          ) : null}
           <div className="grow basis-1 flex flex-col">
             <Textarea
               className="p-3 grow resize-none w-full focus:outline-none"
@@ -162,6 +177,7 @@ const Home: NextPage = () => {
               onSelect={onSelect}
               onChange={onChange}
               value={view.text}
+              disabled={!ready}
             />
           </div>
           {LOG_EDITS ? (

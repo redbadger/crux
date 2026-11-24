@@ -1,0 +1,15 @@
+# Overlay for `boltffi --overlay` that limits CI to the targets that CI uses.
+# The example Justfiles pass this file to `boltffi pack` when the environment
+# variable BOLTFFI_OVERLAY holds its path. Local builds do not set the variable,
+# so they build every target in the `boltffi.toml` file.
+
+[targets.apple]
+ios_architectures = []
+simulator_architectures = []
+macos_architectures = ["arm64"]
+
+[targets.android]
+architectures = ["x86_64"]
+
+[targets.csharp]
+runtime_identifiers = ["win-x64"]

@@ -61,7 +61,7 @@ fn json_sets_only_the_body() {
     let body = serde_json::json!({ "title": "New Post" });
     let expected = HttpRequest::post(URL).json(&body).build();
 
-    assert!(expected.headers.is_empty());
+    assert_eq!(expected.headers, []);
     assert_eq!(
         expected.body,
         serde_json::to_vec(&body).expect("serialisable")

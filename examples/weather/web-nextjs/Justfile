@@ -21,8 +21,9 @@ check: install
     @echo '{{ style("command") }}check:{{ NORMAL }}'
     pnpm exec eslint .
 
-# generate types for typescript
-typegen:
+# generate types for typescript (needs the wasm package: the generated
+# package.json depends on it by path, and typegen runs `pnpm install`)
+typegen: wasm
     @echo '{{ style("command") }}typegen:{{ NORMAL }}'
     RUST_LOG=info cargo run \
         --package shared \
@@ -45,7 +46,7 @@ install:
     pnpm install
 
 # build the project
-build: typegen wasm install
+build: typegen install
     @echo '{{ style("command") }}build:{{ NORMAL }}'
     pnpm build
 
@@ -61,17 +62,17 @@ clean:
     rm -rf generated .next node_modules
 
 # update pnpm dependencies to latest
-update-pnpm-deps: typegen wasm
+update-pnpm-deps: typegen
     @echo '{{ style("command") }}update-pnpm-deps:{{ NORMAL }}'
     pnpm update
 
 # local development workflow
-dev: typegen wasm fix check build test
+dev: typegen fix check build test
 
 # CI workflow
-ci: typegen wasm check build test
+ci: typegen check build test
 
 # serve the app locally
-serve: typegen wasm install
+serve: typegen install
     @echo '{{ style("command") }}serve:{{ NORMAL }}'
     pnpm dev

@@ -5,7 +5,9 @@
 //! more of a side-cause) by Crux, and has to be obtained externally. This capability provides a simple
 //! interface to do so.
 
+pub mod clock;
 pub mod command;
+pub mod operation;
 pub mod protocol;
 
 use std::{
@@ -47,12 +49,18 @@ pub enum TimerOutcome {
 ///
 /// The capability also supports cancellation from the core side, using the [`TimerHandle`]
 /// returned by [`notify_at`](Time::notify_at) and [`notify_after`](Time::notify_after).
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.19.0",
+    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, ClearTimer} and crux_time::clock::Time; removed in the next breaking release"
+)]
 pub struct Time<Effect, Event> {
     // Allow impl level trait bounds to avoid repetition
     effect: PhantomData<Effect>,
     event: PhantomData<Event>,
 }
 
+#[allow(deprecated)]
 impl<Effect, Event> Time<Effect, Event>
 where
     Effect: Send + From<Request<TimeRequest>> + 'static,
@@ -103,9 +111,7 @@ where
         // in the shell.
         let builder = RequestBuilder::new(move |ctx| {
             async move {
-                if let Ok(Some(cleared_id)) = receiver.try_recv()
-                    && cleared_id == timer_id
-                {
+                if receiver.try_recv() == Ok(Some(())) {
                     return TimerOutcome::Cleared;
                 }
 
@@ -130,14 +136,14 @@ where
                         // which signals `is_terminated` true in that case,
                         // so this branch of the select will
                         // never run for the Err case
-                        let cleared_id = cleared.unwrap();
+                        cleared.unwrap();
 
                         // Follow up by asking the shell to clear the timer
-                        let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: cleared_id }).await else {
+                        let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: timer_id }).await else {
                             panic!("Unexpected response to TimeRequest::Clear");
                         };
 
-                        assert!(id == cleared_id, "Cleared with unexpected timer ID");
+                        assert!(id == timer_id, "Cleared with unexpected timer ID");
 
                         TimerOutcome::Cleared
                     }
@@ -173,9 +179,7 @@ where
         let completed_handle = CompletedTimerHandle { timer_id };
 
         let builder = RequestBuilder::new(move |ctx| async move {
-            if let Ok(Some(cleared_id)) = receiver.try_recv()
-                && cleared_id == timer_id
-            {
+            if receiver.try_recv() == Ok(Some(())) {
                 return TimerOutcome::Cleared;
             }
 
@@ -200,17 +204,14 @@ where
                     // which signals `is_terminated` true in that case,
                     // so this branch of the select will
                     // never run for the Err case
-                    let cleared_id = cleared.unwrap();
-                    if cleared_id != timer_id {
-                        unreachable!("Cleared with the wrong ID");
-                    }
+                    cleared.unwrap();
 
                     // Follow up by asking the shell to clear the timer
-                    let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: cleared_id }).await else {
+                    let TimeResponse::Cleared { id } = ctx.request_from_shell(TimeRequest::Clear { id: timer_id }).await else {
                         panic!("Unexpected response to TimeRequest::Clear");
                     };
 
-                    assert!(id == cleared_id, "Cleared resolved with unexpected timer ID");
+                    assert!(id == timer_id, "Cleared resolved with unexpected timer ID");
 
                     TimerOutcome::Cleared
                 }
@@ -226,18 +227,29 @@ where
 #[derive(Debug)]
 pub struct TimerHandle {
     timer_id: TimerId,
-    abort: Sender<TimerId>,
+    abort: Sender<()>,
 }
 
 impl TimerHandle {
     /// Clear the associated timer request.
-    /// The shell will be notified that the timer has been cleared
-    /// with `TimeRequest::Clear { id }`,
-    /// so it can clean up associated resources.
-    /// The original task will resolve
-    /// with `TimeResponse::Cleared { id }`.
+    ///
+    /// The shell is asked to clear the timer, so it can clean up the resources
+    /// behind it, and the original task resolves with
+    /// [`TimerOutcome::Cleared`] once the shell has answered — a
+    /// `TimeRequest::Clear { id }` answered with `TimeResponse::Cleared { id }`
+    /// for [`Time`], an [`operation::ClearTimer`] answered with the timer's
+    /// [`TimerId`] for [`clock::Time`].
+    ///
+    /// A shell that goes on to answer the original timer request as well does
+    /// no harm: by then the core has stopped listening for it, and the answer
+    /// is ignored.
+    ///
+    /// For a repeating timer from [`clock::Time::notify_every`], the core
+    /// stops listening for ticks and then sends the [`operation::ClearTimer`]
+    /// request. The stream yields [`TimerOutcome::Cleared`] once the shell has
+    /// answered, and then ends.
     pub fn clear(self) {
-        let _ = self.abort.send(self.timer_id);
+        let _ = self.abort.send(());
     }
 }
 
@@ -283,6 +295,11 @@ fn get_timer_id() -> TimerId {
     TimerId(COUNTER.fetch_add(1, Ordering::Relaxed))
 }
 
+#[allow(deprecated)]
+#[deprecated(
+    since = "0.19.0",
+    note = "use crux_time::operation::{Now, NotifyAt, NotifyAfter, ClearTimer} and crux_time::clock::Time; removed in the next breaking release"
+)]
 pub struct TimerFuture<F>
 where
     F: Future<Output = TimeResponse> + Unpin,
@@ -292,6 +309,7 @@ where
     future: F,
 }
 
+#[allow(deprecated)]
 impl<F> Future for TimerFuture<F>
 where
     F: Future<Output = TimeResponse> + Unpin,
@@ -332,6 +350,7 @@ static CLEARED_TIMER_IDS: LazyLock<Mutex<HashSet<TimerId>>> =
     LazyLock::new(|| Mutex::new(HashSet::new()));
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod test {
     use super::*;
 

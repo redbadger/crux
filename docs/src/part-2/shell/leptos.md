@@ -114,7 +114,17 @@ Each `move ||` closure tracks only the fields it reads. When `local_weather` cha
 {{#include ../../../../examples/weather/web-leptos/src/core/mod.rs:process_effect}}
 ```
 
-Five capability branches plus `Render`, which writes the current view model into the signal. The shell and the core share the same Rust types, so the match compiles into a direct call — no serialisation layer between them.
+Eleven arms, one per operation. The shell and the core share the same Rust types, so the match compiles into a direct call — no serialisation layer between them, and no need for the generated `EffectHandler` the Swift, Kotlin and TypeScript shells use: a flat `match` over typed variants is already as precise as a handler interface. Each arm's `request` knows its own output type, so `core.resolve(&mut request, output)` only compiles with the right one.
+
+One arm resolves nothing: `Render` is a notification, and writes the current view model into the signal. `TimeClear` drops the pending `Timeout` and answers with the `TimerId`, like every other timer operation.
+
+```admonish note title="A cleared timer can still fire"
+Dropping a `gloo_timers::Timeout` cancels its closure, so a cleared timer never
+answers here. A shell that let one fire anyway would do no harm: the core
+stopped waiting for the `TimeNotifyAfter` request when the timer was cleared,
+and ignores a late answer. The registry of live `Timeout` handles keyed by
+`TimerId` is there to release the timer, not to protect the core.
+```
 
 Each capability lives in its own file. Here's HTTP:
 
@@ -130,7 +140,7 @@ Each capability lives in its own file. Here's HTTP:
 
 `core.resolve(...)` returns a **fresh batch of effects**, so `resolve_effect` loops back through `process_effect`. A Crux command with `.await` points produces its next effect only after the previous one resolves, so the shell has to keep going until the command's task actually finishes.
 
-The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape: take the request, do the work, resolve, recurse.
+The other capabilities — `kv`, `location`, `secret`, `time` — follow the same shape: take the request, do the work, resolve, recurse. Each returns the one output its operation declares — `kv::get` a `ValueResult`, `location::get_location` an `Option<Location>`, `secret::fetch` a `SecretFetchResponse` — so there's no wide response enum to construct and no wrong variant to construct it with.
 
 ## Shared components
 

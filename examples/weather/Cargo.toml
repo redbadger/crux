@@ -20,7 +20,7 @@ unsafe_code = "forbid"
 
 [workspace.dependencies]
 anyhow = "1.0.104"
-boltffi = "=0.29.3"
+boltffi = "=0.30.1"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
 crux_kv = { path = "../../crux_kv" }

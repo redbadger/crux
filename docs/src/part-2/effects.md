@@ -21,7 +21,7 @@ commands and the body passes information about the outside world back to it
 with Events.
 
 In this chapter we will explore how commands are created and used; we'll come back
-to capabilities, which provide a convenient way to create common commands, in chapter 7.
+to capabilities, which provide a convenient way to create common commands, in [Building Capabilities](./capabilities.md).
 
 ## Note on intent and execution
 
@@ -62,14 +62,16 @@ Here is the Weather app's `Effect` type:
 {{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-The six variants are every side effect the app can produce: rendering the UI, storing key-value data, making HTTP requests, checking location, storing secrets, and setting timers. To add a new kind of effect, you extend this enum.
+Eleven variants, one per operation the app can ask for: rendering the UI, an HTTP request, reading and writing the key-value store, starting and clearing a timer, two location questions, and three secret operations. To add a new kind of effect, you extend this enum.
+
+Note that the enum names *operations*, not capabilities. `crux_kv` offers five operations and this app uses two, so the shell is only ever asked to serve `KvGet` and `KvSet`. Each variant carries an operation type that declares its own output and how many times the shell resolves it — which is what lets the shell code be generated, and checked, per variant.
 
 ## What is a Command
 
 The Command is a recipe for a side-effects workflow which may perform several
 effects and also send events back to the app.
 
-![Core, updated and command](../command_overview.png)
+![The update function returns a Command. The Command sends follow-up events back to update. It sends effects to the shell, or to optional Rust handlers in the core.](../command_overview.svg)
 
 Crux expects a Command to be returned by the `update` function. A basic Command will result in an effect request to the Shell, and when the request is _resolved_ by the Shell, the Command will pass the output to the app in an Event. The interaction can be more complicated than this, however. You can imagine a command running a set of Effects concurrently (say a few http requests and a timer), then follow some of them with additional effects based on their outputs, and finally send an event with the result of some of the outputs combined. So in principle, Command is a state machine which emits effects (for the Shell) and Events (for the app) according to the internal logic of what needs to be accomplished.
 
@@ -79,7 +81,7 @@ Crux expects a Command to be returned by the `update` function. A basic Command 
 
 Let's look closer at Effects. Each effect carries a request for an Operation (e.g. a HTTP request), which can be inspected and resolved with an operation output (e.g. a HTTP response). After effect requests are resolved, the command may have further effect requests or events, depending on the recipe it's executing.
 
-Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output. These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
+Types acting as an Operation must implement the [`crux_core::capability::Operation`](https://docs.rs/crux_core/latest/crux_core/capability/trait.Operation.html) trait, which ties them to the type of output and, optionally, to an *operation kind* — how many times the request expects to be resolved: never (a notification), exactly once (a request), or any number of times (a stream). In practice you declare both with `#[derive(Operation)]`, which we'll come to in [Building Capabilities](./capabilities.md). These two types are the protocol between the core and the shell when requesting and resolving the effects. The other types involved in the exchange are various wrappers to enable the operations to be defined in separate crates. The operation is first wrapped in a `Request`, which can be `resolve`d, and then again with an `Effect`, like we saw above. This allows multiple Operation types from different crates to coexist, and also enables the Shells to "dispatch" to the right implementation to handle them.
 
 The `Effect` type is typically defined with the help of the `#[effect]` macro. Here is the Weather app's effect again:
 
@@ -87,14 +89,14 @@ The `Effect` type is typically defined with the help of the `#[effect]` macro. H
 {{#include ../../../examples/weather/shared/src/effects/mod.rs:effect}}
 ```
 
-The six operations it carries are actually defined by six different _Capabilities_, so let's talk about those.
+The eleven operations it carries come from six different _Capabilities_ — `Render`, `crux_http`, `crux_kv`, `crux_time`, and the app's own Location and Secret — so let's talk about those.
 
 ## Capabilities
 
 Capabilities are developer-friendly, ergonomic APIs to construct commands, from
 very basic ones all the way to complex stateful orchestrations. Capabilities are an abstraction layer that bundles related operations together with code to create them, and cover one kind of a side-effect (e.g. HTTP, or timers).
 
-We will look at writing capabilities in chapter 7, but for now, it's useful to know that their API often doesn't return `Commands` straight away, but instead returns command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
+We will look at writing capabilities in [Building Capabilities](./capabilities.md), but for now, it's useful to know that their API often doesn't return `Commands` straight away, but instead returns command builders, which can be converted into a Command, or converted into a future and used in an `async` context.
 
 To help that make more sense, let's look at how Commands are typically used.
 
@@ -138,7 +140,7 @@ We've seen an example of this already, but here it is again:
 The two capability calls each produce a command, and we want to run them concurrently. `Command::all` combines them into a single `Command`, which `start()` returns as part of its `Started` bundle.
 
 ```admonish note
-Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in chapter 7, when we look at building Capabilities.
+Commands (or more precisely command builders) can be created without capabilities. That's what capabilities do internally. You shouldn't really need this in your app code, so we will cover that side of Commands in [Building Capabilities](./capabilities.md).
 ```
 
 You might also want to run effects in a sequence, passing output of one as the input of another. This is another thing the command builders can facilitate. Let's look at that.
@@ -150,6 +152,8 @@ Command builders come in three flavours:
 - [RequestBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.RequestBuilder.html) - the most common, builds a request expecting a single response from the shell (think HTTP client)
 - [StreamBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.StreamBuilder.html) - builds a request expecting a (possibly infinite) sequence of responses from the shell (think WebSockets)
 - [NotificationBuilder](https://docs.rs/crux_core/latest/crux_core/command/struct.NotificationBuilder.html) - builds a shell notification, which does not expect a response. The best example is notifying the shell that a new view model is available
+
+Those three flavours are exactly the three kinds an operation can declare. Where it declares one — as `#[derive(Operation)]` always does, and as `Render`, `crux_http`, `crux_kv` and `crux_time` all do — which builder you get is decided by the operation rather than by the call site: `Command::request_from_shell` only accepts an operation declared `request`, and so on for the other two. Passing the wrong one is a compile error, reported by `cargo build` and `cargo test` but not by `cargo check`. An operation that declares no kind is accepted by all three.
 
 All builders share a common API. Request and stream builder can be converted into commands with a `.then_send`.
 
@@ -185,12 +189,14 @@ You can create a raw command like this:
 
 ```rust,ignore
 Command::new(|ctx| async move {
-    let output = ctx.request_from_shell(AnOperation::One).await;
+    let output = ctx.request_from_shell(One).await;
     ctx.send_event(Event::Completed(output));
-    let output = ctx.request_from_shell(AnOperation::Two).await;
+    let output = ctx.request_from_shell(Two).await;
     ctx.send_event(Event::Completed(output));
 });
 ```
+
+(`One` and `Two` here are two operation types, each with its own output — see [Building Capabilities](./capabilities.md). The type of `output` differs between the two `.await`s, and the compiler knows which is which.)
 
 `Command::new` takes a closure, which receives the CommandContext and returns a future, which will become the Command's main task (it is not expected to return anything, its `Output` is `()`. The provided context can be used to start shell requests, streams, and send events back to the app.
 
@@ -212,8 +218,8 @@ That said, a lot of universal async code (like async channels for example), work
 
 Commands can be cancelled using an `AbortHandle`. Call `cmd.abort_handle()` to get
 a handle, store it in your model, and call `handle.abort()` later to cancel all
-tasks in the command. This is useful for things like cancelling an in-flight search
-when the user types a new query.
+tasks and composed subcommands owned by the command. This is useful for cancelling
+an in-flight search when the user types a new query.
 
 ```rust,ignore
 // In one event handler, start a command and store its abort handle
@@ -226,6 +232,21 @@ if let Some(handle) = model.search_handle.take() {
     handle.abort();
 }
 ```
+
+Each call to `App::update` starts a command with its own lifetime. Use command
+composition to express which work runs together and which work runs in sequence.
+For example, `first.then(second)` waits for `first` and its owned tasks to finish
+before starting `second`. Events are queued for the app to handle; sequencing
+does not wait for their processing.
+
+Mapping events or effects preserves the lifetime of the command being mapped.
+Aborting the mapped command cancels its owned work; an abort handle obtained
+before mapping still controls the original command. Aborting a composed child
+lets its parent continue after cleanup, while aborting the enclosing command
+also cancels its pending `.then` continuation.
+
+Cancellation is cooperative. It does not retract events already queued in Core
+or stop work already handed to an external shell.
 
 There is more to the `async` effect API than we can or should cover here. Most of what you'd expect in async rust is supported – join handles, aborting tasks (and even Commands), spawning tasks and communicating between them, etc. Again, we recommend the [Command API docs](https://docs.rs/crux_core/latest/crux_core/command/index.html) for the full coverage.
 

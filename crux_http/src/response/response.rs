@@ -1,5 +1,5 @@
 use super::decode::decode_body;
-use crate::{HttpError, Result};
+use crate::{HttpError, Result, protocol::HttpResponse};
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Version};
 use serde::de::DeserializeOwned;
 use std::{fmt, ops::Index};
@@ -384,6 +384,43 @@ where
 
 impl<Body> Eq for Response<Body> where Body: Eq {}
 
+impl TryFrom<HttpResponse> for Response<Vec<u8>> {
+    type Error = HttpError;
+
+    /// Convert a shell's protocol-level response into the [`Response`] an app sees.
+    ///
+    /// This is the conversion [`Http`](crate::command::Http) requests perform internally,
+    /// exposed for an app-defined [`Operation`](crux_core::capability::Operation) that
+    /// answers with [`HttpResult`](crate::protocol::HttpResult) — an upload handled by the
+    /// shell, say, whose body the core never held. Going through here rather than reading
+    /// the [`HttpResponse`] directly is what gives such an effect the same semantics as
+    /// [`Effect::Http`](crate::protocol::HttpRequest): a 4xx or 5xx arrives as
+    /// [`HttpError::Http`] carrying the server's own message, so the app handles a
+    /// rejection in one place however the request was made.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HttpError::InvalidStatusCode`] if the status is outside 100–999, and
+    /// [`HttpError::Http`] for a 4xx or 5xx — see the [type docs](Response).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use crux_http::{HttpError, Response, protocol::HttpResponse};
+    ///
+    /// let ok = HttpResponse::ok().body("hi").build();
+    /// let mut response = Response::<Vec<u8>>::try_from(ok).expect("a 200 is a Response");
+    /// assert_eq!(response.body_bytes().unwrap(), b"hi");
+    ///
+    /// let rejected = HttpResponse::status(409).body(r#"{"error":"already booked"}"#).build();
+    /// let error = Response::<Vec<u8>>::try_from(rejected).expect_err("a 409 is an error");
+    /// assert_eq!(error.code(), Some(409));
+    /// ```
+    fn try_from(response: HttpResponse) -> Result<Self> {
+        super::RawResponse::try_from(response).and_then(Self::new)
+    }
+}
+
 impl<Body> TryFrom<Response<Body>> for http::Response<Body> {
     type Error = ();
 
@@ -541,6 +578,33 @@ mod tests {
         let json = serde_json::to_string(&res).expect("should serialize");
         let back: Response<Vec<u8>> = serde_json::from_str(&json).expect("should deserialize");
         assert_eq!(back.status().as_u16(), 299);
+    }
+
+    #[test]
+    fn try_from_http_response_takes_the_same_path_as_a_real_request() {
+        // The point of exposing the conversion: an app-defined effect answering with
+        // `HttpResult` gets exactly what `Effect::Http` would have delivered, rather than
+        // a second interpretation of a status code.
+        let rejected = HttpResponse::status(422).body(b"nope".to_vec()).build();
+        let raw = RawResponse::try_from(rejected.clone()).expect("422 is in range");
+        let expected = Response::<Vec<u8>>::new(raw).expect_err("4xx is an error");
+        let actual = Response::<Vec<u8>>::try_from(rejected).expect_err("4xx is an error");
+
+        assert_eq!(format!("{actual:?}"), format!("{expected:?}"));
+        assert_eq!(actual.code(), Some(422));
+        assert_eq!(actual.body(), Some(b"nope".as_slice()));
+    }
+
+    #[test]
+    fn try_from_http_response_rejects_an_out_of_range_status() {
+        // Not reachable from a conforming shell, but the conversion is now public, so it
+        // has to answer rather than panic.
+        let response = HttpResponse::status(99).build();
+        let error = Response::<Vec<u8>>::try_from(response).expect_err("99 is not a status");
+        assert!(
+            matches!(error, HttpError::InvalidStatusCode(99)),
+            "got: {error:?}"
+        );
     }
 
     #[test]

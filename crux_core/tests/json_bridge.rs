@@ -21,7 +21,7 @@ mod app {
         Settle,
     }
 
-    #[effect(typegen)]
+    #[effect(facet_typegen)]
     pub enum Effect {
         Http(HttpRequest),
         Render(RenderOperation),
@@ -151,9 +151,9 @@ mod tests {
         );
     }
 
-    /// A fire-and-forget request has no continuation to store, so its id is
-    /// simply not outstanding — resolving it is the same "not found" as
-    /// resolving an id that was never issued.
+    /// Every fire-and-forget request is issued the reserved id `0`, and
+    /// nothing is stored for one — so the bridge can say what a shell
+    /// resolving it actually did, rather than reporting a lookup miss.
     #[test]
     fn resolve_fire_and_forget() {
         let bridge = Bridge::new(Core::default());
@@ -174,6 +174,8 @@ mod tests {
 
         let value = b"\"Hi\"";
 
+        assert_eq!(render.id, EffectId::NOTIFICATION);
+
         // Render does not expect a value!
         let result = bridge.resolve(render.id, value, &mut effects_bytes);
 
@@ -183,7 +185,75 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "could not process response: Request with id 0 not found."
+            "could not process response: Attempted to resolve a request that is not expected to be resolved."
+        );
+    }
+
+    /// An id says which effect it belongs to, so a resolve for the wrong one
+    /// is rejected before the bytes are even looked at.
+    #[test]
+    fn resolve_with_the_wrong_effect_variant() {
+        let bridge = Bridge::new(Core::default());
+
+        let http = request_http(&bridge);
+
+        // The same request, relabelled as the `Render` variant.
+        let mangled = EffectId::from(wire_value(http.id) | (1 << 24));
+
+        let Err(error) = resolve_http(&bridge, mangled) else {
+            panic!("expected resolving under the wrong effect to fail");
+        };
+
+        assert_message(
+            &error.to_string(),
+            &format!(
+                "expects `Http` (variant 0), but response id {:#010x} carries `Render` (variant 1).",
+                wire_value(mangled)
+            ),
+        );
+    }
+
+    /// So is a resolve claiming a kind the request was not issued with.
+    #[test]
+    fn resolve_with_the_wrong_kind_bit() {
+        let bridge = Bridge::new(Core::default());
+
+        let http = request_http(&bridge);
+
+        // The same request, relabelled as a stream.
+        let mangled = EffectId::from(wire_value(http.id) | (1 << 23));
+
+        let Err(error) = resolve_http(&bridge, mangled) else {
+            panic!("expected resolving with the wrong kind to fail");
+        };
+
+        assert_message(
+            &error.to_string(),
+            &format!(
+                "expects the Request kind, but response id {:#010x} carries the Stream kind.",
+                wire_value(mangled)
+            ),
+        );
+    }
+
+    /// An effect index the enum does not have cannot be one the bridge issued.
+    #[test]
+    fn resolve_with_an_effect_variant_that_does_not_exist() {
+        let bridge = Bridge::new(Core::default());
+
+        let http = request_http(&bridge);
+        let mangled = EffectId::from(wire_value(http.id) | (9 << 24));
+
+        let Err(error) = resolve_http(&bridge, mangled) else {
+            panic!("expected resolving an unknown effect variant to fail");
+        };
+
+        assert_eq!(
+            error.to_string(),
+            format!(
+                "could not process response: `json_bridge::app::Effect` has only 2 variants, but response id {:#010x} carries variant 9.",
+                wire_value(mangled)
+            )
         );
     }
 
@@ -263,9 +333,36 @@ mod tests {
             error.to_string(),
             format!(
                 "could not process response: Request with id {} not found.",
-                first.id.0
+                wire_value(first.id)
             )
         );
+    }
+
+    /// A wrong-effect or wrong-kind error names the outstanding request by its
+    /// sequence, which this test has no way to read off the id, so check the
+    /// message around it.
+    fn assert_message(message: &str, rest: &str) {
+        let prefix = "could not process response: Request ";
+        assert!(
+            message.starts_with(prefix) && message.ends_with(rest),
+            "unexpected message: {message}"
+        );
+        let sequence = &message[prefix.len()..message.len() - rest.len()];
+        assert!(
+            sequence.trim_end().parse::<u32>().is_ok(),
+            "unexpected message: {message}"
+        );
+    }
+
+    /// The number an id crosses the bridge as, which is all a shell ever sees
+    /// of it. Read off the serialized form, since the id keeps its layout to
+    /// itself.
+    fn wire_value(id: EffectId) -> u32 {
+        serde_json::to_value(id)
+            .ok()
+            .and_then(|value| value.as_u64())
+            .and_then(|number| u32::try_from(number).ok())
+            .expect("an id should serialize as a u32")
     }
 
     fn request_http(bridge: &Bridge) -> Request<EffectFfi> {
@@ -289,5 +386,162 @@ mod tests {
 
         let mut effects_bytes = vec![];
         bridge.resolve(id, &response, &mut effects_bytes)
+    }
+}
+
+mod stream_app {
+    use crux_core::{Command, capability::Operation, command::AbortHandle};
+    use crux_macros::effect;
+    use facet::Facet;
+    use serde::{Deserialize, Serialize};
+
+    #[allow(clippy::unsafe_derive_deserialize)]
+    #[derive(Facet, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct Ticks;
+
+    impl Operation for Ticks {
+        type Output = u32;
+    }
+
+    #[effect(facet_typegen)]
+    pub enum Effect {
+        Ticks(Ticks),
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum Event {
+        Start,
+        Stop,
+        Tick,
+    }
+
+    #[derive(Default)]
+    pub struct Model {
+        ticks: Option<AbortHandle>,
+    }
+
+    #[derive(Default)]
+    pub struct App;
+
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = Model;
+        type ViewModel = ();
+        type Effect = Effect;
+
+        fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
+            match event {
+                Event::Start => {
+                    let command = Command::stream_from_shell(Ticks).then_send(|_| Event::Tick);
+                    model.ticks = Some(command.abort_handle());
+                    command
+                }
+                Event::Stop => {
+                    if let Some(ticks) = model.ticks.take() {
+                        ticks.abort();
+                    }
+                    Command::done()
+                }
+                Event::Tick => Command::done(),
+            }
+        }
+
+        fn view(&self, _model: &Model) {}
+    }
+}
+
+mod stream_tests {
+    use crux_core::{
+        Core,
+        bridge::{Bridge, BridgeError, EffectId, JsonFfiFormat, Request},
+    };
+
+    use crate::stream_app::{App, EffectFfi};
+
+    type StreamBridge = Bridge<App, JsonFfiFormat>;
+
+    fn start(bridge: &StreamBridge) -> EffectId {
+        let mut requests_bytes = vec![];
+        bridge
+            .update(b"\"Start\"", &mut requests_bytes)
+            .expect("event should process");
+
+        let mut requests: Vec<Request<EffectFfi>> =
+            serde_json::from_slice(&requests_bytes).expect("to deserialise");
+        assert_eq!(requests.len(), 1);
+
+        requests.remove(0).id
+    }
+
+    fn stop(bridge: &StreamBridge) {
+        let mut requests_bytes = vec![];
+        bridge
+            .update(b"\"Stop\"", &mut requests_bytes)
+            .expect("event should process");
+    }
+
+    fn tick(
+        bridge: &StreamBridge,
+        id: EffectId,
+        item: &[u8],
+    ) -> Result<Vec<Request<EffectFfi>>, BridgeError<JsonFfiFormat>> {
+        let mut requests_bytes = vec![];
+        bridge.resolve(id, item, &mut requests_bytes)?;
+
+        Ok(serde_json::from_slice(&requests_bytes).expect("to deserialise"))
+    }
+
+    #[test]
+    fn a_live_stream_delivers_items() {
+        let bridge = StreamBridge::new(Core::default());
+        let id = start(&bridge);
+
+        for item in [b"1", b"2"] {
+            let requests = tick(&bridge, id, item).expect("a live stream should take the item");
+            assert!(requests.is_empty());
+        }
+    }
+
+    #[test]
+    fn a_late_item_for_a_stream_the_core_stopped_is_ignored() {
+        let bridge = StreamBridge::new(Core::default());
+        let id = start(&bridge);
+        stop(&bridge);
+
+        for _ in 0..2 {
+            let requests = tick(&bridge, id, b"1").expect("a late stream item should be ignored");
+            assert!(requests.is_empty());
+        }
+    }
+
+    #[test]
+    fn a_malformed_item_for_a_live_stream_is_an_error() {
+        let bridge = StreamBridge::new(Core::default());
+        let id = start(&bridge);
+
+        let Err(error) = tick(&bridge, id, b"\"not a number\"") else {
+            panic!("expected a malformed item to fail");
+        };
+
+        assert!(
+            matches!(error, BridgeError::DeserializeOutput(_)),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn a_malformed_item_for_a_stream_the_core_stopped_is_an_error() {
+        let bridge = StreamBridge::new(Core::default());
+        let id = start(&bridge);
+        stop(&bridge);
+
+        let Err(error) = tick(&bridge, id, b"\"not a number\"") else {
+            panic!("expected a malformed item to fail");
+        };
+
+        assert!(
+            matches!(error, BridgeError::DeserializeOutput(_)),
+            "{error}"
+        );
     }
 }

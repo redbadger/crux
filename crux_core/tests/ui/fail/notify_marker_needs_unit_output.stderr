@@ -1,0 +1,16 @@
+error[E0271]: type mismatch resolving `<ANotification as Operation>::Output == ()`
+  --> tests/ui/fail/notify_marker_needs_unit_output.rs:13:28
+   |
+13 | impl operation::Notify for ANotification {}
+   |                            ^^^^^^^^^^^^^ type mismatch resolving `<ANotification as Operation>::Output == ()`
+   |
+note: expected this to be `()`
+  --> tests/ui/fail/notify_marker_needs_unit_output.rs:9:19
+   |
+ 9 |     type Output = usize;
+   |                   ^^^^^
+note: required by a bound in `crux_core::operation::Notify`
+  --> src/operation.rs
+   |
+   | pub trait Notify: Operation<Output = ()> {}
+   |                             ^^^^^^^^^^^ required by this bound in `Notify`

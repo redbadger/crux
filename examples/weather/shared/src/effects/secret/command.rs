@@ -1,9 +1,8 @@
 //! Command builders for the [secret capability](super).
 //!
-//! Each builder issues one [`SecretRequest`] and narrows the shell's wide
-//! [`SecretResponse`] down to the [`SecretFetchResponse`],
-//! [`SecretStoreResponse`], or [`SecretDeleteResponse`] that's relevant
-//! to that operation. They're generic over `Effect` and `Event` so any
+//! Each builder issues one operation and hands back that operation's output
+//! unchanged — [`SecretFetchResponse`], [`SecretStoreResponse`] or
+//! [`SecretDeleteResponse`]. They're generic over `Effect` and `Event` so any
 //! Crux app can adopt them.
 
 use std::future::Future;
@@ -12,7 +11,8 @@ use crux_core::Request;
 use crux_core::command::RequestBuilder;
 
 use super::{
-    SecretDeleteResponse, SecretFetchResponse, SecretRequest, SecretResponse, SecretStoreResponse,
+    DeleteSecret, FetchSecret, SecretDeleteResponse, SecretFetchResponse, SecretStoreResponse,
+    StoreSecret,
 };
 
 /// Fetches the secret stored under `key`, if any.
@@ -21,16 +21,10 @@ pub fn fetch<Ef, Ev>(
     key: impl Into<String>,
 ) -> RequestBuilder<Ef, Ev, impl Future<Output = SecretFetchResponse>>
 where
-    Ef: From<Request<SecretRequest>> + Send + 'static,
+    Ef: From<Request<FetchSecret>> + Send + 'static,
     Ev: Send + 'static,
 {
-    let key = key.into();
-    crux_core::Command::request_from_shell(SecretRequest::Fetch(key)).map(|response| match response
-    {
-        SecretResponse::Missing(key) => SecretFetchResponse::Missing(key),
-        SecretResponse::Fetched(_, value) => SecretFetchResponse::Fetched(value),
-        _ => unreachable!("fetch only produces Missing or Fetched"),
-    })
+    crux_core::Command::request_from_shell(FetchSecret(key.into()))
 }
 
 /// Stores `value` under `key`, replacing any existing secret.
@@ -40,18 +34,10 @@ pub fn store<Ef, Ev>(
     value: impl Into<String>,
 ) -> RequestBuilder<Ef, Ev, impl Future<Output = SecretStoreResponse>>
 where
-    Ef: From<Request<SecretRequest>> + Send + 'static,
+    Ef: From<Request<StoreSecret>> + Send + 'static,
     Ev: Send + 'static,
 {
-    let key = key.into();
-    let value = value.into();
-    crux_core::Command::request_from_shell(SecretRequest::Store(key, value)).map(|response| {
-        match response {
-            SecretResponse::Stored(key) => SecretStoreResponse::Stored(key),
-            SecretResponse::StoreError(msg) => SecretStoreResponse::StoreError(msg),
-            _ => unreachable!("store only produces Stored or StoreError"),
-        }
-    })
+    crux_core::Command::request_from_shell(StoreSecret(key.into(), value.into()))
 }
 
 /// Deletes the secret stored under `key`.
@@ -60,15 +46,8 @@ pub fn delete<Ef, Ev>(
     key: impl Into<String>,
 ) -> RequestBuilder<Ef, Ev, impl Future<Output = SecretDeleteResponse>>
 where
-    Ef: From<Request<SecretRequest>> + Send + 'static,
+    Ef: From<Request<DeleteSecret>> + Send + 'static,
     Ev: Send + 'static,
 {
-    let key = key.into();
-    crux_core::Command::request_from_shell(SecretRequest::Delete(key)).map(
-        |response| match response {
-            SecretResponse::Deleted(key) => SecretDeleteResponse::Deleted(key),
-            SecretResponse::DeleteError(msg) => SecretDeleteResponse::DeleteError(msg),
-            _ => unreachable!("delete only produces Deleted or DeleteError"),
-        },
-    )
+    crux_core::Command::request_from_shell(DeleteSecret(key.into()))
 }

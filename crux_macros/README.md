@@ -1,6 +1,6 @@
 # Crux Macros
 
-This crate provides three derive macros (`Effect`, `Export` and `Capability`)
+This crate provides two derive macros (`Effect` and `Capability`)
 that can be used in conjunction with
 [`crux_core`](https://crates.io/crates/crux_core) and associated (or custom)
 Capabilities.
@@ -95,53 +95,7 @@ pub struct CatFactCapabilities {
 }
 ```
 
-## 2. Export
-
-The `Export` derive macro generates code to register the types used by your
-capabilities, during foreign type generation in your `shared_types` library.
-
-To use it, declare a feature `typegen` in your `shared` crate, and then annotate
-your `Capabilities` struct with the `Export` derive macro:
-
-```rust
-#[cfg_attr(feature = "typegen", derive(crux_core::macros::Export))]
-#[derive(Effect)]
-pub struct Capabilities {
-    pub render: Render<Event>,
-    pub http: Http<MyEvent>,
-    //...
-}
-```
-
-Then, in the `build.rs` file of your `shared_types` crate, when you register
-your `App`, the types used by your capabilities will also be registered:
-
-```rust
-use crux_core::typegen::TypeGen;
-use shared::{App, Event};
-use std::path::PathBuf;
-
-fn main() {
-    println!("cargo:rerun-if-changed=../shared");
-
-    let mut gen = TypeGen::new();
-
-    gen.register_app::<App>().expect("register");
-
-    let output_root = PathBuf::from("./generated");
-
-    gen.swift("SharedTypes", output_root.join("swift"))
-        .expect("swift type gen failed");
-
-    gen.java("com.example.counter.shared_types", output_root.join("java"))
-        .expect("java type gen failed");
-
-    gen.typescript("shared_types", output_root.join("typescript"))
-        .expect("typescript type gen failed");
-}
-```
-
-## 3. Capability
+## 2. Capability
 
 The `Capability` derive macro can be used to implement the `Capability` trait
 when writing your own capabilities. It generates code similar to the following:

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 532" width="640" height="532" role="img" aria-labelledby="title desc">
+<title id="title">Crux: build the Android shell</title>
+<desc id="desc">The shared Rust crate holds app.rs and ffi.rs. In app.rs, the Event, Effect and ViewModel types derive Facet, and the Effect type has the facet_typegen attribute. In ffi.rs, the CoreFfi type has the boltffi::export attribute. The command cargo run --bin codegen --language kotlin reads app.rs, and typegen makes the Kotlin types. The command boltffi pack android reads ffi.rs, and bindgen makes the Kotlin bindings and JNI libraries. The Android app uses the types and the bindings.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<rect x="15" y="15" width="610" height="165" rx="14" fill="#22c55e" fill-opacity="0.08" stroke="#22c55e" stroke-width="1.5"/>
+<text x="35" y="44" text-anchor="start" class="h">shared/ (Rust crate)</text>
+<rect x="35" y="60" width="270" height="102" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="1.5"/>
+<text x="170" y="91.3" text-anchor="middle" class="b m">app.rs</text>
+<text x="170" y="109.3" text-anchor="middle" class="s m">Event · Effect · ViewModel</text>
+<text x="170" y="126.3" text-anchor="middle" class="s m">#[derive(Facet)]</text>
+<text x="170" y="143.3" text-anchor="middle" class="s m">#[effect(facet_typegen)]</text>
+<rect x="335" y="60" width="270" height="102" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="1.5"/>
+<text x="470" y="99.8" text-anchor="middle" class="b m">ffi.rs</text>
+<text x="470" y="117.8" text-anchor="middle" class="s m">CoreFfi</text>
+<text x="470" y="134.8" text-anchor="middle" class="s m">#[boltffi::export]</text>
+<path d="M170,164 V220" class="ln" marker-end="url(#a)"/>
+<rect x="55" y="222" width="230" height="52" rx="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="170" y="243.7" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">cargo run --bin codegen</text>
+<text x="170" y="261.7" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">--language kotlin</text>
+<path d="M470,164 V220" class="ln" marker-end="url(#a)"/>
+<rect x="355" y="222" width="230" height="52" rx="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="470" y="252.7" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">boltffi pack android</text>
+<path d="M170,276 V342" class="ln" marker-end="url(#a)"/>
+<rect x="134.9" y="297.8" width="70.2" height="22.5" rx="11.2" class="pill"/>
+<text x="170" y="313.5" text-anchor="middle" class="l">typegen</text>
+<path d="M470,276 V342" class="ln" marker-end="url(#a)"/>
+<rect x="434.9" y="297.8" width="70.2" height="22.5" rx="11.2" class="pill"/>
+<text x="470" y="313.5" text-anchor="middle" class="l">bindgen</text>
+<rect x="35" y="344" width="270" height="60" rx="10" fill="#ddd6fe" stroke="#8b5cf6" stroke-width="1.5"/>
+<text x="170" y="379.8" text-anchor="middle" class="b">Kotlin types</text>
+<rect x="335" y="344" width="270" height="60" rx="10" fill="#ddd6fe" stroke="#8b5cf6" stroke-width="1.5"/>
+<text x="470" y="371.3" text-anchor="middle" class="b">Kotlin bindings</text>
+<text x="470" y="389.3" text-anchor="middle" class="s">and JNI libraries</text>
+<path d="M170,406 V448" class="ln" marker-end="url(#a)"/>
+<path d="M470,406 V448" class="ln" marker-end="url(#a)"/>
+<rect x="35" y="450" width="570" height="64" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="320" y="479.3" text-anchor="middle" class="b">Android app</text>
+<text x="320" y="497.3" text-anchor="middle" class="s">Kotlin · Jetpack Compose</text>
+</svg>

@@ -62,7 +62,7 @@
 //!}
 //!
 //!// Effects the Core will request from the Shell
-//!#[effect(typegen)]
+//!#[effect(facet_typegen)]
 //!pub enum Effect {
 //!    Render(RenderOperation),
 //!}
@@ -113,7 +113,7 @@
 //! # pub enum Event {
 //! #     Increment,
 //! # }
-//! # #[effect(typegen)]
+//! # #[effect(facet_typegen)]
 //! # pub enum Effect {
 //! #     Render(RenderOperation),
 //! # }
@@ -165,7 +165,7 @@
 //!     pub fn resolve(&self, id: u32, output: &[u8]) -> Vec<u8> {
 //!         let mut requests = vec![];
 //!         self.core
-//!             .resolve(EffectId(id), output, &mut requests)
+//!             .resolve(EffectId::from(id), output, &mut requests)
 //!             .expect("output should deserialize");
 //!
 //!         requests
@@ -214,9 +214,10 @@ pub mod capability;
 pub mod command;
 pub mod effects;
 pub mod middleware;
+pub mod operation;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
-#[cfg(any(feature = "typegen", feature = "facet_typegen"))]
+#[cfg(feature = "facet_typegen")]
 pub mod type_generation;
 
 #[doc(hidden)]
@@ -240,7 +241,10 @@ mod core;
 
 pub use capabilities::*;
 pub use command::Command;
-pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, ResolveError};
+pub use core::{
+    Core, Effect, EffectFFI, EffectVariant, OperationKind, Request, RequestHandle, Resolvable,
+    ResolveError,
+};
 #[cfg(feature = "uniffi_compat_bindgen")]
 #[deprecated(
     since = "0.19.0",
@@ -249,8 +253,6 @@ pub use core::{Core, Effect, EffectFFI, Request, RequestHandle, Resolvable, Reso
 pub mod bindgen;
 #[cfg(feature = "default")]
 pub use crux_macros as macros;
-#[cfg(feature = "typegen")]
-pub use type_generation::serde as typegen;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
 /// as the type argument to [`Core`] or [`Bridge`](crate::bridge::Bridge).
@@ -273,6 +275,9 @@ pub trait App {
     /// the managed side-effects to perform as a result of the `event`. Commands are constructed by
     /// capabilities, and combined to run sequentially or concurrently. If an event requires no
     /// side-effects, return [`Command::done`].
+    ///
+    /// Each call starts a command with its own lifetime. Use command composition
+    /// to express sequencing and cancellation within that command.
     ///
     /// Typically, `update` should call at least [`render`](crate::render::render).
     fn update(

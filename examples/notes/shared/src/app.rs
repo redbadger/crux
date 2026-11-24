@@ -8,15 +8,12 @@ use crux_core::{
     macros::effect,
     render::{self, RenderOperation},
 };
-use crux_kv::{KeyValueOperation, command::KeyValue, error::KeyValueError};
-use crux_time::{
-    TimeRequest,
-    command::{Time, TimerHandle, TimerOutcome},
-};
+use crux_kv::{error::KeyValueError, operation as kv, store::KeyValue};
+use crux_time::{TimerHandle, TimerOutcome, clock::Time, operation as time};
 use facet::Facet;
 use serde::{Deserialize, Serialize};
 
-use crate::capabilities::pub_sub::{PubSub, PubSubOperation};
+use crate::capabilities::pub_sub::{self, PubSub};
 use note::Note;
 
 use self::note::EditObserver;
@@ -69,12 +66,15 @@ pub struct Model {
     note: Note,
     cursor: TextCursor,
     timer: Option<TimerHandle>,
+    error: Option<String>,
 }
 
 #[derive(Facet, Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct ViewModel {
     pub text: String,
     pub cursor: TextCursor,
+    /// The last failed load or save, until something succeeds.
+    pub error: Option<String>,
 }
 
 impl From<&Model> for ViewModel {
@@ -82,16 +82,23 @@ impl From<&Model> for ViewModel {
         Self {
             text: model.note.text(),
             cursor: model.cursor.clone(),
+            error: model.error.clone(),
         }
     }
 }
 
+/// Every side-effect the note editor can ask the shell for, one operation
+/// type per variant. The app only lists the operations it actually uses — the
+/// rest of `crux_kv` and `crux_time` stays out of the shell's way.
 #[effect(facet_typegen)]
 pub enum Effect {
-    Time(TimeRequest),
     Render(RenderOperation),
-    PubSub(PubSubOperation),
-    KeyValue(KeyValueOperation),
+    Publish(pub_sub::Publish),
+    Subscribe(pub_sub::Subscribe),
+    KvGet(kv::GetValue),
+    KvSet(kv::SetValue),
+    TimeNotifyAfter(time::NotifyAfter),
+    TimeClear(time::ClearTimer),
 }
 
 const EDIT_TIMER: u64 = 1000;
@@ -209,12 +216,17 @@ impl App for NoteEditor {
                 KeyValue::set("note".to_string(), model.note.save()).then_send(Event::Written)
             }
             Event::EditTimerElapsed(TimerOutcome::Cleared) => Command::done(),
-            Event::Written(_) => {
-                // FIXME assuming successful write
-                Command::done()
+            Event::Written(result) => {
+                model.error = result
+                    .err()
+                    .map(|e| format!("Could not save the note: {e}"));
+
+                render::render()
             }
             Event::Open => KeyValue::get("note".to_string()).then_send(Event::Load),
             Event::Load(Ok(value)) => {
+                model.error = None;
+
                 let mut commands = Vec::new();
                 if value.is_none() {
                     model.note = Note::new();
@@ -231,9 +243,19 @@ impl App for NoteEditor {
                 commands.push(render::render());
                 Command::all(commands)
             }
-            Event::Load(Err(_)) => {
-                // FIXME handle error
-                Command::done()
+            Event::Load(Err(e)) => {
+                // Keep the tab usable: edit a fresh note and stay subscribed to
+                // peers. Don't save it — the stored note may be unreadable, and
+                // overwriting it would lose it. Edits still save after the edit
+                // timer, and the shell may refuse that too; the error stays
+                // visible either way.
+                model.note = Note::new();
+                model.error = Some(format!("Could not load the note: {e}"));
+
+                Command::all(vec![
+                    PubSub::subscribe().then_send(Event::ReceiveChanges),
+                    render::render(),
+                ])
             }
         }
     }
@@ -311,7 +333,7 @@ impl CursorObserver {
 
 #[cfg(test)]
 mod editing_tests {
-    use crux_core::{App as _, assert_effect};
+    use crux_core::assert_effect;
 
     use super::*;
 
@@ -329,6 +351,7 @@ mod editing_tests {
         let expected = ViewModel {
             text: "hello".to_string(),
             cursor: TextCursor::Position(2),
+            error: None,
         };
 
         assert_eq!(actual, expected);
@@ -554,16 +577,15 @@ mod editing_tests {
 
 #[cfg(test)]
 mod save_load_tests {
-    use crux_core::{App as _, assert_effect};
-    use crux_kv::{KeyValueOperation, KeyValueResponse, KeyValueResult, value::Value};
-    use crux_time::{TimeRequest, TimerId};
+    use crux_core::assert_effect;
+    use crux_kv::{operation::ValueResult, value::Value};
 
     use super::*;
 
     #[test]
     fn opens_a_document() {
         let app = NoteEditor;
-        let mut note = Note::with_text("LOADED");
+        let note = Note::with_text("LOADED");
 
         let mut model = Model {
             note: Note::with_text("hello"),
@@ -575,10 +597,10 @@ mod save_load_tests {
         let mut cmd = app.update(Event::Open, &mut model);
         let mut effects = cmd.effects();
 
-        let request = &mut effects.next().unwrap().expect_key_value();
+        let request = &mut effects.next().unwrap().expect_kv_get();
         assert_eq!(
             request.operation,
-            KeyValueOperation::Get {
+            kv::GetValue {
                 key: "note".to_string()
             }
         );
@@ -587,11 +609,7 @@ mod save_load_tests {
 
         // Read was successful
         request
-            .resolve(KeyValueResult::Ok {
-                response: KeyValueResponse::Get {
-                    value: note.save().into(),
-                },
-            })
+            .resolve(ValueResult::Ok(note.save().into()))
             .unwrap();
         drop(effects);
 
@@ -616,34 +634,30 @@ mod save_load_tests {
 
         // this will eventually take a document ID
         let mut cmd = app.update(Event::Open, &mut model);
-        let mut effects = cmd.effects().filter(Effect::is_key_value);
+        let mut effects = cmd.effects().filter(Effect::is_kv_get);
 
-        let request = &mut effects.next().unwrap().expect_key_value();
+        let request = &mut effects.next().unwrap().expect_kv_get();
         assert_eq!(
             request.operation,
-            KeyValueOperation::Get {
+            kv::GetValue {
                 key: "note".to_string()
             }
         );
 
         assert!(effects.next().is_none());
 
-        request
-            .resolve(KeyValueResult::Ok {
-                response: KeyValueResponse::Get { value: Value::None },
-            })
-            .unwrap();
+        request.resolve(ValueResult::Ok(Value::None)).unwrap();
         drop(effects);
 
         let load_event = cmd.events().next().unwrap();
         assert!(matches!(load_event, Event::Load(Ok(None))));
 
         let mut cmd = app.update(load_event, &mut model);
-        let request = cmd.effects().find_map(Effect::into_key_value).unwrap();
+        let request = cmd.effects().find_map(Effect::into_kv_set).unwrap();
 
         assert_eq!(
             request.operation,
-            KeyValueOperation::Set {
+            kv::SetValue {
                 key: "note".to_string(),
                 value: model.note.save(),
             }
@@ -664,14 +678,14 @@ mod save_load_tests {
         // An edit should trigger a timer
         let event = Event::Insert("something".to_string());
         let mut cmd1 = app.update(event, &mut model);
-        let mut requests = cmd1.effects().filter_map(Effect::into_time);
+        let mut requests = cmd1.effects().filter_map(Effect::into_time_notify_after);
 
         let request = requests.next().unwrap();
-        let (first_id, duration) = match &request.operation {
-            TimeRequest::NotifyAfter { id, duration } => (*id, duration),
-            _ => panic!("expected a NotifyAfter"),
-        };
-        assert_eq!(duration, &Duration::from_secs(1).into());
+        let time::NotifyAfter {
+            id: first_id,
+            duration,
+        } = request.operation;
+        assert_eq!(duration, Duration::from_secs(1).into());
 
         assert!(requests.next().is_none());
         drop(requests); // so we can use cmd1 later
@@ -679,22 +693,17 @@ mod save_load_tests {
         // Before the timer fires, insert another character, which should
         // cancel the timer and start a new one
         let mut cmd2 = app.update(Event::Replace(1, 2, "a".to_string()), &mut model);
-        let mut requests = cmd2.effects().filter_map(Effect::into_time);
+        let mut requests = cmd2.effects().filter_map(Effect::into_time_notify_after);
 
-        // but first, the original request (cmd1) should resolve with a clear
-        let cancel_request = cmd1.effects().find_map(Effect::into_time).unwrap();
-        let cancel_id = match &cancel_request.operation {
-            TimeRequest::Clear { id } => *id,
-            _ => panic!("expected a Clear"),
-        };
-        assert_eq!(cancel_id, first_id);
+        // but first, the original request (cmd1) asks the shell to clear the
+        // timer. Nothing resolves it here, so the original command stays
+        // pending — that is fine, the test is done with it.
+        let cancel_request = cmd1.effects().find_map(Effect::into_time_clear).unwrap();
+        assert_eq!(cancel_request.operation.id, first_id);
 
         // request to start the second timer
         let mut start_request = requests.next().unwrap();
-        let second_id = match &start_request.operation {
-            TimeRequest::NotifyAfter { id, duration: _ } => *id,
-            _ => panic!("expected a NotifyAfter"),
-        };
+        let second_id = start_request.operation.id;
 
         assert_ne!(first_id, second_id);
 
@@ -702,9 +711,7 @@ mod save_load_tests {
         drop(requests); // so we can use cmd2 later
 
         // Time passes
-        start_request
-            .resolve(crux_time::TimeResponse::DurationElapsed { id: second_id })
-            .unwrap();
+        start_request.resolve(second_id).unwrap();
 
         // send the elapsed event back into the app
         let event = cmd2.events().next().unwrap();
@@ -712,10 +719,10 @@ mod save_load_tests {
 
         // we should see an effect to save the note
         let mut effects = cmd3.effects();
-        let save = effects.next().unwrap().expect_key_value();
+        let save = effects.next().unwrap().expect_kv_set();
         assert_eq!(
             save.operation,
-            KeyValueOperation::Set {
+            kv::SetValue {
                 key: "note".to_string(),
                 value: model.note.save(),
             }
@@ -725,15 +732,15 @@ mod save_load_tests {
         let mut cmd4 = app.update(Event::Backspace, &mut model);
         let mut effects = cmd4.effects();
 
-        let _publish = effects.next().unwrap().expect_pub_sub();
-        let timer = effects.next().unwrap().expect_time();
-        assert_eq!(
-            timer.operation,
-            TimeRequest::NotifyAfter {
-                id: TimerId(3),
-                duration: crux_time::Duration::from_millis(1000)
-            }
-        );
+        let _publish = effects.next().unwrap().expect_publish();
+        let timer = effects.next().unwrap().expect_time_notify_after();
+        // Every test in this binary takes timer ids from one counter, so the
+        // test checks that the id is new, not which number it is.
+        let time::NotifyAfter { id, duration } = timer.operation;
+
+        assert_ne!(id, first_id);
+        assert_ne!(id, second_id);
+        assert_eq!(duration, crux_time::Duration::from_millis(1000));
     }
     // ANCHOR_END: starts_a_timer_after_an_edit
 }
@@ -742,16 +749,16 @@ mod save_load_tests {
 mod sync_tests {
     use std::collections::VecDeque;
 
-    use crux_core::{App as _, Request};
+    use crux_core::Request;
 
-    use crate::capabilities::pub_sub::{Message, PubSubOperation};
+    use crate::capabilities::pub_sub::{Message, Subscribe};
 
     use super::*;
 
     struct Peer {
         app: NoteEditor,
         model: Model,
-        subscription: Option<Request<PubSubOperation>>,
+        subscription: Option<Request<Subscribe>>,
         command: Option<Command<Effect, Event>>,
         edits: VecDeque<Vec<u8>>,
     }
@@ -777,16 +784,15 @@ mod sync_tests {
 
             let mut subscribe = false;
             for effect in cmd.effects() {
-                if let Effect::PubSub(request) = effect {
-                    match request.operation {
-                        PubSubOperation::Subscribe => {
-                            self.subscription = Some(request);
-                            subscribe = true;
-                        }
-                        PubSubOperation::Publish(bytes) => {
-                            self.edits.push_back(bytes.clone());
-                        }
+                match effect {
+                    Effect::Subscribe(request) => {
+                        self.subscription = Some(request);
+                        subscribe = true;
                     }
+                    Effect::Publish(request) => {
+                        self.edits.push_back(request.operation.0);
+                    }
+                    _ => {}
                 }
             }
             if subscribe {
@@ -1007,5 +1013,48 @@ mod sync_tests {
 
         assert_eq!(alice_view.text, "Hello dear world");
         assert_eq!(alice_view.text, bob_view.text);
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+
+    fn other(message: &str) -> KeyValueError {
+        KeyValueError::Other {
+            message: message.to_string(),
+        }
+    }
+
+    #[test]
+    fn a_failed_load_subscribes_renders_and_shows_the_error() {
+        let app = NoteEditor;
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::Load(Err(other("unreadable"))), &mut model);
+        let effects: Vec<Effect> = cmd.effects().collect();
+
+        assert!(effects.iter().any(|e| matches!(e, Effect::Subscribe(_))));
+        assert!(effects.iter().any(|e| matches!(e, Effect::Render(_))));
+        // nothing is saved: the stored note may be the unreadable one
+        assert!(!effects.iter().any(|e| matches!(e, Effect::KvSet(_))));
+
+        let error = app.view(&model).error.expect("an error");
+        assert!(error.contains("unreadable"), "{error}");
+    }
+
+    #[test]
+    fn a_failed_write_shows_the_error_and_a_later_one_clears_it() {
+        let app = NoteEditor;
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::Written(Err(other("refused"))), &mut model);
+        cmd.expect_one_effect().expect_render();
+        let error = app.view(&model).error.expect("an error");
+        assert!(error.contains("refused"), "{error}");
+
+        let mut cmd = app.update(Event::Written(Ok(None)), &mut model);
+        cmd.expect_one_effect().expect_render();
+        assert_eq!(app.view(&model).error, None);
     }
 }

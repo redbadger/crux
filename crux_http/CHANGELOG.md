@@ -6,7 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.21.0](https://github.com/redbadger/crux/compare/crux_http-v0.20.0...crux_http-v0.21.0) - 2026-09-06
+
+### Added
+
+- **The doc of `HttpRequest` says what the shell answers with.** `Ok` carries
+  every response that arrives, whatever its status. `Err` means that no
+  response arrived, and is `Url`, `Timeout` or `Io`. The generated
+  `EffectHandler` shows this doc on the method for the operation.
+
+- **`TryFrom<HttpResponse> for Response<Vec<u8>>`** — turn a shell's protocol-level
+  response into the `Response` an app sees, with the same semantics a `crux_http`
+  request gives it.
+
+  This is the conversion `Http` requests already performed internally, where a 4xx or
+  5xx becomes `HttpError::Http` carrying the server's own message. It was
+  `pub(crate)`, so an app-defined `Operation` answering with `HttpResult` — an upload
+  the shell performs, say, whose body the core never held — had no way to reach it and
+  had to re-interpret status codes itself. Now such an effect can hand its result
+  straight through and its callers handle a rejection exactly as they handle one from
+  `Effect::Http`.
+
+### 💥 Breaking Changes
+
+- **The `typegen` feature is removed**, together with the serde-based type
+  generation in `crux_core` 0.21. Enable this crate's `facet_typegen` feature
+  instead; the types it sends over the bridge already derive `Facet`. See
+  [Type generation](https://redbadger.github.io/crux/part-4/typegen.html).
+
+### ⚙️ Miscellaneous Tasks
+
+- **`HttpRequest` declares `OperationKind::Request`.** It now sets
+  `Operation::KIND` and implements `crux_core::operation::Request`, which says what has
+  always been true: an HTTP request is answered exactly once, with an `HttpResult`.
+  Sending one with `notify_shell` or `stream_from_shell` is a compile error from this
+  release. No API change, and nothing changes on the wire.
 
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_http-v0.19.0...crux_http-v0.20.0) - 2026-08-06
 

@@ -44,7 +44,7 @@ In Crux, business logic written in Rust is captured in the update function menti
 
 The execution of effects, including drawing the user interface, is done in a native Shell. Its job is to draw the appropriate UI on screen, translate user interactions into events to send to the Core, and when requested, perform effects and return their outcomes back to the Core.
 
-![The two sides of the Shell](../crux.png)
+![The two sides of the shell. On the driving side, the user sends events. On the driven side, the shell runs effects.](../crux.svg)
 
 The Shell thus has two sides: the _driving_ side – the interactions causing events which push the Core to action, and the _driven_ side, which services the Core's requests for side effects. The Core itself is also _driven_ — Without being prompted by the Shell, the Core does nothing, it can't – with no other I/O, there are no other triggers which could cause the Core code to run. To the Shell, the Core is a simple library, providing some computation. From the perspective of the Core, the Shell is a platform the Core runs on.
 

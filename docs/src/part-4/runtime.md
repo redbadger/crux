@@ -31,6 +31,14 @@ results, and continue their work when the result has arrived. The call to
 request returned from the current core "transaction" (one call to
 `process_event` or `resolve`).
 
+Which of the three constructors a given operation may be sent with is
+decided by the operation type itself: an operation declares a
+`OperationKind` — notify, request or stream — and the other two constructors
+stop compiling for it. That declaration is also what the runtime records
+on the `RequestHandle` it builds, and what type generation hands to shells.
+An operation that declares nothing keeps the older behaviour, where the
+kind is whatever the call site chose.
+
 ```admonish note
 In this chapter, we will focus on the runtime and the core interface and ignore
 the serialisation, bridge and FFI, and return to them in the following sections.
@@ -120,6 +128,8 @@ So, step by step, our strategy for commands to handle effects is:
 1. The future sees there is now a result available and continues the
    execution of the original task until a further await or until
    completion.
+
+![A sequence diagram with lanes for the executor, the task, the effects channel, the core and the shell. The numbers match the steps above. The task sends its effect on the channel and returns Pending, and the core returns the effect to the shell. When the shell calls resolve, the callback sends the output to the task. The waker puts the task on the ready queue, and the executor polls the task again.](./effect_life_cycle.svg)
 
 The cycle may repeat a few times, depending on the command
 implementation, but eventually the original task completes and is
@@ -220,29 +230,44 @@ they are wrapped in each other.
 The basic inner piece of the effect request is an _operation_. This
 is the intent which the command is submitting to the shell. Each
 operation has an associated _output_ value, with which the operation
-request can be resolved. There are multiple capabilities in each
-app, and in order for the shell to easily tell which capability's
-effect it needs to handle, we wrap the operation in an _effect_. The
-`Effect` type is a generated enum based on the app's set of
-capabilities, with one variant per capability. It allows us to
-multiplex (or type erase) the different typed operations into a
-single type, which can be `match`ed on to process the operations.
+request can be resolved.
 
-Finally, the effect is wrapped in a _request_ which carries the
-effect, and an associated _resolve_ callback to which the output
+The operation is wrapped in a _request_, which carries the
+operation and an associated _resolve_ callback to which the output
 will eventually be given. We discussed this callback in the previous
-section — its job is to send the result through an internal channel,
-waking up the paused future. The request is the value passed to the
-shell, and used as both the description of the effect intent, and
-the "token" used to resolve it.
+section. Its job is to send the result through an internal channel,
+waking up the paused future.
+
+There are multiple operations in each app, and in order for the
+shell to easily tell which effect it needs to handle, we wrap the
+request in an _effect_. The `Effect` type is an enum with one
+variant per operation, and the `#[effect]` macro wraps each
+operation type in a `Request`. It allows us to multiplex (or type
+erase) the different typed operations into a single type, which can
+be `match`ed on to process the operations. The effect is the value
+passed to the shell. The request inside it is used as both the
+description of the effect intent, and the "token" used to resolve
+it.
+
+![An Effect variant, Effect::Http, holds a Request for an HttpRequest operation. The Request holds two fields. The operation field holds the HttpRequest, whose Output type is HttpResult. The handle field holds a RequestHandle for an HttpResult, which is Never, Once or Many.](./request_nesting.svg)
 
 Each task in a command has access to a `CommandContext`, which holds
 the sending ends of channels for effects and events. When a task
 calls `request_from_shell`, the context creates a `Request`
 containing the operation and a resolve callback, wraps it in the
 app's `Effect` type (via the `From` trait), and sends it through the
-effects channel. The `Command` collects these effects and surfaces
-them to the `Core`.
+effects channel. The callback the `Request` carries is what fixes how
+many times the request can be resolved — never, once, or repeatedly —
+and the `RequestHandle` remembers it as an `OperationKind`, readable with
+`handle.kind()`. Notifications are never registered at all: the bridge
+gives every one of them the same id, so resolving one reports
+`ResolveError::Never` rather than an unknown id. The `Command` collects
+these effects and surfaces them to the `Core`.
+
+The id the shell sees is opaque: the shell hands it back untouched. The
+bridge checks it on the way in, and when it rejects one, the error names
+the effect involved rather than just quoting a number — see
+[resolve errors](./typegen.md#resolve-errors).
 
 Looking at the core itself:
 

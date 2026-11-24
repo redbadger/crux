@@ -10,6 +10,16 @@
   "prConcurrentLimit": 3,
   "minimumReleaseAge": "7 days",
   "labels": ["dependencies"],
+  "customManagers": [
+    {
+      "description": "Update versions that a `# renovate: datasource=... depName=...` comment marks in the line above, for example the kache version in the kache action",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/actions/kache/action\\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\n\\s*version: (?<currentValue>\\S+)"
+      ]
+    }
+  ],
   "packageRules": [
     {
       "description": "Automerge patch-level and pin/digest updates — CI gates correctness",
@@ -56,11 +66,11 @@
       "commitMessagePrefix": "chore(ci):"
     },
     {
-      "description": "Group typegen extension npm updates",
-      "matchFileNames": ["crux_core/typegen_extensions/**"],
-      "matchManagers": ["npm"],
-      "groupName": "typegen-npm",
-      "commitMessagePrefix": "chore(core):"
+      "description": "Group the kache binary version with the GitHub Actions updates",
+      "matchManagers": ["custom.regex"],
+      "matchDepNames": ["kunobi-ninja/kache"],
+      "groupName": "github-actions",
+      "commitMessagePrefix": "chore(ci):"
     },
     {
       "description": "Update Cargo lockfiles even when the version range is already satisfied",
@@ -77,10 +87,10 @@
       "description": "Pin BoltFFI while generated shell artifacts are migrated together. The npm runtime must move in lockstep with the crates — a mismatch breaks the WASM shells.",
       "matchPackageNames": ["boltffi", "boltffi_cli", "@boltffi/runtime"],
       "matchManagers": ["cargo", "npm"],
-      "allowedVersions": "0.29.3"
+      "allowedVersions": "0.30.1"
     },
     {
-      "description": "Pin facet to 0.46.5 — facet_generate 0.19 depends on facet =0.46.5. Held to lib.just by `just check-versions`.",
+      "description": "Pin facet to 0.46.5 — facet_generate 0.22 depends on facet =0.46.5. Held to lib.just by `just check-versions`.",
       "matchPackageNames": ["facet"],
       "matchManagers": ["cargo"],
       "allowedVersions": "0.46.5"

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Parser, ValueEnum};
-use crux_core::type_generation::facet::{Config, TypeRegistry};
+use crux_core::type_generation::facet::{BoltFfi, Config, PackageLocation, TypeRegistry};
 use log::info;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -27,14 +27,28 @@ fn main() -> Result<()> {
 
     let typegen_app = TypeRegistry::new()
         .register_app::<shared::Weather>()?
-        .build()?;
+        .build()?
+        // Where `boltffi pack` puts the bindings for each shell, so that the
+        // generated `Core` can be constructed with nothing but a handler.
+        .boltffi(
+            BoltFfi::new()
+                .swift("Shared")
+                .kotlin()
+                .typescript("shared", PackageLocation::Path("../pkg".to_string())),
+        );
 
     let name = match args.language {
         Language::Swift => "App",
         Language::Kotlin => "com.crux.example.weather",
         Language::Typescript => "app",
     };
-    let config = Config::builder(name, &args.output_dir).build();
+    let mut builder = Config::builder(name, &args.output_dir);
+    if args.language == Language::Swift {
+        // The BoltFFI package the generated one now depends on declares these,
+        // and SPM will not link a package with a lower deployment target.
+        builder.platform(".iOS(.v16)").platform(".macOS(.v13)");
+    }
+    let config = builder.build();
 
     match args.language {
         Language::Swift => {

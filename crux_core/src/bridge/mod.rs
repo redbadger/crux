@@ -179,7 +179,7 @@ where
     {
         let mut return_buffer = vec![];
 
-        self.resolve(EffectId(id), output, &mut return_buffer)?;
+        self.resolve(EffectId::from(id), output, &mut return_buffer)?;
 
         Ok(return_buffer)
     }
@@ -188,9 +188,14 @@ where
     ///
     /// The `output` is serialized capability output. It will be deserialized by the core.
     ///
+    /// If the core no longer listens to a stream, the bridge ignores a new item
+    /// for that stream. The call returns `Ok(())`, and `requests_out` holds no
+    /// requests for that item.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the response could not be deserialized.
+    /// Returns an error if the response could not be deserialized, or if `id`
+    /// does not identify a request that the shell can still resolve.
     ///
     /// # Panics
     ///

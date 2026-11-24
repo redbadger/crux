@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 586" width="480" height="586" role="img" aria-labelledby="title desc">
+<title id="title">Crux: build the Leptos web shell</title>
+<desc id="desc">The shared Rust crate holds app.rs with the App, Event, Effect and ViewModel types. The Rust web shell crate has the shared crate as a dependency in Cargo.toml, so it needs no codegen. The shell uses the shared types natively, with no FFI or serialization. The command trunk build compiles the shell to WASM, and puts the browser-ready app in dist/.</desc>
+<style>
+text { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1a1a1a; }
+.m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-variant-ligatures: none; }
+.h { font-size: 18px; font-weight: 700; fill: #8a8a8a; }
+.b { font-size: 16px; font-weight: 600; }
+.s { font-size: 12px; }
+.l { font-size: 12.5px; }
+.ln { stroke: #8a8a8a; stroke-width: 2; fill: none; }
+.dash { stroke-dasharray: 6 5; }
+.pill { fill: #f2f2f2; stroke: #c4c4c4; stroke-width: 1; }
+@media (prefers-color-scheme: dark) {
+  .h { fill: #a8a8a8; }
+}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+<path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+</marker>
+</defs>
+<rect x="15" y="15" width="450" height="125" rx="14" fill="#22c55e" fill-opacity="0.08" stroke="#22c55e" stroke-width="1.5"/>
+<text x="35" y="44" text-anchor="start" class="h">shared/ (Rust crate)</text>
+<rect x="45" y="60" width="390" height="60" rx="10" fill="#bbf7d0" stroke="#22c55e" stroke-width="1.5"/>
+<text x="240" y="87.3" text-anchor="middle" class="b m">app.rs</text>
+<text x="240" y="105.3" text-anchor="middle" class="s m">App · Event · Effect · ViewModel</text>
+<path d="M240,142 V218" class="ln" marker-end="url(#a)"/>
+<rect x="100.2" y="168.8" width="279.5" height="22.5" rx="11.2" class="pill"/>
+<text x="240" y="184.5" text-anchor="middle" class="l">Cargo.toml dependency (no codegen)</text>
+<rect x="15" y="220" width="450" height="125" rx="14" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="35" y="249" text-anchor="start" class="h">Rust web shell crate</text>
+<rect x="45" y="265" width="390" height="60" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="240" y="292.3" text-anchor="middle" class="b">Uses the shared types natively</text>
+<text x="240" y="310.3" text-anchor="middle" class="s">no FFI or serialization needed</text>
+<path d="M240,347 V393" class="ln" marker-end="url(#a)"/>
+<rect x="140" y="395" width="200" height="44" rx="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5"/>
+<text x="240" y="421.7" text-anchor="middle" class="m" style="font-size:13px;font-weight:600">trunk build</text>
+<path d="M240,441 V509" class="ln" marker-end="url(#a)"/>
+<rect x="216.5" y="463.8" width="47" height="22.5" rx="11.2" class="pill"/>
+<text x="240" y="479.5" text-anchor="middle" class="l m">WASM</text>
+<rect x="45" y="511" width="390" height="60" rx="10" fill="#ddd6fe" stroke="#8b5cf6" stroke-width="1.5"/>
+<text x="240" y="538.3" text-anchor="middle" class="b m">dist/</text>
+<text x="240" y="556.3" text-anchor="middle" class="s">browser-ready app</text>
+</svg>

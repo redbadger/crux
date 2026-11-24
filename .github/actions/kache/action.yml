@@ -1,0 +1,72 @@
+name: Kache
+description: >
+  Install kache as the Rust compiler wrapper and connect it to the shared kache
+  store in a Cloudflare R2 bucket. If a job gets no R2 credentials (for example
+  a pull request from a fork), kache uses only the local store of the runner.
+
+# All jobs share one R2 API token with read and write access to the bucket.
+# Kache decides where a job writes. A push to a protected branch (master)
+# writes under `artifacts`. A `pull_request` job reads `artifacts` and writes
+# only under `artifacts-pr`. All other jobs are read-only. GitHub gives
+# secrets only to pull requests from this repository. A person who can open
+# such a pull request can already change the workflows, so the shared token
+# adds no new trust.
+
+inputs:
+  manifest-key:
+    description: >
+      A name that is unique to the job and its matrix entry. Kache records the
+      build manifest and the dependency shards under this name, so each job
+      prefetches only what it built the last time.
+    required: true
+  bucket:
+    description: The name of the R2 bucket.
+    required: false
+    default: ""
+  endpoint:
+    description: The S3 endpoint of the R2 account.
+    required: false
+    default: ""
+  access-key-id:
+    description: The access key ID of the R2 API token.
+    required: false
+    default: ""
+  secret-access-key:
+    description: The secret access key of the R2 API token.
+    required: false
+    default: ""
+  cache-dir:
+    description: The local kache store. If this is empty, kache-action selects it.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # Later steps need this variable too, because the compiler wrapper and the
+    # post step of kache-action read it. Jobs that are not pull requests
+    # ignore it.
+    - name: Set the kache prefix for pull requests
+      shell: bash
+      run: echo "KACHE_PULL_REQUEST_PREFIX=artifacts-pr" >> "$GITHUB_ENV"
+
+    # If the credentials are empty, the bucket is empty too. Then kache-action
+    # does not use R2. Because of `github-cache: false`, it does not use the
+    # GitHub Actions cache either.
+    #
+    # Do not set `save-cache: false` on pull requests. It makes the remote
+    # read-only, and then pull requests cannot write under `artifacts-pr`.
+    - uses: kunobi-ninja/kache-action@v1
+      with:
+        # renovate: datasource=github-releases depName=kunobi-ninja/kache
+        version: v2.2.0
+        s3-bucket: ${{ inputs.access-key-id != '' && inputs.secret-access-key != '' && inputs.bucket || '' }}
+        s3-endpoint: ${{ inputs.access-key-id != '' && inputs.secret-access-key != '' && inputs.endpoint || '' }}
+        s3-region: auto
+        s3-prefix: artifacts
+        s3-access-key-id: ${{ inputs.access-key-id }}
+        s3-secret-access-key: ${{ inputs.secret-access-key }}
+        github-cache: false
+        manifest-key: ${{ inputs.manifest-key }}
+        cache-dir: ${{ inputs.cache-dir }}
+        pr-comment: false

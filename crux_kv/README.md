@@ -10,34 +10,12 @@ checking if keys exists in the store, and listing keys that start with a prefix.
 
 Add `crux_kv` as a dependency in your app's `Cargo.toml`.
 
-### Typegen
+### Type generation
 
-This crate has a feature called `typegen` which supports generation of code
-(e.g. in TypeScript, Swift, Kotlin etc.) for the types that the Capability
-passes over the bridge.
-
-Crux apps usually contain a `shared` crate for the behavioural "core" and a
-`shared_types` crate that is responsible for generating the types that are
-shared between the core and the shell.
-
-The `shared` crate can re-export the capability with a `typegen` feature that
-depends on the `typegen` feature of the Capability crate. This way, the shared
-crate can ask the Capability to register its types for type generation.
-
-e.g. in the `shared` crate's `Cargo.toml`:
-
-```toml
-[features]
-typegen = ["crux_core/typegen", "crux_kv/typegen"]
-```
-
-and in the `shared_types` crate's `Cargo.toml`:
-
-```toml
-[build-dependencies]
-crux_core = { workspace = true, features = ["typegen"] }
-shared = { path = "../shared", features = ["typegen"] }
-```
+The types this capability sends over the bridge derive `Facet`, so Crux's
+facet-based type generation picks them up: enable the crate's `facet_typegen`
+feature alongside `crux_core/facet_typegen` and follow
+[Type generation](https://redbadger.github.io/crux/part-4/typegen.html).
 
 ## About Crux Capabilities
 

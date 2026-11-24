@@ -19,6 +19,16 @@ pub struct HttpHeader {
 
 /// A raw HTTP request, as sent to the shell over the protocol boundary.
 ///
+/// The shell answers with an [`HttpResult`]. `Ok` carries every response that
+/// arrives, whatever its status, so a 4xx or 5xx status is `Ok`. `Err` means
+/// that no response arrived, and carries an [`HttpError`]:
+///
+/// - `Url` if the URL does not parse
+/// - `Timeout` if the request timed out
+/// - `Io`, with a description of the failure, for every other failure
+///
+/// The core builds `url` with `url::Url`, so it is absolute.
+///
 /// # No header validation
 ///
 /// All fields are plain strings. Header names and values are carried as-is with no
@@ -295,16 +305,11 @@ impl From<Result<HttpResponse>> for HttpResult {
 impl crux_core::capability::Operation for HttpRequest {
     type Output = HttpResult;
 
-    #[cfg(feature = "typegen")]
-    fn register_types(
-        generator: &mut crux_core::type_generation::serde::TypeGen,
-    ) -> crux_core::type_generation::serde::Result {
-        generator.register_type::<HttpError>()?;
-        generator.register_type::<Self>()?;
-        generator.register_type::<Self::Output>()?;
-        Ok(())
-    }
+    const KIND: Option<crux_core::OperationKind> = Some(crux_core::OperationKind::Request);
 }
+
+/// An `HttpRequest` is answered exactly once, with an [`HttpResult`].
+impl crux_core::operation::Request for HttpRequest {}
 
 #[async_trait]
 pub(crate) trait EffectSender {

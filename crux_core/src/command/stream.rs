@@ -1,23 +1,39 @@
 #![allow(clippy::redundant_pub_crate)]
-// Command is an async Stream
+//! Stream support for [`Command`].
+//!
+//! Commands implement [`Stream`], yielding effect requests and events as they
+//! become available. This is useful for testing, manual orchestration, and
+//! advanced command composition.
 
 use std::future::Future;
-use std::ops::DerefMut as _;
 use std::task::{Context, Poll};
 
 use std::pin::Pin;
 
 use futures::{Sink, Stream, StreamExt as _};
 
-use crossbeam_channel::Sender;
 use thiserror::Error;
 
-use super::Command;
+use super::{Command, CommandContext};
 
-/// An item emitted from a Command when used as a Stream.
+impl<Effect, Event> Command<Effect, Event>
+where
+    Effect: Unpin + Send + 'static,
+    Event: Unpin + Send + 'static,
+{
+    /// Host this command inside another command context, forwarding its effects
+    /// and events. The host owns this command until it finishes or is dropped.
+    pub(crate) fn host(self, context: CommandContext<Effect, Event>) -> impl Future {
+        CommandStreamExt::host(self, context)
+    }
+}
+
+/// An item emitted from a [`Command`] stream.
 #[derive(Debug)]
 pub enum CommandOutput<Effect, Event> {
+    /// An effect request for the shell or an effect handler to process.
     Effect(Effect),
+    /// An event emitted by a command.
     Event(Event),
 }
 
@@ -32,7 +48,7 @@ where
         self.waker.register(cx.waker());
 
         // run_until_settled is idempotent
-        self.deref_mut().run_until_settled();
+        self.run_until_settled();
 
         // Check events first to preserve the order in which items were emitted. This is because
         // sending events doesn't yield, and the next request/stream await point will be
@@ -53,22 +69,23 @@ where
     }
 }
 
-/// A sink for a Command stream, sending all emitted effects and events into a pair of channels
+/// Forwards a command's effects and events into its host's queues.
 pub(crate) struct CommandSink<Effect, Event> {
-    pub(crate) effects: Sender<Effect>,
-    pub(crate) events: Sender<Event>,
+    pub(crate) context: CommandContext<Effect, Event>,
 }
 
 impl<Effect, Event> CommandSink<Effect, Event> {
-    pub(crate) const fn new(effects: Sender<Effect>, events: Sender<Event>) -> Self {
-        Self { effects, events }
+    pub(crate) const fn new(context: CommandContext<Effect, Event>) -> Self {
+        Self { context }
     }
 }
 
 #[derive(Debug, Error)]
 pub(crate) enum HostedCommandError {
+    /// The host command's effect queue has been disconnected.
     #[error("Cannot send effect to host")]
     CannotSendEffect,
+    /// The host command's event queue has been disconnected.
     #[error("Cannot send event to host")]
     CannotSendEvent,
 }
@@ -86,10 +103,12 @@ impl<Effect, Event> Sink<CommandOutput<Effect, Event>> for CommandSink<Effect, E
     ) -> Result<(), Self::Error> {
         match item {
             CommandOutput::Effect(effect) => self
+                .context
                 .effects
                 .send(effect)
                 .map_err(|_| HostedCommandError::CannotSendEffect),
             CommandOutput::Event(event) => self
+                .context
                 .events
                 .send(event)
                 .map_err(|_| HostedCommandError::CannotSendEvent),
@@ -108,15 +127,15 @@ impl<Effect, Event> Sink<CommandOutput<Effect, Event>> for CommandSink<Effect, E
 pub(crate) trait CommandStreamExt<Effect, Event>:
     Stream<Item = CommandOutput<Effect, Event>>
 {
-    /// Connect this command to a pair of effect and event channels
+    /// Forward this command stream into a command context.
     ///
-    /// This is useful if you need to multiplex several commands into the same stream of
-    /// effects and events - like Crux does.
-    fn host(self, effects: Sender<Effect>, events: Sender<Event>) -> impl Future
+    /// This is used to multiplex hosted or mapped commands into the effect and
+    /// event queues of their host command.
+    fn host(self, context: CommandContext<Effect, Event>) -> impl Future
     where
         Self: Send + Sized,
     {
-        self.map(Ok).forward(CommandSink::new(effects, events))
+        self.map(Ok).forward(CommandSink::new(context))
     }
 }
 

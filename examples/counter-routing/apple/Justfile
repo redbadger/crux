@@ -2,6 +2,9 @@ mod lib '../../../lib.just'
 
 default: dev
 
+# `--overlay` argument for `boltffi pack`. CI sets BOLTFFI_OVERLAY to build fewer targets.
+overlay := if env("BOLTFFI_OVERLAY", "") == "" { "" } else { "--overlay " + quote(env("BOLTFFI_OVERLAY")) }
+
 # --------------------------------------------------------------------------
 # Development
 # --------------------------------------------------------------------------
@@ -11,7 +14,7 @@ doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-apple
 
-# installs Rust targets required for Apple packaging with cargo-swift
+# installs the Rust targets that `boltffi pack apple` needs
 install-targets:
     @echo '{{ style("command") }}install-targets:{{ NORMAL }}'
     TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(rustup show active-toolchain | awk '{print $1}')}" ; \
@@ -48,7 +51,7 @@ typegen:
 package: install-targets
     @echo '{{ style("command") }}package:{{ NORMAL }}'
     rm -rf ../apple/generated/Shared
-    boltffi pack apple
+    boltffi pack apple {{ overlay }}
 
 # rebuilds the Xcode project from project.yml
 generate-project:

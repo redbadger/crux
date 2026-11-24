@@ -15,15 +15,13 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(path: "../generated/App"),
-        .package(path: "../generated/Shared")
+        .package(path: "../generated/App")
     ],
     targets: [
         .target(
             name: "WeatherKit",
             dependencies: [
-                .product(name: "App", package: "App"),
-                .product(name: "Shared", package: "Shared")
+                .product(name: "App", package: "App")
             ],
             resources: [
                 .process("Core/KeyValueModel.xcdatamodeld")

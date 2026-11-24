@@ -1,8 +1,8 @@
 # Middleware
 
-Middleware is a relatively new, and somewhat advanced feature for split
-effect handling, i.e. handling some effects in the shell, and some
-still in the core, but outside the app's state loop.
+Middleware is a somewhat advanced feature for split effect handling, i.e.
+handling some effects in the shell, and some still in the core, but outside
+the app's state loop.
 
 Middleware can be useful when you have an existing 3rd party library written in Rust
 which you want to use, but it isn't written in a sans-I/O way with managed
@@ -49,17 +49,24 @@ First, we need an `Operation` type that describes the request and its output. Th
 same as defining a capability's protocol — a request type and a response type:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/counter-middleware/shared/src/capabilities/mod.rs:9:17}}
+{{#include ../../../examples/counter-middleware/shared/src/capabilities/mod.rs:operation}}
 ```
 
 The `RandomNumberRequest` carries the range (min, max), and `RandomNumber` carries the result.
 The `Operation` impl connects them so that Crux knows a `RandomNumberRequest` produces a
 `RandomNumber`.
 
+This one is written by hand and declares no operation kind, which is still fine — an
+operation with no declared kind takes whichever `Command` constructor the call site
+uses. If you'd rather pin it down, `#[derive(Operation)]` with
+`#[operation(request, output = RandomNumber)]` does the same job and additionally
+declares that the request is answered exactly once. See
+[Building capabilities](../part-2/capabilities.md).
+
 The app uses this operation as one variant of its `Effect` enum:
 
 ```rust,no_run,noplayground
-{{#include ../../../examples/counter-middleware/shared/src/app.rs:62:69}}
+{{#include ../../../examples/counter-middleware/shared/src/app.rs:effect}}
 ```
 
 And the app can request a random number using `Command::request_from_shell`, just as it
@@ -91,7 +98,11 @@ A few things to note:
 - The `type Op` associated type tells Crux which operation this middleware handles
   (`RandomNumberRequest` in this case).
 - `try_process_effect` receives the operation and an `EffectResolver`. You must call
-  `resolver.resolve(output)` with the result when the work is done.
+  `resolver.resolve(output)` with the result when the work is done — once for a
+  request, once per item for a stream, never for a notification. `EffectResolver`
+  is generic over the output rather than the operation, so if you need to know
+  which you're holding, ask it: `resolver.kind()` returns the
+  `OperationKind`.
 - The processing happens on a background thread. This is important — the middleware
   must not block the caller of `process_event`. On native targets this typically means
   spawning a thread; on WASM it means an async task (e.g. `spawn_local`).
@@ -148,6 +159,29 @@ remove that variant from this enum and `panic!` on it in `From` — the shell th
 sees a narrower set of effects. The counter example keeps `Random` here because
 the WebAssembly shells trigger it themselves and need it in the typegen.
 
+## In the shell
+
+On native targets the middleware resolves `Random` on its own thread, after
+`update` has returned. Whatever the app asks for next — here, a `Render` and
+the HTTP calls that update the server's count — can't come back as the return
+value of `update` or `resolve`, so the bridge hands those requests to the
+callback you gave `.bridge(...)`. In this example that callback
+calls `CruxShell::process_effects`, a trait the shell implements and passes to
+`CoreFfi::new`. The bytes are the same serialized requests that `update` and
+`resolve` return, and the shell handles them the same way.
+
+The counter-middleware shells drive that loop by hand, as in Part I. With the
+generated `Core`, pass the bytes to its `process(bytes:)` (Swift),
+`process(bytes)` (Kotlin), `processBytes` (TypeScript) or `Process(byte[])` (C#).
+The callback arrives on the middleware's thread, and the Swift `Core` is
+`@MainActor`, so hop to the main actor before calling it.
+
+Setting the `Core` up changes in one way. `CoreFfi::new` takes the shell's
+callback, but the generated `FfiBridge` constructs `CoreFfi` with no arguments,
+so an app with middleware doesn't configure `.boltffi(...)`. Instead it writes
+the three-method `CoreBridge` over its own `CoreFfi` and uses the `Core`
+constructor that takes a bridge, such as `Core(bridge:handler:)` in Swift.
+
 ## Testing
 
 The app can be tested exactly the same way as any other Crux app — the middleware is not
@@ -165,7 +199,8 @@ and the middleware is a separate concern that's composed at the FFI boundary.
 
 To add a middleware to your app:
 
-1. **Define an `Operation`** — a request type and output type, just like a capability protocol.
+1. **Define an `Operation`** — a request type and output type, just like a capability protocol,
+   ideally with `#[derive(Operation)]` so its kind is declared too.
 2. **Implement `EffectMiddleware`** — handle the operation and resolve the result, typically
    on a background thread.
 3. **Wire it up** — use `.handle_effects_using()` in your FFI setup to intercept the effects,

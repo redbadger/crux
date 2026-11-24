@@ -11,7 +11,7 @@ use crate::pretty_print;
 use super::macro_impl::*;
 
 #[test]
-#[should_panic(expected = "Unexpected attribute: typo, did you mean typegen or facet_typegen?")]
+#[should_panic(expected = "Unexpected attribute: typo, did you mean facet_typegen?")]
 fn bad_args() {
     let args = Some(format_ident!("typo"));
     let input = parse_quote! {
@@ -23,8 +23,48 @@ fn bad_args() {
     effect_impl(args, input);
 }
 
+/// The bridge packs the effect's variant index into 8 bits of the request id.
+fn effect_with_variants(count: usize) -> syn::ItemEnum {
+    let variants = (0..count)
+        .map(|i| format!("V{i}(Op{i})"))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    syn::parse_str(&format!("pub enum Effect {{ {variants} }}")).expect("should parse")
+}
+
 #[test]
-fn single_with_typegen() {
+fn the_largest_effect_enum_the_id_can_describe() {
+    let actual = effect_impl(
+        Some(format_ident!("facet_typegen")),
+        effect_with_variants(super::macro_impl::MAX_VARIANTS),
+    );
+
+    let actual = pretty_print(&actual);
+
+    assert!(actual.contains("const VARIANT_COUNT: u16 = 256u16;"));
+    assert!(actual.contains("Effect::V255(_) => 255u8,"));
+    // The index-to-name direction, which is all an error about a request id
+    // has to go on.
+    assert!(actual.contains("255u8 => Some(\"V255\"),"));
+}
+
+#[test]
+#[should_panic(
+    expected = "an effect enum can have at most 256 variants, because the bridge packs the variant index into 8 bits of the request id, but `Effect` has 257"
+)]
+fn too_many_variants() {
+    effect_impl(
+        Some(format_ident!("facet_typegen")),
+        effect_with_variants(super::macro_impl::MAX_VARIANTS + 1),
+    );
+}
+
+#[test]
+#[should_panic(
+    expected = "`#[effect(typegen)]` (serde type generation) was removed in crux_core 0.21; use `#[effect(facet_typegen)]`"
+)]
+fn typegen_was_removed() {
     let args = Some(format_ident!("typegen"));
     let input = parse_quote! {
         pub enum Effect {
@@ -32,219 +72,7 @@ fn single_with_typegen() {
         }
     };
 
-    let actual = effect_impl(args, input);
-
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
-    pub enum Effect {
-        Render(::crux_core::Request<RenderOperation>),
-    }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "Effect")]
-    pub enum EffectFfi {
-        Render(RenderOperation),
-    }
-    impl crux_core::Effect for Effect {}
-    impl crux_core::EffectFFI for Effect {
-        type Ffi = EffectFfi;
-        fn serialize<T: ::crux_core::bridge::FfiFormat>(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
-            match self {
-                Effect::Render(request) => request.serialize(EffectFfi::Render),
-            }
-        }
-    }
-    impl From<::crux_core::Request<RenderOperation>> for Effect {
-        fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
-            Self::Render(value)
-        }
-    }
-    impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
-        type Error = Effect;
-        fn try_from(value: Effect) -> Result<Self, Self::Error> {
-            if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
-        }
-    }
-    impl Effect {
-        pub fn is_render(&self) -> bool {
-            if let Effect::Render(_) = self { true } else { false }
-        }
-        pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
-            if let Effect::Render(request) = self { Some(request) } else { None }
-        }
-    }
-    ::crux_core::__crux_core_testing_items! {
-        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
-        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
-        request, effect => { let actual = match & effect { Effect::Render(_) => "Render", };
-        panic!("expected {} effect, got {actual}", "Render") } } } }
-    }
-    ::crux_core::__crux_core_testing_items! {
-        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
-        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
-        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
-        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
-        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
-        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
-        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
-        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
-        #[doc(hidden)] impl < Event > EffectTestExt < Event > for ::crux_core::Command <
-        Effect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
-        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
-        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
-        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
-        effect = self.effects().next().unwrap_or_else(||
-        panic!("expected Render effect but no more effects remain")); let req = effect
-        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
-        mut self) { let effect = self.effects().next().unwrap_or_else(||
-        panic!("expected Render effect but no more effects remain")); let _ = effect
-        .expect_render(); let remaining_effects = self.effects().count(); let
-        remaining_events = self.events().count(); assert!(remaining_effects +
-        remaining_events == 0,
-        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
-        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
-        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
-        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
-        .effects().count(); let remaining_events = self.events().count();
-        assert!(remaining_effects + remaining_events == 0,
-        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
-        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
-        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
-        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
-        mut req = effect.expect_render(); let output = f(& req.operation); req
-        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
-        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
-        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
-        ev); self } }
-    }
-    #[cfg(feature = "typegen")]
-    impl ::crux_core::type_generation::serde::Export for Effect {
-        fn register_types(
-            generator: &mut ::crux_core::type_generation::serde::TypeGen,
-        ) -> ::crux_core::type_generation::serde::Result {
-            use ::crux_core::capability::Operation;
-            <RenderOperation>::register_types(generator)?;
-            generator.register_type::<EffectFfi>()?;
-            generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
-            Ok(())
-        }
-    }
-    "#);
-}
-
-#[test]
-fn single_with_new_name() {
-    let args = Some(format_ident!("typegen"));
-    let input = parse_quote! {
-        pub enum MyEffect {
-            Render(RenderOperation),
-        }
-    };
-
-    let actual = effect_impl(args, input);
-
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
-    pub enum MyEffect {
-        Render(::crux_core::Request<RenderOperation>),
-    }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "MyEffect")]
-    pub enum MyEffectFfi {
-        Render(RenderOperation),
-    }
-    impl crux_core::Effect for MyEffect {}
-    impl crux_core::EffectFFI for MyEffect {
-        type Ffi = MyEffectFfi;
-        fn serialize<T: ::crux_core::bridge::FfiFormat>(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
-            match self {
-                MyEffect::Render(request) => request.serialize(MyEffectFfi::Render),
-            }
-        }
-    }
-    impl From<::crux_core::Request<RenderOperation>> for MyEffect {
-        fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
-            Self::Render(value)
-        }
-    }
-    impl TryFrom<MyEffect> for ::crux_core::Request<RenderOperation> {
-        type Error = MyEffect;
-        fn try_from(value: MyEffect) -> Result<Self, Self::Error> {
-            if let MyEffect::Render(value) = value { Ok(value) } else { Err(value) }
-        }
-    }
-    impl MyEffect {
-        pub fn is_render(&self) -> bool {
-            if let MyEffect::Render(_) = self { true } else { false }
-        }
-        pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
-            if let MyEffect::Render(request) = self { Some(request) } else { None }
-        }
-    }
-    ::crux_core::__crux_core_testing_items! {
-        impl MyEffect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
-        ::crux_core::Request < RenderOperation > { match self { MyEffect::Render(request) =>
-        request, effect => { let actual = match & effect { MyEffect::Render(_) => "Render",
-        }; panic!("expected {} effect, got {actual}", "Render") } } } }
-    }
-    ::crux_core::__crux_core_testing_items! {
-        #[doc(hidden)] pub trait MyEffectTestExt < Event > where Event : ::core::marker::Send
-        + 'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F >
-        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation);
-        fn expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f :
-        F) where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
-        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
-        RenderOperation as ::crux_core::capability::Operation > ::Output; fn then_event < F >
-        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event); }
-        #[doc(hidden)] impl < Event > MyEffectTestExt < Event > for ::crux_core::Command <
-        MyEffect, Event > where Event : ::core::marker::Send + 'static, { #[track_caller] fn
-        expect_render(& mut self) -> & mut Self { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
-        _ = effect.expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut
-        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let
-        effect = self.effects().next().unwrap_or_else(||
-        panic!("expected Render effect but no more effects remain")); let req = effect
-        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
-        mut self) { let effect = self.effects().next().unwrap_or_else(||
-        panic!("expected Render effect but no more effects remain")); let _ = effect
-        .expect_render(); let remaining_effects = self.effects().count(); let
-        remaining_events = self.events().count(); assert!(remaining_effects +
-        remaining_events == 0,
-        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
-        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
-        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
-        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
-        .effects().count(); let remaining_events = self.events().count();
-        assert!(remaining_effects + remaining_events == 0,
-        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
-        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
-        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
-        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
-        mut req = effect.expect_render(); let output = f(& req.operation); req
-        .resolve(output).expect("resolve failed"); self } #[track_caller] fn then_event < F >
-        (& mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev =
-        self.events().next().unwrap_or_else(|| panic!("expected an event but got none")); f(&
-        ev); self } }
-    }
-    #[cfg(feature = "typegen")]
-    impl ::crux_core::type_generation::serde::Export for MyEffect {
-        fn register_types(
-            generator: &mut ::crux_core::type_generation::serde::TypeGen,
-        ) -> ::crux_core::type_generation::serde::Result {
-            use ::crux_core::capability::Operation;
-            <RenderOperation>::register_types(generator)?;
-            generator.register_type::<MyEffectFfi>()?;
-            generator.register_type::<::crux_core::bridge::Request<MyEffectFfi>>()?;
-            Ok(())
-        }
-    }
-    "#);
+    effect_impl(args, input);
 }
 
 #[test]
@@ -276,6 +104,18 @@ fn single_with_facet_typegen() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
+        const VARIANT_COUNT: u16 = 1u16;
+        fn variant_index(&self) -> u8 {
+            match self {
+                Effect::Render(_) => 0u8,
+            }
+        }
+        fn variant_name(index: u8) -> Option<&'static str> {
+            match index {
+                0u8 => Some("Render"),
+                _ => None,
+            }
+        }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
             self,
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
@@ -376,6 +216,10 @@ fn single_with_facet_typegen() {
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
+            generator
+                .register_effect::<EffectFfi>()?
+                .variant::<RenderOperation>("Render")?
+                .finish();
             Ok(generator)
         }
     }
@@ -411,6 +255,18 @@ fn single_facet_typegen_with_new_name() {
     impl crux_core::Effect for MyEffect {}
     impl crux_core::EffectFFI for MyEffect {
         type Ffi = MyEffectFfi;
+        const VARIANT_COUNT: u16 = 1u16;
+        fn variant_index(&self) -> u8 {
+            match self {
+                MyEffect::Render(_) => 0u8,
+            }
+        }
+        fn variant_name(index: u8) -> Option<&'static str> {
+            match index {
+                0u8 => Some("Render"),
+                _ => None,
+            }
+        }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
             self,
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
@@ -511,6 +367,10 @@ fn single_facet_typegen_with_new_name() {
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
+            generator
+                .register_effect::<MyEffectFfi>()?
+                .variant::<RenderOperation>("Render")?
+                .finish();
             Ok(generator)
         }
     }
@@ -603,182 +463,6 @@ fn single_without_typegen() {
 
 #[allow(clippy::too_many_lines)]
 #[test]
-fn multiple_with_typegen() {
-    let args = Some(format_ident!("typegen"));
-    let input = parse_quote! {
-        pub enum Effect {
-            Render(RenderOperation),
-            Http(HttpRequest),
-        }
-    };
-
-    let actual = effect_impl(args, input);
-
-    insta::assert_snapshot!(pretty_print(&actual), @r#"
-    pub enum Effect {
-        Render(::crux_core::Request<RenderOperation>),
-        Http(::crux_core::Request<HttpRequest>),
-    }
-    #[derive(::serde::Serialize, ::serde::Deserialize)]
-    #[serde(rename = "Effect")]
-    pub enum EffectFfi {
-        Render(RenderOperation),
-        Http(HttpRequest),
-    }
-    impl crux_core::Effect for Effect {}
-    impl crux_core::EffectFFI for Effect {
-        type Ffi = EffectFfi;
-        fn serialize<T: ::crux_core::bridge::FfiFormat>(
-            self,
-        ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
-            match self {
-                Effect::Render(request) => request.serialize(EffectFfi::Render),
-                Effect::Http(request) => request.serialize(EffectFfi::Http),
-            }
-        }
-    }
-    impl From<::crux_core::Request<RenderOperation>> for Effect {
-        fn from(value: ::crux_core::Request<RenderOperation>) -> Self {
-            Self::Render(value)
-        }
-    }
-    impl TryFrom<Effect> for ::crux_core::Request<RenderOperation> {
-        type Error = Effect;
-        fn try_from(value: Effect) -> Result<Self, Self::Error> {
-            if let Effect::Render(value) = value { Ok(value) } else { Err(value) }
-        }
-    }
-    impl From<::crux_core::Request<HttpRequest>> for Effect {
-        fn from(value: ::crux_core::Request<HttpRequest>) -> Self {
-            Self::Http(value)
-        }
-    }
-    impl TryFrom<Effect> for ::crux_core::Request<HttpRequest> {
-        type Error = Effect;
-        fn try_from(value: Effect) -> Result<Self, Self::Error> {
-            if let Effect::Http(value) = value { Ok(value) } else { Err(value) }
-        }
-    }
-    impl Effect {
-        pub fn is_render(&self) -> bool {
-            if let Effect::Render(_) = self { true } else { false }
-        }
-        pub fn into_render(self) -> Option<::crux_core::Request<RenderOperation>> {
-            if let Effect::Render(request) = self { Some(request) } else { None }
-        }
-    }
-    ::crux_core::__crux_core_testing_items! {
-        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_render(self) ->
-        ::crux_core::Request < RenderOperation > { match self { Effect::Render(request) =>
-        request, effect => { let actual = match & effect { Effect::Render(_) => "Render",
-        Effect::Http(_) => "Http", }; panic!("expected {} effect, got {actual}", "Render") }
-        } } }
-    }
-    impl Effect {
-        pub fn is_http(&self) -> bool {
-            if let Effect::Http(_) = self { true } else { false }
-        }
-        pub fn into_http(self) -> Option<::crux_core::Request<HttpRequest>> {
-            if let Effect::Http(request) = self { Some(request) } else { None }
-        }
-    }
-    ::crux_core::__crux_core_testing_items! {
-        impl Effect { #[doc(hidden)] #[track_caller] pub fn expect_http(self) ->
-        ::crux_core::Request < HttpRequest > { match self { Effect::Http(request) => request,
-        effect => { let actual = match & effect { Effect::Render(_) => "Render",
-        Effect::Http(_) => "Http", }; panic!("expected {} effect, got {actual}", "Http") } }
-        } }
-    }
-    ::crux_core::__crux_core_testing_items! {
-        #[doc(hidden)] pub trait EffectTestExt < Event > where Event : ::core::marker::Send +
-        'static, { fn expect_render(& mut self) -> & mut Self; fn expect_render_with < F > (&
-        mut self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation); fn
-        expect_only_render(& mut self); fn expect_only_render_with < F > (& mut self, f : F)
-        where F : ::core::ops::FnOnce(& RenderOperation); fn resolve_render < F > (& mut
-        self, f : F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation) -> <
-        RenderOperation as ::crux_core::capability::Operation > ::Output; fn expect_http(&
-        mut self) -> & mut Self; fn expect_http_with < F > (& mut self, f : F) -> & mut Self
-        where F : ::core::ops::FnOnce(& HttpRequest); fn expect_only_http(& mut self); fn
-        expect_only_http_with < F > (& mut self, f : F) where F : ::core::ops::FnOnce(&
-        HttpRequest); fn resolve_http < F > (& mut self, f : F) -> & mut Self where F :
-        ::core::ops::FnOnce(& HttpRequest) -> < HttpRequest as
-        ::crux_core::capability::Operation > ::Output; fn then_event < F > (& mut self, f :
-        F) -> & mut Self where F : ::core::ops::FnOnce(& Event); } #[doc(hidden)] impl <
-        Event > EffectTestExt < Event > for ::crux_core::Command < Effect, Event > where
-        Event : ::core::marker::Send + 'static, { #[track_caller] fn expect_render(& mut
-        self) -> & mut Self { let effect = self.effects().next().unwrap_or_else(||
-        panic!("expected Render effect but no more effects remain")); let _ = effect
-        .expect_render(); self } #[track_caller] fn expect_render_with < F > (& mut self, f :
-        F) -> & mut Self where F : ::core::ops::FnOnce(& RenderOperation), { let effect =
-        self.effects().next().unwrap_or_else(||
-        panic!("expected Render effect but no more effects remain")); let req = effect
-        .expect_render(); f(& req.operation); self } #[track_caller] fn expect_only_render(&
-        mut self) { let effect = self.effects().next().unwrap_or_else(||
-        panic!("expected Render effect but no more effects remain")); let _ = effect
-        .expect_render(); let remaining_effects = self.effects().count(); let
-        remaining_events = self.events().count(); assert!(remaining_effects +
-        remaining_events == 0,
-        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
-        } #[track_caller] fn expect_only_render_with < F > (& mut self, f : F) where F :
-        ::core::ops::FnOnce(& RenderOperation), { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
-        req = effect.expect_render(); f(& req.operation); let remaining_effects = self
-        .effects().count(); let remaining_events = self.events().count();
-        assert!(remaining_effects + remaining_events == 0,
-        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
-        } #[track_caller] fn resolve_render < F > (& mut self, f : F) -> & mut Self where F :
-        ::core::ops::FnOnce(& RenderOperation) -> < RenderOperation as
-        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Render effect but no more effects remain")); let
-        mut req = effect.expect_render(); let output = f(& req.operation); req
-        .resolve(output).expect("resolve failed"); self } #[track_caller] fn expect_http(&
-        mut self) -> & mut Self { let effect = self.effects().next().unwrap_or_else(||
-        panic!("expected Http effect but no more effects remain")); let _ = effect
-        .expect_http(); self } #[track_caller] fn expect_http_with < F > (& mut self, f : F)
-        -> & mut Self where F : ::core::ops::FnOnce(& HttpRequest), { let effect = self
-        .effects().next().unwrap_or_else(||
-        panic!("expected Http effect but no more effects remain")); let req = effect
-        .expect_http(); f(& req.operation); self } #[track_caller] fn expect_only_http(& mut
-        self) { let effect = self.effects().next().unwrap_or_else(||
-        panic!("expected Http effect but no more effects remain")); let _ = effect
-        .expect_http(); let remaining_effects = self.effects().count(); let remaining_events
-        = self.events().count(); assert!(remaining_effects + remaining_events == 0,
-        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
-        } #[track_caller] fn expect_only_http_with < F > (& mut self, f : F) where F :
-        ::core::ops::FnOnce(& HttpRequest), { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Http effect but no more effects remain")); let
-        req = effect.expect_http(); f(& req.operation); let remaining_effects = self
-        .effects().count(); let remaining_events = self.events().count();
-        assert!(remaining_effects + remaining_events == 0,
-        "expected command to be done, found {remaining_effects} effects and {remaining_events} events",);
-        } #[track_caller] fn resolve_http < F > (& mut self, f : F) -> & mut Self where F :
-        ::core::ops::FnOnce(& HttpRequest) -> < HttpRequest as
-        ::crux_core::capability::Operation > ::Output, { let effect = self.effects().next()
-        .unwrap_or_else(|| panic!("expected Http effect but no more effects remain")); let
-        mut req = effect.expect_http(); let output = f(& req.operation); req.resolve(output)
-        .expect("resolve failed"); self } #[track_caller] fn then_event < F > (& mut self, f
-        : F) -> & mut Self where F : ::core::ops::FnOnce(& Event), { let ev = self.events()
-        .next().unwrap_or_else(|| panic!("expected an event but got none")); f(& ev); self }
-        }
-    }
-    #[cfg(feature = "typegen")]
-    impl ::crux_core::type_generation::serde::Export for Effect {
-        fn register_types(
-            generator: &mut ::crux_core::type_generation::serde::TypeGen,
-        ) -> ::crux_core::type_generation::serde::Result {
-            use ::crux_core::capability::Operation;
-            <RenderOperation>::register_types(generator)?;
-            <HttpRequest>::register_types(generator)?;
-            generator.register_type::<EffectFfi>()?;
-            generator.register_type::<::crux_core::bridge::Request<EffectFfi>>()?;
-            Ok(())
-        }
-    }
-    "#);
-}
-
-#[allow(clippy::too_many_lines)]
-#[test]
 fn multiple_with_facet_typegen() {
     let args = Some(format_ident!("facet_typegen"));
     let input = parse_quote! {
@@ -810,6 +494,20 @@ fn multiple_with_facet_typegen() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
+        const VARIANT_COUNT: u16 = 2u16;
+        fn variant_index(&self) -> u8 {
+            match self {
+                Effect::Render(_) => 0u8,
+                Effect::Http(_) => 1u8,
+            }
+        }
+        fn variant_name(index: u8) -> Option<&'static str> {
+            match index {
+                0u8 => Some("Render"),
+                1u8 => Some("Http"),
+                _ => None,
+            }
+        }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
             self,
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
@@ -973,6 +671,11 @@ fn multiple_with_facet_typegen() {
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
+            generator
+                .register_effect::<EffectFfi>()?
+                .variant::<RenderOperation>("Render")?
+                .variant::<HttpRequest>("Http")?
+                .finish();
             Ok(generator)
         }
     }
@@ -1240,6 +943,18 @@ fn facet_typegen_with_namespace_attribute() {
     impl crux_core::Effect for Effect {}
     impl crux_core::EffectFFI for Effect {
         type Ffi = EffectFfi;
+        const VARIANT_COUNT: u16 = 1u16;
+        fn variant_index(&self) -> u8 {
+            match self {
+                Effect::Render(_) => 0u8,
+            }
+        }
+        fn variant_name(index: u8) -> Option<&'static str> {
+            match index {
+                0u8 => Some("Render"),
+                _ => None,
+            }
+        }
         fn serialize<T: ::crux_core::bridge::FfiFormat>(
             self,
         ) -> (Self::Ffi, ::crux_core::bridge::ResolveSerialized<T>) {
@@ -1340,6 +1055,10 @@ fn facet_typegen_with_namespace_attribute() {
                 .map_err(|err| ::crux_core::type_generation::facet::TypeGenError::Generation(
                     err.to_string(),
                 ))?;
+            generator
+                .register_effect::<EffectFfi>()?
+                .variant::<RenderOperation>("Render")?
+                .finish();
             Ok(generator)
         }
     }
@@ -1360,19 +1079,17 @@ fn facet_typegen_with_namespace_attribute() {
 /// when the qualification is missing.
 #[test]
 fn a_generic_operation_registers_through_a_qualified_path() {
-    for kind in ["typegen", "facet_typegen"] {
-        let args = Some(format_ident!("{}", kind));
-        let input = parse_quote! {
-            pub enum Effect {
-                Navigate(Navigate<Route>),
-            }
-        };
+    let args = Some(format_ident!("facet_typegen"));
+    let input = parse_quote! {
+        pub enum Effect {
+            Navigate(Navigate<Route>),
+        }
+    };
 
-        let expanded = pretty_print(&effect_impl(args, input));
+    let expanded = pretty_print(&effect_impl(args, input));
 
-        assert!(
-            expanded.contains("<Navigate<Route>>::register_types"),
-            "{kind} should register a generic operation through a qualified path:\n{expanded}"
-        );
-    }
+    assert!(
+        expanded.contains("<Navigate<Route>>::register_types_facet"),
+        "a generic operation should register through a qualified path:\n{expanded}"
+    );
 }

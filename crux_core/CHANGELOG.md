@@ -6,7 +6,387 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.21.0](https://github.com/redbadger/crux/compare/crux_core-v0.20.0...crux_core-v0.21.0) - 2026-09-06
+
+### 💥 Breaking Changes
+
+- **The serde-based type generation is removed.** The `typegen` feature, the
+  `crux_core::type_generation::serde` module and its `crux_core::typegen`
+  alias, `Operation::register_types`, the `Export` derive and
+  `#[effect(typegen)]` are all gone, along with the `serde-generate`,
+  `serde-reflection` and `include_dir` dependencies and the bundled
+  `typegen_extensions/` runtimes.
+
+  Facet type generation (`facet_typegen`) has been the documented path since
+  0.19 and is now the only one. To move over: enable `facet_typegen` in place
+  of `typegen`, derive `Facet` on the types that cross the bridge, write
+  `#[effect(facet_typegen)]` on the effect enum, and generate from
+  `TypeRegistry` and `CodeGenerator` as described in
+  [Type generation](https://redbadger.github.io/crux/part-4/typegen.html). `#[effect(typegen)]` is now a compile
+  error that says as much, so a crate still on the old path cannot silently
+  lose its generated types.
+
+  Nothing about the facet path changes in this release, and
+  `Operation::register_types_facet` keeps its name. This closes the last phase
+  of the [type generation RFC](https://redbadger.github.io/crux/rfcs/typegen.html):
+  retiring the legacy backend.
+
+### 🚀 Features
+
+- **Every request now says how many times it expects to be resolved.** The core
+  has always known — `notify_shell` builds a request nothing will answer,
+  `request_from_shell` one that takes a single response, `stream_from_shell` one
+  that takes a sequence — but there was no way to ask. The new `OperationKind`
+  makes it explicit:
+
+  ```rust
+  pub enum OperationKind { Notify, Request, Stream }
+  ```
+
+  and it can be read wherever a request is held:
+
+  ```rust
+  // the typed lane
+  let kind = handle.kind();                // OperationKind
+
+  // inside effect middleware
+  let kind = resolver.kind();              // OperationKind
+  ```
+
+  The middleware one closes a gap: `EffectResolver`'s documentation has always
+  said to call `resolve` once for a one-shot effect and repeatedly for a
+  streaming one, without offering any way to tell which you were holding.
+
+- **Operations can declare their operation kind.** `Operation` gains a `KIND`
+  associated constant, and the new `crux_core::operation` module the three
+  marker traits that go with it:
+
+  ```rust
+  use crux_core::{OperationKind, capability::Operation, operation};
+
+  impl Operation for Publish {
+      type Output = ();
+      const KIND: Option<OperationKind> = Some(OperationKind::Notify);
+  }
+
+  impl operation::Notify for Publish {}
+  ```
+
+  An operation that declares a kind can only be sent with the constructor that
+  matches it — `notify_shell` for `Notify`, `request_from_shell` for `Request`,
+  `stream_from_shell` for `Stream`. The wrong one is a compile error:
+
+  ```text
+  error[E0080]: evaluation panicked: this operation does not declare
+  OperationKind::Request; send it with notify_shell or stream_from_shell instead
+  ```
+
+  The check is a constant evaluated after monomorphisation, so it is reported
+  when the code is built — by `cargo build`, `cargo test` or
+  `cargo clippy --all-targets` — rather than by `cargo check`.
+
+  `RenderOperation` now declares `Notify`. Everything else is unchanged:
+  `KIND` defaults to `None`, which means "the call site decides", so every
+  existing `Operation` implementation keeps compiling and keeps behaving
+  exactly as it did. Nothing changes on the wire, and no generated shell code
+  changes.
+
+- **`#[derive(Operation)]` is re-exported as `crux_core::macros::Operation`.**
+  It writes the `Operation` implementation, the `KIND` constant and the marker
+  trait for you, so a capability author declares an operation in one place:
+
+  ```rust
+  use crux_core::macros::Operation;
+
+  #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+  #[operation(request, output = GetResult)]
+  pub struct Get {
+      pub key: String,
+  }
+  ```
+
+  See the `crux_macros` changelog for the full description.
+
+- **`TypeRegistry::register_effect` records what type generation needs to know
+  about each effect variant** — the kind it declares and the type its request
+  resolves with — and `CodeGenerator::effects` reads it back:
+
+  ```rust
+  let generator = TypeRegistry::new().register_app::<App>()?.build()?;
+  let variants = &generator.effects()[0].variants;
+  // ident: "Get", kind: Some(OperationKind::Request), output: Some(TypeName("GetResult"))
+  ```
+
+  `#[effect(facet_typegen)]` calls it for you.
+
+- **Type generation now emits the operation kinds and a typed effect handler API
+  for every shell language.** Facet type generation (`facet_typegen`) adds
+  these declarations alongside the generated `Effect`, in Swift, Kotlin,
+  TypeScript and C#. A shell implements the handler; the dispatcher resolves
+  each request for it, so there is no `resolve` left to call the wrong number of
+  times or with bytes of the wrong type — a notification is not resolved at
+  all, a request once with whatever the handler returned, and a stream once per
+  item its sink receives.
+
+  Swift:
+
+  ```swift
+  public enum OperationKind: Hashable, Sendable { case notify, request, stream }
+
+  extension Effect {
+      public var operationKind: OperationKind? { /* ... */ }
+  }
+
+  public struct EffectSink<Item>: Sendable { public func send(_ item: Item) }
+
+  public protocol EffectHandler: Sendable {
+      func render(_ operation: RenderOperation)
+      func http(_ operation: HttpRequest) async -> HttpResult
+      func subscribe(_ operation: Subscribe, into sink: EffectSink<Message>)
+  }
+
+  public struct EffectDispatcher: Sendable {
+      public init(handler: any EffectHandler,
+                  resolve: @escaping @Sendable (UInt32, [UInt8]) -> Void)
+      public func dispatch(_ request: Request)
+  }
+  ```
+
+  TypeScript:
+
+  ```typescript
+  export type OperationKind = "notify" | "request" | "stream";
+  export function effectOperationKind(effect: Effect): OperationKind | undefined;
+
+  export interface EffectHandler {
+      render(operation: RenderOperation): void;
+      http(operation: HttpRequest): Promise<HttpResult>;
+      subscribe(operation: Subscribe, sink: EffectSink<Message>): void;
+  }
+
+  export class EffectDispatcher {
+      constructor(handler: EffectHandler,
+                  resolve: (id: uint32, bytes: Uint8Array) => void);
+      public dispatch(request: Request): void;
+  }
+  ```
+
+  Kotlin gets `enum class OperationKind`, a `val Effect.operationKind` extension
+  property, `fun interface EffectSink<in T>`, an `EffectHandler` interface
+  whose request methods are `suspend`, and
+  `class EffectDispatcher(handler, resolve)` with `suspend fun dispatch`. C#
+  gets `enum OperationKind`, an `OperationKind?` property on the `Effect` record,
+  `IEffectSink<in T>`, `IEffectHandler` with `Task<T>` request methods, and
+  `sealed class EffectDispatcher`.
+
+  An operation that declares no kind keeps the shape it has today: its handler
+  method is handed the request id and a `resolve` callback taking raw bytes, so
+  a shell can adopt the handler API before every capability it uses has
+  migrated.
+
+  This is purely additive — nothing that was generated before has changed, and
+  a shell that matches on `Effect` and calls `resolve` by hand carries on
+  working. If the handler API is in the way, turn it off with
+  `CodeGenerator::without_effect_handlers()`; `OperationKind` and the
+  `operationKind` accessor are emitted regardless, because a shell dispatching
+  by hand still has to know how many times to resolve each effect. The
+  generated names (`OperationKind`, `EffectSink`/`IEffectSink`,
+  `EffectHandler`/`IEffectHandler`, `EffectDispatcher`) are now reserved:
+  `TypeRegistry::build` reports an error if a shared type or an effect variant
+  claims one.
+
+  The plugins use the `after_type` plugin hook of `facet_generate`, which
+  fires for every top-level type, and the helpers that it exposes for them.
+
+- **Type generation also emits a shell-side `Core`.** With the handler API in
+  place, what every shell still wrote by hand was the same loop: serialize the
+  `Event`, call the core's `update`, deserialize the `Requests`, re-read the view
+  on `Render`, dispatch the rest, and on each resolve call the core's `resolve`
+  and loop over what it returns. Beside `EffectHandler` and `EffectDispatcher`,
+  every generated package now carries a `CoreBridge` protocol/interface
+  (`ICoreBridge` in C#) over bytes — `update(event)`, `resolve(id, output)` and
+  `view()` — and a `Core` that owns that loop. The shell writes a few-line
+  adapter from BoltFFI's `CoreFfi` to `CoreBridge` (or a fake, for previews and
+  tests), an `EffectHandler` for the platform work, and is done.
+
+  Swift:
+
+  ```swift
+  public protocol CoreBridge: Sendable {
+      func update(_ event: [UInt8]) -> [UInt8]
+      func resolve(_ id: UInt32, _ output: [UInt8]) -> [UInt8]
+      func view() -> [UInt8]
+  }
+
+  @available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
+  @Observable @MainActor public final class Core {
+      public private(set) var view: ViewModel
+      public init(bridge: any CoreBridge, handler: any EffectHandler)
+      public func update(_ event: Event)
+      public func process(_ requests: [Request])
+      public func process(bytes: [UInt8])
+  }
+  ```
+
+  The Swift `Core` is `@Observable`, so a SwiftUI shell puts it in the
+  environment and reads `core.view`; it alone requires iOS 17 / macOS 14,
+  while the handler API keeps its iOS 13 / macOS 10.15 bar. Kotlin gets
+  `interface CoreBridge` and `class Core(bridge, handler, scope:
+  CoroutineScope)` exposing `val view: StateFlow<ViewModel>`; TypeScript gets
+  `interface CoreBridge` and `class Core(bridge, handler, onView)` with
+  `update`, `process(requests)` and `processBytes(bytes)`; C# gets
+  `ICoreBridge` and `sealed class Core(bridge, handler)`, which implements
+  `INotifyPropertyChanged` and raises `PropertyChanged` for `View`, with
+  `Update` and two `Process` overloads. `process(bytes)` is there for the
+  requests middleware pushes to the shell asynchronously.
+
+  `Core` handles `Render` itself — it re-reads the view, holds it and
+  publishes it — so **`EffectHandler.render` now has a default that does nothing**
+  in all four languages (a Swift protocol extension, a Kotlin or C# default
+  method, an optional member in TypeScript). Implement it only if you drive
+  `EffectDispatcher` without `Core`. `Core` is emitted only when the effect
+  enum has a `crux_core::render::RenderOperation` variant;
+  `CodeGenerator::without_core()` turns it off and leaves the handler API, and
+  `without_effect_handlers()` turns off both. `Core`, `CoreBridge` and
+  `ICoreBridge` join the reserved names. The generated Kotlin module now
+  declares `kotlinx-coroutines-core` in its `build.gradle.kts`.
+
+  `TypeRegistry::register_app` now records the app's `Event` and `ViewModel`
+  types as an `AppMeta`, read back with `CodeGenerator::app()`, and
+  `EffectVariantMeta` gains `render: bool`.
+
+- **Type generation can bridge `Core` to BoltFFI's bindings itself.** Tell the
+  `CodeGenerator` where BoltFFI put its output and the adapter is generated
+  too, so a shell constructs `Core` from nothing but its `EffectHandler`:
+
+  ```rust,ignore
+  TypeRegistry::new().register_app::<App>()?.build()?.boltffi(
+      BoltFfi::new()
+          .swift("Shared")                                        // import Shared, ../Shared
+          .kotlin()                                               // CoreFfi is in the generated package
+          .typescript("shared", PackageLocation::Path("../pkg".into()))
+          .csharp(),                                              // CoreFfi is in the generated namespace
+  )
+  ```
+
+  Each language is opted in on its own; one you do not name is unchanged. For
+  a named language the generated module gains `FfiBridge` — `CoreBridge` over
+  `CoreFfi`, with the Swift `Data` conversion and `@unchecked Sendable` where
+  they belong — and `Core` gains `Core(handler:)` in Swift, `Core(handler,
+  scope)` in Kotlin, `static async create(handler, onView)` in TypeScript
+  (it awaits the wasm module's `initialized` promise) and `Core(handler)` in
+  C#. `BoltFfi::class(..)` renames the exported class; `swift_package(..)`,
+  `kotlin_package(..)` and `csharp_namespace(..)` cover non-default layouts.
+  `CoreBridge` and the two-argument constructors are still emitted for fakes
+  and for FFI shapes the bridge does not cover, such as the middleware
+  examples' `CoreFfi::new(shell)`.
+
+  Two build consequences. The generated Swift package now depends on BoltFFI's
+  (`.package(path: "../Shared")` and the product on its target) and needs a
+  `platforms:` floor no lower than that package's, set with
+  `Config::builder(..).platform(".iOS(.v16)")`, a new `Config` setting that
+  works with or without the bridge; your app target no longer has to link the
+  BoltFFI package directly. The generated TypeScript `package.json` depends on
+  the wasm package, so run `boltffi pack wasm` before typegen. `FfiBridge`
+  joins the reserved names, and a `boltffi(..)` configuration with no `Core`
+  to bridge (`without_core()`, no registered app, or no `Render` variant) is
+  an error rather than a no-op. Requires `facet_generate` with the
+  companion-file and manifest hooks.
+
+- **Each `EffectHandler` method carries the doc comment of its operation.**
+  Type generation writes the doc of the operation type on its method in the
+  generated `EffectHandler`, in Swift, Kotlin, TypeScript and C#. A capability
+  states its contract with the shell in that doc, so the shell author reads
+  it where they implement the method. `EffectBuilder::variant` reads the doc
+  from the operation's `Shape`, so it now requires `Op: Facet`. Every
+  operation that an effect carries already implements `Facet`.
+
+- **Request ids are structured, so a bad resolve says what is wrong with it.**
+  An `EffectId` was a bare counter. The bridge now encodes into each id the
+  effect variant the request carries, whether the shell resolves it once or
+  many times, and a sequence number that is not reused when the request
+  completes. Id `0` is reserved: every notification is issued that one id, and
+  nothing is stored for it. The layout is private to the bridge and may change
+  in any release; a shell resolves with the id exactly as it arrived.
+
+  **`EffectId`'s field is private.** An FFI bridge that wraps the `u32` its
+  shell passes back writes `EffectId::from(id)` instead of `EffectId(id)`.
+  There is no way to read the number back out: it is opaque, and only good for
+  handing back to the bridge. On the wire the id is still a plain `u32`.
+
+  The bridge checks each id before it deserializes anything, and
+  `ResolveError` gains three variants to report what it finds:
+
+  ```text
+  Attempted to resolve a request that is not expected to be resolved.  // id 0
+  `shared::Effect` has only 2 variants, but response id 0x09000001 carries variant 9.
+  Request 1 expects `Http` (variant 0), but response id 0x01000001 carries `Render` (variant 1).
+  Request 1 expects the Request kind, but response id 0x00800001 carries the Stream kind.
+  ```
+
+  `WrongEffect` carries both sides as `EffectVariant { index, name }`, and
+  `NoSuchEffect` names the effect type.
+
+  `NotFound` now means only what it says — never issued, or already resolved.
+  Resolving a notification used to report `NotFound` and now reports
+  `ResolveError::Never`. `ResolveError` is also `#[non_exhaustive]`, so later
+  additions are not breaking.
+
+  `EffectFFI` gains a defaulted `variant_index()` method, a `VARIANT_COUNT`
+  constant and a `variant_name(index)` function, all of which `#[effect]`
+  overrides; a hand-written implementation keeps compiling, its ids simply
+  carry variant index zero, and its errors number variants instead of naming
+  them.
+
+### 🐛 Bug Fixes
+
+- **Two shared types that generate the same name are now an error.** The type
+  registry used to keep whichever it met first and drop the other without a
+  word, so an app's own `ListKeys` beside `crux_kv`'s `ListKeys` produced a
+  single generated `ListKeys` and shells that failed to compile far from the
+  cause ([#601](https://github.com/redbadger/crux/issues/601)). `TypeRegistry`
+  now rejects the pair at registration, naming both Rust types and the fix:
+  rename one with `#[facet(rename = "...")]` or give it its own namespace. This
+  holds for types registered directly, and for types reached through a field
+  or variant. The check lives in `facet_generate` ([redbadger/facet-generate#137](https://github.com/redbadger/facet-generate/pull/137)).
+- **`CodeGenerator::typescript` fails when `pnpm install` or `tsc` does.** It
+  ran both on the generated package but ignored their exit status, so a module
+  that didn't type-check was only noticed by the shell's build
+  ([#602](https://github.com/redbadger/crux/issues/602)). It now returns the
+  new `TypeGenError::CommandFailed`, with the command and its exit status.
+  Their output is still printed, so `tsc`'s diagnostics appear above the
+  error. If the generated `package.json` depends on a package that hasn't
+  been built yet, such as a BoltFFI wasm package, build that first:
+  `pnpm install` failing is now an error too.
+- **A type that only the generated shell API names is imported (Swift,
+  TypeScript).** The effect dispatcher and `EffectHandler` name each
+  operation's output, and `Core` names the app's event and view model. When
+  one of those lived in a namespace nothing else in the app module referred
+  to, the generated Swift had no `import` or target dependency for it, and the
+  TypeScript no `import * as`, so neither built
+  ([#614](https://github.com/redbadger/crux/issues/614)). The plugins now
+  declare those types to `facet_generate`, which adds the import, and in Swift
+  includes the dependency in its check for cycles between targets
+  ([redbadger/facet-generate#173](https://github.com/redbadger/facet-generate/pull/173)).
+
+- **The bridge ignores a late item for a stream.** If the core no longer
+  listens to a stream, `Bridge::resolve` returns `Ok(())` for a new item on
+  that stream. Before, it returned `ResolveError::FinishedMany`. An FFI
+  wrapper usually panics on an error, so a timer tick that arrived after a
+  clear, or any item after an abort, crashed the core. A malformed item is
+  still an error. `Request::resolve` in a Rust shell still returns
+  `ResolveError::FinishedMany`.
+
+### ⚙️ Miscellaneous Tasks
+
+- **Facet type generation now requires `facet_generate` 0.22.4.** Only the
+  `facet_typegen` feature is affected; every other feature of this crate is
+  unchanged.
+- Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.
+- Released in lockstep with `crux_http` 0.21, `crux_kv` 0.15 and `crux_time`
+  0.19. The two capability crates deprecate their enum APIs in favour of the
+  per-operation types; see their changelogs and the
+  [migration guide](https://redbadger.github.io/crux/guide/migrate-per-operation-types.html).
 
 ## [0.20.0](https://github.com/redbadger/crux/compare/crux_core-v0.19.0...crux_core-v0.20.0) - 2026-08-06
 
