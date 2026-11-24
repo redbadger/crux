@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### 🐛 Bug Fixes
+
+- **`crux_core::macros` is now available whenever the `crux_macros` feature is on.**
+  The re-export depended on the `default` feature. A crate that set
+  `default-features = false` and enabled `crux_macros` did not get the module.
+
 ## [0.21.0](https://github.com/redbadger/crux/compare/crux_core-v0.20.0...crux_core-v0.21.0) - 2026-09-06
 
 ### 💥 Breaking Changes
