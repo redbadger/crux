@@ -1,0 +1,4 @@
+# Record the sample session for inspection at https://ui.perfetto.dev.
+trace:
+    mkdir -p output
+    cargo run --locked -- output/session.json < session.txt

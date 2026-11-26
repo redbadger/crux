@@ -1,0 +1,10 @@
+get
+watch
+random 3
+sse 5
+inc
+sse 8
+random 2
+done
+dec
+quit
