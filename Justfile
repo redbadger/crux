@@ -66,6 +66,10 @@ check-versions:
     ci_boltffi_pins='/uses: \.\/\.github\/actions\/install-boltffi/ { pending = 1; next } pending && /version:/ { print FILENAME ":" $0; pending = 0 }'
     ci_boltffi_checked=$(awk "$ci_boltffi_pins" .github/workflows/*.yaml | wc -l | tr -d ' ')
 
+    # An upgrade guide records the versions of its own release, so the check
+    # does not read the upgrade guides.
+    docs_exclude='--exclude=upgrade-*.md'
+
     status=0
     checked=0
     while IFS= read -r hit; do
@@ -80,15 +84,16 @@ check-versions:
     done <<PINS
     $(grep -HoE '^boltffi[[:space:]]*=[[:space:]]*"=[0-9]+\.[0-9]+\.[0-9]+"' Cargo.toml examples/*/Cargo.toml || true)
     $(grep -HoE '"@boltffi/runtime"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' examples/*/*/package.json || true)
-    $(grep -rHoE "boltffi_cli[[:space:]]+--version[[:space:]]+['\"]=[0-9]+\.[0-9]+\.[0-9]+['\"]" .github/workflows docs/src lib.just || true)
+    $(grep -rHoE "$docs_exclude" '"@boltffi/runtime"[[:space:]]*:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"|@boltffi/runtime@[0-9]+\.[0-9]+\.[0-9]+' docs/src || true)
+    $(grep -rHoE "$docs_exclude" "boltffi_cli[[:space:]]+--version[[:space:]]+['\"]=[0-9]+\.[0-9]+\.[0-9]+['\"]" .github/workflows docs/src lib.just || true)
     $(awk "$ci_boltffi_pins" .github/workflows/*.yaml)
-    $(grep -rHoE '^boltffi[[:space:]]*=[[:space:]]*"=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
+    $(grep -rHoE "$docs_exclude" '^boltffi[[:space:]]*=[[:space:]]*"=[0-9]+\.[0-9]+\.[0-9]+"' docs/src || true)
     $(grep -HoE '^boltffi_version[[:space:]]*:=[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' examples/counter/windows/Justfile || true)
     $(grep -E -A2 -H '"boltffi",[[:space:]]*"boltffi_cli"' renovate.json | grep -E 'allowedVersions' || true)
     PINS
 
-    if [ "$checked" -lt 24 ]; then
-        echo "  {{ style("error") }}✗ only found $checked BoltFFI pins, expected at least 24, has a pin site moved or been renamed?{{ NORMAL }}"
+    if [ "$checked" -lt 25 ]; then
+        echo "  {{ style("error") }}✗ only found $checked BoltFFI pins, expected at least 25, has a pin site moved or been renamed?{{ NORMAL }}"
         status=1
     fi
 

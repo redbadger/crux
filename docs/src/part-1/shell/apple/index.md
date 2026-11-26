@@ -40,7 +40,7 @@ a Swift package for our shared library, which we can add in Xcode. Install the
 matching CLI with
 
 ```bash
-cargo install boltffi_cli --version '=0.30.1' --locked
+cargo install boltffi_cli --version '=0.32.1' --locked
 ```
 
 BoltFFI builds the core for each Apple platform, so add the Rust targets it

@@ -601,7 +601,11 @@ Two consequences for the build:
   package (`"shared": "file:../pkg"`), and type generation runs
   `pnpm install` in the generated package, so run `boltffi pack wasm`
   *before* typegen. The Android recipes already pack first; the web
-  recipes in the examples were reordered to match.
+  recipes in the examples were reordered to match. `boltffi pack wasm`
+  in turn needs the app's dependencies (see
+  [React](../part-1/shell/web/react.md)), so the app depends on both
+  generated packages with `link:`. `pnpm install` can then run before
+  either package exists.
 
 Kotlin and C# need nothing else when the bindings share the generated
 package or namespace, which is how the examples are configured.

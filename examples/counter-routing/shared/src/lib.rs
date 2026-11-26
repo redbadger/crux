@@ -6,6 +6,9 @@ mod ffi;
 #[cfg(all(feature = "ffi", not(target_family = "wasm")))]
 mod rng_handler;
 
+#[cfg(feature = "ffi")]
+boltffi::scaffolding!();
+
 pub use crux_http as http;
 
 pub use app::*;

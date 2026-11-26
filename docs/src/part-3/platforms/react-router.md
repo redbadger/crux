@@ -32,7 +32,7 @@ that it can be referenced from our code.
 To do this, we'll use BoltFFI, which you can install like this:
 
 ```sh
-cargo install boltffi_cli --version '=0.30.1' --locked
+cargo install boltffi_cli --version '=0.32.1' --locked
 brew install binaryen # provides wasm-opt
 ```
 
@@ -44,11 +44,27 @@ to `wasm-opt`, which older releases don't understand. Check with
 [release from GitHub](https://github.com/WebAssembly/binaryen/releases) if your
 package manager ships something older.
 
-Now that we have `boltffi` installed, we can build our `shared` library to
-WebAssembly for the browser.
+Add the `shared` Wasm package and the BoltFFI runtime to your
+`web-react-router` project:
 
 ```sh
-(cd shared && boltffi pack wasm)
+cd web-react-router
+pnpm add shared@link:./generated/pkg @boltffi/runtime@0.32.1
+```
+
+The Wasm package does not exist yet. A `link:` dependency is a symbolic link, so
+pnpm can add it before BoltFFI writes the package. pnpm does not install the
+dependencies of a linked package, so the app lists `@boltffi/runtime` itself.
+The app also needs `@types/node` in its `devDependencies` (the React Router
+template adds it).
+
+Now that we have `boltffi` installed, we can build our `shared` library to
+WebAssembly for the browser. BoltFFI type-checks the TypeScript bindings that
+it generates against `@boltffi/runtime` and `@types/node` in the `node_modules`
+of `web-react-router`. Thus you must install the dependencies before you run it:
+
+```sh
+(cd ../shared && boltffi pack wasm)
 ```
 
 ````admonish tip
@@ -65,13 +81,6 @@ WebAssembly for the browser.
   }
   ```
 ````
-
-Add the `shared` library as a Wasm package to your `web-react-router` project:
-
-```sh
-cd web-react-router
-pnpm add ./generated/pkg
-```
 
 We want Vite to bundle our `shared` Wasm package, so we register the wasm and
 React Router plugins in `vite.config.ts`:

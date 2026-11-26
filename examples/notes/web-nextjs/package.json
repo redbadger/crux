@@ -8,15 +8,15 @@
     "start": "next start"
   },
   "dependencies": {
-    "@boltffi/runtime": "0.30.1",
+    "@boltffi/runtime": "0.32.1",
     "daisyui": "5.7.46",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.7",
     "next": "16.3.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "shared": "file:generated/pkg",
-    "shared_types": "file:generated/types",
+    "shared": "link:generated/pkg",
+    "shared_types": "link:generated/types",
     "typescript": "6.0.3"
   },
   "devDependencies": {

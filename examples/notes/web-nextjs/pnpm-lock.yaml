@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@boltffi/runtime':
-        specifier: 0.30.1
-        version: 0.30.1
+        specifier: 0.32.1
+        version: 0.32.1
       daisyui:
         specifier: 5.7.46
         version: 5.7.46
@@ -30,11 +30,11 @@ importers:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
       shared:
-        specifier: file:generated/pkg
-        version: file:generated/pkg
+        specifier: link:generated/pkg
+        version: link:generated/pkg
       shared_types:
-        specifier: file:generated/types
-        version: app@file:generated/types
+        specifier: link:generated/types
+        version: link:generated/types
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -134,8 +134,8 @@ packages:
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
 
-  '@boltffi/runtime@0.30.1':
-    resolution: {integrity: sha512-wTB5vZstjB8LDNjKjv1xkaPL697pJgGTAMv9K5Z99nHpzCrfrE+nBXzvi7PJ0/BavI4sxSIVUVpSzn0XVivZEA==}
+  '@boltffi/runtime@0.32.1':
+    resolution: {integrity: sha512-qVBsJf2exxcWe/Ewcunh9dPkMjdq2RBThIfQfVN9kbCQDzlB95pl57EfV5pEyP5FWd4Zt8MayUfLNmfDarTEBw==}
 
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
@@ -754,9 +754,6 @@ packages:
   ansi-styles@4.3.0:
     resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
     engines: {node: '>=8'}
-
-  app@file:generated/types:
-    resolution: {directory: generated/types, type: directory}
 
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
@@ -1795,9 +1792,6 @@ packages:
     resolution: {integrity: sha512-RJRdvCo6IAnPdsvP/7m6bsQqNnn1FCBX5ZNtFL98MmFF/4xAIJTIg1YbHW5DC2W5SKZanrC6i4HsJqlajw/dZw==}
     engines: {node: '>= 0.4'}
 
-  shared@file:generated/pkg:
-    resolution: {directory: generated/pkg, type: directory}
-
   sharp@0.35.5:
     resolution: {integrity: sha512-Ywn4OnzGukp7CDMrp08RQ50YKmuwG47brZgIVPTvBaaAfQlRlygrRqSrxdCiL9M+LlzLBiJ68IR1QqvzHyjC7g==}
     engines: {node: '>=20.9.0'}
@@ -2117,7 +2111,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@boltffi/runtime@0.30.1': {}
+  '@boltffi/runtime@0.32.1': {}
 
   '@emnapi/core@1.10.0':
     dependencies:
@@ -2662,10 +2656,6 @@ snapshots:
   ansi-styles@4.3.0:
     dependencies:
       color-convert: 2.0.1
-
-  app@file:generated/types:
-    dependencies:
-      shared: file:generated/pkg
 
   argparse@2.0.1: {}
 
@@ -3884,10 +3874,6 @@ snapshots:
       dunder-proto: 1.0.1
       es-errors: 1.3.0
       es-object-atoms: 1.1.2
-
-  shared@file:generated/pkg:
-    dependencies:
-      '@boltffi/runtime': 0.30.1
 
   sharp@0.35.5(@types/node@26.6.3):
     dependencies:

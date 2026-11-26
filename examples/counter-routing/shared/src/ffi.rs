@@ -59,10 +59,11 @@ impl From<crate::Effect> for Effect {
 
 /// For the Shell to provide.
 ///
-/// `boltffi`'s binding generator parses the source and does not evaluate
-/// `#[cfg]`, so the FFI surface (this trait and the `CoreFfi` methods below)
-/// must present a single, cfg-independent signature. The native and wasm paths
-/// therefore differ only inside method bodies, not in their signatures.
+/// `boltffi` generates the bindings for every target, wasm included, from a
+/// build for the host. Thus the FFI surface (this trait and the `CoreFfi`
+/// methods below) must present a single, cfg-independent signature. The
+/// native and wasm paths therefore differ only inside method bodies, not in
+/// their signatures.
 #[boltffi::export]
 pub trait CruxShell: Send + Sync {
     /// Called when any effects resulting from an asynchronous process
@@ -100,6 +101,7 @@ impl Routes<Counter> for EffectRoutes {
 /// On native targets this drives an [`EffectRouter`] that handles `Random`
 /// internally; on wasm (where threads are unavailable) it drives a plain
 /// [`Bridge`] and `Random` is exposed to the shell.
+#[boltffi::export]
 pub struct CoreFfi {
     #[cfg(not(target_family = "wasm"))]
     router: Arc<EffectRouter<Counter, EffectRoutes>>,

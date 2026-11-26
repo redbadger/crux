@@ -8,6 +8,7 @@ use crux_core::{
 use crate::app::Weather;
 
 /// The main interface used by the shell
+#[boltffi::export]
 pub struct CoreFfi {
     core: Bridge<Weather>,
 }

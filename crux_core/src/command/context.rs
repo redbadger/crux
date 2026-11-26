@@ -257,8 +257,6 @@ impl<Effect, Event> CommandContext<Effect, Event> {
 }
 
 /// A task could not be spawned because its command has been dropped.
-// Keep the thiserror attribute on a variant: BoltFFI 0.30.1 mistakes a
-// type-level #[error("...")] for its own marker when scanning dependencies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum SpawnError {
     /// The command no longer exists to accept the task.

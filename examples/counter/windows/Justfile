@@ -13,7 +13,7 @@ overlay := if env("BOLTFFI_OVERLAY", "") == "" { "" } else { "--overlay " + quot
 # variable overrides *before* the recipe name, so `just build platform=ARM64`
 # fails with "justfile does not contain recipe `platform=ARM64`".
 platform := "x64"
-boltffi_version := "0.30.1"
+boltffi_version := "0.32.1"
 rust_target_x64 := "x86_64-pc-windows-msvc"
 rust_target_arm64 := "aarch64-pc-windows-msvc"
 

@@ -32,12 +32,13 @@ typegen:
             --language typescript \
             --output-dir generated/types
 
-# build wasm package
+# build wasm package (`boltffi pack wasm` type-checks the bindings against
+# `@boltffi/runtime` and `@types/node` in this shell's node_modules, so the
+# install runs first)
 [working-directory('../shared')]
-wasm:
+wasm: install
     @echo '{{ style("command") }}wasm:{{ NORMAL }}'
     boltffi --overlay boltffi.web-react-router.toml pack wasm
-    @just lib::fix-boltffi-wasm-package ../web-react-router/generated/pkg/package.json
 
 # install npm dependencies
 install:
@@ -45,7 +46,7 @@ install:
     pnpm install
 
 # build the project
-build: typegen wasm install
+build: typegen install wasm
     @echo '{{ style("command") }}build:{{ NORMAL }}'
     pnpm build
 
@@ -72,6 +73,6 @@ dev: fix check build test
 ci: check build test
 
 # serve the app locally
-serve: typegen wasm install
+serve: typegen install wasm
     @echo '{{ style("command") }}serve:{{ NORMAL }}'
     pnpm dev

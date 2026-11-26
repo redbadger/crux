@@ -8,6 +8,7 @@ use crux_core::{
 use crate::Counter;
 
 /// The main interface used by the shell
+#[boltffi::export]
 pub struct CoreFfi {
     core: Bridge<Counter>,
 }

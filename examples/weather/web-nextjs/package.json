@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@boltffi/runtime": "0.30.1",
+    "@boltffi/runtime": "0.32.1",
     "@phosphor-icons/react": "^2.1.10",
     "clsx": "^2.1.1",
     "eslint": "^9.39.5",
@@ -16,8 +16,8 @@
     "next": "16.2.4",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "shared": "file:generated/pkg",
-    "shared_types": "file:generated/types",
+    "shared": "link:generated/pkg",
+    "shared_types": "link:generated/types",
     "typescript": "6.0.3"
   },
   "devDependencies": {

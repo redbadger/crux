@@ -42,7 +42,7 @@ and put the code in a `src/` directory, which is where
 the files below go. `--yes` accepts the defaults for
 everything else.
 
-## Compile our Rust shared library
+## Install BoltFFI
 
 When we build our app, we also want to compile the
 Rust core to WebAssembly so that it can be referenced
@@ -51,7 +51,7 @@ from our code.
 To do this, we'll use BoltFFI, which you can install like this:
 
 ```sh
-cargo install boltffi_cli --version '=0.30.1' --locked
+cargo install boltffi_cli --version '=0.32.1' --locked
 brew install binaryen # provides wasm-opt
 ```
 
@@ -62,28 +62,6 @@ to `wasm-opt`, which older releases don't understand. Check with
 `wasm-opt --version`; distribution packages are often well behind, so prefer a
 [release from GitHub](https://github.com/WebAssembly/binaryen/releases) if your
 package manager ships something older.
-
-Now that we have `boltffi` installed, we can build
-our `shared` library to WebAssembly for the browser.
-BoltFFI runs from the `shared` directory, and writes
-the package to `web-nextjs/generated/pkg`:
-
-```sh
-cd ../shared
-boltffi pack wasm
-cd ../web-nextjs
-```
-
-The generated `package.json` doesn't list the
-`shared_node.*` files among the files it publishes,
-but its Node.js entry point needs them, and Next.js
-uses that entry point when it renders on the server.
-Add them with this (the example's `Justfile` does the
-same after every `boltffi pack wasm`):
-
-```sh
-node -e "const fs = require('node:fs'); const path = 'generated/pkg/package.json'; const pkg = JSON.parse(fs.readFileSync(path, 'utf8')); const files = new Set(pkg.files ?? []); for (const file of ['shared_node.js', 'shared_node.d.ts', 'shared_node.js.map']) files.add(file); pkg.files = [...files]; fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');"
-```
 
 ## Generate the Shared Types
 
@@ -99,23 +77,50 @@ cargo run --package shared --bin codegen \
        --output-dir generated/types
 ```
 
-Now add both the Wasm package and the generated types
-to the `dependencies` in `package.json`, as local
-dependencies:
+## Add the dependencies
+
+Now add the Wasm package, the generated types and the
+BoltFFI runtime to the `dependencies` in `package.json`:
 
 ```json
 {
   "dependencies": {
-    "shared": "file:generated/pkg",
+    "@boltffi/runtime": "0.32.1",
+    "shared": "link:generated/pkg",
     "shared_types": "file:generated/types"
   }
 }
 ```
 
+The Wasm package does not exist yet. A `link:`
+dependency is a symbolic link, so pnpm can install it
+before BoltFFI writes the package. pnpm does not
+install the dependencies of a linked package, so the
+app lists `@boltffi/runtime` itself. The app also
+needs `@types/node` in its `devDependencies`
+(`create-next-app` adds it).
+
 Install the dependencies:
 
 ```sh
 pnpm install
+```
+
+## Compile our Rust shared library
+
+Now that we have `boltffi` installed, we can build
+our `shared` library to WebAssembly for the browser.
+BoltFFI runs from the `shared` directory, and writes
+the package to `web-nextjs/generated/pkg`. It
+type-checks the TypeScript bindings that it generates
+against `@boltffi/runtime` and `@types/node` in the
+`node_modules` of `web-nextjs`. Thus you must install
+the dependencies before you run it:
+
+```sh
+cd ../shared
+boltffi pack wasm
+cd ../web-nextjs
 ```
 
 The generated types package (it's called `app`) is

@@ -72,7 +72,7 @@ codegen = [
 ]
 
 [dependencies]
-boltffi = "=0.30.1"
+boltffi = "=0.32.1"
 facet = "=0.46.5"
 crux_core.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -203,7 +203,9 @@ Now we need to add the Rust side of the bindings into our code. Update your `lib
 ```
 
 This code exposes the `ffi.rs` module, where BoltFFI sees the byte-oriented
-`CoreFfi` class. Let's look at it closer:
+`CoreFfi` class. The `boltffi::scaffolding!()` call must occur once at the root
+of each crate that uses BoltFFI, because the other BoltFFI macros expand against
+it. Let's look at `ffi.rs` closer:
 
 ```rust,noplayground
 // shared/src/ffi.rs
@@ -221,7 +223,8 @@ Notice the Shell is in charge of creating the instance of this type, so in theor
 several instances of the app if it wants to.
 
 The `#[boltffi::export]` attribute marks the Rust class and methods that should
-be made available to shell languages. BoltFFI can support richer shapes, but Crux
+be made available to shell languages. The attribute on the struct declares the
+class, and the attribute on the `impl` block exports its methods. BoltFFI can support richer shapes, but Crux
 keeps this layer deliberately tiny: app data is serialized with Serde and
 `bincode`, and `facet_generate` creates matching host-language types so behavior stays
 consistent across platforms.

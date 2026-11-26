@@ -8,7 +8,7 @@ inputs:
   version:
     description: >
       The BoltFFI version to install, without the "v" prefix (for example
-      "0.30.1"). `just check-versions` holds each caller to lib.just.
+      "0.32.1"). `just check-versions` holds each caller to lib.just.
     required: true
 
 runs:

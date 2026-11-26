@@ -352,11 +352,11 @@ jobs:
 
       - uses: ./.github/actions/install-boltffi
         with:
-          version: "0.30.1"
+          version: "0.32.1"
 
       - name: Install wasm-opt
         run: |
-          # BoltFFI 0.30.1 passes --enable-bulk-memory-opt, which was added in Binaryen 123.
+          # BoltFFI 0.32.1 passes --enable-bulk-memory-opt, which was added in Binaryen 123.
           binaryen_version=123
           archive="binaryen-version_${binaryen_version}-x86_64-linux.tar.gz"
           url="https://github.com/WebAssembly/binaryen/releases/download/version_${binaryen_version}/${archive}"
@@ -513,7 +513,7 @@ jobs:
 
       - uses: ./.github/actions/install-boltffi
         with:
-          version: "0.30.1"
+          version: "0.32.1"
 
       - name: CI
         run: just windows/ci
@@ -670,7 +670,7 @@ jobs:
 
       - uses: ./.github/actions/install-boltffi
         with:
-          version: "0.30.1"
+          version: "0.32.1"
 
       - name: CI
         run: just apple/ci
@@ -734,7 +734,7 @@ jobs:
 
       - uses: ./.github/actions/install-boltffi
         with:
-          version: "0.30.1"
+          version: "0.32.1"
 
       - name: CI
         run: just Android/ci
