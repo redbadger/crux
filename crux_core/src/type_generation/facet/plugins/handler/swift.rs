@@ -2,11 +2,14 @@
 
 use std::io;
 
-use facet_generate::generation::{
-    CodeGeneratorConfig,
-    bincode::swift::write_serialize_value,
-    indent::IndentWrite,
-    swift::{case_name, render_type, write_doc},
+use facet_generate::{
+    generation::{
+        CodeGeneratorConfig,
+        bincode::swift::write_serialize_value,
+        indent::IndentWrite,
+        swift::{case_name, render_type, write_doc},
+    },
+    reflection::format::Format,
 };
 
 use super::{super::SWIFT_AVAILABILITY as AVAILABILITY, Matched};
@@ -246,8 +249,13 @@ fn emit_arm(
     } else if variant.is_request() {
         writeln!(w, "Task {{")?;
         w.indent();
-        writeln!(w, "let output = await handler.{method}(operation)")?;
-        emit_resolve(w, "output", variant, config)?;
+        if matches!(variant.output, Some(Format::Unit)) {
+            writeln!(w, "await handler.{method}(operation)")?;
+            emit_resolve(w, "()", variant, config)?;
+        } else {
+            writeln!(w, "let output = await handler.{method}(operation)")?;
+            emit_resolve(w, "output", variant, config)?;
+        }
         w.unindent();
         writeln!(w, "}}")?;
     } else {

@@ -1286,6 +1286,98 @@ mod facet_clash_test {
     }
 }
 
+/// A request effect whose output is `()` should generate a Swift dispatcher
+/// arm without a `let output =` binding of type `Void`.
+#[cfg(feature = "facet_typegen")]
+mod facet_swift_unit_output {
+    #![allow(clippy::unsafe_derive_deserialize)]
+
+    use std::fs;
+
+    use crux_core::{
+        Command,
+        macros::{Operation, effect},
+        render::RenderOperation,
+        type_generation::facet::{Config, TypeRegistry},
+    };
+    use facet::Facet;
+    use serde::{Deserialize, Serialize};
+
+    use super::toolchain::swift_build;
+
+    #[derive(Facet)]
+    #[repr(C)]
+    pub enum Event {
+        None,
+    }
+
+    #[derive(Facet)]
+    pub struct ViewModel;
+
+    #[derive(Operation, Facet, Debug, Clone, Serialize, Deserialize)]
+    #[operation(request, output = ())]
+    pub struct Delay;
+
+    #[effect(facet_typegen)]
+    pub enum Effect {
+        Render(RenderOperation),
+        Delay(Delay),
+    }
+
+    #[derive(Default)]
+    pub struct App;
+
+    impl crux_core::App for App {
+        type Event = Event;
+        type Model = ();
+        type ViewModel = ViewModel;
+        type Effect = Effect;
+
+        fn update(&self, _event: Event, _model: &mut Self::Model) -> Command<Effect, Event> {
+            Command::done()
+        }
+
+        fn view(&self, _model: &Self::Model) -> Self::ViewModel {
+            ViewModel
+        }
+    }
+
+    #[test]
+    fn swift_unit_output_request_omits_output_binding() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        TypeRegistry::new()
+            .register_app::<App>()
+            .expect("should register the app")
+            .build()
+            .expect("should build the registry")
+            .swift(&Config::builder("App", dir.path()).build())
+            .expect("swift type generation should succeed");
+
+        let package = dir.path().join("App");
+        let source = fs::read_to_string(package.join("Sources/App/App.swift"))
+            .expect("should write a Swift module");
+
+        assert!(
+            source.contains("func delay(_ operation: Delay) async -> Void"),
+            "expected Void return in handler protocol:\n{source}"
+        );
+        assert!(
+            source.contains("await handler.delay(operation)"),
+            "expected awaited handler call:\n{source}"
+        );
+        assert!(
+            !source.contains("let output = await handler.delay(operation)"),
+            "expected no `let output` binding for Void result:\n{source}"
+        );
+        assert!(
+            source.contains("try serializer.serialize_unit(value: ())"),
+            "expected unit literal passed to serialize_unit:\n{source}"
+        );
+
+        swift_build(&package);
+    }
+}
+
 /// Helpers that compile generated code with the toolchain of each shell
 /// language. A test skips a toolchain that is not installed, unless
 /// `CRUX_REQUIRE_SHELL_TOOLCHAINS` is set.
