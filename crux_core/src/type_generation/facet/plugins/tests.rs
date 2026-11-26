@@ -935,3 +935,86 @@ fn output_types_are_every_type_inside_each_output() {
 
     assert_eq!(output_types(&effect), vec![kit_presence(), message]);
 }
+
+/// A Swift request effect with unit output awaits the handler without binding a
+/// `Void` constant and serializes `()` directly.
+#[test]
+fn handler_swift_unit_output() {
+    #[derive(Facet)]
+    struct Delay;
+
+    impl Operation for Delay {
+        type Output = ();
+        const KIND: Option<OperationKind> = Some(OperationKind::Request);
+    }
+
+    #[derive(Facet)]
+    #[repr(C)]
+    #[facet(rename = "Effect")]
+    enum UnitEffect {
+        Delay(Delay),
+        Http(HttpRequest),
+    }
+
+    let mut registry = TypeRegistry::new();
+    registry
+        .register_type::<UnitEffect>()
+        .expect("should register the effect")
+        .register_type::<HttpResult>()
+        .expect("should register the non-unit output");
+    registry
+        .register_effect::<UnitEffect>()
+        .expect("should start recording the effect")
+        .variant::<Delay>("Delay")
+        .expect("Delay")
+        .variant::<HttpRequest>("Http")
+        .expect("Http")
+        .finish();
+
+    let generator = registry.build().expect("should build the registry");
+    let effects = generator.effects().to_vec();
+    let registry = generator.registry();
+    let mut config = CodeGeneratorConfig::new("Shared".to_string());
+    config.update_from(&registry);
+    let registry = respell::<Swift>(&registry, &mut config);
+
+    let (name, format) = registry
+        .iter()
+        .find(|(name, _)| name.name == "Effect")
+        .expect("the registry should contain the effect");
+    let container = Container::from((name, format));
+    let ctx = EmitContext::top_level(&container, &config);
+
+    let mut buffer = Vec::new();
+    {
+        let mut w = IndentedWriter::new(&mut buffer, IndentConfig::Space(4));
+        let plugin = EffectHandlerPlugin::new(&effects.into());
+        EmitterPlugin::<Swift>::after_type(&plugin, &mut w, &ctx).expect("the plugin should write");
+    }
+    let source = String::from_utf8(buffer).expect("the plugin should write valid UTF-8");
+
+    assert!(
+        source.contains(
+            "        case .delay(let operation):\n\
+             \x20           Task {\n\
+             \x20               await handler.delay(operation)\n\
+             \x20               resolve(id, serializeEffectOutput { serializer in\n\
+             \x20                   try serializer.serialize_unit(value: ())\n\
+             \x20               })\n\
+             \x20           }"
+        ),
+        "expected unit request arm without `let output =`:\n{source}"
+    );
+    assert!(
+        source.contains(
+            "        case .http(let operation):\n\
+             \x20           Task {\n\
+             \x20               let output = await handler.http(operation)\n\
+             \x20               resolve(id, serializeEffectOutput { serializer in\n\
+             \x20                   try output.serialize(serializer: serializer)\n\
+             \x20               })\n\
+             \x20           }"
+        ),
+        "expected non-unit request arm to keep binding `output`:\n{source}"
+    );
+}
