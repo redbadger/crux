@@ -38,10 +38,10 @@ If you just want to understand why we set out to build Crux in the first place a
 
 There are two places to find API documentation: the latest published version on docs.rs, or the very latest `master` docs if you too like to live dangerously.
 
-- **crux_core** - the main Crux crate: [latest release](https://docs.rs/crux_core/latest/crux_core/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_core/)
-- **crux_http** - HTTP client capability: [latest release](https://docs.rs/crux_http/latest/crux_http/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_http/)
-- **crux_kv** - Key-value store capability: [latest release](https://docs.rs/crux_kv/latest/crux_kv/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_kv/)
-- **crux_time** - Time capability: [latest release](https://docs.rs/crux_time/latest/crux_time/) | [latest master](https://redbadger.github.io/crux/master_api_docs/crux_time/)
+- **crux_core** - the main Crux crate: [latest release](https://docs.rs/crux_core/latest/crux_core/) | [latest master](https://redbadger.github.io/crux/latest_master/master_api_docs/crux_core/)
+- **crux_http** - HTTP client capability: [latest release](https://docs.rs/crux_http/latest/crux_http/) | [latest master](https://redbadger.github.io/crux/latest_master/master_api_docs/crux_http/)
+- **crux_kv** - Key-value store capability: [latest release](https://docs.rs/crux_kv/latest/crux_kv/) | [latest master](https://redbadger.github.io/crux/latest_master/master_api_docs/crux_kv/)
+- **crux_time** - Time capability: [latest release](https://docs.rs/crux_time/latest/crux_time/) | [latest master](https://redbadger.github.io/crux/latest_master/master_api_docs/crux_time/)
 
 You can see the latest version of this book (generated from the master branch) on [Github Pages](https://redbadger.github.io/crux/latest_master/).
 
