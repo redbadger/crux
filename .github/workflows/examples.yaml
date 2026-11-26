@@ -13,6 +13,7 @@
 #   windows           1 entry   (counter only)
 #   windows-justfiles 1 entry   (counter, no shell: any change in counter selects it)
 #   windows-tauri     1 entry   (counter only)
+#   windows-android   1 entry   (counter only)
 #   apple             5 entries (5 examples, shell is always "apple")
 #   android           5 entries (5 examples, shell is always "Android")
 #
@@ -28,12 +29,8 @@
 #
 # Each matrix entry runs: just <shell>/ci  (working dir: examples/<example>)
 #
-# The windows-justfiles and windows-tauri jobs run the [windows] variants of
-# the counter recipes on a Windows runner. There is no Windows job for the
-# Android shell, because `boltffi pack android` fails on Windows. Its
-# scan_crate step gives `cargo metadata` a verbatim `\\?\` manifest path
-# (https://github.com/boltffi/boltffi/issues/793). Add that job when the
-# issue is fixed.
+# The windows-justfiles, windows-tauri and windows-android jobs run the
+# [windows] variants of the counter recipes on a Windows runner.
 name: examples
 
 on:
@@ -68,6 +65,7 @@ jobs:
       windows: ${{ steps.select.outputs.windows }}
       windows-justfiles: ${{ steps.select.outputs.windows-justfiles }}
       windows-tauri: ${{ steps.select.outputs.windows-tauri }}
+      windows-android: ${{ steps.select.outputs.windows-android }}
       apple: ${{ steps.select.outputs.apple }}
       android: ${{ steps.select.outputs.android }}
 
@@ -124,6 +122,9 @@ jobs:
               ],
               "windows-tauri": [
                 { "example": "counter", "shell": "tauri" }
+              ],
+              "windows-android": [
+                { "example": "counter", "shell": "Android" }
               ],
               "apple": [
                 { "example": "counter", "shell": "apple" },
@@ -190,7 +191,8 @@ jobs:
             | to_entries[]
             | .key as $job
             | (.value | map(select($everything or affected($files)))) as $selected
-            | if ($job | IN("web-dioxus", "tauri", "windows", "windows-justfiles", "windows-tauri"))
+            | if ($job | IN("web-dioxus", "tauri", "windows", "windows-justfiles", "windows-tauri",
+                          "windows-android"))
               then "\($job)=\($selected | length > 0)"
               else "\($job)=\($selected | tojson)"
               end
@@ -619,6 +621,70 @@ jobs:
         run: just tauri/ci
         env:
           CI: true
+
+  # The Android shell of counter on Windows. Needs: Windows runner, Rust with
+  # Android NDK targets, BoltFFI, JDK 17 and the Android SDK. It runs the
+  # [windows] variants of the Android recipes, and Gradle through gradlew.bat.
+  # Only counter runs here, so no matrix needed.
+  windows-android:
+    needs: changes
+    if: needs.changes.outputs.windows-android == 'true'
+    runs-on: windows-latest
+
+    env:
+      BOLTFFI_OVERLAY: ${{ github.workspace }}/.github/boltffi-ci.toml
+
+    defaults:
+      run:
+        working-directory: examples/counter
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Remove rust-toolchain.toml
+        run: rm ../../rust-toolchain.toml
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: ./.github/actions/kache
+        with:
+          manifest-key: ${{ github.workflow }}-${{ github.job }}-${{ matrix.example || 'root' }}-${{ matrix.shell || '' }}
+          bucket: ${{ vars.KACHE_R2_BUCKET }}
+          endpoint: ${{ vars.KACHE_R2_ENDPOINT }}
+          access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          # The README of kache-action recommends this on GitHub-hosted Windows
+          # runners, because there the home and workspace directories are on
+          # different volumes.
+          cache-dir: ${{ runner.temp }}/kache
+      - uses: taiki-e/install-action@just
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Caches the Gradle home. Only master writes the cache, and pull requests
+      # read it.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+
+      - uses: android-actions/setup-android@v3
+        with:
+          # The obsolete `tools` package (part of the action's default) was
+          # removed from Google's SDK repository, so installing it now fails.
+          packages: platform-tools
+
+      - uses: ./.github/actions/install-boltffi
+        with:
+          version: "0.32.1"
+
+      - name: CI
+        run: just Android/ci
 
   # Apple (iOS/macOS) shells. Needs: macOS runner, Rust with Apple targets,
   # BoltFFI, xcodegen, swiftlint. The shell is always "apple", so the job name
