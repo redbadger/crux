@@ -1,0 +1,15 @@
+{
+  "name": "crux",
+  "description": "Claude Code plugins for building apps with Crux",
+  "owner": {
+    "name": "Red Badger",
+    "url": "https://github.com/redbadger"
+  },
+  "plugins": [
+    {
+      "name": "crux",
+      "source": "./plugins/crux",
+      "description": "Skills for building the shared Rust core of a Crux app"
+    }
+  ]
+}

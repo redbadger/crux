@@ -47,6 +47,25 @@ You can also join the friendly conversation on our
 > occasional breaking changes to the API can be expected. We do our best to
 > limit the extent of these and provide a smooth, gradual migration path
 
+### Claude Code plugin
+
+This repo has a Claude Code plugin with the skill `crux:crux-core`. The skill gives
+Claude the best practices for the shared Rust core of a Crux app: the `App` trait,
+effects, commands, capabilities, structure and tests. It follows the `master` branch.
+
+To install the plugin with Claude Code 2.1.275 or later, run this command:
+
+```text
+/plugin install crux --marketplace redbadger/crux
+```
+
+With an older Claude Code, add the marketplace, then install the plugin:
+
+```text
+/plugin marketplace add redbadger/crux
+/plugin install crux@crux
+```
+
 ## Architectural Overview
 
 ![Logical architecture](https://raw.githubusercontent.com/redbadger/crux/master/docs/src/architecture.svg)

@@ -1,0 +1,11 @@
+{
+  "name": "crux",
+  "description": "Skills for building the shared Rust core of a Crux app",
+  "author": {
+    "name": "Red Badger",
+    "url": "https://github.com/redbadger"
+  },
+  "homepage": "https://redbadger.github.io/crux/",
+  "repository": "https://github.com/redbadger/crux",
+  "license": "Apache-2.0"
+}
