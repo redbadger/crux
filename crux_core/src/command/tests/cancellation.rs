@@ -32,7 +32,7 @@ enum Event {
 }
 
 #[test]
-fn spawn_returns_join_handle() {
+fn context_spawn_returns_a_joinable_task() {
     let mut cmd = Command::new(|ctx| async move {
         let task_join = ctx.spawn(|ctx| async move {
             ctx.request_from_shell(Op::Basic).await;
@@ -129,53 +129,6 @@ fn awaiting_multiple_copies_of_handle_works() {
 }
 
 #[test]
-fn join_handle_can_abort_a_task() {
-    let mut cmd = Command::new(|ctx| async move {
-        let stream_handle = ctx.spawn(|ctx| async move {
-            let mut stream = ctx.stream_from_shell(Op::Basic);
-
-            while stream.next().await.is_some() {
-                ctx.send_event(Event::Ping);
-            }
-        });
-
-        ctx.spawn(|ctx| async move {
-            ctx.request_from_shell(Op::Abort).await;
-
-            stream_handle.abort();
-        });
-    });
-
-    assert!(cmd.events().next().is_none());
-
-    let mut effects: Vec<_> = cmd.effects().collect();
-
-    let Effect::Op(mut stream_request) = effects.remove(0);
-    let Effect::Op(mut abort_request) = effects.remove(0);
-
-    assert_eq!(abort_request.operation, Op::Abort);
-    assert_eq!(stream_request.operation, Op::Basic);
-
-    for i in 1..10 {
-        stream_request.resolve(i).expect("to resolve");
-        let event = cmd.events().next().unwrap();
-
-        assert_eq!(event, Event::Ping);
-    }
-
-    assert!(!cmd.is_done());
-
-    abort_request.resolve(0).expect("to resolve");
-
-    // Stream has ended
-    stream_request.resolve(1).expect("to resolve"); // FIXME: should this be an error?
-    assert!(cmd.events().next().is_none());
-
-    // so has the whole command
-    assert!(cmd.is_done());
-}
-
-#[test]
 fn tasks_can_be_aborted_immediately() {
     let mut cmd: Command<Effect, Event> = Command::new(|ctx| async move {
         let handle = ctx.spawn(|ctx| async move {
@@ -194,7 +147,7 @@ fn tasks_can_be_aborted_immediately() {
 }
 
 #[test]
-fn aborted_tasks_notify_their_join_handles() {
+fn aborting_a_stream_task_stops_output_and_wakes_its_joiner() {
     let mut cmd = Command::new(|ctx| async move {
         let stream_handle = ctx.spawn(|ctx| async move {
             let mut stream = ctx.stream_from_shell(Op::Basic);
@@ -241,14 +194,16 @@ fn aborted_tasks_notify_their_join_handles() {
 
     abort_request.resolve(0).expect("to resolve");
 
-    // Stream has ended
-    stream_request.resolve(1).expect("to resolve"); // FIXME: should this be an error?
-
-    // Third task woke and produced an event
-    assert_eq!(Event::OpDone(3), cmd.events().next().unwrap());
-
-    // Command has completed
+    // Cancellation itself wakes the joiner; no further stream item is needed.
+    assert_eq!(cmd.events().collect::<Vec<_>>(), [Event::OpDone(3)]);
     assert!(cmd.is_done());
+
+    // A response to an already-dispatched request cannot resume the task.
+    assert!(matches!(
+        stream_request.resolve(1),
+        Err(crate::ResolveError::FinishedMany)
+    ));
+    assert!(cmd.events().next().is_none());
 }
 
 #[test]

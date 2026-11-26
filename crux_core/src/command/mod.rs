@@ -238,7 +238,9 @@
 
 mod builder;
 mod context;
+pub(crate) use context::CommandEffect;
 mod executor;
+mod pending;
 mod stream;
 
 use std::future::Future;
@@ -264,7 +266,7 @@ use crate::capability::Operation;
 // ANCHOR: command
 #[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
 pub struct Command<Effect, Event> {
-    effects: Receiver<Effect>,
+    effects: Receiver<CommandEffect<Effect>>,
     events: Receiver<Event>,
     context: CommandContext<Effect, Event>,
 
@@ -466,9 +468,7 @@ where
 
     /// Run the effect state machine until it settles and return an iterator over the effects
     pub fn effects(&mut self) -> impl Iterator<Item = Effect> + '_ {
-        self.run_until_settled();
-
-        self.effects.try_iter()
+        self.effects_with_context().map(CommandEffect::into_effect)
     }
 
     /// Run the effect state machine until it settles and return an iterator over the events
@@ -476,6 +476,14 @@ where
         self.run_until_settled();
 
         self.events.try_iter()
+    }
+
+    /// Drain effects without losing the wait-lifetime information needed by Core.
+    pub(crate) fn effects_with_context(
+        &mut self,
+    ) -> impl Iterator<Item = CommandEffect<Effect>> + '_ {
+        self.run_until_settled();
+        self.effects.try_iter()
     }
 
     // Combinators
@@ -550,12 +558,13 @@ where
         Event: Unpin,
     {
         Command::new(move |ctx| {
-            self.map(move |output| match output {
-                CommandOutput::Effect(effect) => CommandOutput::Effect(map(effect)),
-                CommandOutput::Event(event) => CommandOutput::Event(event),
-            })
-            .host(ctx)
-            .map(|_| ())
+            self.into_stream_with_context()
+                .map(move |output| match output {
+                    CommandOutput::Effect(effect) => CommandOutput::Effect(effect.map(&map)),
+                    CommandOutput::Event(event) => CommandOutput::Event(event),
+                })
+                .host(ctx)
+                .map(|_| ())
         })
     }
 
@@ -573,12 +582,13 @@ where
         Event: Unpin,
     {
         Command::new(move |ctx| {
-            self.map(move |output| match output {
-                CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
-                CommandOutput::Event(event) => CommandOutput::Event(map(event)),
-            })
-            .host(ctx)
-            .map(|_| ())
+            self.into_stream_with_context()
+                .map(move |output| match output {
+                    CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
+                    CommandOutput::Event(event) => CommandOutput::Event(map(event)),
+                })
+                .host(ctx)
+                .map(|_| ())
         })
     }
 

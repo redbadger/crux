@@ -37,10 +37,9 @@ impl App for TickApp {
     fn view(&self, _model: &()) {}
 }
 
-/// A command that re-arms itself on every tick must run and tear down without
-/// consuming stack space in proportion to the number of ticks.
+/// Each response starts the next update; Core can be dropped with a request pending.
 #[test]
-fn a_self_re_arming_follow_up_loop_does_not_nest() {
+fn repeated_updates_drive_a_request_loop() {
     let core = Core::new_with(TickApp, ());
 
     let mut effects = core.process_event(Event::Tick);
