@@ -13,36 +13,49 @@ use futures::{FutureExt as _, Stream, StreamExt};
 use thiserror::Error;
 
 use crate::capability::Operation;
+use crate::core::RuntimeContextId;
 use crate::{OperationKind, Request};
 
 use super::executor::{JoinHandle, Task, TaskCompletion};
-use super::pending::{track_request, track_stream};
+use super::observation::{SpanGuard, observe_request, observe_stream};
 
 /// Context enabling tasks to communicate with the parent Command,
 /// specifically submit effects, events and spawn further tasks
 // ANCHOR: command_context
 pub struct CommandContext<Effect, Event> {
     pub(crate) effects: Sender<CommandEffect<Effect>>,
-    pub(crate) events: Sender<Event>,
+    pub(crate) events: Sender<CommandEvent<Event>>,
     pub(crate) tasks: Sender<Task>,
     pub(crate) rc: Arc<()>,
     pub(crate) host_waker: Arc<AtomicWaker>,
 }
 // ANCHOR_END: command_context
 
-/// Effect payload and a channel tracking whether its waiting side is alive.
+/// Effect payload and the ID assigned by its update's command host.
+/// Command composition preserves this attribution.
 pub struct CommandEffect<Effect> {
     pub(crate) effect: Effect,
+    /// None until this output crosses its update's command host; distinct from ROOT.
+    pub(crate) parent_context_id: Option<RuntimeContextId>,
     // Present until dispatch for requests/streams; notifications have no waiter.
-    pending_sender: Option<oneshot::Sender<()>>,
+    guard_sender: Option<oneshot::Sender<SpanGuard>>,
 }
 
 impl<Effect> CommandEffect<Effect> {
     /// Whether the waiting side is alive. Notifications always pass through.
     pub(crate) fn is_pending(&self) -> bool {
-        self.pending_sender
+        self.guard_sender
             .as_ref()
             .is_none_or(|sender| !sender.is_canceled())
+    }
+
+    /// Transfer the guard to the wait. Failure means it ended before dispatch;
+    /// the returned guard must be dropped to balance the reported span start.
+    pub(crate) fn set_guard(&mut self, guard: SpanGuard) -> Result<(), SpanGuard> {
+        match self.guard_sender.take() {
+            Some(sender) => sender.send(guard),
+            None => Err(guard),
+        }
     }
 
     pub(crate) fn into_effect(self) -> Effect {
@@ -55,8 +68,23 @@ impl<Effect> CommandEffect<Effect> {
     ) -> CommandEffect<NewEffect> {
         CommandEffect {
             effect: map(self.effect),
-            pending_sender: self.pending_sender,
+            parent_context_id: self.parent_context_id,
+            guard_sender: self.guard_sender,
         }
+    }
+}
+
+/// Event payload and the ID of the command which caused it.
+/// This holds no command context and cannot extend or cancel executable work.
+#[allow(clippy::redundant_pub_crate)]
+pub(crate) struct CommandEvent<Event> {
+    pub(crate) event: Event,
+    pub(crate) caused_by: Option<RuntimeContextId>,
+}
+
+impl<Event> CommandEvent<Event> {
+    pub(crate) fn into_event(self) -> Event {
+        self.event
     }
 }
 
@@ -100,7 +128,8 @@ impl<Effect, Event> CommandContext<Effect, Event> {
         self.effects
             .send(CommandEffect {
                 effect: request.into(),
-                pending_sender: None,
+                parent_context_id: None,
+                guard_sender: None,
             })
             .expect("Command could not send notification, effect channel disconnected");
     }
@@ -145,7 +174,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             let _ = output_sender.unbounded_send(output);
         });
 
-        let (pending_sender, pending_receiver) = oneshot::channel();
+        let (guard_sender, guard_receiver) = oneshot::channel();
         let send_request = {
             let effect = request.into();
             let effects = self.effects.clone();
@@ -153,15 +182,16 @@ impl<Effect, Event> CommandContext<Effect, Event> {
                 effects
                     .send(CommandEffect {
                         effect,
-                        pending_sender: Some(pending_sender),
+                        parent_context_id: None,
+                        guard_sender: Some(guard_sender),
                     })
                     .expect("Command could not send request effect, effect channel disconnected");
             }
         };
 
-        track_request(
+        observe_request(
             ShellRequest::new(Box::new(send_request), output_receiver),
-            pending_receiver,
+            guard_receiver,
         )
     }
     // ANCHOR_END: request_from_shell
@@ -207,7 +237,7 @@ impl<Effect, Event> CommandContext<Effect, Event> {
             Ok(())
         });
 
-        let (pending_sender, pending_receiver) = oneshot::channel();
+        let (guard_sender, guard_receiver) = oneshot::channel();
         let send_request = {
             let effect = request.into();
             let effects = self.effects.clone();
@@ -215,15 +245,16 @@ impl<Effect, Event> CommandContext<Effect, Event> {
                 effects
                     .send(CommandEffect {
                         effect,
-                        pending_sender: Some(pending_sender),
+                        parent_context_id: None,
+                        guard_sender: Some(guard_sender),
                     })
                     .expect("Command could not send stream effect, effect channel disconnected");
             }
         };
 
-        track_stream(
+        observe_stream(
             ShellStream::new(send_request, output_receiver),
-            pending_receiver,
+            guard_receiver,
         )
     }
 
@@ -235,7 +266,10 @@ impl<Effect, Event> CommandContext<Effect, Event> {
     #[allow(clippy::missing_panics_doc)]
     pub fn send_event(&self, event: Event) {
         self.events
-            .send(event)
+            .send(CommandEvent {
+                event,
+                caused_by: None,
+            })
             .expect("Command could not send event, event channel disconnected");
     }
 
@@ -323,6 +357,7 @@ pub enum SpawnError {
 pub enum ShellStream<T: Unpin + Send> {
     ReadyToSend(Box<dyn FnOnce() + Send>, mpsc::UnboundedReceiver<T>),
     Sent(mpsc::UnboundedReceiver<T>),
+    Done,
 }
 
 impl<T: Unpin + Send> ShellStream<T> {
@@ -334,16 +369,12 @@ impl<T: Unpin + Send> ShellStream<T> {
     }
 
     fn send(&mut self) {
-        // Since neither part is Clone, we'll need to do an Indiana Jones
-
-        // 1. take items out of self
-        let dummy = Self::Sent(mpsc::unbounded().1);
-        let Self::ReadyToSend(send_request, output_receiver) = std::mem::replace(self, dummy)
+        // Move out the sending closure without allocating a placeholder channel.
+        let Self::ReadyToSend(send_request, output_receiver) = std::mem::replace(self, Self::Done)
         else {
             unreachable!("cannot send");
         };
 
-        // 2. replace self with with a Sent using the original receiver
         *self = Self::Sent(output_receiver);
 
         send_request();
@@ -364,6 +395,7 @@ impl<T: Unpin + Send> Stream for ShellStream<T> {
                 Poll::Pending
             }
             Self::Sent(ref mut output_receiver) => pin!(output_receiver).poll_next(cx),
+            Self::Done => Poll::Ready(None),
         }
     }
 }

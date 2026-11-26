@@ -16,7 +16,7 @@
 //! it manages and polls a number of futures and provides a context which they can use
 //! to submit effects to the shell and events back to the application.
 //!
-//! Command implements [`Stream`], making it useful in an async context,
+//! [`Command::into_stream`] makes commands useful in an async context,
 //! enabling, for example, wrapping Commands in one another.
 //!
 //! # Examples
@@ -238,9 +238,10 @@
 
 mod builder;
 mod context;
-pub(crate) use context::CommandEffect;
+pub(crate) use context::{CommandEffect, CommandEvent};
 mod executor;
-mod pending;
+mod observation;
+pub(crate) use observation::SpanGuard;
 mod stream;
 
 use std::future::Future;
@@ -267,7 +268,7 @@ use crate::capability::Operation;
 #[must_use = "Unused commands never execute. Return the command from your app's update function or combine it with other commands with Command::and or Command::all"]
 pub struct Command<Effect, Event> {
     effects: Receiver<CommandEffect<Effect>>,
-    events: Receiver<Event>,
+    events: Receiver<CommandEvent<Event>>,
     context: CommandContext<Effect, Event>,
 
     // Executor internals
@@ -473,16 +474,31 @@ where
 
     /// Run the effect state machine until it settles and return an iterator over the events
     pub fn events(&mut self) -> impl Iterator<Item = Event> + '_ {
+        self.events_with_context().map(CommandEvent::into_event)
+    }
+
+    /// Run the command until it settles, then drain queued events with their
+    /// runtime context.
+    ///
+    /// Unlike [`Self::events`], preserves the causal command ID assigned by
+    /// observable hosting. It is absent until the event crosses that host, and
+    /// does not retain the command that emitted it.
+    pub(crate) fn events_with_context(&mut self) -> impl Iterator<Item = CommandEvent<Event>> + '_ {
         self.run_until_settled();
 
         self.events.try_iter()
     }
 
-    /// Drain effects without losing the wait-lifetime information needed by Core.
+    /// Run the command until it settles, then drain queued effects with their
+    /// runtime context.
+    ///
+    /// Unlike [`Self::effects`], preserves the originating command ID assigned by
+    /// its update's host. The ID is absent until the effect crosses that host.
     pub(crate) fn effects_with_context(
         &mut self,
     ) -> impl Iterator<Item = CommandEffect<Effect>> + '_ {
         self.run_until_settled();
+
         self.effects.try_iter()
     }
 
@@ -585,7 +601,10 @@ where
             self.into_stream_with_context()
                 .map(move |output| match output {
                     CommandOutput::Effect(effect) => CommandOutput::Effect(effect),
-                    CommandOutput::Event(event) => CommandOutput::Event(map(event)),
+                    CommandOutput::Event(event) => CommandOutput::Event(CommandEvent {
+                        event: map(event.event),
+                        caused_by: event.caused_by,
+                    }),
                 })
                 .host(ctx)
                 .map(|_| ())

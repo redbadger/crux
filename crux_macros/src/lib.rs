@@ -2,6 +2,7 @@
 
 mod capability;
 mod effect;
+mod event_name;
 mod operation;
 
 use capability::capability_impl;
@@ -118,4 +119,14 @@ pub fn capability(input: TokenStream) -> TokenStream {
 fn pretty_print(ts: &proc_macro2::TokenStream) -> String {
     let file = syn::parse_file(&ts.to_string()).unwrap();
     prettyplease::unparse(&file)
+}
+
+/// Names an event without inspecting its payload.
+///
+/// Enums use their variant names;
+/// structs use their type name. Generic payloads need no additional trait bounds.
+/// Required only when installing a Crux runtime observer.
+#[proc_macro_derive(EventName)]
+pub fn event_name(input: TokenStream) -> TokenStream {
+    event_name::derive(&parse_macro_input!(input)).into()
 }
