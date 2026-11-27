@@ -61,3 +61,4 @@
 1. [Per-operation types with static request kinds](./rfcs/per-operation-types.md)
 1. [A generated shell-side Core](./rfcs/generated-core.md)
 1. [Capability contracts in the generated EffectHandler](./rfcs/documented-effect-handlers.md)
+1. [no_std support](./rfcs/no-std.md)
