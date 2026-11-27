@@ -69,6 +69,18 @@ We assert the new state is `FetchingLocation`. Then we call `.expect_only_get_lo
 
 That's the whole test. `update` is a pure function, so there's nothing to set up beyond the initial state and nothing to tear down.
 
+## Testing a stream
+
+A stream is one request that the shell answers many times. The generated `resolve_<variant>` helper takes the next effect, resolves its request once, and then drops the request. A stream request owns the channel that carries each item to the core, so a dropped request ends the stream. In the counter-http example, `resolve_server_sent_events` would deliver the first chunk and then end the stream.
+
+To test a stream, keep the request. Call `cmd.expect_one_effect().expect_server_sent_events()`, which asserts that the command holds exactly one effect and returns its `Request<SseRequest>`. Then call `request.resolve(...)` once for each item the shell sends. After each call, check the events on the command, because the app can emit an event for each item. If the operation has an item that ends the stream, resolve the request with that item to test what the app does then. For this effect that item is `SseResponse::Done`.
+
+The counter-http example tests its Server-Sent Events subscription like this. The test resolves the request with two chunks, and after each one it checks that the app emits an `Update` event with the new `Count`. It stops there and leaves the stream open.
+
+```rust
+{{#include ../../../examples/counter-http/shared/src/app.rs:sse_test}}
+```
+
 ## More integrated tests and deterministic simulation testing
 
 The tests above resolve each effect with a canned response. We can also test the app in a more integrated way. Instead of a canned response for each HTTP request, the test can forward the request to a small fake of the weather API. The fake keeps its own data and answers each request as the real API does. In the same way, the test can forward the key-value effects to a key-value store that keeps its data in a `HashMap`. The Weather app stores its favourites with these effects, so a test can make sure that the app saves and loads them correctly.
