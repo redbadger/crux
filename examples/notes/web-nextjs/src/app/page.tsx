@@ -55,8 +55,7 @@ const Home: NextPage = () => {
   // Set by the core's `subscribe` handler; every peer message becomes one
   // item on this sink.
   const subscription = useRef<EffectSink<Message> | null>(null);
-  // Created once, in the effect: a `useRef` initialiser would open a new
-  // channel on every render.
+  // Created once, in the effect.
   const channel = useRef<BroadcastChannel | null>(null);
   const core = useRef<Core | null>(null);
 
@@ -77,51 +76,54 @@ const Home: NextPage = () => {
   const initialized = useRef(false);
 
   // Initialize core and WASM
-  useEffect(
-    () => {
-      if (!initialized.current) {
-        initialized.current = true;
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
 
-        (async () => {
-          try {
-            // `Core.create` waits for the WASM module before building the
-            // generated bridge over it.
-            const ch = new BroadcastChannel("crux-note");
-            channel.current = ch;
+      // Created once: a `useRef` initialiser would open a new channel on
+      // every render.
+      const ch = new BroadcastChannel("crux-note");
+      channel.current = ch;
 
-            core.current = await createCore(
-              (view) => {
-                setView(view);
-                setReady(true);
-              },
-              channel,
-              subscription,
-            );
+      void (async () => {
+        try {
+          // `Core.create` waits for the WASM module before building the
+          // generated bridge over it.
+          core.current = await createCore(
+            (viewModel) => {
+              setView(viewModel);
+              setReady(true);
+            },
+            channel,
+            subscription,
+          );
 
-            // Subscribe to the BroadcastChannel
-            ch.onmessage = onMessage;
+          // Open the document
+          core.current.update(eventOpen());
 
-            // Open the document
-            core.current.update(eventOpen());
+          // Ask all peers to reset
+          let message: SyncMessage = {
+            kind: "reset",
+          };
 
-            // Ask all peers to reset
-            let message: SyncMessage = {
-              kind: "reset",
-            };
+          ch.postMessage(message);
+        } catch (error) {
+          console.error("Error during WASM initialization:", error);
+        }
+      })();
+    }
 
-            ch.postMessage(message);
-          } catch (error) {
-            console.error("Error during WASM initialization:", error);
-          }
-        })();
-
-        return () => {
-          if (channel.current) channel.current.onmessage = null;
-        };
-      }
-    },
-    /*once*/ [],
-  );
+    // Subscribe to the BroadcastChannel on each setup, and unsubscribe on
+    // each cleanup. In Strict Mode, React runs cleanup and then setup again,
+    // so the handler stays in place. Until the core subscribes, `onMessage`
+    // drops peer messages.
+    const peers = channel.current;
+    if (peers) peers.onmessage = onMessage;
+    return () => {
+      if (peers) peers.onmessage = null;
+    };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs on mount only
+  }, /*once*/ []);
 
   // Event handlers
 
@@ -145,7 +147,7 @@ const Home: NextPage = () => {
 
   const [inputLog, updateLog] = useState<string[]>([]);
   const log = (line: string): void => {
-    updateLog((log) => [line, ...log.slice(0, 100)]);
+    updateLog((lines) => [line, ...lines.slice(0, 100)]);
   };
 
   let selection = cursorToSelection(view.cursor);

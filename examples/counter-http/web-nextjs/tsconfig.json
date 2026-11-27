@@ -1,13 +1,12 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "ES2022",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
     "allowJs": true,
-    "ignoreDeprecations": "6.0",
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,

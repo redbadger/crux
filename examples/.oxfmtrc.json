@@ -1,0 +1,19 @@
+// oxfmt configuration for the web shells (web-nextjs, web-react-router and
+// tauri). oxfmt finds this file from the shell directory, because it looks
+// for a configuration file in each parent directory.
+{
+  "printWidth": 80,
+  // Format only JavaScript, TypeScript and CSS. The other files keep the
+  // format that their tools write (pnpm, Cargo, TypeScript and Tauri), and
+  // the generated code is build output.
+  "ignorePatterns": [
+    "**/generated/",
+    "**/*.html",
+    "**/*.json",
+    "**/*.jsonc",
+    "**/*.md",
+    "**/*.toml",
+    "**/*.yaml",
+    "**/*.yml"
+  ]
+}

@@ -8,7 +8,7 @@ const nextConfig = {
   turbopack: {
     // Empty config to acknowledge Turbopack usage and silence webpack config warning
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     // Fallback webpack configuration for when webpack mode is used
     config.resolve.fallback = {
       ...config.resolve.fallback,

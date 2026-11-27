@@ -1,4 +1,4 @@
-import clsx from "clsx";
+import { clsx } from "clsx";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 
 /**
@@ -33,6 +33,7 @@ export function TextField({
           Icon ? "pl-10 pr-3" : "px-3",
         )}
         placeholder={placeholder}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus -- the caller decides, and the default is off
         autoFocus={autoFocus}
         value={value}
         onChange={(e) => onInput(e.target.value)}

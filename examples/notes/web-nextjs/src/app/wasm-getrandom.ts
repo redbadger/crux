@@ -61,12 +61,7 @@ if (typeof WebAssembly !== "undefined" && typeof crypto !== "undefined") {
         },
       }) as WebAssembly.ModuleImports;
     }
-    return (
-      origInstantiate(
-        source as any,
-        importObject,
-      ) as Promise<WebAssembly.WebAssemblyInstantiatedSource>
-    ).then((result) => {
+    return origInstantiate(source as any, importObject).then((result) => {
       memory = result.instance.exports["memory"] as WebAssembly.Memory;
       return result;
     });

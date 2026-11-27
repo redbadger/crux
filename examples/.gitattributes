@@ -1,0 +1,11 @@
+# oxfmt checks that these files have LF line endings. Keep LF in the working
+# copy on Windows too, where Git can otherwise convert them to CRLF.
+*.css text eol=lf
+*.cjs text eol=lf
+*.cts text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.mts text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf

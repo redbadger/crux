@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../web-nextjs.oxlintrc.json"],
+  // Without this key, Oxlint adds its default plugins to the plugins of the
+  // extended files.
+  "plugins": [],
+  "ignorePatterns": ["generated/", ".next/", "build/", "out/", "next-env.d.ts"]
+}

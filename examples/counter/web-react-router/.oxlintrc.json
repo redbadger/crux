@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../web-shells.oxlintrc.json"],
+  // Without this key, Oxlint adds its default plugins to the plugins of the
+  // extended file.
+  "plugins": [],
+  "ignorePatterns": ["generated/", "build/", ".react-router/"]
+}

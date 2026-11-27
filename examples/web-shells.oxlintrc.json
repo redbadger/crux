@@ -1,0 +1,32 @@
+// Oxlint configuration for the web shells (web-nextjs, web-react-router and
+// tauri). Each shell has a `.oxlintrc.json` that extends this file and adds
+// its own ignore patterns, because Oxlint resolves `ignorePatterns` against
+// the directory of the file that contains them.
+{
+  "plugins": ["react", "jsx-a11y", "typescript", "import", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  // Rules that use type information need `oxlint-tsgolint` in each shell.
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    // The shells use the automatic JSX runtime (`"jsx": "react-jsx"`), so
+    // `React` does not have to be in scope.
+    "react/react-in-jsx-scope": "off",
+    // The shells pass render callbacks to the generated `match…` helpers.
+    "react/no-unstable-nested-components": ["warn", { "allowAsProps": true }],
+    // A CSS import has effects only, so it has no name.
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css"] }],
+    // `role="status"` on a `div` is valid ARIA, and `<output>` is not better.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // The shells cast the WASM module and DOM targets to known types.
+    "typescript/no-unsafe-type-assertion": "off",
+    // An effect returns a cleanup function on some paths only.
+    "typescript/consistent-return": "off"
+  }
+}

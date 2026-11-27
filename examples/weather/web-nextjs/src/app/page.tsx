@@ -8,7 +8,6 @@ import type {
   ActiveViewModel,
   FavoritesViewModel,
   HomeViewModel,
-  OnboardViewModel,
   ViewModel,
 } from "shared_types/app";
 

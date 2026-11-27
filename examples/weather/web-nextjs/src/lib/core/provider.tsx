@@ -39,10 +39,12 @@ export function CoreProvider({ children }: { children: ReactNode }) {
     if (initialized.current) return;
     initialized.current = true;
 
-    createCore(setView).then((core) => {
-      coreRef.current ??= core;
-      coreRef.current.update(eventStart());
-    });
+    createCore(setView)
+      .then((core) => {
+        coreRef.current ??= core;
+        coreRef.current.update(eventStart());
+      })
+      .catch(console.error);
   }, []);
 
   // Stable across renders — `useCallback` with empty deps keeps the same
