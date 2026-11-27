@@ -16,15 +16,16 @@ doctor:
     @just lib::check-tool pnpm "npm install -g pnpm"
     @just lib::check-tool tauri "pnpm add -g @tauri-apps/cli"
 
-# auto-fix formatting issues
-fix:
+# auto-fix lint issues
+fix: install
     @echo '{{ style("command") }}fix:{{ NORMAL }}'
-    @echo "  No auto-fix configured"
+    pnpm exec oxlint --fix
 
-# validate formatting and lint
-check:
+# validate lint with type-aware Oxlint (warnings do not fail the check, but
+# errors do)
+check: install
     @echo '{{ style("command") }}check:{{ NORMAL }}'
-    @echo "  No lint configured"
+    pnpm exec oxlint
 
 # install npm dependencies
 install:

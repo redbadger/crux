@@ -1,0 +1,29 @@
+// Oxlint configuration for the web shells (web-nextjs, web-react-router and
+// tauri). Each shell has a `.oxlintrc.json` that extends this file and adds
+// its own ignore patterns, because Oxlint resolves `ignorePatterns` against
+// the directory of the file that contains them.
+{
+  "plugins": ["react", "jsx-a11y", "typescript", "import", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  // Rules that use type information need `oxlint-tsgolint` in each shell.
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    // The shells use the automatic JSX runtime (`"jsx": "react-jsx"`), so
+    // `React` does not have to be in scope.
+    "react/react-in-jsx-scope": "off",
+    // TEMPORARY: the code in the shells has errors for these rules. They are
+    // warnings until a later change fixes the code, and then this block goes.
+    "eslint/no-unused-vars": "warn",
+    "jsx-a11y/no-autofocus": "warn",
+    "jsx-a11y/prefer-tag-over-role": "warn",
+    "typescript/no-floating-promises": "warn",
+    "typescript/no-wrapper-object-types": "warn"
+  }
+}

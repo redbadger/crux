@@ -10,8 +10,6 @@
   "dependencies": {
     "@boltffi/runtime": "0.32.1",
     "daisyui": "5.8.2",
-    "eslint": "^9.39.5",
-    "eslint-config-next": "16.4.6",
     "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -25,6 +23,8 @@
     "@types/react": "19.3.3",
     "@types/react-dom": "19.3.0",
     "autoprefixer": "^10.7.0",
+    "oxlint": "1.95.0",
+    "oxlint-tsgolint": "7.0.2008",
     "postcss": "^8.5.33",
     "tailwindcss": "^4.3.5"
   },

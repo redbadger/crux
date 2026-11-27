@@ -11,15 +11,18 @@ doctor:
     @echo '{{ style("command") }}doctor:{{ NORMAL }}'
     @just lib::check-web-wasm
 
-# auto-fix formatting issues
-fix:
+# auto-fix lint issues
+fix: typegen install wasm
     @echo '{{ style("command") }}fix:{{ NORMAL }}'
-    @echo "  No auto-fix configured"
+    node_modules/.bin/oxlint --fix
 
-# validate lint
-check:
+# validate lint with type-aware Oxlint (warnings do not fail the check, but
+# errors do). The type information comes from node_modules and the generated
+# packages. `pnpm exec` installs again on each run because of the `link:`
+# dependency, so the recipes run Oxlint from node_modules/.bin.
+check: typegen install wasm
     @echo '{{ style("command") }}check:{{ NORMAL }}'
-    @echo "  No lint configured"
+    node_modules/.bin/oxlint
 
 # generate types for typescript
 typegen:
