@@ -28,13 +28,6 @@ android {
     }
 }
 
-// The generated directory also holds the `build.gradle.kts` file of the
-// standalone typegen package. Kotlin 2.4 tries to compile a `.kts` file in a
-// source directory as a script, so this module leaves that file out.
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    exclude("**/*.kts")
-}
-
 dependencies {
     // The generated `Core` runs each request on a `CoroutineScope` and
     // publishes the view model as a `StateFlow`, so both appear in this

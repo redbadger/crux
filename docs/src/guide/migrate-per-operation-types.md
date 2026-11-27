@@ -596,9 +596,8 @@ which works without an import because BoltFFI's Kotlin and the generated types
 share a package in this example; if yours do not, name BoltFFI's with
 `BoltFfi::kotlin_package(..)`.
 Because `Core` uses `StateFlow` and `launch`, the Gradle module that compiles the
-generated sources needs `kotlinx-coroutines-core` on its classpath — the
-generated `build.gradle.kts` declares it, but if you pull the sources in with
-`srcDirs`, add it yourself.
+generated sources needs `kotlinx-coroutines-core` on its classpath. Add it to
+that module yourself.
 
 The injected handlers lose their `when` blocks too: `KeyValueHandler.get` takes a
 `GetValue` and returns a `ValueResult`, rather than matching a wide operation enum and

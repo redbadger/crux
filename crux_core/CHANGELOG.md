@@ -248,8 +248,13 @@ and this project adheres to
   enum has a `crux_core::render::RenderOperation` variant;
   `CodeGenerator::without_core()` turns it off and leaves the handler API, and
   `without_effect_handlers()` turns off both. `Core`, `CoreBridge` and
-  `ICoreBridge` join the reserved names. The generated Kotlin module now
-  declares `kotlinx-coroutines-core` in its `build.gradle.kts`.
+  `ICoreBridge` join the reserved names. The generated Kotlin needs
+  `kotlinx-coroutines-core`, so add it to the Gradle module that compiles it.
+
+  Kotlin type generation no longer writes a `build.gradle.kts` into the
+  generated directory, and it removes a file that an earlier version wrote.
+  Kotlin 2.4 tries to compile a `.kts` file in a source directory as a script,
+  so that file broke shells that add the generated directory to `srcDirs`.
 
   `TypeRegistry::register_app` now records the app's `Event` and `ViewModel`
   types as an `AppMeta`, read back with `CodeGenerator::app()`, and
@@ -379,7 +384,7 @@ and this project adheres to
 
 ### ⚙️ Miscellaneous Tasks
 
-- **Facet type generation now requires `facet_generate` 0.22.4.** Only the
+- **Facet type generation now requires `facet_generate` 0.22.5.** Only the
   `facet_typegen` feature is affected; every other feature of this crate is
   unchanged.
 - Requires `crux_macros` 0.11, which carries `#[derive(Operation)]`.

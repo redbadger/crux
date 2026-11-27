@@ -41,7 +41,7 @@ Then check the pins around them:
 
 - [ ] **`facet`** stays at `=0.46.5`.
 - [ ] **`facet_generate`**: `crux_core`'s `facet_typegen` feature now pulls in
-      0.22.4 (it was 0.19). Change it only if your own crate depends on
+      0.22.5 (it was 0.19). Change it only if your own crate depends on
       `facet_generate`. `facet-generate-attrs` stays at 0.18.
 - [ ] **BoltFFI** moves from 0.29.3 to 0.30.1. Move all three pieces at once:
       the `boltffi` crate (`boltffi = "=0.30.1"`), the CLI
@@ -149,8 +149,10 @@ working. A few things can still trip you up:
       sits beside the generated one without breaking the build, but renaming it
       is still clearer. Rename yours (the tutorial uses `CoreWrapper`), or turn
       the generated one off with `CodeGenerator::without_core()`.
-- [ ] **Kotlin.** The generated module's `build.gradle.kts` now declares
-      `kotlinx-coroutines-core`.
+- [ ] **Kotlin.** The generated code needs `kotlinx-coroutines-core`. Add it
+      to the Gradle module that compiles the generated sources. Type
+      generation no longer writes a `build.gradle.kts` into the generated
+      directory, and it removes the file that an earlier version wrote.
 - [ ] **TypeScript.** `CodeGenerator::typescript` now fails if `pnpm install`
       or `tsc` fails in the generated package. Before, it carried on, so a
       generated package that doesn't type-check now fails at typegen instead
