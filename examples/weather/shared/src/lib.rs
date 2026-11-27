@@ -25,12 +25,16 @@
 //! [ARCHITECTURE.md](https://github.com/redbadger/crux/blob/master/examples/weather/ARCHITECTURE.md).
 
 #![allow(clippy::unsafe_derive_deserialize)]
+// `boltffi::scaffolding!()` emits an empty enum.
+#![allow(clippy::empty_enums)]
 #![allow(clippy::missing_panics_doc)]
 pub mod app;
 pub mod effects;
 mod ffi;
 pub mod model;
 pub mod view;
+
+boltffi::scaffolding!();
 
 pub use app::*;
 pub use crux_core::Core;

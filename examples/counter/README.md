@@ -40,10 +40,8 @@ The `shared` directory is a crate that implements the shared crux core. It conta
 Windows support is partial:
 
 - `windows` (WinUI3) is covered by CI.
-- `Android` and `tauri` have Windows-specific recipes and have been built by
-  hand on Windows. CI builds `tauri` on Windows. CI does not build `Android` on
-  Windows, because `boltffi pack android` fails there
-  ([boltffi#793](https://github.com/boltffi/boltffi/issues/793)).
+- `Android` and `tauri` have Windows-specific recipes. CI builds both on
+  Windows.
 - `shared` and `tui` set `windows-shell`, and their recipes are plain `cargo`
   commands. They are untested on Windows.
 - `web-leptos` and `web-yew` have no Windows-specific recipes, but nothing

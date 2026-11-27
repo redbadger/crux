@@ -33,12 +33,13 @@ typegen: wasm
             --language typescript \
             --output-dir generated/types
 
-# build wasm package
+# build wasm package (`boltffi pack wasm` type-checks the bindings against
+# `@boltffi/runtime` and `@types/node` in this shell's node_modules, so the
+# install runs first)
 [working-directory('../shared')]
-wasm:
+wasm: install
     @echo '{{ style("command") }}wasm:{{ NORMAL }}'
     boltffi pack wasm
-    @just lib::fix-boltffi-wasm-package ../web-nextjs/generated/pkg/package.json
 
 # install npm dependencies
 install:

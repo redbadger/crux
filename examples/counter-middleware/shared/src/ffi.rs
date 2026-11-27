@@ -52,10 +52,11 @@ type CoreBridge = Bridge<Core<Counter>, BincodeFfiFormat>;
 
 /// For the Shell to provide.
 ///
-/// `boltffi`'s binding generator parses the source and does not evaluate
-/// `#[cfg]`, so the FFI surface (this trait and the `CoreFfi` methods below)
-/// must present a single, cfg-independent signature. The native and wasm paths
-/// therefore differ only inside `new`, not in any method signature.
+/// `boltffi` generates the bindings for every target, wasm included, from a
+/// build for the host. Thus the FFI surface (this trait and the `CoreFfi`
+/// methods below) must present a single, cfg-independent signature. The
+/// native and wasm paths therefore differ only inside `new`, not in any
+/// method signature.
 #[boltffi::export]
 pub trait CruxShell: Send + Sync {
     /// Called when any effects resulting from an asynchronous process
@@ -66,6 +67,7 @@ pub trait CruxShell: Send + Sync {
 }
 
 /// The main interface used by the shell.
+#[boltffi::export]
 pub struct CoreFfi {
     core: CoreBridge,
 }
