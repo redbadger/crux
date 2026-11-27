@@ -22,7 +22,7 @@
     "@types/node": "^26.6.11",
     "@types/react": "^19.3.3",
     "@types/react-dom": "^19.3.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vite-plugin-wasm": "^3.6.0"
   },
