@@ -747,12 +747,13 @@ larger one.
   handler API too, leaving the types you registered and the
   operation-kind accessor, because a shell that dispatches by hand still
   has to know how many times to resolve.
-- The generated Kotlin module declares a dependency on
-  `kotlinx-coroutines-core` in its `build.gradle.kts`, which `Core`'s
-  `StateFlow` and coroutine launches need.
+- The generated Kotlin needs `kotlinx-coroutines-core` for the `StateFlow`
+  and the coroutine launches in `Core`. Kotlin type generation writes no
+  `build.gradle.kts`, so add the dependency to the Gradle module that
+  compiles the generated sources.
 - A shared type named after a standard library type shadows it in the
   generated module — an operation called `Set` hides `Set` in Swift, Kotlin
   and TypeScript, and every shell then has to alias one of them at the
   import. The bundled capabilities avoid this with verb+noun names such as
   `SetValue`, and your own operations are worth naming the same way.
-- Facet type generation requires `facet_generate` 0.22.4 or later.
+- Facet type generation requires `facet_generate` 0.22.5 or later.

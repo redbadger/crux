@@ -167,7 +167,6 @@ Now your `generated` directory should look like this:
 ```sh
 $ ls --tree Android/generated
 Android/generated
-├── build.gradle.kts
 ├── com
 │  ├── crux
 │  │  └── examples
@@ -204,11 +203,8 @@ Android/generated
 ```
 
 ```admonish tip
-`codegen` will generate a `build.gradle.kts` that we won't be using in this setup.
-Any error reported by the IDE in this file can be ignored, and if the file prevents
-buiding it can safely be deleted. The one thing it does tell you is that the
-generated Kotlin code needs `kotlinx-coroutines-core`, which the library's
-`build.gradle.kts` above already adds.
+The generated Kotlin code needs `kotlinx-coroutines-core`. The library's
+`build.gradle.kts` above already adds it.
 ```
 
 ## Create some UI and run in the Simulator

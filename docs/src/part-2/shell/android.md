@@ -43,7 +43,7 @@ class FfiBridge(private val ffi: CoreFfi = CoreFfi()) : CoreBridge, AutoCloseabl
 
 Bytes in, bytes out. The generated `Core` does the serializing, so this is the only class that knows `CoreFfi` exists, and it is generated because the codegen was told BoltFFI's Kotlin lands in the same package (`.boltffi(BoltFfi::new().kotlin() /* … */)`), which is how `boltffi.toml` and `codegen.rs` are set up in this example. The view layer observes `core.view`, a `StateFlow<ViewModel>` — a Kotlin coroutines type that always holds a current value, and conflates on equality: collectors are only notified if the new value differs from the previous one. That property keeps identical renders from rippling downstream.
 
-One build detail: `Core` uses `StateFlow` and `launch`, so the `shared` Gradle module that compiles the generated sources declares `kotlinx-coroutines-core` as an `api` dependency. The generated `build.gradle.kts` lists it too, but this project pulls the generated sources in directly with `srcDirs` and manages versions in `libs.versions.toml`.
+One build detail: `Core` uses `StateFlow` and `launch`, so the `shared` Gradle module that compiles the generated sources declares `kotlinx-coroutines-core` as an `api` dependency. The project manages that version in `libs.versions.toml`.
 
 ## Handling effects
 

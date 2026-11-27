@@ -599,7 +599,14 @@ impl CodeGenerator {
         // remove any existing generated shared types, this ensures that we remove no longer used types
         fs::remove_dir_all(config.out_dir.join(&package_path)).unwrap_or(());
 
+        // The shell compiles the generated sources in its own Gradle module,
+        // so the installer does not write a `build.gradle.kts`. Kotlin 2.4
+        // tries to compile a `.kts` file in a source directory as a script,
+        // so this also removes the file that an earlier version wrote.
+        remove_if_present(&config.out_dir.join("build.gradle.kts"))?;
+
         let mut installer = kotlin::Installer::new(&config.package_name, &config.out_dir)
+            .package_manifest(false)
             .plugin(BincodePlugin)
             .plugin(OperationKindPlugin::new(&self.effects));
         if self.handlers {

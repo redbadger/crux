@@ -22,7 +22,7 @@ categories = ["gui", "wasm", "development-tools::ffi"]
 [workspace.dependencies]
 anyhow = "1.0"
 facet = "=0.46.5"
-facet_generate = "0.22.4"
+facet_generate = "0.22.5"
 # From the **same source** as `facet_generate`: both from crates.io, or both from
 # the same git rev or local checkout. `facet_generate` depends on this crate, so a
 # copy from another source alongside it is a second, unrelated `Attr` type — and

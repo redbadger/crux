@@ -41,11 +41,6 @@ use facet_generate::{
 use super::{Matched, Requalify, bincode_import_path, matched, serializes_output};
 use crate::type_generation::facet::{AppMeta, BoltFfi, EffectMeta};
 
-/// The version of `kotlinx-coroutines-core` the generated Kotlin package asks
-/// for. `Core` uses `CoroutineScope`, `launch` and `StateFlow`, none of which
-/// are in the standard library.
-const KOTLIN_COROUTINES_VERSION: &str = "1.10.2";
-
 /// The stem of the companion file the bridge is written into, beside the
 /// module: `FfiBridge.swift`, `FfiBridge.kt` and `FfiBridge.cs`.
 pub const FFI_BRIDGE_FILE: &str = "FfiBridge";
@@ -247,15 +242,6 @@ impl EmitterPlugin<Kotlin> for CorePlugin {
         .iter()
         .map(ToString::to_string)
         .collect()
-    }
-
-    fn manifest_dependencies(&self) -> Vec<String> {
-        if !self.emits_core() {
-            return vec![];
-        }
-        vec![format!(
-            r#"    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:{KOTLIN_COROUTINES_VERSION}")"#
-        )]
     }
 
     fn after_type(&self, w: &mut dyn IndentWrite, ctx: &EmitContext) -> io::Result<()> {

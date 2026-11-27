@@ -595,6 +595,27 @@ mod facet_test {
         );
     }
 
+    /// The shell compiles the generated Kotlin in its own Gradle module, so
+    /// type generation writes no `build.gradle.kts`. Kotlin 2.4 tries to
+    /// compile a `.kts` file in a source directory as a script, so type
+    /// generation also removes the file that an earlier version wrote.
+    #[test]
+    fn kotlin_generation_writes_no_gradle_build_script() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let script = dir.path().join("build.gradle.kts");
+        fs::write(&script, "// written by an earlier version\n")
+            .expect("should write the stale build script");
+
+        generator()
+            .kotlin(&Config::builder("com.example.shared", dir.path()).build())
+            .expect("kotlin type generation should succeed");
+
+        assert!(
+            !script.exists(),
+            "expected no `build.gradle.kts` in the generated directory"
+        );
+    }
+
     /// The same for Kotlin. The `EffectHandler` and `Core` name the root
     /// types from `com.example.shared`, and `Kit.Presence` from its own
     /// package below it. A bare `Kit.Presence` does not resolve there, so
@@ -1503,8 +1524,7 @@ mod toolchain {
     }
 
     /// Compiles the generated Kotlin package directories under `dir` with
-    /// `kotlinc`. It does not compile `dir` itself, because `kotlinc` would
-    /// then try to compile the `build.gradle.kts` file in it.
+    /// `kotlinc`.
     pub fn kotlinc_build(dir: &Path) {
         let Some(coroutines) = coroutines_jar() else {
             unavailable(

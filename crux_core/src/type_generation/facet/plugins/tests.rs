@@ -826,9 +826,9 @@ fn observation_is_imported_only_when_a_core_is_emitted() {
 }
 
 /// `Core` is the only thing in the generated Kotlin that needs coroutines, so
-/// the imports and the Gradle dependency come and go with it.
+/// the imports come and go with it.
 #[test]
-fn kotlin_asks_for_coroutines_only_when_it_emits_a_core() {
+fn kotlin_imports_coroutines_only_when_it_emits_a_core() {
     let (registry, effects) = fixture();
     let mut config = CodeGeneratorConfig::new("Shared".to_string());
     config.update_from(&registry);
@@ -839,23 +839,12 @@ fn kotlin_asks_for_coroutines_only_when_it_emits_a_core() {
         EmitterPlugin::<Kotlin>::imports(&plugin, &config)
             .contains(&"import kotlinx.coroutines.flow.StateFlow".to_string())
     );
-    assert_eq!(
-        EmitterPlugin::<Kotlin>::manifest_dependencies(&plugin),
-        vec![
-            r#"    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")"#
-                .to_string()
-        ]
-    );
 
     let mut without_render = effects;
     without_render[0].variants.retain(|variant| !variant.render);
     let plugin = CorePlugin::new(&without_render.into(), app, None);
     assert_eq!(
         EmitterPlugin::<Kotlin>::imports(&plugin, &config),
-        Vec::<String>::new()
-    );
-    assert_eq!(
-        EmitterPlugin::<Kotlin>::manifest_dependencies(&plugin),
         Vec::<String>::new()
     );
 }
