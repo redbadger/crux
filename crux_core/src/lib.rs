@@ -251,7 +251,7 @@ pub use core::{
     note = "UniFFI bindgen support is deprecated; use BoltFFI package/generate commands instead"
 )]
 pub mod bindgen;
-#[cfg(feature = "default")]
+#[cfg(feature = "crux_macros")]
 pub use crux_macros as macros;
 
 /// Implement [`App`] on your type to make it into a Crux app. Use your type implementing [`App`]
