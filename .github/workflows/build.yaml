@@ -31,7 +31,7 @@ jobs:
       build: ${{ steps.select.outputs.build }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Remove rust-toolchain.toml
         shell: bash
@@ -104,15 +104,15 @@ jobs:
           cargo fmt --all --check
           cargo clippy --all-targets -- --no-deps -Dclippy::pedantic -Dclippy::nursery -Dwarnings
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
-          version: latest
+          version: 12
 
       # The typegen tests of `crux_core` run `dotnet build` over a generated C#
       # package, which the generator targets at `net10.0`. Without this step,
       # nothing compiles the generated C#. Swift and Node need no step of their
       # own, because the runner image has both.
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
 
