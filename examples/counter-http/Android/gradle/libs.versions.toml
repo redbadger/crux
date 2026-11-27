@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.5.3"
 kotlin = "2.3.0"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -47,7 +47,6 @@ ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 # added

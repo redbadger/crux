@@ -1,12 +1,9 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
-    namespace = "com.crux.examples.counter.middleware"
+    namespace = "com.crux.examples.counter.middleware.shared"
 
     compileSdk {
         version = release(36)
@@ -21,16 +18,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget = JvmTarget.JVM_11
-        }
-    }
-
     sourceSets {
         getByName("main") {
-            kotlin.srcDirs("${projectDir}/../generated")
-            jniLibs.srcDirs("${projectDir}/../generated/jniLibs")
+            kotlin.directories += "${projectDir}/../generated"
+            jniLibs.directories += "${projectDir}/../generated/jniLibs"
         }
     }
 }

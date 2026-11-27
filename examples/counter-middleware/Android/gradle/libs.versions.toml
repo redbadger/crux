@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.5.3"
 kotlin = "2.3.0"
 kotlinxCoroutines = "1.10.2"
 coreKtx = "1.17.0"
@@ -43,6 +43,5 @@ kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
