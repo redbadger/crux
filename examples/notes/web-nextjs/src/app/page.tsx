@@ -55,8 +55,7 @@ const Home: NextPage = () => {
   // Set by the core's `subscribe` handler; every peer message becomes one
   // item on this sink.
   const subscription = useRef<EffectSink<Message> | null>(null);
-  // Created once, in the effect: a `useRef` initialiser would open a new
-  // channel on every render.
+  // Created once, in the effect.
   const channel = useRef<BroadcastChannel | null>(null);
   const core = useRef<Core | null>(null);
 
@@ -81,13 +80,15 @@ const Home: NextPage = () => {
     if (!initialized.current) {
       initialized.current = true;
 
+      // Created once: a `useRef` initialiser would open a new channel on
+      // every render.
+      const ch = new BroadcastChannel("crux-note");
+      channel.current = ch;
+
       void (async () => {
         try {
           // `Core.create` waits for the WASM module before building the
           // generated bridge over it.
-          const ch = new BroadcastChannel("crux-note");
-          channel.current = ch;
-
           core.current = await createCore(
             (viewModel) => {
               setView(viewModel);
@@ -96,9 +97,6 @@ const Home: NextPage = () => {
             channel,
             subscription,
           );
-
-          // Subscribe to the BroadcastChannel
-          ch.onmessage = onMessage;
 
           // Open the document
           core.current.update(eventOpen());
@@ -113,12 +111,18 @@ const Home: NextPage = () => {
           console.error("Error during WASM initialization:", error);
         }
       })();
-
-      return () => {
-        if (channel.current) channel.current.onmessage = null;
-      };
     }
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs once, on mount
+
+    // Subscribe to the BroadcastChannel on each setup, and unsubscribe on
+    // each cleanup. In Strict Mode, React runs cleanup and then setup again,
+    // so the handler stays in place. Until the core subscribes, `onMessage`
+    // drops peer messages.
+    const peers = channel.current;
+    if (peers) peers.onmessage = onMessage;
+    return () => {
+      if (peers) peers.onmessage = null;
+    };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs on mount only
   }, /*once*/ []);
 
   // Event handlers
