@@ -26,7 +26,7 @@
     "oxlint": "1.95.0",
     "oxlint-tsgolint": "7.0.2008",
     "typescript": "^7.0.2",
-    "vite": "^8.3.8",
+    "vite": "^8.4.0",
     "vite-plugin-wasm": "^3.6.0"
   },
   "engines": {
