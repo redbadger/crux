@@ -23,6 +23,7 @@
     "@types/react": "19.3.3",
     "@types/react-dom": "19.3.0",
     "autoprefixer": "^10.7.0",
+    "oxfmt": "0.80.0",
     "oxlint": "1.95.0",
     "oxlint-tsgolint": "7.0.2008",
     "postcss": "^8.5.33",
