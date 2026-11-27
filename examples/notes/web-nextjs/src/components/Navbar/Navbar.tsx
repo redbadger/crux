@@ -17,7 +17,7 @@ const HamburgerIcon = () => (
 );
 
 interface NavbarProps {
-  title: String;
+  title: string;
 }
 
 const Navbar: FC<NavbarProps> = ({ title }) => {

@@ -4,6 +4,7 @@
 // evaluates `shared` (which now happens through `shared_types/app`, because
 // the generated `FfiBridge` calls into it) is what guarantees the patch is
 // installed before the WASM module loads.
+// oxlint-disable-next-line import/no-unassigned-import -- the import installs the patch
 import "./wasm-getrandom";
 
 import type {

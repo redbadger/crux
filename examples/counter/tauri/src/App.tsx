@@ -18,12 +18,14 @@ function App() {
 
     listen<ViewModel>("render", (event) => {
       setView(event.payload);
-    }).then((unlisten) => {
-      unlistenToRender = unlisten;
-    });
+    })
+      .then((unlisten) => {
+        unlistenToRender = unlisten;
+      })
+      .catch(console.error);
 
     // trigger initial render
-    invoke("reset");
+    invoke("reset").catch(console.error);
 
     return () => {
       unlistenToRender?.();

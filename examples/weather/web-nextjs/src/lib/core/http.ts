@@ -7,12 +7,12 @@ export async function request({
   headers,
 }: HttpRequest): Promise<HttpResult> {
   console.debug(`http ${method} ${url}`);
-  const request = new Request(url, {
+  const req = new Request(url, {
     method,
     headers: headers.map((header) => [header.name, header.value]),
   });
 
-  const response = await fetch(request);
+  const response = await fetch(req);
 
   const responseHeaders = Array.from(
     response.headers.entries(),

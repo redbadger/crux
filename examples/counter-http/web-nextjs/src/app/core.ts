@@ -65,8 +65,8 @@ export class Core {
     const effects = this.core.resolve(id, serializer.getBytes());
 
     const requests = deserializeRequests(effects);
-    for (const { id, effect } of requests) {
-      this.resolve(id, effect);
+    for (const { id: requestId, effect } of requests) {
+      this.resolve(requestId, effect);
     }
   }
 }

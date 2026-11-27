@@ -1,4 +1,4 @@
-import clsx from "clsx";
+import { clsx } from "clsx";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 
 export type IconButtonVariant = "default" | "danger";

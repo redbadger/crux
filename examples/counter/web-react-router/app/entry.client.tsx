@@ -7,13 +7,15 @@ const wasmInitialized = (
   sharedWasm as unknown as { initialized: Promise<void> }
 ).initialized;
 
-wasmInitialized.then(() => {
-  startTransition(() => {
-    hydrateRoot(
-      document,
-      <StrictMode>
-        <HydratedRouter />
-      </StrictMode>,
-    );
-  });
-});
+wasmInitialized
+  .then(() => {
+    startTransition(() => {
+      hydrateRoot(
+        document,
+        <StrictMode>
+          <HydratedRouter />
+        </StrictMode>,
+      );
+    });
+  })
+  .catch(console.error);

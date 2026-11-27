@@ -8,9 +8,9 @@ import {
 export async function* request({
   url,
 }: SseRequest): AsyncGenerator<SseResponse> {
-  const request = new Request(url);
+  const req = new Request(url);
 
-  const response = await fetch(request);
+  const response = await fetch(req);
   if (!response.body) {
     throw new Error("SSE response has no body");
   }

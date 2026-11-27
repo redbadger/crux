@@ -27,13 +27,15 @@ const Home: NextPage = () => {
     if (!initialized.current) {
       initialized.current = true;
 
-      wasmInitialized.then(() => {
-        if (core.current === null) {
-          core.current = new Core(setView);
-        }
-        // Initial events
-        core.current?.update(eventStartWatch());
-      });
+      wasmInitialized
+        .then(() => {
+          if (core.current === null) {
+            core.current = new Core(setView);
+          }
+          // Initial events
+          core.current?.update(eventStartWatch());
+        })
+        .catch(console.error);
     }
   }, /*once*/ []);
 

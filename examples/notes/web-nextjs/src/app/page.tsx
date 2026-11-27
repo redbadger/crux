@@ -81,7 +81,7 @@ const Home: NextPage = () => {
     if (!initialized.current) {
       initialized.current = true;
 
-      (async () => {
+      void (async () => {
         try {
           // `Core.create` waits for the WASM module before building the
           // generated bridge over it.
@@ -89,8 +89,8 @@ const Home: NextPage = () => {
           channel.current = ch;
 
           core.current = await createCore(
-            (view) => {
-              setView(view);
+            (viewModel) => {
+              setView(viewModel);
               setReady(true);
             },
             channel,
@@ -118,6 +118,7 @@ const Home: NextPage = () => {
         if (channel.current) channel.current.onmessage = null;
       };
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs once, on mount
   }, /*once*/ []);
 
   // Event handlers
@@ -142,7 +143,7 @@ const Home: NextPage = () => {
 
   const [inputLog, updateLog] = useState<string[]>([]);
   const log = (line: string): void => {
-    updateLog((log) => [line, ...log.slice(0, 100)]);
+    updateLog((lines) => [line, ...lines.slice(0, 100)]);
   };
 
   let selection = cursorToSelection(view.cursor);
