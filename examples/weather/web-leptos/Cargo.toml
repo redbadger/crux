@@ -14,17 +14,17 @@ console_error_panic_hook = "0.1.7"
 console_log = "1.1.0"
 crux_core.workspace = true
 crux_time.workspace = true
-futures-util = "0.3.33"
-gloo-net = { version = "0.7.0", features = ["http"] }
+futures-util = "0.3.34"
+gloo-net = { version = "0.8.0", features = ["http"] }
 gloo-timers = { version = "0.4", features = ["futures"] }
-js-sys = "0.3.103"
-log = "0.4.33"
+js-sys = "0.3.107"
+log = "0.4.35"
 shared = { path = "../shared" }
-wasm-bindgen = "0.2.126"
-wasm-bindgen-futures = "0.4.76"
-web-sys = { version = "0.3.103", features = ["Geolocation", "Navigator", "Position", "Coordinates", "Storage", "Window"] }
+wasm-bindgen = "0.2.130"
+wasm-bindgen-futures = "0.4.80"
+web-sys = { version = "0.3.107", features = ["Geolocation", "Navigator", "Position", "Coordinates", "Storage", "Window"] }
 
-leptos = { version = "0.8.20", features = ["csr"] }
+leptos = { version = "0.8.23", features = ["csr"] }
 phosphor-leptos = "0.8.0"
 
 [lints.clippy]

@@ -18,7 +18,7 @@ empty_docs = "allow"
 unsafe_code = "deny"
 
 [workspace.dependencies]
-anyhow = "1.0.104"
+anyhow = "1.0.105"
 boltffi = "=0.32.1"
 crux_core = { path = "../../crux_core" }
 crux_http = { path = "../../crux_http" }
