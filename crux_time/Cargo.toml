@@ -20,7 +20,7 @@ serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 
 [dev-dependencies]
-serde_json = "1.0.151"
+serde_json = "1.0.154"
 crux_core = { version = "0.21.0", path = "../crux_core", features = [
     "testing",
 ] }
