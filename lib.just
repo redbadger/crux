@@ -18,7 +18,7 @@ facet_version := "0.46.5"
 # compile the generated Kotlin, and do not skip it. The runner image has its
 # own Kotlin, but that Kotlin is not pinned and changes with the image. CI
 # installs this release and puts it first on PATH.
-kotlin_version := "2.4.20"
+kotlin_version := "2.4.21"
 
 # kotlinx-coroutines, on which the generated Kotlin package depends. `Core`
 # uses CoroutineScope, launch and StateFlow, and none of them are in the
