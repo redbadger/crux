@@ -82,12 +82,17 @@ of `web-react-router`. Thus you must install the dependencies before you run it:
   ```
 ````
 
-We want Vite to bundle our `shared` Wasm package, so we register the wasm and
-React Router plugins in `vite.config.ts`:
+We want Vite to bundle our `shared` Wasm package for the browser, so we
+register the wasm and React Router plugins in `vite.config.ts`:
 
 ```ts
 {{#include ../../../../examples/counter/web-react-router/vite.config.ts}}
 ```
+
+The `ssr` settings control the server build. The server loads `shared` from
+`node_modules`, because its Node.js code reads the `.wasm` file next to it at
+run time. Vite bundles the generated `shared_types` package into the server
+build, because that package holds CommonJS modules.
 
 ## Add the Shared Types
 
