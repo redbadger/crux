@@ -12,21 +12,21 @@
     "@phosphor-icons/react": "^2.1.10",
     "clsx": "^2.1.1",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.2.4",
-    "next": "16.2.4",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
+    "eslint-config-next": "16.4.6",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "shared": "link:generated/pkg",
     "shared_types": "link:generated/types",
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "25.6.0",
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
-    "postcss": "^8.5.26",
-    "tailwindcss": "^4.3.3"
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "26.6.11",
+    "@types/react": "19.3.3",
+    "@types/react-dom": "19.3.0",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^4.3.5"
   },
-  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
+  "packageManager": "pnpm@12.23.0+sha512.02da94ffaf133f46074322afe552f90d40b5f71ae259aefbccdacc5085b1d617e98d65e0131f5748b9b67445978ee5055d7d59a473f1eef0d504854fefcd5975"
 }

@@ -1,0 +1,5 @@
+# pnpm 11 and later stop the install if a dependency has a build script
+# that is not in this list. The listed packages get prebuilt binaries
+# from optional dependencies, so their scripts do not run.
+allowBuilds:
+  unrs-resolver: false
