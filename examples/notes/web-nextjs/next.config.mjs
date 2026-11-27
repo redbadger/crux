@@ -18,8 +18,8 @@ const nextConfig = {
 
     return config;
   },
-  // Transpile the shared_types and shared packages to ensure compatibility
-  transpilePackages: ["shared_types", "shared"],
+  // Transpile the shared Wasm package to ensure compatibility
+  transpilePackages: ["shared"],
 };
 
 export default nextConfig;

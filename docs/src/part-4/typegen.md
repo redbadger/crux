@@ -245,6 +245,22 @@ For each target language, the codegen produces:
 For Swift, Kotlin, TypeScript, and C#, this typegen output sits beside the
 BoltFFI-generated binding package for the byte-oriented core API.
 
+For TypeScript, the output directory is an npm package. Type generation runs
+`pnpm install` and `tsc --build` in it, so the package holds the TypeScript
+sources, the compiled CommonJS modules and their declarations. The `exports`
+map in its `package.json` lists the paths that a shell can import:
+
+- the package itself, which resolves to the module that `Config::builder`
+  names (`app.js` in the examples)
+- `<package>/bincode` and `<package>/serde`, the serialization runtime
+- `<package>/<module>` for each generated module, for example
+  `shared_types/app` when the shell installs the package as `shared_types`
+
+Before each run, type generation deletes `node_modules`, `pnpm-lock.yaml` and
+`tsconfig.tsbuildinfo` in the output directory. A lockfile from an earlier
+build then cannot stop `pnpm install`, and `tsc` always compiles the new
+sources.
+
 ## Operation kinds and the effect handler API
 
 A shell holding a `Request { id, effect }` has to know two things that

@@ -89,10 +89,9 @@ register the wasm and React Router plugins in `vite.config.ts`:
 {{#include ../../../../examples/counter/web-react-router/vite.config.ts}}
 ```
 
-The `ssr` settings control the server build. The server loads `shared` from
+The `ssr` setting controls the server build. The server loads `shared` from
 `node_modules`, because its Node.js code reads the `.wasm` file next to it at
-run time. Vite bundles the generated `shared_types` package into the server
-build, because that package holds CommonJS modules.
+run time.
 
 ## Add the Shared Types
 
@@ -110,6 +109,7 @@ You can check that they have been generated correctly:
 ls --tree generated/types
 generated/types
 ├── app.ts          # your app's Event / Effect / ViewModel types
+├── app.js
 ├── app.d.ts
 ├── bincode
 │  ├── bincodeDeserializer.ts

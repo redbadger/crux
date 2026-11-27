@@ -123,21 +123,13 @@ boltffi pack wasm
 cd ../web-nextjs
 ```
 
-The generated types package (it's called `app`) is
-published as TypeScript source, so Next.js needs to
-compile it. Tell it to in `next.config.ts`:
+Type generation compiles the generated types package
+to JavaScript, and the `exports` map in its
+`package.json` lists the modules that you can import.
+Next.js can use the package with no change to
+`next.config.ts`.
 
-```typescript
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  transpilePackages: ["app"],
-};
-
-export default nextConfig;
-```
-
-The Wasm package also contains TypeScript sources
+The Wasm package contains TypeScript sources
 alongside its compiled JavaScript, and they don't pass
 Next.js's type check. We only use the compiled files,
 so add `generated/pkg` to the `exclude` list in
