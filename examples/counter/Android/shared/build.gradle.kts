@@ -6,7 +6,9 @@ android {
     namespace = "com.crux.examples.counter.shared"
 
     compileSdk {
-        version = release(36)
+        version = release(37) {
+            minorApiLevel = 1
+        }
     }
 
     defaultConfig {
@@ -24,6 +26,13 @@ android {
             jniLibs.directories += "${projectDir}/../generated/jniLibs"
         }
     }
+}
+
+// The generated directory also holds the `build.gradle.kts` file of the
+// standalone typegen package. Kotlin 2.4 tries to compile a `.kts` file in a
+// source directory as a script, so this module leaves that file out.
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    exclude("**/*.kts")
 }
 
 dependencies {

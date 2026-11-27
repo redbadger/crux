@@ -125,7 +125,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          kotlin_version=2.4.20
+          kotlin_version=2.4.21
           curl -fsSL -o "$RUNNER_TEMP/kotlin-compiler.zip" \
             "https://github.com/JetBrains/kotlin/releases/download/v${kotlin_version}/kotlin-compiler-${kotlin_version}.zip"
           unzip -q "$RUNNER_TEMP/kotlin-compiler.zip" -d "$RUNNER_TEMP"

@@ -6,7 +6,9 @@ plugins {
 android {
     namespace = "com.crux.examples.counter.middleware"
     compileSdk {
-        version = release(36)
+        version = release(37) {
+            minorApiLevel = 1
+        }
     }
 
     defaultConfig {
