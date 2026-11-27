@@ -9,25 +9,25 @@
   },
   "dependencies": {
     "@boltffi/runtime": "0.32.1",
-    "@react-router/node": "^7.18.2",
-    "@react-router/serve": "^7.18.2",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-router": "^7.18.2",
+    "@react-router/node": "^8.5.3",
+    "@react-router/serve": "^8.5.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router": "^8.5.3",
     "shared": "link:generated/pkg",
     "shared_types": "file:generated/types"
   },
   "devDependencies": {
-    "@react-router/dev": "^7.18.2",
-    "@types/node": "^25.9.5",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "typescript": "^6.0.3",
-    "vite": "^8.2.1",
+    "@react-router/dev": "^8.5.3",
+    "@types/node": "^26.6.11",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
     "vite-plugin-wasm": "^3.6.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.22.0"
   },
-  "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
+  "packageManager": "pnpm@12.23.0+sha512.02da94ffaf133f46074322afe552f90d40b5f71ae259aefbccdacc5085b1d617e98d65e0131f5748b9b67445978ee5055d7d59a473f1eef0d504854fefcd5975"
 }

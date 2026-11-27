@@ -19,9 +19,7 @@
     "target": "ES2022",
     "strict": true,
     "allowJs": true,
-    "ignoreDeprecations": "6.0",
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
     "paths": {
       "~/*": ["./app/*"]
     },

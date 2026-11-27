@@ -9,24 +9,24 @@
   },
   "dependencies": {
     "@boltffi/runtime": "0.32.1",
-    "daisyui": "5.7.46",
+    "daisyui": "5.8.2",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.3.7",
-    "next": "16.3.7",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "eslint-config-next": "16.4.6",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "shared": "link:generated/pkg",
     "shared_types": "link:generated/types",
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "26.6.3",
-    "@types/react": "19.3.0",
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "26.6.11",
+    "@types/react": "19.3.3",
     "@types/react-dom": "19.3.0",
-    "autoprefixer": "^10.6.1",
-    "postcss": "^8.5.28",
-    "tailwindcss": "^4.3.3"
+    "autoprefixer": "^10.7.0",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^4.3.5"
   },
-  "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e"
+  "packageManager": "pnpm@12.23.0+sha512.02da94ffaf133f46074322afe552f90d40b5f71ae259aefbccdacc5085b1d617e98d65e0131f5748b9b67445978ee5055d7d59a473f1eef0d504854fefcd5975"
 }
