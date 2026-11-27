@@ -416,6 +416,93 @@ fn validate_names(registry: &Registry, effects: &[EffectMeta]) -> Result<(), Typ
     Ok(())
 }
 
+/// Removes the file or folder at `path`. A path that does not exist is not an
+/// error.
+fn remove_if_present(path: &Path) -> Result<(), TypeGenError> {
+    let result = if path.is_dir() {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_file(path)
+    };
+    match result {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(TypeGenError::Io(e)),
+        _ => Ok(()),
+    }
+}
+
+/// One target in the `exports` map of the generated TypeScript package.
+#[derive(serde::Serialize)]
+#[serde(untagged)]
+enum ExportTarget {
+    /// A file that the package exports as it is, such as `package.json`.
+    File(String),
+    /// A module, with its declarations and its JavaScript.
+    ///
+    /// The field order is important. Node.js and TypeScript use the first
+    /// condition that matches, so `types` must come before `default`.
+    Module { types: String, default: String },
+}
+
+impl ExportTarget {
+    fn module(path: &str) -> Self {
+        Self::Module {
+            types: format!("./{path}.d.ts"),
+            default: format!("./{path}.js"),
+        }
+    }
+}
+
+/// The `package.json` of the generated TypeScript package.
+#[derive(serde::Serialize)]
+struct TypeScriptManifest {
+    /// The fields that the facet-generate installer wrote.
+    #[serde(flatten)]
+    fields: serde_json::Map<String, serde_json::Value>,
+    main: String,
+    types: String,
+    exports: std::collections::BTreeMap<&'static str, ExportTarget>,
+}
+
+/// Adds `main`, `types` and `exports` to the `package.json` in `output_dir`,
+/// and keeps the fields that the facet-generate installer wrote.
+///
+/// `tsc` emits modules in the `commonjs` format of `tsconfig.json`. Without
+/// an `exports` map, the ES module resolver of Node.js cannot resolve a
+/// subpath such as `shared_types/app`.
+fn add_typescript_exports(output_dir: &Path, package_name: &str) -> Result<(), TypeGenError> {
+    let path = output_dir.join("package.json");
+    let manifest = fs::read_to_string(&path)?;
+    let mut fields: serde_json::Map<String, serde_json::Value> =
+        serde_json::from_str(&manifest).map_err(|e| TypeGenError::Generation(e.to_string()))?;
+    for key in ["main", "types", "exports"] {
+        fields.remove(key);
+    }
+
+    let manifest = TypeScriptManifest {
+        fields,
+        main: format!("./{package_name}.js"),
+        types: format!("./{package_name}.d.ts"),
+        exports: [
+            (".", ExportTarget::module(package_name)),
+            ("./*", ExportTarget::module("*")),
+            ("./bincode", ExportTarget::module("bincode/index")),
+            ("./serde", ExportTarget::module("serde/index")),
+            // Without this entry, `./*` maps `package.json` to
+            // `./package.json.js`, and tools cannot read the manifest.
+            (
+                "./package.json",
+                ExportTarget::File("./package.json".to_string()),
+            ),
+        ]
+        .into_iter()
+        .collect(),
+    };
+    let manifest = serde_json::to_string_pretty(&manifest)
+        .map_err(|e| TypeGenError::Generation(e.to_string()))?;
+    fs::write(&path, manifest)?;
+    Ok(())
+}
+
 /// Runs `pnpm` with `args` in `dir`, failing unless it exits successfully.
 ///
 /// Output is inherited rather than captured, so `tsc`'s diagnostics reach the
@@ -583,6 +670,19 @@ impl CodeGenerator {
     /// )?;
     /// # Ok::<(), crux_core::type_generation::facet::TypeGenError>(())
     /// ```
+    ///
+    /// The output directory becomes an npm package. Its `package.json`
+    /// has an `exports` map, so Node.js and bundlers can resolve
+    /// `<package>` (the `<package_name>` module), `<package>/bincode`,
+    /// `<package>/serde` and `<package>/<module>` for each other generated
+    /// module.
+    ///
+    /// Before it generates, this function deletes the `node_modules`
+    /// folder, `pnpm-lock.yaml` and `tsconfig.tsbuildinfo` in the output
+    /// directory. Then a lockfile from an earlier build cannot stop
+    /// `pnpm install` (for example a frozen install on CI), and
+    /// `tsc --build` always emits the modules again.
+    ///
     /// # Errors
     /// Errors that can occur during type generation, including
     /// [`TypeGenError::CommandFailed`] if `pnpm install` fails or `tsc`
@@ -592,6 +692,13 @@ impl CodeGenerator {
         self.check_boltffi()?;
         fs::create_dir_all(&config.out_dir)?;
         let output_dir = &config.out_dir;
+
+        // Remove what `pnpm install` and `tsc --build` made in an earlier
+        // build. A stale lockfile fails a frozen install, and a stale build
+        // info file can make `tsc --build` skip the emit.
+        remove_if_present(&output_dir.join("node_modules"))?;
+        remove_if_present(&output_dir.join("pnpm-lock.yaml"))?;
+        remove_if_present(&output_dir.join("tsconfig.tsbuildinfo"))?;
 
         let mut installer = typescript::Installer::new(&config.package_name, output_dir)
             .plugin(BincodePlugin)
@@ -605,6 +712,8 @@ impl CodeGenerator {
         installer
             .external_packages(&config.external_packages)
             .generate(&self.registry)?;
+
+        add_typescript_exports(output_dir, &config.package_name)?;
 
         let ts_config_str = serde_json::to_string_pretty(&json!({
             "compilerOptions": {

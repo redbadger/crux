@@ -471,6 +471,75 @@ mod facet_test {
         );
     }
 
+    /// The `exports` map lets Node.js resolve the package and its subpaths
+    /// with the ES module resolver. A second run must not use the lockfile
+    /// of an earlier run.
+    #[test]
+    fn the_generated_typescript_package_exports_its_modules() {
+        let dir = tempfile::tempdir().expect("should create a temp dir");
+        let config = Config::builder("shared_types", dir.path()).build();
+        generator()
+            .typescript(&config)
+            .expect("typescript type generation should succeed");
+
+        // `pnpm install` fails with this lockfile, because the lockfile has
+        // no entry for the version that it names. The run succeeds only if
+        // the generator removes the lockfile first.
+        fs::write(
+            dir.path().join("pnpm-lock.yaml"),
+            "lockfileVersion: '9.0'\n\nimporters:\n  .:\n    devDependencies:\n      typescript:\n        specifier: ^1.0.0\n        version: 1.0.0\n",
+        )
+        .expect("should write a stale lockfile");
+        generator()
+            .typescript(&config)
+            .expect("a second run should replace the stale lockfile");
+
+        let manifest =
+            fs::read_to_string(dir.path().join("package.json")).expect("should write package.json");
+        let json: serde_json::Value =
+            serde_json::from_str(&manifest).expect("package.json should be valid JSON");
+
+        assert_eq!(json["name"], "shared_types");
+        assert!(
+            json["devDependencies"]["typescript"].is_string(),
+            "the fields that the installer wrote should stay"
+        );
+        assert_eq!(json["main"], "./shared_types.js");
+        assert_eq!(json["types"], "./shared_types.d.ts");
+        assert_eq!(
+            json["exports"],
+            serde_json::json!({
+                ".": { "types": "./shared_types.d.ts", "default": "./shared_types.js" },
+                "./*": { "types": "./*.d.ts", "default": "./*.js" },
+                "./bincode": { "types": "./bincode/index.d.ts", "default": "./bincode/index.js" },
+                "./serde": { "types": "./serde/index.d.ts", "default": "./serde/index.js" },
+                "./package.json": "./package.json",
+            })
+        );
+
+        // Node.js and TypeScript use the first condition that matches, so
+        // `types` must come before `default` in the file.
+        let types = manifest
+            .find(r#""types": "./*.d.ts""#)
+            .expect("should export ./*");
+        let default = manifest
+            .find(r#""default": "./*.js""#)
+            .expect("should export ./*");
+        assert!(types < default, "`types` must come before `default`");
+
+        for module in [
+            "shared_types.js",
+            "bincode/index.js",
+            "serde/index.js",
+            "package.json",
+        ] {
+            assert!(
+                dir.path().join(module).exists(),
+                "every export target should exist, but {module} does not"
+            );
+        }
+    }
+
     /// `typescript()` fails unless `tsc` accepts the module, so success means
     /// it type-checks. `Probe` resolves with `Kit.Presence`, a unit-only enum
     /// in another namespace, which the dispatcher has to serialize through its
