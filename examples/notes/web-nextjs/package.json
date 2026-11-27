@@ -15,7 +15,7 @@
     "react-dom": "19.3.1",
     "shared": "link:generated/pkg",
     "shared_types": "link:generated/types",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.5",
