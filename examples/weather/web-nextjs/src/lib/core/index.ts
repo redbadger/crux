@@ -10,9 +10,7 @@ export { WeatherHandler } from "./handler";
 /// for the app's operations and a callback for the view model. `Core.create`
 /// waits for the wasm module, builds the generated `FfiBridge` over it, and
 /// owns the loop between them.
-export function createCore(
-  onView: (view: ViewModel) => void,
-): Promise<Core> {
+export function createCore(onView: (view: ViewModel) => void): Promise<Core> {
   return Core.create(new WeatherHandler(), onView);
 }
 // ANCHOR_END: core_base

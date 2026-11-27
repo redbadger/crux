@@ -3,8 +3,9 @@ import { hydrateRoot } from "react-dom/client";
 import { HydratedRouter } from "react-router/dom";
 import * as sharedWasm from "shared";
 
-const wasmInitialized = (sharedWasm as unknown as { initialized: Promise<void> })
-  .initialized;
+const wasmInitialized = (
+  sharedWasm as unknown as { initialized: Promise<void> }
+).initialized;
 
 wasmInitialized.then(() => {
   startTransition(() => {
@@ -12,7 +13,7 @@ wasmInitialized.then(() => {
       document,
       <StrictMode>
         <HydratedRouter />
-      </StrictMode>
+      </StrictMode>,
     );
   });
 });

@@ -23,22 +23,19 @@ const Home: NextPage = () => {
   const core: React.RefObject<Core | null> = useRef(null);
 
   const initialized = useRef(false);
-  useEffect(
-    () => {
-      if (!initialized.current) {
-        initialized.current = true;
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
 
-        wasmInitialized.then(() => {
-          if (core.current === null) {
-            core.current = new Core(setView);
-          }
-          // Initial events
-          core.current?.update(eventStartWatch());
-        });
-      }
-    },
-    /*once*/ [],
-  );
+      wasmInitialized.then(() => {
+        if (core.current === null) {
+          core.current = new Core(setView);
+        }
+        // Initial events
+        core.current?.update(eventStartWatch());
+      });
+    }
+  }, /*once*/ []);
 
   return (
     <main>

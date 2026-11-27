@@ -4,8 +4,7 @@ import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 export type IconButtonVariant = "default" | "danger";
 
 const VARIANT_CLASSES: Record<IconButtonVariant, string> = {
-  default:
-    "text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-300",
+  default: "text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-300",
   danger: "text-red-600 hover:bg-red-50 focus-visible:ring-red-300",
 };
 

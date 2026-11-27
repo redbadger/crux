@@ -20,12 +20,7 @@ import type {
   ValueResult,
   ViewModel,
 } from "shared_types/app";
-import {
-  Core,
-  valueBytes,
-  valueNone,
-  valueResultOk,
-} from "shared_types/app";
+import { Core, valueBytes, valueNone, valueResultOk } from "shared_types/app";
 import { RefObject } from "react";
 
 export type SyncMessage = {

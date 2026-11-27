@@ -12,7 +12,7 @@ export default function handleRequest(
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext,
-  loadContext: RouterContextProvider
+  loadContext: RouterContextProvider,
 ) {
   return new Promise((resolve, reject) => {
     let shellRendered = false;
@@ -29,7 +29,7 @@ export default function handleRequest(
             new Response(createReadableStreamFromReadable(body), {
               headers: responseHeaders,
               status: responseStatusCode,
-            })
+            }),
           );
 
           pipe(body);
@@ -43,7 +43,7 @@ export default function handleRequest(
             console.error(error);
           }
         },
-      }
+      },
     );
 
     setTimeout(abort, ABORT_DELAY);

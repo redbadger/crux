@@ -22,9 +22,7 @@ export function WeatherDetail({ data }: { data: CurrentWeatherResponse }) {
       <p className="text-6xl font-bold text-slate-900 mt-2 leading-none">
         {data.main.temp.toFixed(1)}&deg;
       </p>
-      {desc ? (
-        <p className="text-slate-500 mt-1 capitalize">{desc}</p>
-      ) : null}
+      {desc ? <p className="text-slate-500 mt-1 capitalize">{desc}</p> : null}
       <div className="grid grid-cols-3 gap-3 mt-6 text-center">
         <Stat
           icon={Thermometer}

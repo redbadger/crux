@@ -77,51 +77,48 @@ const Home: NextPage = () => {
   const initialized = useRef(false);
 
   // Initialize core and WASM
-  useEffect(
-    () => {
-      if (!initialized.current) {
-        initialized.current = true;
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
 
-        (async () => {
-          try {
-            // `Core.create` waits for the WASM module before building the
-            // generated bridge over it.
-            const ch = new BroadcastChannel("crux-note");
-            channel.current = ch;
+      (async () => {
+        try {
+          // `Core.create` waits for the WASM module before building the
+          // generated bridge over it.
+          const ch = new BroadcastChannel("crux-note");
+          channel.current = ch;
 
-            core.current = await createCore(
-              (view) => {
-                setView(view);
-                setReady(true);
-              },
-              channel,
-              subscription,
-            );
+          core.current = await createCore(
+            (view) => {
+              setView(view);
+              setReady(true);
+            },
+            channel,
+            subscription,
+          );
 
-            // Subscribe to the BroadcastChannel
-            ch.onmessage = onMessage;
+          // Subscribe to the BroadcastChannel
+          ch.onmessage = onMessage;
 
-            // Open the document
-            core.current.update(eventOpen());
+          // Open the document
+          core.current.update(eventOpen());
 
-            // Ask all peers to reset
-            let message: SyncMessage = {
-              kind: "reset",
-            };
+          // Ask all peers to reset
+          let message: SyncMessage = {
+            kind: "reset",
+          };
 
-            ch.postMessage(message);
-          } catch (error) {
-            console.error("Error during WASM initialization:", error);
-          }
-        })();
+          ch.postMessage(message);
+        } catch (error) {
+          console.error("Error during WASM initialization:", error);
+        }
+      })();
 
-        return () => {
-          if (channel.current) channel.current.onmessage = null;
-        };
-      }
-    },
-    /*once*/ [],
-  );
+      return () => {
+        if (channel.current) channel.current.onmessage = null;
+      };
+    }
+  }, /*once*/ []);
 
   // Event handlers
 
